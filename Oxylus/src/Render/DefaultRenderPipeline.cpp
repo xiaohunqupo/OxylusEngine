@@ -743,14 +743,11 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   if (dir_light_data && dir_light_data->cast_shadows)
     shadow_map = shadow_pass(shadow_map);
 
-  auto normal_ia = normal_texture.as_attachment();
-  auto normal_image = vuk::clear_image(vuk::declare_ia("normal_image", normal_ia), vuk::Black<float>);
+  auto normal_image = vuk::clear_image(vuk::declare_ia("normal_image", normal_texture.as_attachment()), vuk::Black<float>);
 
-  auto depth_ia = depth_texture.as_attachment();
-  auto depth_image = vuk::clear_image(vuk::declare_ia("depth_image", depth_ia), vuk::DepthZero);
+  auto depth_image = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
 
-  auto velocity_ia = normal_texture.as_attachment();
-  auto velocity_image = vuk::clear_image(vuk::declare_ia("velocity_image", velocity_ia), vuk::Black<float>);
+  auto velocity_image = vuk::clear_image(vuk::declare_ia("velocity_image", normal_texture.as_attachment()), vuk::Black<float>);
   auto [depth_output, normal_output, velocity_output] = depth_pre_pass(depth_image, normal_image, velocity_image);
 
   auto gtao_output = vuk::clear_image(vuk::declare_ia("gtao_output", gtao_final_texture.as_attachment()), vuk::Black<uint32_t>);
@@ -821,7 +818,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .draw(3, 1, 0, 0);
     return target;
   });
-
   return final_pass(target, grid_output, bloom_output);
 }
 
@@ -1046,7 +1042,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
   return pass(shadow_map);
 }
 
-[[nodiscard]] std::tuple<vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>> DefaultRenderPipeline::
+std::tuple<vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>> DefaultRenderPipeline::
   depth_pre_pass(const vuk::Value<vuk::ImageAttachment>& depth_image,
                  const vuk::Value<vuk::ImageAttachment>& normal_image,
                  const vuk::Value<vuk::ImageAttachment>& velocity_image) {

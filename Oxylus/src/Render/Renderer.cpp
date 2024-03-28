@@ -60,7 +60,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
 
   vuk::ProfilingCallbacks cbs = vkctx->tracy_profiler->setup_vuk_callback();
 
-  vuk::Value<vuk::ImageAttachment> cleared_image = vuk::clear_image(std::move(swapchain_image), vuk::ClearColor{0.3f, 0.5f, 0.3f, 1.0f});
+  vuk::Value<vuk::ImageAttachment> cleared_image = vuk::clear_image(std::move(swapchain_image), vuk::ClearColor{0.0f, 0.0f, 0.0f, 1.0f});
 
   auto extent = rp->is_swapchain_attached() ? vkctx->swapchain->images[vkctx->current_frame].extent : rp->get_extent();
   renderer_context.viewport_size = extent;
@@ -78,7 +78,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
       system->imgui_update();
     imgui_layer->end();
 
-    result = imgui_layer->render_draw_data(frame_allocator, result);
+    //result = imgui_layer->render_draw_data(frame_allocator, result);
 
     auto entire_thing = vuk::enqueue_presentation(std::move(result));
     entire_thing.wait(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
@@ -100,7 +100,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
       system->imgui_update();
     imgui_layer->end();
 
-    vuk::Value<vuk::ImageAttachment> result = imgui_layer->render_draw_data(frame_allocator, result);
+    vuk::Value<vuk::ImageAttachment> result = imgui_layer->render_draw_data(frame_allocator, cleared_image);
 
     auto entire_thing = vuk::enqueue_presentation(std::move(result));
     entire_thing.wait(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});

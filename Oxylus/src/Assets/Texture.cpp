@@ -48,8 +48,10 @@ void Texture::create_texture(const uint32_t width, const uint32_t height, const 
   // TODO: generate mips
 
   _image = std::move(tex);
-  _extent = {width, height, 1};
+  _view = vuk::Unique(*VkContext::get()->superframe_allocator, *view);
   _format = format;
+  _extent = {width, height, 1};
+  _preset = Preset::eGeneric2D;
 }
 
 void Texture::load(const std::string& file_path, const vuk::Format format, const bool generate_cubemap_from_hdr, bool generate_mips) {
