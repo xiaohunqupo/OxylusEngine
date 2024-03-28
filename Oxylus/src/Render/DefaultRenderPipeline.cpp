@@ -911,17 +911,6 @@ void DefaultRenderPipeline::render_meshes(const RenderQueue& render_queue,
 
       primitive_index++;
     }
-
-    const auto pc = ShaderPC{
-      .vertex_buffer_ptr = mesh.mesh_base->vertex_buffer->device_address,
-      .mesh_index = instanced_batch.data_offset,
-      .material_index = instanced_batch.component_index, // + draw_index in hlsl
-    };
-
-    vuk::ShaderStageFlags stage = vuk::ShaderStageFlagBits::eVertex;
-    if (!(flags & RENDER_FLAGS_SHADOWS_PASS))
-      stage = stage | vuk::ShaderStageFlagBits::eFragment;
-    command_buffer.push_constants(stage, 0, pc);
   };
 
   uint32_t instance_count = 0;
