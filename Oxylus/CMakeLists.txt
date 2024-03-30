@@ -101,7 +101,7 @@ endif()
 
 # Compile and link options
 if (MSVC)
-  target_compile_options(${PROJECT_NAME} PRIVATE /std:c++20 /permissive- /W3) 
+  target_compile_options(${PROJECT_NAME} PRIVATE /std:c++20 /permissive- /W3 /EHsc) 
 endif ()
 
 if (MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -246,9 +246,9 @@ CPMAddPackage(
     GIT_TAG 3.3.8
     GIT_SHALLOW ON
     OPTIONS
-        "GLFW_BUILD_TESTS OFF"
-        "GLFW_BUILD_EXAMPLES OFF"
-        "GLFW_BULID_DOCS OFF"
+    "GLFW_BUILD_TESTS OFF"
+    "GLFW_BUILD_EXAMPLES OFF"
+    "GLFW_BULID_DOCS OFF"
 	"GLFW_INSTALL OFF"
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
