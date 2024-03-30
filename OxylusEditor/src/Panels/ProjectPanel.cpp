@@ -9,14 +9,14 @@
 #include "EditorLayer.hpp"
 
 #include "UI/OxUI.hpp"
+#include "Utils/EditorConfig.hpp"
 #include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
-#include "Utils/EditorConfig.hpp"
 
 namespace ox {
-ProjectPanel::ProjectPanel() : EditorPanel("Projects", ICON_MDI_ACCOUNT_BADGE, true) { }
+ProjectPanel::ProjectPanel() : EditorPanel("Projects", ICON_MDI_ACCOUNT_BADGE, true) {}
 
-void ProjectPanel::on_update() { }
+void ProjectPanel::on_update() {}
 
 void ProjectPanel::load_project_for_editor(const std::string& filepath) {
   if (Project::load(filepath)) {
@@ -38,8 +38,8 @@ void ProjectPanel::new_project(const std::string& project_dir, const std::string
 void ProjectPanel::on_imgui_render() {
   if (Visible && !ImGui::IsPopupOpen("ProjectSelector"))
     ImGui::OpenPopup("ProjectSelector");
-  constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                         | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking;
+  constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration |
+                         ImGuiWindowFlags_NoDocking;
   static bool draw_new_project_panel = false;
 
   OxUI::center_next_window();
@@ -87,8 +87,7 @@ void ProjectPanel::on_imgui_render() {
       if (ImGui::Button("Cancel", ImVec2(120, 0))) {
         draw_new_project_panel = false;
       }
-    }
-    else {
+    } else {
       const auto projects = EditorConfig::get()->get_recent_projects();
       for (auto& project : projects) {
         auto project_name = FileSystem::get_file_name(project);
@@ -108,9 +107,14 @@ void ProjectPanel::on_imgui_render() {
           load_project_for_editor(filepath);
         }
       }
+      ImGui::SameLine();
+      if (ImGui::Button("Skip", ImVec2(120, 0))) {
+        Visible = false;
+        ImGui::CloseCurrentPopup();
+      }
     }
     OxUI::spacing(4);
     ImGui::EndPopup();
   }
 }
-}
+} // namespace ox
