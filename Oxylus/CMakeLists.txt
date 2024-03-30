@@ -357,9 +357,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${dylib_SOURCE_DIR}/include)
 CPMAddPackage(
   NAME fsr
   GIT_TAG master
-  GITHUB_REPOSITORY GPUOpen-Effects/FidelityFX-FSR2
+  GITHUB_REPOSITORY Hatrickek/FidelityFX-FSR2
   DOWNLOAD_ONLY YES
-  GIT_SUBMODULES ""
   GIT_SHALLOW ON
 )
 add_library(fsr INTERFACE)
