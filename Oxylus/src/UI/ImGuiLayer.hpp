@@ -3,7 +3,6 @@
 #include <plf_colony.h>
 #include <vuk/Future.hpp>
 #include <vuk/Image.hpp>
-#include <vuk/SampledImage.hpp>
 
 #include <imgui.h>
 
@@ -56,6 +55,6 @@ private:
 
   void init_for_vulkan();
   void add_icon_font(float font_size);
-  ImGuiData imgui_impl_vuk_init(vuk::Allocator& allocator) const;
+  void imgui_impl_vuk_init(vuk::Allocator& allocator);
 };
 } // namespace ox

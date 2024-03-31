@@ -26,6 +26,7 @@ Texture::~Texture() = default;
 
 void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk::ImageAttachment::Preset preset) {
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
+  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
   auto image = vuk::allocate_image(*VkContext::get()->superframe_allocator, ia);
   ia.image = **image;
   auto view = vuk::allocate_image_view(*VkContext::get()->superframe_allocator, ia);
@@ -37,6 +38,7 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
 
 void Texture::create_texture(const vuk::ImageAttachment& image_attachment) {
   auto ia = image_attachment;
+  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
   auto image = vuk::allocate_image(*VkContext::get()->superframe_allocator, ia);
   ia.image = **image;
   auto view = vuk::allocate_image_view(*VkContext::get()->superframe_allocator, ia);
@@ -48,7 +50,8 @@ void Texture::create_texture(const vuk::ImageAttachment& image_attachment) {
 
 void Texture::create_texture(const uint32_t width, const uint32_t height, const void* data, const vuk::Format format, bool generate_mips) {
   OX_SCOPED_ZONE;
-  const auto ia = vuk::ImageAttachment::from_preset(vuk::ImageAttachment::Preset::eGeneric2D, format, {width, height, 1}, vuk::Samples::e1);
+  auto ia = vuk::ImageAttachment::from_preset(vuk::ImageAttachment::Preset::eRTT2DUnmipped, format, {width, height, 1}, vuk::Samples::e1);
+  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
   auto& alloc = *VkContext::get()->superframe_allocator;
   auto [tex, view, fut] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferQueue, ia, data);
   vuk::Compiler compiler;
@@ -57,7 +60,7 @@ void Texture::create_texture(const uint32_t width, const uint32_t height, const 
   // TODO: generate mips
 
   _image = std::move(tex);
-  _view = vuk::Unique(*VkContext::get()->superframe_allocator, *view);
+  _view = std::move(view);
   _attachment = ia;
 }
 

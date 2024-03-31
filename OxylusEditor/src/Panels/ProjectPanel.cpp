@@ -107,7 +107,7 @@ void ProjectPanel::on_imgui_render() {
           load_project_for_editor(filepath);
         }
       }
-      ImGui::SameLine();
+      OxUI::align_right(ImVec2(120, 0).x);
       if (ImGui::Button("Skip", ImVec2(120, 0))) {
         Visible = false;
         ImGui::CloseCurrentPopup();

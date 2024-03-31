@@ -68,31 +68,6 @@ void ImGuiLayer::add_icon_font(float font_size) {
   io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &icons_config, ICONS_RANGES);
 }
 
-ImGuiLayer::ImGuiData ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) const {
-  OX_SCOPED_ZONE;
-  vuk::Context& ctx = allocator.get_context();
-  auto& io = ImGui::GetIO();
-  io.BackendRendererName = "oxylus";
-  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset; // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
-
-  unsigned char* pixels;
-  int width, height;
-  io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
-  const auto font = create_shared<Texture>();
-  font->create_texture((unsigned)width, (unsigned)height, pixels, vuk::Format::eR8G8B8A8Srgb);
-  ImGuiData data(font);
-
-  io.Fonts->TexID = (ImTextureID)&data.font_texture->get_view().get();
-
-  vuk::PipelineBaseCreateInfo pci;
-  pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
-  pci.add_static_spirv(imgui_frag, sizeof(imgui_frag) / 4, "imgui.frag");
-  ctx.create_named_pipeline("imgui", pci);
-
-  return data;
-}
-
 void ImGuiLayer::init_for_vulkan() {
   OX_SCOPED_ZONE;
   ImGui_ImplGlfw_InitForVulkan(Window::get_glfw_window(), true);
@@ -128,7 +103,29 @@ void ImGuiLayer::init_for_vulkan() {
     io.Fonts->Build();
   }
 
-  imgui_data = imgui_impl_vuk_init(*VkContext::get()->superframe_allocator);
+  imgui_impl_vuk_init(*VkContext::get()->superframe_allocator);
+}
+
+void ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) {
+  OX_SCOPED_ZONE;
+  vuk::Context& ctx = allocator.get_context();
+  auto& io = ImGui::GetIO();
+  io.BackendRendererName = "oxylus";
+  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset; // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+
+  unsigned char* pixels;
+  int width, height;
+  io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+
+  imgui_data.font_texture = create_shared<Texture>();
+  imgui_data.font_texture->create_texture((unsigned)width, (unsigned)height, pixels, vuk::Format::eR8G8B8A8Srgb);
+
+  io.Fonts->TexID = (ImTextureID)(&*imgui_data.font_texture->get_view());
+
+  vuk::PipelineBaseCreateInfo pci;
+  pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
+  pci.add_static_spirv(imgui_frag, sizeof(imgui_frag) / 4, "imgui.frag");
+  ctx.create_named_pipeline("imgui", pci);
 }
 
 void ImGuiLayer::on_detach() {

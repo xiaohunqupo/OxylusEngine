@@ -185,6 +185,8 @@ public:
 
   static void spacing(uint32_t count = 1);
 
+  static void align_right(float item_width);
+
   static std::string get_path_from_imgui_payload(const ImGuiPayload* payload);
 
   // bigger scale = smaller gradient

@@ -40,9 +40,7 @@ bool OxUI::begin_properties(const ImGuiTableFlags flags, bool fixed_width, float
   return false;
 }
 
-void OxUI::end_properties() {
-  ImGui::EndTable();
-}
+void OxUI::end_properties() { ImGui::EndTable(); }
 
 void OxUI::text(const char* text1, const char* text2, const char* tooltip) {
   begin_property_grid(text1, tooltip);
@@ -172,11 +170,22 @@ void OxUI::image(const Texture& texture, ImVec2 size, const ImVec2& uv0, const I
   ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture.get_view()), size, uv0, uv1, tint_col, border_col);
 }
 
-void OxUI::image(const vuk::ImageView& view, const ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col) {
+void OxUI::image(const vuk::ImageView& view,
+                 const ImVec2 size,
+                 const ImVec2& uv0,
+                 const ImVec2& uv1,
+                 const ImVec4& tint_col,
+                 const ImVec4& border_col) {
   ImGui::Image(App::get()->get_imgui_layer()->add_image(view), size, uv0, uv1, tint_col, border_col);
 }
 
-bool OxUI::image_button(const char* id, const vuk::ImageView& view, const ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& bg_col) {
+bool OxUI::image_button(const char* id,
+                        const vuk::ImageView& view,
+                        const ImVec2 size,
+                        const ImVec2& uv0,
+                        const ImVec2& uv1,
+                        const ImVec4& tint_col,
+                        const ImVec4& bg_col) {
   return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(view), size, uv0, uv1, bg_col, tint_col);
 }
 
@@ -273,7 +282,12 @@ bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* t
   return changed;
 }
 
-bool OxUI::toggle_button(const char* label, const bool state, const ImVec2 size, const float alpha, const float pressed_alpha, const ImGuiButtonFlags button_flags) {
+bool OxUI::toggle_button(const char* label,
+                         const bool state,
+                         const ImVec2 size,
+                         const float alpha,
+                         const float pressed_alpha,
+                         const ImGuiButtonFlags button_flags) {
   if (state) {
     ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
 
@@ -281,8 +295,7 @@ bool OxUI::toggle_button(const char* label, const bool state, const ImVec2 size,
     ImGui::PushStyleColor(ImGuiCol_Button, color);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
-  }
-  else {
+  } else {
     ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Button];
     ImVec4 hovered_color = ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered];
     color.w = alpha;
@@ -336,7 +349,14 @@ bool OxUI::icon_button(const char8_t* icon, const char* label, const ImVec4 icon
   return clicked;
 }
 
-void OxUI::clipped_text(const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_end, const ImVec2* text_size_if_known, const ImVec2& align, const ImRect* clip_rect, const float wrap_width) {
+void OxUI::clipped_text(const ImVec2& pos_min,
+                        const ImVec2& pos_max,
+                        const char* text,
+                        const char* text_end,
+                        const ImVec2* text_size_if_known,
+                        const ImVec2& align,
+                        const ImRect* clip_rect,
+                        const float wrap_width) {
   // Hide anything after a '##' string
   const char* text_display_end = ImGui::FindRenderedTextEnd(text, text_end);
   const int text_len = static_cast<int>(text_display_end - text);
@@ -350,7 +370,15 @@ void OxUI::clipped_text(const ImVec2& pos_min, const ImVec2& pos_max, const char
     ImGui::LogRenderedText(&pos_min, text, text_display_end);
 }
 
-void OxUI::clipped_text(ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_display_end, const ImVec2* text_size_if_known, const ImVec2& align, const ImRect* clip_rect, const float wrap_width) {
+void OxUI::clipped_text(ImDrawList* draw_list,
+                        const ImVec2& pos_min,
+                        const ImVec2& pos_max,
+                        const char* text,
+                        const char* text_display_end,
+                        const ImVec2* text_size_if_known,
+                        const ImVec2& align,
+                        const ImRect* clip_rect,
+                        const float wrap_width) {
   // Perform CPU side clipping for single clipped element to avoid using scissor state
   ImVec2 pos = pos_min;
   const ImVec2 text_size = text_size_if_known ? *text_size_if_known : ImGui::CalcTextSize(text, text_display_end, false, wrap_width);
@@ -374,10 +402,13 @@ void OxUI::spacing(const uint32_t count) {
   for (uint32_t i = 0; i < count; i++)
     ImGui::Spacing();
 }
-
-std::string OxUI::get_path_from_imgui_payload(const ImGuiPayload* payload) {
-  return std::string(static_cast<const char*>(payload->Data));
+void OxUI::align_right(float item_width) {
+  const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - item_width - ImGui::GetScrollX();
+  if (posX > ImGui::GetCursorPosX())
+    ImGui::SetCursorPosX(posX);
 }
+
+std::string OxUI::get_path_from_imgui_payload(const ImGuiPayload* payload) { return std::string(static_cast<const char*>(payload->Data)); }
 
 void OxUI::draw_gradient_shadow_bottom(const float scale) {
   const auto draw_list = ImGui::GetWindowDrawList();
@@ -386,7 +417,8 @@ void OxUI::draw_gradient_shadow_bottom(const float scale) {
   const auto window_width = ImGui::GetWindowWidth();
 
   const ImRect bb(0, scale, pos.x + window_width, window_height + pos.y);
-  draw_list->AddRectFilledMultiColor(bb.Min, bb.Max, IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 255), IM_COL32(20, 20, 20, 255));
+  draw_list
+    ->AddRectFilledMultiColor(bb.Min, bb.Max, IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 255), IM_COL32(20, 20, 20, 255));
 }
 
 void OxUI::push_id() {
@@ -410,8 +442,7 @@ void OxUI::begin_property_grid(const char* label, const char* tooltip, const boo
 
   ImGui::PushID(label);
   if (align_text_right) {
-    const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x
-                      - ImGui::GetScrollX();
+    const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x - ImGui::GetScrollX();
     if (posX > ImGui::GetCursorPosX())
       ImGui::SetCursorPosX(posX);
   }
@@ -446,9 +477,8 @@ void OxUI::center_next_window() {
 
 void OxUI::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size, const ImVec2 padding, bool* visible) {
   static int corner = 1;
-  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
-                                  ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-                                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize |
+                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
   if (corner != -1) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImVec2 window_pos, window_pos_pivot;
@@ -483,4 +513,4 @@ void OxUI::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size,
   ImGui::End();
   ImGui::PopStyleVar();
 }
-}
+} // namespace ox
