@@ -24,53 +24,72 @@ Texture::Texture(const TextureLoadInfo& info) {
 
 Texture::~Texture() = default;
 
-void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk::ImageAttachment::Preset preset) {
+void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk::ImageAttachment::Preset preset, std::source_location loc) {
+  const auto ctx = VkContext::get();
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
-  auto image = vuk::allocate_image(*VkContext::get()->superframe_allocator, ia);
+  auto image = vuk::allocate_image(*ctx->superframe_allocator, ia);
   ia.image = **image;
-  auto view = vuk::allocate_image_view(*VkContext::get()->superframe_allocator, ia);
+  auto view = vuk::allocate_image_view(*ctx->superframe_allocator, ia);
 
   _image = std::move(*image);
   _view = std::move(*view);
   _attachment = ia;
+  
+  set_name(loc);
 }
 
-void Texture::create_texture(const vuk::ImageAttachment& image_attachment) {
+void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc) {
+  const auto ctx = VkContext::get();
   auto ia = image_attachment;
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
-  auto image = vuk::allocate_image(*VkContext::get()->superframe_allocator, ia);
+  auto image = vuk::allocate_image(*ctx->superframe_allocator, ia);
   ia.image = **image;
-  auto view = vuk::allocate_image_view(*VkContext::get()->superframe_allocator, ia);
+  auto view = vuk::allocate_image_view(*ctx->superframe_allocator, ia);
 
   _image = std::move(*image);
   _view = std::move(*view);
   _attachment = ia;
+
+  set_name(loc);
 }
 
-void Texture::create_texture(const uint32_t width, const uint32_t height, const void* data, const vuk::Format format, bool generate_mips) {
+void Texture::create_texture(const uint32_t width,
+                             const uint32_t height,
+                             const void* data,
+                             const vuk::Format format,
+                             bool generate_mips,
+                             std::source_location loc) {
   OX_SCOPED_ZONE;
+  const auto ctx = VkContext::get();
+
   auto ia = vuk::ImageAttachment::from_preset(vuk::ImageAttachment::Preset::eRTT2DUnmipped, format, {width, height, 1}, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
-  auto& alloc = *VkContext::get()->superframe_allocator;
+  auto& alloc = *ctx->superframe_allocator;
   auto [tex, view, fut] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferQueue, ia, data);
   vuk::Compiler compiler;
-  fut.wait(*VkContext::get()->superframe_allocator, compiler);
+  fut.wait(*ctx->superframe_allocator, compiler);
 
   // TODO: generate mips
 
   _image = std::move(tex);
   _view = std::move(view);
   _attachment = ia;
+
+  set_name(loc);
 }
 
-void Texture::load(const std::string& file_path, const vuk::Format format, const bool generate_cubemap_from_hdr, bool generate_mips) {
+void Texture::load(const std::string& file_path,
+                   const vuk::Format format,
+                   const bool generate_cubemap_from_hdr,
+                   bool generate_mips,
+                   std::source_location loc) {
   path = file_path;
 
   uint32_t x, y, chans;
   const uint8_t* data = load_stb_image(path, &x, &y, &chans);
 
-  create_texture(x, y, data, format, generate_mips);
+  create_texture(x, y, data, format, generate_mips, loc);
 
   if (FileSystem::get_file_extension(path) == "hdr" && generate_cubemap_from_hdr) {
     auto fut = RendererCommon::generate_cubemap_from_equirectangular(as_attachment());
@@ -86,11 +105,11 @@ void Texture::load(const std::string& file_path, const vuk::Format format, const
   delete[] data;
 }
 
-void Texture::load_from_memory(void* initial_data, const size_t size) {
+void Texture::load_from_memory(void* initial_data, const size_t size, std::source_location loc) {
   uint32_t x, y, chans;
   const auto data = load_stb_image_from_memory(initial_data, size, &x, &y, &chans);
 
-  create_texture(x, y, data);
+  create_texture(x, y, data, vuk::Format::eR8G8B8A8Unorm, true, loc);
 
   delete[] data;
 }
@@ -101,6 +120,14 @@ void Texture::create_white_texture() {
   char white_texture_data[16 * 16 * 4];
   memset(white_texture_data, 0xff, 16 * 16 * 4);
   _white_texture->create_texture(16, 16, white_texture_data, vuk::Format::eR8G8B8A8Unorm, false);
+}
+
+void Texture::set_name(const std::source_location& loc) {
+  const auto ctx = VkContext::get();
+  auto file = FileSystem::get_file_name(loc.file_name());
+  const auto n = fmt::format("{0}:{1}", file, loc.line());
+  ctx->context->set_name(_image->image, vuk::Name(n));
+  ctx->context->set_name(_view->payload, vuk::Name(n));
 }
 
 uint8_t* Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* height, uint32_t* bits, bool srgb) {

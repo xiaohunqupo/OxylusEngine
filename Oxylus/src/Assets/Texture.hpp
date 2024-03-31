@@ -24,20 +24,27 @@ using Preset = vuk::ImageAttachment::Preset;
 class Texture : public Asset {
 public:
   Texture() = default;
-  Texture(const std::string& file_path);
-  Texture(const TextureLoadInfo& info);
+  explicit Texture(const std::string& file_path);
+  explicit Texture(const TextureLoadInfo& info);
   ~Texture();
 
   void create_texture(vuk::Extent3D extent,
                       vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
-                      vuk::ImageAttachment::Preset preset = vuk::ImageAttachment::Preset::eGeneric2D);
-  void create_texture(const vuk::ImageAttachment& image_attachment);
-  void create_texture(uint32_t width, uint32_t height, const void* data, vuk::Format format = vuk::Format::eR8G8B8A8Unorm, bool generate_mips = true);
+                      vuk::ImageAttachment::Preset preset = vuk::ImageAttachment::Preset::eGeneric2D,
+                      std::source_location loc = std::source_location::current());
+  void create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc = std::source_location::current());
+  void create_texture(uint32_t width,
+                      uint32_t height,
+                      const void* data,
+                      vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
+                      bool generate_mips = true,
+                      std::source_location loc = std::source_location::current());
   void load(const std::string& file_path,
             vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
             bool generate_cubemap_from_hdr = true,
-            bool generate_mips = true);
-  void load_from_memory(void* initial_data, size_t size);
+            bool generate_mips = true,
+            std::source_location loc = std::source_location::current());
+  void load_from_memory(void* initial_data, size_t size, std::source_location loc = std::source_location::current());
   vuk::ImageAttachment as_attachment() const { return _attachment; }
 
   const std::string& get_path() const { return path; }
@@ -75,5 +82,7 @@ private:
   vuk::Unique<vuk::ImageView> _view;
 
   static Shared<Texture> _white_texture;
+
+  void set_name(const std::source_location& loc);
 };
 } // namespace ox
