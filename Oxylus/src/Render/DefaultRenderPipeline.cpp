@@ -115,11 +115,10 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
     TRY(allocator.get_context().create_named_pipeline("pbr_transparency_pipeline", bindless_pci))
   });
 
-  task_scheduler->add_task([&allocator]() mutable {
-    vuk::PipelineBaseCreateInfo pci;
-    pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);
-    pci.add_hlsl(SHADER_FILE("FinalPass.hlsl"), SS::ePixel);
-    TRY(allocator.get_context().create_named_pipeline("final_pipeline", pci))
+  task_scheduler->add_task([=]() mutable {
+    bindless_pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);
+    bindless_pci.add_hlsl(SHADER_FILE("FinalPass.hlsl"), SS::ePixel);
+    TRY(allocator.get_context().create_named_pipeline("final_pipeline", bindless_pci))
   });
 
   // --- GTAO ---
