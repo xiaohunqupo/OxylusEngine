@@ -25,17 +25,17 @@
 #include "Scene/SceneRenderer.h"
 
 #include "UI/OxUI.hpp"
+#include "Utils/EditorConfig.hpp"
 #include "Utils/FileDialogs.hpp"
 #include "Utils/ImGuiScoped.hpp"
-#include "Utils/EditorConfig.hpp"
 
 #include "Scene/SceneSerializer.hpp"
 
 #include "Thread/ThreadManager.hpp"
 
 #include "Utils/CVars.hpp"
-#include "Utils/StringUtils.hpp"
 #include "Utils/EmbeddedBanner.hpp"
+#include "Utils/StringUtils.hpp"
 
 namespace ox {
 EditorLayer* EditorLayer::instance = nullptr;
@@ -58,7 +58,7 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   editor_config.load_config();
 
   engine_banner = create_shared<Texture>();
-  engine_banner->create_texture(EngineBannerWidth, EngineBannerHeight, EngineBanner);
+  engine_banner->create_texture(EngineBannerWidth, EngineBannerHeight, EngineBanner, vuk::Format::eR8G8B8A8Unorm, false);
 
   Input::set_cursor_state(Input::CursorState::Normal);
 
@@ -156,8 +156,8 @@ void EditorLayer::on_imgui_render() {
 
     const float frame_height = ImGui::GetFrameHeight();
 
-    constexpr ImGuiWindowFlags menu_flags =
-      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoNavFocus;
+    constexpr ImGuiWindowFlags menu_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar |
+                                            ImGuiWindowFlags_NoNavFocus;
 
     ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {frame_padding.x, 4.0f});

@@ -35,7 +35,7 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
   _image = std::move(*image);
   _view = std::move(*view);
   _attachment = ia;
-  
+
   set_name(loc);
 }
 
@@ -63,12 +63,14 @@ void Texture::create_texture(const uint32_t width,
   OX_SCOPED_ZONE;
   const auto ctx = VkContext::get();
 
-  auto ia = vuk::ImageAttachment::from_preset(vuk::ImageAttachment::Preset::eRTT2DUnmipped, format, {width, height, 1}, vuk::Samples::e1);
+  auto ia = vuk::ImageAttachment::from_preset(vuk::ImageAttachment::Preset::eRTT2D, format, {width, height, 1}, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
+  if (!generate_mips)
+    ia.level_count = 1;
   auto& alloc = *ctx->superframe_allocator;
-  auto [tex, view, fut] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferQueue, ia, data);
+  auto [tex, view, fut] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
   vuk::Compiler compiler;
-  fut.wait(*ctx->superframe_allocator, compiler);
+  fut.as_released(vuk::eFragmentSampled).wait(*ctx->superframe_allocator, compiler);
 
   // TODO: generate mips
 
