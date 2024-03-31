@@ -531,7 +531,7 @@ void DefaultRenderPipeline::create_static_resources(vuk::Allocator& allocator) {
 
 void DefaultRenderPipeline::create_dynamic_textures(vuk::Allocator& allocator, const vuk::Extent3D& ext) {
   if (gtao_final_texture.get_extent() != ext)
-    gtao_final_texture.create_texture(ext, vuk::Format::eR8Uint, Preset::eRTT2DUnmipped);
+    gtao_final_texture.create_texture(ext, vuk::Format::eR8Uint, Preset::eSTT2DUnmipped);
   if (ssr_texture.get_extent() != ext)
     ssr_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
   if (forward_texture.get_extent() != ext)
@@ -783,6 +783,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                           .level_count = bloom_mip_count - 1,
                                           .layer_count = 1};
   auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_up_ia), vuk::Black<float>);
+  bloom_up_image.same_extent_as(target);
 
   auto bloom_output = vuk::clear_image(vuk::declare_ia("bloom_image", bloom_texture.as_attachment()), vuk::Black<float>);
   if (RendererCVar::cvar_bloom_enable.get())
