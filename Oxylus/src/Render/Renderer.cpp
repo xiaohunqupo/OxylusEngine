@@ -60,7 +60,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
 
   vuk::ProfilingCallbacks cbs = vkctx->tracy_profiler->setup_vuk_callback();
 
-  vuk::Value<vuk::ImageAttachment> cleared_image = vuk::clear_image(std::move(swapchain_image), vuk::ClearColor{0.0f, 0.0f, 0.0f, 1.0f});
+  vuk::Value<vuk::ImageAttachment> cleared_image = vuk::clear_image(std::move(swapchain_image), vuk::Black<float>);
 
   auto extent = rp->is_swapchain_attached() ? vkctx->swapchain->images[vkctx->current_frame].extent : rp->get_extent();
   renderer_context.viewport_size = extent;
@@ -78,19 +78,18 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
       system->imgui_update();
     imgui_layer->end();
 
-    //result = imgui_layer->render_draw_data(frame_allocator, result);
+    result = imgui_layer->render_draw_data(frame_allocator, result);
 
     auto entire_thing = vuk::enqueue_presentation(std::move(result));
     entire_thing.wait(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
   } else {
-    auto att = vuk::ImageAttachment{.extent = extent,
-                                    .format = vkctx->swapchain->images[vkctx->current_frame].format,
-                                    .sample_count = vuk::Samples::e1,
-                                    .level_count = 1,
-                                    .layer_count = 1};
+    auto att = vuk::ImageAttachment::from_preset(Preset::eRTT2DUnmipped,
+                                                 vkctx->swapchain->images[vkctx->current_frame].format,
+                                                 extent,
+                                                 vuk::Samples::e1);
     auto viewport_img = vuk::clear_image(vuk::declare_ia("viewport_img", att), vuk::Black<float>);
 
-    vuk::Value<vuk::ImageAttachment> viewport_result = rp->on_render(frame_allocator, viewport_img, extent); 
+    vuk::Value<vuk::ImageAttachment> viewport_result = rp->on_render(frame_allocator, viewport_img, extent);
     rp->set_final_image(&viewport_result);
 
     imgui_layer->begin();

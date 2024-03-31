@@ -750,7 +750,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   auto depth_image = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
 
-  auto velocity_image = vuk::clear_image(vuk::declare_ia("velocity_image", normal_texture.as_attachment()), vuk::Black<float>);
+  auto velocity_image = vuk::clear_image(vuk::declare_ia("velocity_image", velocity_texture.as_attachment()), vuk::Black<float>);
   auto [depth_output, normal_output, velocity_output] = depth_pre_pass(depth_image, normal_image, velocity_image);
 
   auto gtao_output = vuk::clear_image(vuk::declare_ia("gtao_output", gtao_final_texture.as_attachment()), vuk::Black<uint32_t>);
