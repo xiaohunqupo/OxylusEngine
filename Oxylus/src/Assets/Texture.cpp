@@ -32,9 +32,18 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
 
   _image = std::move(*image);
   _view = std::move(*view);
-  _format = ia.format;
-  _extent = ia.extent;
-  _preset = preset;
+  _attachment = ia;
+}
+
+void Texture::create_texture(const vuk::ImageAttachment& image_attachment) {
+  auto ia = image_attachment;
+  auto image = vuk::allocate_image(*VkContext::get()->superframe_allocator, ia);
+  ia.image = **image;
+  auto view = vuk::allocate_image_view(*VkContext::get()->superframe_allocator, ia);
+
+  _image = std::move(*image);
+  _view = std::move(*view);
+  _attachment = ia;
 }
 
 void Texture::create_texture(const uint32_t width, const uint32_t height, const void* data, const vuk::Format format, bool generate_mips) {
@@ -49,9 +58,7 @@ void Texture::create_texture(const uint32_t width, const uint32_t height, const 
 
   _image = std::move(tex);
   _view = vuk::Unique(*VkContext::get()->superframe_allocator, *view);
-  _format = format;
-  _extent = {width, height, 1};
-  _preset = Preset::eGeneric2D;
+  _attachment = ia;
 }
 
 void Texture::load(const std::string& file_path, const vuk::Format format, const bool generate_cubemap_from_hdr, bool generate_mips) {
@@ -69,8 +76,8 @@ void Texture::load(const std::string& file_path, const vuk::Format format, const
 
     _image = vuk::Unique(*VkContext::get()->superframe_allocator, val->image);
     _view = vuk::Unique(*VkContext::get()->superframe_allocator, val->image_view);
-    _format = val->format;
-    _extent = val->extent;
+    _attachment.format = val->format;
+    _attachment.extent = val->extent;
   }
 
   delete[] data;
@@ -83,13 +90,6 @@ void Texture::load_from_memory(void* initial_data, const size_t size) {
   create_texture(x, y, data);
 
   delete[] data;
-}
-
-vuk::ImageAttachment Texture::as_attachment() const {
-  auto attch = vuk::ImageAttachment::from_preset(_preset, _format, _extent, vuk::Samples::e1);
-  attch.image = *_image;
-  attch.image_view = *_view;
-  return attch;
 }
 
 void Texture::create_white_texture() {

@@ -496,6 +496,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   descriptor_set_00->update_sampled_image(2, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(2, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(2, BLOOM_IMAGE_INDEX, *bloom_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(2, VELOCITY_IMAGE_INDEX, *velocity_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
   // scene uint texture array
   descriptor_set_00->update_sampled_image(3, GTAO_BUFFER_IMAGE_INDEX, *gtao_final_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
@@ -506,7 +507,6 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   // scene Read/Write textures
   descriptor_set_00->update_storage_image(6, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view());
   descriptor_set_00->update_storage_image(6, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view());
-  descriptor_set_00->update_storage_image(6, VELOCITY_IMAGE_INDEX, *velocity_texture.get_view());
 
   descriptor_set_00->commit(ctx);
 }
@@ -515,17 +515,19 @@ void DefaultRenderPipeline::create_static_resources(vuk::Allocator& allocator) {
   OX_SCOPED_ZONE;
 
   constexpr auto transmittance_lut_size = vuk::Extent3D{256, 64, 1};
-  sky_transmittance_lut.create_texture(transmittance_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
+  sky_transmittance_lut.create_texture(transmittance_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eGeneric2D);
 
   constexpr auto multi_scatter_lut_size = vuk::Extent3D{32, 32, 1};
-  sky_multiscatter_lut.create_texture(multi_scatter_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
+  sky_multiscatter_lut.create_texture(multi_scatter_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eGeneric2D);
 
   constexpr auto shadow_size = vuk::Extent3D{1u, 1u, 1};
-  shadow_map_atlas.create_texture(shadow_size, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
-  shadow_map_atlas_transparent.create_texture(shadow_size, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
+  auto ia = vuk::ImageAttachment::from_preset(Preset::eRTT2DUnmipped, vuk::Format::eD32Sfloat, shadow_size, vuk::Samples::e1);
+  //ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
+  shadow_map_atlas.create_texture(ia);
+  shadow_map_atlas_transparent.create_texture(ia);
 
   constexpr auto envmap_size = vuk::Extent3D{512, 512, 1};
-  sky_envmap_texture.create_texture(envmap_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eMapCube);
+  sky_envmap_texture.create_texture(envmap_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTTCube);
 }
 
 void DefaultRenderPipeline::create_dynamic_textures(vuk::Allocator& allocator, const vuk::Extent3D& ext) {
@@ -624,8 +626,10 @@ void DefaultRenderPipeline::create_dynamic_textures(vuk::Allocator& allocator, c
           if ((int)shadow_map_atlas.get_extent().width < packer.width || (int)shadow_map_atlas.get_extent().height < packer.height) {
             const auto shadow_size = vuk::Extent3D{(uint32_t)packer.width, (uint32_t)packer.height, 1};
 
-            shadow_map_atlas.create_texture(shadow_size, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
-            shadow_map_atlas_transparent.create_texture(shadow_size, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
+            auto ia = shadow_map_atlas.as_attachment();
+            ia.extent = shadow_size;
+            shadow_map_atlas.create_texture(ia);
+            shadow_map_atlas_transparent.create_texture(ia);
 
             scene_data.shadow_atlas_res = UVec2(shadow_map_atlas.get_extent().width, shadow_map_atlas.get_extent().height);
           }
@@ -810,6 +814,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                           VUK_IA(vuk::eFragmentSampled) bloom_img) {
     clear();
     command_buffer.bind_graphics_pipeline("final_pipeline")
+      .bind_persistent(0, *descriptor_set_00)
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
       .set_viewport(0, vuk::Rect2D::framebuffer())
       .set_scissor(0, vuk::Rect2D::framebuffer())
@@ -1649,6 +1654,14 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
                                            vuk::Ignore{sizeof(Vertex) - (sizeof(Vec4) + sizeof(Vec4))}};
     auto& index_buffer = *DebugRenderer::get_instance()->get_global_index_buffer();
 
+    const DebugPassData data = {
+      .vp = current_camera->get_projection_matrix() * current_camera->get_view_matrix(),
+      .model = glm::identity<Mat4>(),
+      .color = Vec4(0, 1, 0, 1),
+    };
+    auto* buffer = command_buffer.scratch_buffer<DebugPassData>(0, 0);
+    *buffer = data;
+
     // not depth tested
     command_buffer.bind_graphics_pipeline("unlit_pipeline")
       .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
@@ -1666,14 +1679,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
       .bind_vertex_buffer(0, vertex_buffer, 0, vertex_layout)
       .bind_index_buffer(index_buffer, vuk::IndexType::eUint32)
       .draw_indexed(index_count, 1, 0, 0, 0);
-
-    const DebugPassData data = {
-      .vp = current_camera->get_projection_matrix() * current_camera->get_view_matrix(),
-      .model = glm::identity<Mat4>(),
-      .color = Vec4(0, 1, 0, 1),
-    };
-    auto* buffer = command_buffer.scratch_buffer<DebugPassData>(0, 0);
-    *buffer = data;
 
     command_buffer.bind_graphics_pipeline("unlit_pipeline")
       .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{

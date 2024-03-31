@@ -28,21 +28,22 @@ public:
   Texture(const TextureLoadInfo& info);
   ~Texture();
 
-  void create_texture(const vuk::Extent3D extent,
+  void create_texture(vuk::Extent3D extent,
                       vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
                       vuk::ImageAttachment::Preset preset = vuk::ImageAttachment::Preset::eGeneric2D);
+  void create_texture(const vuk::ImageAttachment& image_attachment);
   void create_texture(uint32_t width, uint32_t height, const void* data, vuk::Format format = vuk::Format::eR8G8B8A8Unorm, bool generate_mips = true);
   void load(const std::string& file_path,
             vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
             bool generate_cubemap_from_hdr = true,
             bool generate_mips = true);
   void load_from_memory(void* initial_data, size_t size);
-  vuk::ImageAttachment as_attachment() const;
+  vuk::ImageAttachment as_attachment() const { return _attachment; }
 
   const std::string& get_path() const { return path; }
   const vuk::Unique<vuk::Image>& get_image() const { return _image; }
   const vuk::Unique<vuk::ImageView>& get_view() const { return _view; }
-  const vuk::Extent3D& get_extent() const { return _extent; }
+  const vuk::Extent3D& get_extent() const { return _attachment.extent; }
 
   explicit operator uint64_t() { return _view->id; }
 
@@ -69,11 +70,9 @@ public:
 
 private:
   std::string path = {};
+  vuk::ImageAttachment _attachment;
   vuk::Unique<vuk::Image> _image;
   vuk::Unique<vuk::ImageView> _view;
-  vuk::Extent3D _extent;
-  vuk::Format _format;
-  Preset _preset;
 
   static Shared<Texture> _white_texture;
 };
