@@ -27,42 +27,38 @@
 // UAV 14 : FSR2_LumaHistory                    : rw_luma_history
 // CB   0 : cbFSR2
 
-#include "ShaderInterop_FSR2.h"
+#define FSR2_BIND_SRV_INPUT_COLOR 0
+#define FSR2_BIND_SRV_EXPOSURE 1
+#define FSR2_BIND_UAV_RECONSTRUCTED_PREV_NEAREST_DEPTH 2
+#define FSR2_BIND_UAV_PREPARED_INPUT_COLOR 3
+#define FSR2_BIND_UAV_LUMA_HISTORY 4
+#define FSR2_BIND_CB_FSR2 5
 
-#define FSR2_BIND_SRV_INPUT_COLOR                           0
-#define FSR2_BIND_SRV_EXPOSURE                              1
-#define FSR2_BIND_UAV_RECONSTRUCTED_PREV_NEAREST_DEPTH      0
-#define FSR2_BIND_UAV_PREPARED_INPUT_COLOR                  1
-#define FSR2_BIND_UAV_LUMA_HISTORY                          2
-#define FSR2_BIND_CB_FSR2                                   0
+#define FFX_GPU
+#define FFX_HLSL
 
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
 #include "ffx_fsr2_prepare_input_color.h"
 
 #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
-#define FFX_FSR2_THREAD_GROUP_WIDTH 8
+  #define FFX_FSR2_THREAD_GROUP_WIDTH 8
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
 #ifndef FFX_FSR2_THREAD_GROUP_HEIGHT
-#define FFX_FSR2_THREAD_GROUP_HEIGHT 8
+  #define FFX_FSR2_THREAD_GROUP_HEIGHT 8
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_HEIGHT
 #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
-#define FFX_FSR2_THREAD_GROUP_DEPTH 1
+  #define FFX_FSR2_THREAD_GROUP_DEPTH 1
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
 #ifndef FFX_FSR2_NUM_THREADS
-#define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
+  #define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
 #endif // #ifndef FFX_FSR2_NUM_THREADS
 
-#include "globals.hlsli"
-
 FFX_FSR2_NUM_THREADS
-FFX_FSR2_EMBED_ROOTSIG_CONTENT
-void main(
-    uint2 uGroupId : SV_GroupID,
-    uint2 uDispatchThreadId : SV_DispatchThreadID,
-    uint2 uGroupThreadId : SV_GroupThreadID,
-    uint uGroupIndex : SV_GroupIndex
-)
-{
-    PrepareInputColor(uDispatchThreadId);
+void main(uint2 uGroupId
+          : SV_GroupID, uint2 uDispatchThreadId
+          : SV_DispatchThreadID, uint2 uGroupThreadId
+          : SV_GroupThreadID, uint uGroupIndex
+          : SV_GroupIndex) {
+  PrepareInputColor(uDispatchThreadId);
 }

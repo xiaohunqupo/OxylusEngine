@@ -10,7 +10,7 @@
 
 namespace vuk {
 vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment>& image, uint32_t mip_count) {
-  auto ia = image;
+  auto ia = image.mip(0);
 
   for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++) {
     auto pass = vuk::make_pass(fmt::format("mip_{}", mip_level).c_str(),
@@ -37,9 +37,9 @@ vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment>&
       return dst;
     });
 
-    ia = pass(image.mip(mip_level - 1), image.mip(mip_level));
+    ia = pass(ia, image.mip(mip_level));
   }
 
-  return ia;
+  return image;
 }
 } // namespace vuk

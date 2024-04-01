@@ -41,6 +41,7 @@ inline AutoCVar_Float cvar_bloom_clamp("pp.bloom_clamp", "bloom clmap", 3);
 inline AutoCVar_Int cvar_fxaa_enable("pp.fxaa", "use fxaa", 1);
 
 inline AutoCVar_Int cvar_fsr_enable("pp.fsr", "use FSR", 1);
+inline AutoCVar_Float cvar_fsr_sharpness("pp.fsr_sharpness", "sharpness for FSR", 0.5f);
 
 inline AutoCVar_Int cvar_tonemapper("pp.tonemapper", "tonemapper preset", 0);
 inline AutoCVar_Float cvar_exposure("pp.exposure", "tonemapping exposure", 1.0f);

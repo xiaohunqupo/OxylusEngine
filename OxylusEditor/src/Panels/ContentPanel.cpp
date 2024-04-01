@@ -306,7 +306,7 @@ void ContentPanel::init() {
 }
 
 void ContentPanel::on_update() {
-  m_elapsed_time += App::get_timestep();
+  m_elapsed_time += (float)App::get_timestep();
 }
 
 void ContentPanel::on_imgui_render() {

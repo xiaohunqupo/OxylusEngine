@@ -19,46 +19,32 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-// FSR2 pass 4
-// SRV  5 : m_UpscaleReactive                   : r_reactive_mask
-// SRV 11 : FSR2_LockStatus2                    : r_lock_status
-// SRV 13 : FSR2_PreparedInputColor             : r_prepared_input_color
-// UAV 11 : FSR2_LockStatus1                    : rw_lock_status
-// CB   0 : cbFSR2
+#define FSR2_BIND_SRV_LOCK_STATUS 0
+#define FSR2_BIND_SRV_PREPARED_INPUT_COLOR 1
+#define FSR2_BIND_UAV_LOCK_STATUS 2
 
-#include "ShaderInterop_FSR2.h"
-
-#define FSR2_BIND_SRV_LOCK_STATUS                           1
-#define FSR2_BIND_SRV_PREPARED_INPUT_COLOR                  2
-#define FSR2_BIND_UAV_LOCK_STATUS                           0
-#define FSR2_BIND_CB_FSR2                                   0
+#define FSR2_BIND_CB_FSR2 3
 
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
-#include "ffx_fsr2_sample.h"
 #include "ffx_fsr2_lock.h"
+#include "ffx_fsr2_sample.h"
 
 #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
-#define FFX_FSR2_THREAD_GROUP_WIDTH 8
+  #define FFX_FSR2_THREAD_GROUP_WIDTH 8
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
 #ifndef FFX_FSR2_THREAD_GROUP_HEIGHT
-#define FFX_FSR2_THREAD_GROUP_HEIGHT 8
+  #define FFX_FSR2_THREAD_GROUP_HEIGHT 8
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_HEIGHT
 #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
-#define FFX_FSR2_THREAD_GROUP_DEPTH 1
+  #define FFX_FSR2_THREAD_GROUP_DEPTH 1
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
 #ifndef FFX_FSR2_NUM_THREADS
-#define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
+  #define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
 #endif // #ifndef FFX_FSR2_NUM_THREADS
 
-#include "globals.hlsli"
+void main(uint2 uGroupId : SV_GroupID, uint2 uGroupThreadId : SV_GroupThreadID) {
+  uint2 uDispatchThreadId = uGroupId * uint2(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT) + uGroupThreadId;
 
-FFX_FSR2_PREFER_WAVE64
-FFX_FSR2_NUM_THREADS
-FFX_FSR2_EMBED_ROOTSIG_CONTENT
-void main(uint2 uGroupId : SV_GroupID, uint2 uGroupThreadId : SV_GroupThreadID)
-{
-    uint2 uDispatchThreadId = uGroupId * uint2(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT) + uGroupThreadId;
-
-    ComputeLock(uDispatchThreadId);
+  ComputeLock(uDispatchThreadId);
 }

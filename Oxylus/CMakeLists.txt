@@ -352,15 +352,3 @@ set_target_properties(unordered_dense PROPERTIES FOLDER "Vendor")
 # dylib
 CPMAddPackage("gh:martin-olivier/dylib#main")
 target_include_directories(${PROJECT_NAME} PUBLIC ${dylib_SOURCE_DIR}/include)
-
-# fsr
-CPMAddPackage(
-  NAME fsr
-  GIT_TAG master
-  GITHUB_REPOSITORY Hatrickek/FidelityFX-FSR2
-  DOWNLOAD_ONLY YES
-  GIT_SHALLOW ON
-)
-add_library(fsr INTERFACE)
-target_include_directories(fsr INTERFACE ${fsr_SOURCE_DIR}/src/ffx-fsr2-api)
-target_link_libraries(${PROJECT_NAME} PUBLIC fsr)

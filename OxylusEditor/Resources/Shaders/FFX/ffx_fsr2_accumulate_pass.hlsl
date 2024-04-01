@@ -38,65 +38,52 @@
 // CB   0 : cbFSR2
 // CB   1 : FSR2DispatchOffsets
 
-#include "ShaderInterop_FSR2.h"
+#define FFX_GPU
+#define FFX_HLSL
 
-#pragma dxc diagnostic push
-#pragma dxc diagnostic ignored "-Wfor-redefinition"
+#define FSR2_BIND_SRV_EXPOSURE 0
+#define FSR2_BIND_SRV_DILATED_MOTION_VECTORS 1
+#define FSR2_BIND_SRV_INTERNAL_UPSCALED 2
+#define FSR2_BIND_SRV_LOCK_STATUS 3
+#define FSR2_BIND_SRV_DEPTH_CLIP 4
+#define FSR2_BIND_SRV_PREPARED_INPUT_COLOR 5
+#define FSR2_BIND_SRV_LUMA_HISTORY 6
+#define FSR2_BIND_SRV_LANCZOS_LUT 7
+#define FSR2_BIND_SRV_UPSCALE_MAXIMUM_BIAS_LUT 8
+#define FSR2_BIND_SRV_DILATED_REACTIVE_MASKS 9
+#define FSR2_BIND_SRV_EXPOSURE_MIPS 10
+#define FSR2_BIND_UAV_INTERNAL_UPSCALED 11
+#define FSR2_BIND_UAV_LOCK_STATUS 12
 
-#define FSR2_BIND_SRV_EXPOSURE                               0
-#if FFX_FSR2_OPTION_LOW_RESOLUTION_MOTION_VECTORS
-#define FSR2_BIND_SRV_DILATED_MOTION_VECTORS                 2
-#else
-#define FSR2_BIND_SRV_MOTION_VECTORS                         2
-#endif
-#define FSR2_BIND_SRV_INTERNAL_UPSCALED                      3
-#define FSR2_BIND_SRV_LOCK_STATUS                            4
-#define FSR2_BIND_SRV_DEPTH_CLIP                             5
-#define FSR2_BIND_SRV_PREPARED_INPUT_COLOR                   6
-#define FSR2_BIND_SRV_LUMA_HISTORY                           7
-#define FSR2_BIND_SRV_LANCZOS_LUT                            8
-#define FSR2_BIND_SRV_UPSCALE_MAXIMUM_BIAS_LUT               9
-#define FSR2_BIND_SRV_DILATED_REACTIVE_MASKS                10
-#define FSR2_BIND_SRV_EXPOSURE_MIPS                         11
-#define FSR2_BIND_UAV_INTERNAL_UPSCALED                      0
-#define FSR2_BIND_UAV_LOCK_STATUS                            1
-#define FSR2_BIND_UAV_UPSCALED_OUTPUT                        2
+#define FSR2_BIND_CB_FSR2 13
 
-#define FSR2_BIND_CB_FSR2                                    0
-
+#include "ffx_fsr2_accumulate.h"
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
-#include "ffx_fsr2_sample.h"
-#include "ffx_fsr2_upsample.h"
 #include "ffx_fsr2_postprocess_lock_status.h"
 #include "ffx_fsr2_reproject.h"
-#include "ffx_fsr2_accumulate.h"
+#include "ffx_fsr2_sample.h"
+#include "ffx_fsr2_upsample.h"
 
 #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
-#define FFX_FSR2_THREAD_GROUP_WIDTH 8
+  #define FFX_FSR2_THREAD_GROUP_WIDTH 8
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
 #ifndef FFX_FSR2_THREAD_GROUP_HEIGHT
-#define FFX_FSR2_THREAD_GROUP_HEIGHT 8
+  #define FFX_FSR2_THREAD_GROUP_HEIGHT 8
 #endif // FFX_FSR2_THREAD_GROUP_HEIGHT
 #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
-#define FFX_FSR2_THREAD_GROUP_DEPTH 1
+  #define FFX_FSR2_THREAD_GROUP_DEPTH 1
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
 #ifndef FFX_FSR2_NUM_THREADS
-#define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
+  #define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
 #endif // #ifndef FFX_FSR2_NUM_THREADS
 
-#include "globals.hlsli"
-
 FFX_FSR2_NUM_THREADS
-FFX_FSR2_EMBED_ROOTSIG_CONTENT
-void main(uint2 uGroupId : SV_GroupID, uint2 uGroupThreadId : SV_GroupThreadID)
-{
-    const uint GroupRows = (uint(DisplaySize().y) + FFX_FSR2_THREAD_GROUP_HEIGHT - 1) / FFX_FSR2_THREAD_GROUP_HEIGHT;
-    uGroupId.y = GroupRows - uGroupId.y - 1;
+void main(uint2 uGroupId : SV_GroupID, uint2 uGroupThreadId : SV_GroupThreadID) {
+  const uint GroupRows = (uint(DisplaySize().y) + FFX_FSR2_THREAD_GROUP_HEIGHT - 1) / FFX_FSR2_THREAD_GROUP_HEIGHT;
+  uGroupId.y = GroupRows - uGroupId.y - 1;
 
-    uint2 uDispatchThreadId = uGroupId * uint2(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT) + uGroupThreadId;
+  uint2 uDispatchThreadId = uGroupId * uint2(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT) + uGroupThreadId;
 
-    Accumulate(uDispatchThreadId);
+  Accumulate(uDispatchThreadId);
 }
-
-#pragma dxc diagnostic pop

@@ -26,42 +26,39 @@
 // UAV 12 : FSR2_DepthClip                      : rw_depth_clip
 // CB   0 : cbFSR2
 
-#include "ShaderInterop_FSR2.h"
+#define FFX_GPU
+#define FFX_HLSL
 
-#define FSR2_BIND_SRV_RECONSTRUCTED_PREV_NEAREST_DEPTH      0
-#define FSR2_BIND_SRV_DILATED_MOTION_VECTORS                1
-#define FSR2_BIND_SRV_DILATED_DEPTH                         2
-#define FSR2_BIND_UAV_DEPTH_CLIP                            0
-#define FSR2_BIND_CB_FSR2                                   0
+#define FSR2_BIND_SRV_RECONSTRUCTED_PREV_NEAREST_DEPTH 0
+#define FSR2_BIND_SRV_DILATED_MOTION_VECTORS 1
+#define FSR2_BIND_SRV_DILATED_DEPTH 2
+#define FSR2_BIND_UAV_DEPTH_CLIP 3
+#define FSR2_BIND_CB_FSR2 4
 
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
-#include "ffx_fsr2_sample.h"
 #include "ffx_fsr2_depth_clip.h"
+#include "ffx_fsr2_sample.h"
 
 #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
-#define FFX_FSR2_THREAD_GROUP_WIDTH 8
+  #define FFX_FSR2_THREAD_GROUP_WIDTH 8
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
 #ifndef FFX_FSR2_THREAD_GROUP_HEIGHT
-#define FFX_FSR2_THREAD_GROUP_HEIGHT 8
+  #define FFX_FSR2_THREAD_GROUP_HEIGHT 8
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_HEIGHT
 #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
-#define FFX_FSR2_THREAD_GROUP_DEPTH 1
+  #define FFX_FSR2_THREAD_GROUP_DEPTH 1
 #endif // #ifndef FFX_FSR2_THREAD_GROUP_DEPTH
 #ifndef FFX_FSR2_NUM_THREADS
-#define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
+  #define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
 #endif // #ifndef FFX_FSR2_NUM_THREADS
-
-#include "globals.hlsli"
 
 FFX_FSR2_PREFER_WAVE64
 FFX_FSR2_NUM_THREADS
-FFX_FSR2_EMBED_ROOTSIG_CONTENT
-void main(
-    int2 iGroupId : SV_GroupID,
-    int2 iDispatchThreadId : SV_DispatchThreadID,
-    int2 iGroupThreadId : SV_GroupThreadID,
-    int iGroupIndex : SV_GroupIndex)
-{
-    DepthClip(iDispatchThreadId);
+void main(int2 iGroupId
+          : SV_GroupID, int2 iDispatchThreadId
+          : SV_DispatchThreadID, int2 iGroupThreadId
+          : SV_GroupThreadID, int iGroupIndex
+          : SV_GroupIndex) {
+  DepthClip(iDispatchThreadId);
 }

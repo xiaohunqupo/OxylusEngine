@@ -33,10 +33,10 @@ public:
                       vuk::ImageAttachment::Preset preset = vuk::ImageAttachment::Preset::eGeneric2D,
                       std::source_location loc = std::source_location::current());
   void create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc = std::source_location::current());
-  void create_texture(uint32_t width,
-                      uint32_t height,
+  void create_texture(vuk::Extent3D extent,
                       const void* data,
                       vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
+                      Preset preset = Preset::eRTT2D,
                       bool generate_mips = true,
                       std::source_location loc = std::source_location::current());
   void load(const std::string& file_path,
@@ -53,6 +53,10 @@ public:
   const vuk::Extent3D& get_extent() const { return _attachment.extent; }
 
   explicit operator uint64_t() { return _view->id; }
+
+  static uint32_t get_mip_count(vuk::Extent3D extent) {
+    return (uint32_t)log2f((float)std::max(std::max(extent.width, extent.height), extent.depth)) + 1;
+  }
 
   static void create_white_texture();
   static Shared<Texture> get_white_texture() { return _white_texture; }

@@ -520,8 +520,7 @@ void DefaultRenderPipeline::create_static_resources(vuk::Allocator& allocator) {
   sky_multiscatter_lut.create_texture(multi_scatter_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eGeneric2D);
 
   constexpr auto shadow_size = vuk::Extent3D{1u, 1u, 1};
-  auto ia = vuk::ImageAttachment::from_preset(Preset::eRTT2DUnmipped, vuk::Format::eD32Sfloat, shadow_size, vuk::Samples::e1);
-  //ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
+  const auto ia = vuk::ImageAttachment::from_preset(Preset::eRTT2DUnmipped, vuk::Format::eD32Sfloat, shadow_size, vuk::Samples::e1);
   shadow_map_atlas.create_texture(ia);
   shadow_map_atlas_transparent.create_texture(ia);
 
@@ -1328,7 +1327,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
   auto gtao_depth_pass = vuk::make_pass("gtao_depth_pass",
                                         [gtao_const_buffer](vuk::CommandBuffer& command_buffer,
                                                             VUK_IA(vuk::eComputeSampled) depth_input,
-                                                            VUK_IA(vuk::eComputeRW) depth_output,
                                                             VUK_IA(vuk::eComputeRW) depth_mip0,
                                                             VUK_IA(vuk::eComputeRW) depth_mip1,
                                                             VUK_IA(vuk::eComputeRW) depth_mip2,
@@ -1344,10 +1342,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
       .bind_image(0, 6, depth_mip4)
       .bind_sampler(0, 7, vuk::NearestSamplerClamped)
       .dispatch((Renderer::get_viewport_width() + 16 - 1) / 16, (Renderer::get_viewport_height() + 16 - 1) / 16);
-    return depth_output;
   });
 
-  auto gtao_depth_output = gtao_depth_pass(depth_input, gtao_depth, mip0, mip1, mip2, mip3, mip4);
+  gtao_depth_pass(depth_input,  mip0, mip1, mip2, mip3, mip4);
 
   auto gtao_main_pass = vuk::make_pass("gtao_main_pass",
                                        [gtao_const_buffer](vuk::CommandBuffer& command_buffer,
@@ -1382,7 +1379,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
   gtao_main_image.same_extent_as(depth_input);
   gtao_edge_image.same_extent_as(depth_input);
 
-  auto [gtao_main_output, gtao_edge_output] = gtao_main_pass(gtao_main_image, gtao_edge_image, gtao_depth_output, normal_input);
+  auto [gtao_main_output, gtao_edge_output] = gtao_main_pass(gtao_main_image, gtao_edge_image, gtao_depth, normal_input);
 
   auto denoise_input_output = gtao_main_output;
 

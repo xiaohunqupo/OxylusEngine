@@ -1,5 +1,6 @@
 ﻿#pragma once
 
+#include "Passes/FSR.hpp"
 #include "RenderPipeline.h"
 #include "RendererConfig.h"
 
@@ -215,7 +216,7 @@ private:
   GTAOConstants gtao_constants = {};
   GTAOSettings gtao_settings = {};
 
-  // FSR fsr = {};
+   FSR fsr = {};
 
   // PBR Resources
   Shared<Texture> cube_map = nullptr;

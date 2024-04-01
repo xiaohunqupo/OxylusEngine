@@ -19,7 +19,7 @@ Texture::Texture(const TextureLoadInfo& info) {
   if (!info.path.empty())
     load(info.path, info.format, info.generate_cubemap_from_hdr, info.generate_mips);
   else
-    create_texture(info.width, info.height, info.data, info.format);
+    create_texture({info.width, info.height, 1}, info.data, info.format);
 }
 
 Texture::~Texture() = default;
@@ -54,16 +54,16 @@ void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::
   set_name(loc);
 }
 
-void Texture::create_texture(const uint32_t width,
-                             const uint32_t height,
+void Texture::create_texture(vuk::Extent3D extent,
                              const void* data,
                              const vuk::Format format,
+                             Preset preset,
                              bool generate_mips,
                              std::source_location loc) {
   OX_SCOPED_ZONE;
   const auto ctx = VkContext::get();
 
-  auto ia = vuk::ImageAttachment::from_preset(vuk::ImageAttachment::Preset::eRTT2D, format, {width, height, 1}, vuk::Samples::e1);
+  auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
   if (!generate_mips)
     ia.level_count = 1;
@@ -91,7 +91,7 @@ void Texture::load(const std::string& file_path,
   uint32_t x, y, chans;
   const uint8_t* data = load_stb_image(path, &x, &y, &chans);
 
-  create_texture(x, y, data, format, generate_mips, loc);
+  create_texture({x, y, 1}, data, format, Preset::eRTT2D, generate_mips, loc);
 
   if (FileSystem::get_file_extension(path) == "hdr" && generate_cubemap_from_hdr) {
     auto fut = RendererCommon::generate_cubemap_from_equirectangular(as_attachment());
@@ -111,7 +111,7 @@ void Texture::load_from_memory(void* initial_data, const size_t size, std::sourc
   uint32_t x, y, chans;
   const auto data = load_stb_image_from_memory(initial_data, size, &x, &y, &chans);
 
-  create_texture(x, y, data, vuk::Format::eR8G8B8A8Unorm, true, loc);
+  create_texture({x, y, 1}, data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2D, true, loc);
 
   delete[] data;
 }
@@ -121,7 +121,7 @@ void Texture::create_white_texture() {
   _white_texture = create_shared<Texture>();
   char white_texture_data[16 * 16 * 4];
   memset(white_texture_data, 0xff, 16 * 16 * 4);
-  _white_texture->create_texture(16, 16, white_texture_data, vuk::Format::eR8G8B8A8Unorm, false);
+  _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2D, false);
 }
 
 void Texture::set_name(const std::source_location& loc) {

@@ -118,7 +118,7 @@ void ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) {
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
   imgui_data.font_texture = create_shared<Texture>();
-  imgui_data.font_texture->create_texture((unsigned)width, (unsigned)height, pixels, vuk::Format::eR8G8B8A8Srgb, false);
+  imgui_data.font_texture->create_texture({(unsigned)width, (unsigned)height, 1}, pixels, vuk::Format::eR8G8B8A8Srgb, Preset::eRTT2D, false);
 
   io.Fonts->TexID = (ImTextureID)(&*imgui_data.font_texture->get_view());
 
