@@ -72,3 +72,49 @@ void TracyProfiler::destroy_context() const {
 #endif
 }
 } // namespace ox
+
+#ifdef TRACY_ENABLE
+void* operator new(std::size_t count) {
+  const auto ptr = std::malloc(count);
+  TracyAlloc(ptr, count);
+  return ptr;
+}
+
+void operator delete(void* ptr) noexcept {
+  TracyFree(ptr);
+  std::free(ptr);
+}
+
+void* operator new[](std::size_t count) {
+  const auto ptr = std::malloc(count);
+  TracyAlloc(ptr, count);
+  return ptr;
+}
+
+void operator delete[](void* ptr) noexcept {
+  TracyFree(ptr);
+  std::free(ptr);
+}
+
+void* operator new(std::size_t count, const std::nothrow_t&) noexcept {
+  const auto ptr = std::malloc(count);
+  TracyAlloc(ptr, count);
+  return ptr;
+}
+
+void operator delete(void* ptr, const std::nothrow_t&) noexcept {
+  TracyFree(ptr);
+  std::free(ptr);
+}
+
+void* operator new[](std::size_t count, const std::nothrow_t&) noexcept {
+  const auto ptr = std::malloc(count);
+  TracyAlloc(ptr, count);
+  return ptr;
+}
+
+void operator delete[](void* ptr, const std::nothrow_t&) noexcept {
+  TracyFree(ptr);
+  std::free(ptr);
+}
+#endif
