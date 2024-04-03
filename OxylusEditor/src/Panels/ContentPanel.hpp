@@ -83,7 +83,7 @@ private:
 
   ankerl::unordered_dense::map<std::string, Shared<Texture>> thumbnail_cache;
 
-  Shared<Texture> m_white_texture;
+  Shared<Texture> _white_texture;
   std::filesystem::path m_directory_to_delete;
 };
 }

@@ -171,7 +171,7 @@ void Mesh::load_from_file(const std::string& file_path, int file_loading_flags, 
   iBufferFut.wait(*ctx->superframe_allocator, compiler);
   index_buffer = std::move(iBuffer);
 
-  m_textures.clear();
+  _textures.clear();
 
   index_count = (uint32_t)indices.size();
 #if 0
@@ -223,7 +223,7 @@ void Mesh::draw(vuk::CommandBuffer& command_buffer) const {
 }
 
 void Mesh::load_textures(tinygltf::Model& model) {
-  m_textures.resize(model.images.size());
+  _textures.resize(model.images.size());
   for (uint32_t image_index = 0; image_index < model.images.size(); image_index++) {
     auto& img = model.images[image_index];
     if (img.name.empty())
@@ -236,17 +236,25 @@ void Mesh::load_textures(tinygltf::Model& model) {
       buffer = Texture::convert_to_four_channels(img.width, img.height, &img.image[0]);
       delete_buffer = true;
     } else {
-      buffer = &img.image[0];
+      buffer = img.image.data();
     }
 
-    const auto ci = TextureLoadInfo{
-      {},
-      (uint32_t)img.width,
-      (uint32_t)img.height,
-      buffer,
+    const auto get_mime_type = [](const std::string& mime) -> TextureLoadInfo::MimeType {
+      if (mime == "img/ktx" || mime == "img/ktx2") {
+        return TextureLoadInfo::MimeType::KTX;
+      }
+      return TextureLoadInfo::MimeType::Generic;
     };
 
-    m_textures[image_index] = AssetManager::get_texture_asset(img.name, ci);
+    const auto ci = TextureLoadInfo{
+      .path = {},
+      .preset = Preset::eRTT2D,
+      .extent = {(unsigned)img.width, (unsigned)img.height},
+      .data = buffer,
+      .mime = get_mime_type(img.mimeType)
+    };
+
+    _textures[image_index] = AssetManager::get_texture_asset(img.name, ci);
 
     if (delete_buffer)
       delete[] buffer;
@@ -257,10 +265,10 @@ void Mesh::load_materials(tinygltf::Model& model) {
   OX_SCOPED_ZONE;
   // Create a empty material if the mesh file doesn't have any.
   if (model.materials.empty()) {
-    materials.emplace_back(create_shared<Material>());
+    _materials.emplace_back(create_shared<Material>());
     const bool dont_create_materials = loading_flags & DontCreateMaterials;
     if (!dont_create_materials)
-      materials[0]->create();
+      _materials[0]->create();
     return;
   }
 
@@ -275,18 +283,18 @@ void Mesh::load_materials(tinygltf::Model& model) {
     material.set_reflectance(0.04f);
 
     if (mat.values.contains("baseColorTexture"))
-      material.set_albedo_texture(m_textures.at(model.textures[mat.values["baseColorTexture"].TextureIndex()].source));
+      material.set_albedo_texture(_textures.at(model.textures[mat.values["baseColorTexture"].TextureIndex()].source));
     if (mat.additionalValues.contains("normalTexture"))
-      material.set_normal_texture(m_textures.at(model.textures[mat.additionalValues["normalTexture"].TextureIndex()].source));
+      material.set_normal_texture(_textures.at(model.textures[mat.additionalValues["normalTexture"].TextureIndex()].source));
     if (mat.values.contains("metallicRoughnessTexture")) {
-      material.set_physical_texture(m_textures.at(model.textures[mat.values["metallicRoughnessTexture"].TextureIndex()].source));
+      material.set_physical_texture(_textures.at(model.textures[mat.values["metallicRoughnessTexture"].TextureIndex()].source));
       material.set_metallic(1.0f);
       material.set_roughness(1.0f);
     }
     if (mat.additionalValues.contains("emissiveTexture"))
-      material.set_emissive_texture(m_textures.at(model.textures[mat.additionalValues["emissiveTexture"].TextureIndex()].source));
+      material.set_emissive_texture(_textures.at(model.textures[mat.additionalValues["emissiveTexture"].TextureIndex()].source));
     if (mat.additionalValues.contains("occlusionTexture"))
-      material.set_ao_texture(m_textures.at(model.textures[mat.additionalValues["occlusionTexture"].TextureIndex()].source));
+      material.set_ao_texture(_textures.at(model.textures[mat.additionalValues["occlusionTexture"].TextureIndex()].source));
 
     if (mat.values.contains("baseColorFactor"))
       material.set_color(glm::make_vec4(mat.values["baseColorFactor"].ColorFactor().data()));
@@ -318,18 +326,18 @@ void Mesh::load_materials(tinygltf::Model& model) {
       }
     }
 
-    materials.emplace_back(create_shared<Material>(material));
+    _materials.emplace_back(create_shared<Material>(material));
   }
 }
 
 Shared<Material> Mesh::get_material(const uint32_t index) const {
-  OX_ASSERT(index < materials.size());
-  return materials.at(index);
+  OX_ASSERT(index < _materials.size());
+  return _materials.at(index);
 }
 
 std::vector<Shared<Material>> Mesh::get_materials_as_ref() const {
   OX_SCOPED_ZONE;
-  return materials;
+  return _materials;
 }
 
 std::vector<Shared<Material>> Mesh::get_materials(uint32_t node_index) const {
@@ -349,7 +357,7 @@ void Mesh::destroy() {
   skins.clear();
   linear_nodes.clear();
   nodes.clear();
-  materials.clear();
+  _materials.clear();
 }
 
 void Mesh::calculate_node_bounding_box(Node* node) {
@@ -733,7 +741,7 @@ void Mesh::load_node(Node* parent,
       new_primitive->material_index = primitive.material;
       if (primitive.material < 0)
         new_primitive->material_index = 0;
-      new_primitive->material = materials[new_primitive->material_index];
+      new_primitive->material = _materials[new_primitive->material_index];
 
       new_mesh->materials.emplace_back(new_primitive->material) = new_primitive->material;
 

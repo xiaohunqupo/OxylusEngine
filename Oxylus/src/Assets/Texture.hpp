@@ -8,18 +8,17 @@
 
 #include "Core/Base.hpp"
 
+using Preset = vuk::ImageAttachment::Preset;
+
 namespace ox {
 struct TextureLoadInfo {
   std::string path = {};
-  uint32_t width = 0;
-  uint32_t height = 0;
-  void* data = nullptr;
+  Preset preset = Preset::eRTT2D;
+  vuk::Extent3D extent = {};
   vuk::Format format = vuk::Format::eR8G8B8A8Unorm;
-  bool generate_mips = true;
-  bool generate_cubemap_from_hdr = true;
+  void* data = nullptr;
+  enum class MimeType { Generic, KTX } mime = MimeType::Generic;
 };
-
-using Preset = vuk::ImageAttachment::Preset;
 
 class Texture : public Asset {
 public:
@@ -37,17 +36,11 @@ public:
                       const void* data,
                       vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
                       Preset preset = Preset::eRTT2D,
-                      bool generate_mips = true,
                       std::source_location loc = std::source_location::current());
-  void load(const std::string& file_path,
-            vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
-            bool generate_cubemap_from_hdr = true,
-            bool generate_mips = true,
-            std::source_location loc = std::source_location::current());
-  void load_from_memory(void* initial_data, size_t size, std::source_location loc = std::source_location::current());
+  void load(const TextureLoadInfo& load_info, std::source_location loc = std::source_location::current());
   vuk::ImageAttachment as_attachment() const { return _attachment; }
 
-  const std::string& get_path() const { return path; }
+  const std::string& get_path() const { return _path; }
   const vuk::Unique<vuk::Image>& get_image() const { return _image; }
   const vuk::Unique<vuk::ImageView>& get_view() const { return _view; }
   const vuk::Extent3D& get_extent() const { return _attachment.extent; }
@@ -80,7 +73,7 @@ public:
   static uint8_t* convert_to_four_channels(uint32_t width, uint32_t height, const uint8_t* three_channel_data);
 
 private:
-  std::string path = {};
+  std::string _path = {};
   vuk::ImageAttachment _attachment;
   vuk::Unique<vuk::Image> _image;
   vuk::Unique<vuk::ImageView> _view;

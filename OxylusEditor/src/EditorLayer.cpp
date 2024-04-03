@@ -55,7 +55,7 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   editor_config.load_config();
 
   engine_banner = create_shared<Texture>();
-  engine_banner->create_texture({EngineBannerWidth, EngineBannerHeight, 1}, EngineBanner, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2D, false);
+  engine_banner->create_texture({EngineBannerWidth, EngineBannerHeight, 1}, EngineBanner, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 
   Input::set_cursor_state(Input::CursorState::Normal);
 

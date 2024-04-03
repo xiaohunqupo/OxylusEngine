@@ -142,7 +142,7 @@ void FSR::create_fs2_resources(UVec2 render_resolution, UVec2 presentation_resol
     lanczos2_weights[index] = int16_t(roundf(y * 32767.0f));
   }
 
-  lanczos_lut.create_texture({lanczos2_lut_width, 1}, &lanczos2_weights, vuk::Format::eR16Snorm, Preset::eSTT2DUnmipped, false);
+  lanczos_lut.create_texture({lanczos2_lut_width, 1}, &lanczos2_weights, vuk::Format::eR16Snorm, Preset::eSTT2DUnmipped);
 
   // upload path only supports R16_SNORM, let's go and convert
   int16_t maximum_bias[FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH * FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT];
@@ -153,8 +153,7 @@ void FSR::create_fs2_resources(UVec2 render_resolution, UVec2 presentation_resol
   maximum_bias_lut.create_texture({(uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH, (uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT},
                                   maximum_bias,
                                   vuk::Format::eR16Snorm,
-                                  Preset::eSTT2DUnmipped,
-                                  false);
+                                  Preset::eSTT2DUnmipped);
 
   fsr2_constants.renderSize[0] = render_resolution.x;
   fsr2_constants.renderSize[1] = render_resolution.y;

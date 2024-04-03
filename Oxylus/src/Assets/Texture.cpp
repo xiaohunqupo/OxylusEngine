@@ -13,13 +13,13 @@
 namespace ox {
 Shared<Texture> Texture::_white_texture = nullptr;
 
-Texture::Texture(const std::string& file_path) { load(file_path); }
+Texture::Texture(const std::string& file_path) { load(TextureLoadInfo{.path = file_path}); }
 
 Texture::Texture(const TextureLoadInfo& info) {
   if (!info.path.empty())
-    load(info.path, info.format, info.generate_cubemap_from_hdr, info.generate_mips);
+    load(info);
   else
-    create_texture({info.width, info.height, 1}, info.data, info.format);
+    create_texture(info.extent, info.data, info.format);
 }
 
 Texture::~Texture() = default;
@@ -54,25 +54,16 @@ void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::
   set_name(loc);
 }
 
-void Texture::create_texture(vuk::Extent3D extent,
-                             const void* data,
-                             const vuk::Format format,
-                             Preset preset,
-                             bool generate_mips,
-                             std::source_location loc) {
+void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::Format format, Preset preset, std::source_location loc) {
   OX_SCOPED_ZONE;
   const auto ctx = VkContext::get();
 
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
-  if (!generate_mips)
-    ia.level_count = 1;
   auto& alloc = *ctx->superframe_allocator;
   auto [tex, view, fut] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
   vuk::Compiler compiler;
   fut.as_released(vuk::eFragmentSampled).wait(*ctx->superframe_allocator, compiler);
-
-  // TODO: generate mips
 
   _image = std::move(tex);
   _view = std::move(view);
@@ -81,19 +72,15 @@ void Texture::create_texture(vuk::Extent3D extent,
   set_name(loc);
 }
 
-void Texture::load(const std::string& file_path,
-                   const vuk::Format format,
-                   const bool generate_cubemap_from_hdr,
-                   bool generate_mips,
-                   std::source_location loc) {
-  path = file_path;
+void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
+  _path = load_info.path;
 
-  uint32_t x, y, chans;
-  const uint8_t* data = load_stb_image(path, &x, &y, &chans);
+  uint32_t width, height, chans;
+  const uint8_t* data = load_stb_image(_path, &width, &height, &chans);
 
-  create_texture({x, y, 1}, data, format, Preset::eRTT2D, generate_mips, loc);
+  create_texture({width, height, 1}, data, load_info.format, load_info.preset, loc);
 
-  if (FileSystem::get_file_extension(path) == "hdr" && generate_cubemap_from_hdr) {
+  if (load_info.preset == Preset::eRTTCube || load_info.preset == Preset::eMapCube) {
     auto fut = RendererCommon::generate_cubemap_from_equirectangular(as_attachment());
     vuk::Compiler compiler;
     auto val = fut.get(*VkContext::get()->superframe_allocator, compiler);
@@ -107,21 +94,12 @@ void Texture::load(const std::string& file_path,
   delete[] data;
 }
 
-void Texture::load_from_memory(void* initial_data, const size_t size, std::source_location loc) {
-  uint32_t x, y, chans;
-  const auto data = load_stb_image_from_memory(initial_data, size, &x, &y, &chans);
-
-  create_texture({x, y, 1}, data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2D, true, loc);
-
-  delete[] data;
-}
-
 void Texture::create_white_texture() {
   OX_SCOPED_ZONE;
   _white_texture = create_shared<Texture>();
   char white_texture_data[16 * 16 * 4];
   memset(white_texture_data, 0xff, 16 * 16 * 4);
-  _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2D, false);
+  _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 }
 
 void Texture::set_name(const std::source_location& loc) {

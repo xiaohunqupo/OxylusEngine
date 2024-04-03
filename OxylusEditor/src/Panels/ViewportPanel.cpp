@@ -29,10 +29,14 @@
 namespace ox {
 ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true) {
   OX_SCOPED_ZONE;
-  gizmo_image_map[typeid(LightComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{.path = "Resources/Icons/PointLightIcon.png",
-                                                                                               .generate_mips = false});
-  gizmo_image_map[typeid(CameraComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{.path = "Resources/Icons/CameraIcon.png",
-                                                                                                .generate_mips = false});
+  gizmo_image_map[typeid(LightComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
+    .path = "Resources/Icons/PointLightIcon.png",
+    .preset = Preset::eRTT2DUnmipped,
+  });
+  gizmo_image_map[typeid(CameraComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
+    .path = "Resources/Icons/CameraIcon.png",
+    .preset = Preset::eRTT2DUnmipped,
+  });
 
   auto& superframe_allocator = VkContext::get()->superframe_allocator;
   auto* task_scheduler = App::get_system<TaskScheduler>();

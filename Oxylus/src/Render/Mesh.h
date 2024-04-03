@@ -124,8 +124,8 @@ public:
 
   std::vector<Shared<Animation>> animations = {};
 
-  std::vector<Shared<Texture>> m_textures;
-  std::vector<Shared<Material>> materials;
+  std::vector<Shared<Texture>> _textures;
+  std::vector<Shared<Material>> _materials;
   std::vector<Node*> nodes;
   std::vector<Node*> linear_nodes;
   std::vector<Node*> linear_mesh_nodes;
@@ -168,7 +168,7 @@ public:
   Shared<Material> get_material(uint32_t index) const;
   std::vector<Shared<Material>> get_materials_as_ref() const;
   std::vector<Shared<Material>> get_materials(uint32_t node_index) const;
-  uint32_t get_material_count() const { return (uint32_t)materials.size(); }
+  uint32_t get_material_count() const { return (uint32_t)_materials.size(); }
   size_t get_node_count() const { return nodes.size(); }
   void set_scale(const Vec3& mesh_scale);
 

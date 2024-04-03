@@ -602,11 +602,11 @@ void DefaultRenderPipeline::create_dynamic_textures(vuk::Allocator& allocator, c
       }
       if (!packer.rects.empty()) {
         if (packer.pack(8192)) {
-          for (auto& rect : packer.rects) {
+          for (const auto& rect : packer.rects) {
             if (rect.id == -1) {
               continue;
             }
-            uint32_t light_index = uint32_t(rect.id);
+            const uint32_t light_index = uint32_t(rect.id);
             LightComponent& light = scene_lights[light_index];
             if (rect.was_packed) {
               light.shadow_rect = rect;
@@ -615,6 +615,7 @@ void DefaultRenderPipeline::create_dynamic_textures(vuk::Allocator& allocator, c
               switch (light.type) {
                 case LightComponent::Directional: light.shadow_rect.w /= int(light.cascade_distances.size()); break;
                 case LightComponent::Point      : light.shadow_rect.w /= 6; break;
+                case LightComponent::Spot       : break;
               }
             } else {
               light.direction = {};
@@ -1108,12 +1109,12 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::forward_pass(const vuk::
   auto opaque_pass = vuk::make_pass("opaque_pass",
                                     [this](vuk::CommandBuffer& command_buffer,
                                            VUK_IA(vuk::eColorRW) output,
-                                           VUK_IA(vuk::eDepthStencilRead) depth,
-                                           VUK_IA(vuk::eFragmentSampled) shadow_map,
-                                           VUK_IA(vuk::eFragmentSampled) tranmisttance_lut,
-                                           VUK_IA(vuk::eFragmentSampled) multiscatter_lut,
-                                           VUK_IA(vuk::eFragmentSampled) envmap,
-                                           VUK_IA(vuk::eFragmentSampled) gtao) {
+                                           [[maybe_unused]] VUK_IA(vuk::eDepthStencilRead) _depth,
+                                           [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _shadow_map,
+                                           [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _tranmisttance_lut,
+                                           [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _multiscatter_lut,
+                                           [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _envmap,
+                                           [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _gtao) {
     camera_cb.camera_data[0] = get_main_camera_data();
     bind_camera_buffer(command_buffer);
 
@@ -1168,11 +1169,11 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::forward_pass(const vuk::
   auto transparent_pass = vuk::make_pass("transparent_pass",
                                          [this](vuk::CommandBuffer& command_buffer,
                                                 VUK_IA(vuk::eColorRW) output,
-                                                VUK_IA(vuk::eFragmentSampled) shadow_map,
-                                                VUK_IA(vuk::eFragmentSampled) tranmisttance_lut,
-                                                VUK_IA(vuk::eFragmentSampled) multiscatter_lut,
-                                                VUK_IA(vuk::eFragmentSampled) envmap,
-                                                VUK_IA(vuk::eFragmentSampled) gtao) {
+                                                [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _shadow_map,
+                                                [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _tranmisttance_lut,
+                                                [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _multiscatter_lut,
+                                                [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _envmap,
+                                                [[maybe_unused]] VUK_IA(vuk::eFragmentSampled) _gtao) {
     command_buffer.bind_graphics_pipeline("pbr_transparency_pipeline")
       .bind_persistent(0, *descriptor_set_00)
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
