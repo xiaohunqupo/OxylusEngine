@@ -6,7 +6,6 @@
 
 #include <vuk/RenderGraph.hpp>
 #include <vuk/RenderGraphReflection.hpp>
-#include <vuk/SampledImage.hpp>
 #include <vuk/Partials.hpp>
 
 #include "imgui.h"

@@ -8,7 +8,6 @@
 #include <fmt/format.h>
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
-#include <vuk/SampledImage.hpp>
 
 #include "ImGuiLayer.hpp"
 
