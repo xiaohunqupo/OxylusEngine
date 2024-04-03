@@ -59,8 +59,8 @@ static vuk::Swapchain make_swapchain(vuk::Allocator allocator,
   swb.set_desired_present_mode((VkPresentModeKHR)present_mode);
 
   // TODO:
-  // swb.set_desired_format(vuk::SurfaceFormatKHR{ vuk::Format::eR8G8B8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear });
-  // swb.add_fallback_format(vuk::SurfaceFormatKHR{ vuk::Format::eB8G8R8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear });
+  // swb.set_desired_format(vuk::SurfaceFormatKHR{vuk::Format::eR8G8B8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear});
+  // swb.add_fallback_format(vuk::SurfaceFormatKHR{vuk::Format::eB8G8R8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear});
 
   bool is_recycle = false;
   vkb::Result vkswapchain = {vkb::Swapchain{}};

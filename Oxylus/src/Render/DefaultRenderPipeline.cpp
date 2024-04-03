@@ -1344,7 +1344,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
       .dispatch((Renderer::get_viewport_width() + 16 - 1) / 16, (Renderer::get_viewport_height() + 16 - 1) / 16);
   });
 
-  gtao_depth_pass(depth_input,  mip0, mip1, mip2, mip3, mip4);
+  gtao_depth_pass(depth_input, mip0, mip1, mip2, mip3, mip4);
 
   auto gtao_main_pass = vuk::make_pass("gtao_main_pass",
                                        [gtao_const_buffer](vuk::CommandBuffer& command_buffer,

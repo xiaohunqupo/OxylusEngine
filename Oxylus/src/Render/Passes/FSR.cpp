@@ -319,7 +319,7 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
 
   // convert delta time to seconds and clamp to [0, 1].
   // context->constants.deltaTime = std::max(0.0f, std::min(1.0f, params->frameTimeDelta / 1000.0f));
-  fsr2_constants.deltaTime = dt;
+  fsr2_constants.deltaTime = (float)dt;
 
   fsr2_constants.frameIndex++;
 

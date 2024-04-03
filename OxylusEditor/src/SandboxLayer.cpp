@@ -21,13 +21,13 @@ void SandboxLayer::on_attach(EventDispatcher& dispatcher) {
 void SandboxLayer::on_detach() {}
 
 void SandboxLayer::on_update(const Timestep& delta_time) {
-  if (_use_editor_camera) {
+  if (_use_editor_camera && !ImGui::GetIO().WantCaptureMouse) {
     const Vec3& position = camera.get_position();
     const Vec2 yaw_pitch = Vec2(camera.get_yaw(), camera.get_pitch());
     Vec3 final_position = position;
     Vec2 final_yaw_pitch = yaw_pitch;
 
-    if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+    if (Input::get_mouse_held(MouseCode::Button1)) {
       const Vec2 new_mouse_position = Input::get_mouse_position();
 
       if (!_using_editor_camera) {
@@ -43,23 +43,23 @@ void SandboxLayer::on_update(const Timestep& delta_time) {
       final_yaw_pitch.y = glm::clamp(final_yaw_pitch.y - change.y, glm::radians(-89.9f), glm::radians(89.9f));
 
       const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
-      if (ImGui::IsKeyDown(ImGuiKey_W))
+      if (Input::get_key_held(KeyCode::W))
         final_position += camera.get_forward() * max_move_speed;
-      else if (ImGui::IsKeyDown(ImGuiKey_S))
+      else if (Input::get_key_held(KeyCode::S))
         final_position -= camera.get_forward() * max_move_speed;
-      if (ImGui::IsKeyDown(ImGuiKey_D))
+      if (Input::get_key_held(KeyCode::D))
         final_position += camera.get_right() * max_move_speed;
-      else if (ImGui::IsKeyDown(ImGuiKey_A))
+      else if (Input::get_key_held(KeyCode::A))
         final_position -= camera.get_right() * max_move_speed;
 
-      if (ImGui::IsKeyDown(ImGuiKey_Q)) {
+      if (Input::get_key_held(KeyCode::Q)) {
         final_position.y -= max_move_speed;
-      } else if (ImGui::IsKeyDown(ImGuiKey_E)) {
+      } else if (Input::get_key_held(KeyCode::E)) {
         final_position.y += max_move_speed;
       }
     }
     // Panning
-    else if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
+    else if (Input::get_mouse_held(MouseCode::Button2)) {
       const Vec2 new_mouse_position = Input::get_mouse_position();
 
       if (!_using_editor_camera) {
@@ -102,5 +102,12 @@ void SandboxLayer::on_update(const Timestep& delta_time) {
   }
 }
 
-void SandboxLayer::on_imgui_render() { runtime_console.on_imgui_render(); }
+void SandboxLayer::on_imgui_render() {
+  if (EditorCVar::cvar_show_style_editor.get())
+    ImGui::ShowStyleEditor();
+  if (EditorCVar::cvar_show_imgui_demo.get())
+    ImGui::ShowDemoWindow();
+
+  runtime_console.on_imgui_render();
+}
 } // namespace ox

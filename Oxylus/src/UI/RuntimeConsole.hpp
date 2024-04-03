@@ -4,11 +4,8 @@
 #include <functional>
 #include <optional>
 #include <charconv>
-#include <mutex>
 
 #include <ankerl/unordered_dense.h>
-
-#include "Core/Base.hpp"
 
 #include "Utils/Log.hpp"
 
@@ -53,7 +50,7 @@ private:
     loguru::Verbosity verbosity = {};
   };
 
-  void render_console_text(const std::string& text, loguru::Verbosity verb);
+  void render_console_text(const std::string& text, int32_t id, loguru::Verbosity verb);
 
   struct ConsoleCommand {
     int32_t* int_value = nullptr;
@@ -68,16 +65,19 @@ private:
   void process_command(const std::string& command);
 
   void help_command();
+  std::vector<std::string> get_available_commands();
 
   ParsedCommandValue parse_value(const std::string& command);
   std::string parse_command(const std::string& command);
 
   // Input field
   static constexpr uint32_t MAX_TEXT_BUFFER_SIZE = 32;
-  int32_t history_position = 0;
+  int32_t history_position = -1;
   std::vector<ConsoleText> text_buffer = {};
-  std::vector<char*> input_log = {};
+  std::vector<std::string> input_log = {};
   bool request_scroll_to_bottom = true;
+  bool request_keyboard_focus = true;
+  bool auto_scroll = true;
   int input_text_callback(ImGuiInputTextCallbackData* data);
 
   loguru::Verbosity text_filter = loguru::Verbosity_OFF;

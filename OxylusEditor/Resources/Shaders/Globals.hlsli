@@ -4,9 +4,11 @@
 #include "Common.hlsli"
 #include "Materials.hlsli"
 
+// set 1
 [[vk::binding(0, 1)]] ConstantBuffer<CameraCB> Camera;
 [[vk::binding(1, 1)]] StructuredBuffer<MeshInstancePointer> MeshInstancePointers;
 
+// set 0
 [[vk::binding(0, 0)]] ConstantBuffer<SceneData> Scene;
 
 [[vk::binding(1, 0)]] ByteAddressBuffer Buffers[];

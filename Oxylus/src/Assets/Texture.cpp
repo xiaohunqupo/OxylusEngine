@@ -27,7 +27,7 @@ Texture::~Texture() = default;
 void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk::ImageAttachment::Preset preset, std::source_location loc) {
   const auto ctx = VkContext::get();
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
-  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
+  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
   auto image = vuk::allocate_image(*ctx->superframe_allocator, ia);
   ia.image = **image;
   auto view = vuk::allocate_image_view(*ctx->superframe_allocator, ia);

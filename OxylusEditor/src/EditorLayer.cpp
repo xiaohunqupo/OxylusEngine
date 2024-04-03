@@ -40,9 +40,6 @@
 namespace ox {
 EditorLayer* EditorLayer::instance = nullptr;
 
-AutoCVar_Int cvar_show_style_editor("ui.imgui_style_editor", "show imgui style editor", 0, CVarFlags::EditCheckbox);
-AutoCVar_Int cvar_show_imgui_demo("ui.imgui_demo", "show imgui demo window", 0, CVarFlags::EditCheckbox);
-
 static ViewportPanel* fullscreen_viewport_panel = nullptr;
 
 EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
@@ -123,9 +120,9 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 }
 
 void EditorLayer::on_imgui_render() {
-  if (cvar_show_style_editor.get())
+  if (EditorCVar::cvar_show_style_editor.get())
     ImGui::ShowStyleEditor();
-  if (cvar_show_imgui_demo.get())
+  if (EditorCVar::cvar_show_imgui_demo.get())
     ImGui::ShowDemoWindow();
 
   editor_shortcuts();
