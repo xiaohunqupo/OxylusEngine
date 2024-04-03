@@ -46,13 +46,6 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   else
     std::filesystem::current_path(app_spec.working_directory);
 
-  for (int i = 0; i < app_spec.command_line_args.count; i++) {
-    auto c = app_spec.command_line_args.args[i];
-    if (!std::string(c).empty()) {
-      command_line_args.emplace_back(c);
-    }
-  }
-
   if (!asset_directory_exists()) {
     OX_LOG_FATAL("Resources path doesn't exists. Make sure the working directory is correct! Editor should be launched in Oxylus/OxylusEditor.");
     close();

@@ -17,13 +17,24 @@ class LayerStack;
 class ImGuiLayer;
 class ThreadManager;
 
-struct ApplicationCommandLineArgs {
-  int count = 0;
-  char** args = nullptr;
+struct AppCommandLineArgs {
+  std::vector<std::string> args = {};
 
-  const char* operator[](int index) const {
-    OX_CHECK_LT(index, count);
-    return args[index];
+  AppCommandLineArgs() = default;
+  AppCommandLineArgs(const int argc, char** argv) {
+    for (int i = 0; i < argc; i++)
+      args.emplace_back(argv[i]);
+  }
+
+  const std::string& operator[](const int index) const { return args.at(index); }
+
+  bool contains(const std::string_view arg) const {
+    for (const auto& a : args) {
+      if (a == arg) {
+        return true;
+      }
+    }
+    return false;
   }
 };
 
@@ -32,7 +43,7 @@ struct AppSpec {
   std::string working_directory = {};
   std::string assets_path = "Resources";
   uint32_t device_index = 0;
-  ApplicationCommandLineArgs command_line_args;
+  AppCommandLineArgs command_line_args;
 };
 
 using SystemRegistry = ankerl::unordered_dense::map<size_t, Shared<ESystem>>;
@@ -48,7 +59,7 @@ public:
   void close();
 
   const AppSpec& get_specification() const { return app_spec; }
-  const std::vector<std::string>& get_command_line_args() const { return command_line_args; }
+  const AppCommandLineArgs& get_command_line_args() const { return app_spec.command_line_args; }
   ImGuiLayer* get_imgui_layer() const { return imgui_layer; }
   const Shared<LayerStack>& get_layer_stack() const { return layer_stack; }
   static App* get() { return instance; }
@@ -101,7 +112,6 @@ public:
 private:
   static App* instance;
   AppSpec app_spec;
-  std::vector<std::string> command_line_args;
   ImGuiLayer* imgui_layer;
   Shared<LayerStack> layer_stack;
 
@@ -122,5 +132,5 @@ private:
   friend int ::main(int argc, char** argv);
 };
 
-App* create_application(ApplicationCommandLineArgs args);
-}
+App* create_application(const AppCommandLineArgs& args);
+} // namespace ox

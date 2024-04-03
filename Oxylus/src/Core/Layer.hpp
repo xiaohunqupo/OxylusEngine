@@ -17,9 +17,6 @@ public:
   virtual void on_update(const Timestep& delta_time) {}
   virtual void on_imgui_render() {}
 
-  virtual void on_key_pressed(KeyCode key) {}
-  virtual void on_key_released(KeyCode key) {}
-
   const std::string& get_name() const { return debug_name; }
 
 protected:

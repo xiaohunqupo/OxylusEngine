@@ -225,11 +225,9 @@ void EditorLayer::on_imgui_render() {
           }
           ImGui::EndMenu();
         }
-        static bool render_asset_manager = false;
 
         if (ImGui::BeginMenu("Assets")) {
           if (ImGui::MenuItem("Asset Manager")) {
-            render_asset_manager = true;
           }
           OxUI::tooltip("WIP");
           ImGui::EndMenu();
@@ -241,44 +239,6 @@ void EditorLayer::on_imgui_render() {
           ImGui::EndMenu();
         }
         ImGui::SameLine();
-
-        // TODO:
-#if 0
-        if (renderAssetManager) {
-          if (ImGui::Begin("Asset Manager")) {
-            const auto& assets = AssetManager::GetAssetLibrary();
-            if (!assets.MeshAssets.empty()) {
-              ImGui::Text("Mesh assets");
-              OxUI::BeginProperties();
-              for (const auto& [handle, asset] : assets.MeshAssets) {
-                auto handleStr = fmt::format("{}", (uint64_t)handle);
-                OxUI::Text(handleStr.c_str(), asset.Path.c_str());
-              }
-              OxUI::EndProperties();
-            }
-            if (!assets.ImageAssets.empty()) {
-              ImGui::Text("Image assets");
-              OxUI::BeginProperties();
-              for (const auto& asset : assets.ImageAssets) {
-                OxUI::Text("Texture:", asset->GetPath().c_str());
-              }
-              OxUI::EndProperties();
-            }
-            if (!assets.MaterialAssets.empty()) {
-              ImGui::Text("Material assets");
-              OxUI::BeginProperties();
-              for (const auto& [handle, asset] : assets.MaterialAssets) {
-                auto handleStr = fmt::format("{}", (uint64_t)handle);
-                OxUI::Text(handleStr.c_str(), asset.Path.c_str());
-              }
-              OxUI::EndProperties();
-            }
-            if (ImGui::Button("Package assets")) {
-              AssetManager::PackageAssets();
-            }
-          }
-        }
-#endif
         {
           // Project name text
           ImGui::SetCursorPos(ImVec2((float)Window::get_width() - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));

@@ -129,22 +129,16 @@ void VkContext::create_context(const AppSpec& spec) {
   vkb::InstanceBuilder builder;
   builder.set_app_name("Oxylus").set_engine_name("Oxylus").require_api_version(1, 3, 0).set_app_version(0, 1, 0);
 
-  bool enable_validation = false;
-  const auto& args = App::get()->get_command_line_args();
-  for (const auto& arg : args) {
-    if (arg == "vulkan-validation") {
-      enable_validation = true;
-      break;
-    }
-  }
+  bool enable_validation = spec.command_line_args.contains("vulkan-validation");
 
   if (enable_validation) {
     OX_LOG_INFO("Vulkan validation layers enabled.");
-    builder.request_validation_layers().set_debug_callback(
-      [](const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-         const VkDebugUtilsMessageTypeFlagsEXT messageType,
-         const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-         void* pUserData) -> VkBool32 { return DebugCallback(messageSeverity, messageType, pCallbackData, pUserData); });
+    builder.request_validation_layers().set_debug_callback([](const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                                                              const VkDebugUtilsMessageTypeFlagsEXT messageType,
+                                                              const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                                                              void* pUserData) -> VkBool32 {
+      return DebugCallback(messageSeverity, messageType, pCallbackData, pUserData);
+    });
   }
 
   auto inst_ret = builder.build();
