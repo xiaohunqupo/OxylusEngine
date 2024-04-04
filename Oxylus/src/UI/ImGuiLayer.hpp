@@ -12,8 +12,15 @@
 namespace ox {
 class ImGuiLayer : public Layer {
 public:
+  struct ImGuiImage {
+    bool global;
+    vuk::ImageView view;
+    uint32_t attachment_index;
+  };
+
   struct ImGuiData {
     Shared<Texture> font_texture = nullptr;
+    ImGuiImage font_image = {};
   };
 
   static ImFont* bold_font;
@@ -42,12 +49,14 @@ public:
 
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> render_draw_data(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target) const;
 
-  vuk::ImageView* add_image(const vuk::ImageView& view);
+  ImGuiImage* add_image(const vuk::ImageView& view);
+  ImGuiImage* add_attachment(const vuk::Value<vuk::ImageAttachment>& attach);
 
   static void apply_theme(bool dark = true);
   static void set_style();
 
-  plf::colony<vuk::ImageView> sampled_images;
+  plf::colony<ImGuiImage> sampled_images;
+  std::vector<vuk::Value<vuk::ImageAttachment>> sampled_attachments;
 
 private:
   ImGuiData imgui_data;

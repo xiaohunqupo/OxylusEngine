@@ -169,6 +169,15 @@ void OxUI::image(const Texture& texture, ImVec2 size, const ImVec2& uv0, const I
   ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture.get_view()), size, uv0, uv1, tint_col, border_col);
 }
 
+void OxUI::image(const vuk::Value<vuk::ImageAttachment>& attch,
+                 ImVec2 size,
+                 const ImVec2& uv0,
+                 const ImVec2& uv1,
+                 const ImVec4& tint_col,
+                 const ImVec4& border_col) {
+  ImGui::Image(App::get()->get_imgui_layer()->add_attachment(attch), size, uv0, uv1, tint_col, border_col);
+}
+
 void OxUI::image(const vuk::ImageView& view,
                  const ImVec2 size,
                  const ImVec2& uv0,

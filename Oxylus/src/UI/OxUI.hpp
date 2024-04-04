@@ -6,6 +6,7 @@
 #include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <vuk/Future.hpp>
 #include <vuk/Image.hpp>
 
 #include "Core/Base.hpp"
@@ -129,6 +130,15 @@ public:
 
   // Texture
   static bool property(const char* label, Shared<Texture>& texture, const char* tooltip = nullptr);
+
+  static void image(const vuk::Value<vuk::ImageAttachment>& attch,
+                    ImVec2 size,
+                    const ImVec2& uv0 = ImVec2(0, 0),
+                    const ImVec2& uv1 = ImVec2(1, 1),
+                    const ImVec4& tint_col = ImVec4(1, 1, 1, 1),
+                    const ImVec4& border_col = ImVec4(0, 0, 0, 0));
+
+  // static images
   static void image(const Texture& texture,
                     ImVec2 size,
                     const ImVec2& uv0 = ImVec2(0, 0),
@@ -143,7 +153,6 @@ public:
                     const ImVec4& tint_col = ImVec4(1, 1, 1, 1),
                     const ImVec4& border_col = ImVec4(0, 0, 0, 0));
 
-  // Draw vuk::Texture
   static bool image_button(const char* id,
                            const vuk::ImageView& view,
                            ImVec2 size,

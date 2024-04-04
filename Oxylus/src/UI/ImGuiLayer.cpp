@@ -119,8 +119,8 @@ void ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) {
 
   imgui_data.font_texture = create_shared<Texture>();
   imgui_data.font_texture->create_texture({(unsigned)width, (unsigned)height, 1}, pixels, vuk::Format::eR8G8B8A8Srgb, Preset::eRTT2DUnmipped);
-
-  io.Fonts->TexID = (ImTextureID)(&*imgui_data.font_texture->get_view());
+  imgui_data.font_image = {true, *imgui_data.font_texture->get_view(), 0};
+  io.Fonts->TexID = &imgui_data.font_image;
 
   vuk::PipelineBaseCreateInfo pci;
   pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
@@ -138,6 +138,7 @@ void ImGuiLayer::begin() {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
   sampled_images.clear();
+  sampled_attachments.clear();
 }
 
 vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target) const {
@@ -184,7 +185,9 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
 
   auto imgui_pass = vuk::make_pass("imgui",
                                    [this, verts = imvert.get(), inds = imind.get(), reset_render_state](vuk::CommandBuffer& command_buffer,
-                                                                                                        VUK_IA(vuk::eColorRW) color_rt) {
+                                                                                                        VUK_IA(vuk::eColorRW) color_rt,
+                                                                                                        VUK_ARG(vuk::ImageAttachment[],
+                                                                                                                vuk::Access::eFragmentSampled) sis) {
     command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
       .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
       .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
@@ -236,8 +239,11 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
 
             // Bind texture
             if (pcmd->TextureId) {
-              const auto& view = *reinterpret_cast<vuk::ImageView*>(pcmd->TextureId);
-              command_buffer.bind_image(0, 0, view).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
+              const auto& img = *reinterpret_cast<ImGuiLayer::ImGuiImage*>(pcmd->TextureId);
+              if (img.global)
+                command_buffer.bind_image(0, 0, img.view).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
+              else
+                command_buffer.bind_image(0, 0, sis[img.attachment_index]).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
             }
 
             command_buffer.draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
@@ -250,10 +256,17 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
     return color_rt;
   });
 
-  return imgui_pass(target);
+  const auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(sampled_attachments));
+
+  return imgui_pass(target, sampled_images_array);
 }
 
-vuk::ImageView* ImGuiLayer::add_image(const vuk::ImageView& view) { return &*sampled_images.emplace(view); }
+ImGuiLayer::ImGuiImage* ImGuiLayer::add_image(const vuk::ImageView& view) { return &*sampled_images.emplace(true, view, 0); }
+
+ImGuiLayer::ImGuiImage* ImGuiLayer::add_attachment(const vuk::Value<vuk::ImageAttachment>& attach) {
+  sampled_attachments.emplace_back(attach);
+  return &*sampled_images.emplace(false, vuk::ImageView{}, (uint32_t)sampled_attachments.size() - 1u);
+}
 
 void ImGuiLayer::end() {
   OX_SCOPED_ZONE;

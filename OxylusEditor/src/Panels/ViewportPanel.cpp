@@ -299,9 +299,7 @@ void ViewportPanel::on_imgui_render() {
         final_image = &outline;
       }
 
-      vuk::ImageAttachment f = *final_image->get(*frame_allocator, compiler);
-
-      OxUI::image(f.image_view, ImVec2{fixed_width, viewport_panel_size.y});
+      OxUI::image(*final_image, ImVec2{fixed_width, viewport_panel_size.y});
     } else {
       const auto text_width = ImGui::CalcTextSize("No render target!").x;
       ImGui::SetCursorPosX((m_viewport_size.x - text_width) * 0.5f);
