@@ -53,7 +53,7 @@ void DefaultRenderPipeline::init(vuk::Allocator& allocator) {
 
   this->m_quad = RendererCommon::generate_quad();
   this->m_cube = RendererCommon::generate_cube();
-  task_scheduler->add_task([this, &allocator] { create_static_resources(allocator); });
+  task_scheduler->add_task([this, &allocator] { create_static_resources(); });
   task_scheduler->add_task([this, &allocator] { create_descriptor_sets(allocator); });
 
   task_scheduler->wait_for_all();
@@ -510,14 +510,14 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   descriptor_set_00->commit(ctx);
 }
 
-void DefaultRenderPipeline::create_static_resources(vuk::Allocator& allocator) {
+void DefaultRenderPipeline::create_static_resources() {
   OX_SCOPED_ZONE;
 
   constexpr auto transmittance_lut_size = vuk::Extent3D{256, 64, 1};
-  sky_transmittance_lut.create_texture(transmittance_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eGeneric2D);
+  sky_transmittance_lut.create_texture(transmittance_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eSTT2DUnmipped);
 
   constexpr auto multi_scatter_lut_size = vuk::Extent3D{32, 32, 1};
-  sky_multiscatter_lut.create_texture(multi_scatter_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eGeneric2D);
+  sky_multiscatter_lut.create_texture(multi_scatter_lut_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eSTT2DUnmipped);
 
   constexpr auto shadow_size = vuk::Extent3D{1u, 1u, 1};
   const auto ia = vuk::ImageAttachment::from_preset(Preset::eRTT2DUnmipped, vuk::Format::eD32Sfloat, shadow_size, vuk::Samples::e1);
@@ -528,7 +528,7 @@ void DefaultRenderPipeline::create_static_resources(vuk::Allocator& allocator) {
   sky_envmap_texture.create_texture(envmap_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTTCube);
 }
 
-void DefaultRenderPipeline::create_dynamic_textures(vuk::Allocator& allocator, const vuk::Extent3D& ext) {
+void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
   if (gtao_final_texture.get_extent() != ext)
     gtao_final_texture.create_texture(ext, vuk::Format::eR8Uint, Preset::eSTT2DUnmipped);
   if (ssr_texture.get_extent() != ext)
@@ -735,7 +735,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   scene_data.sun_direction = sun_direction;
   scene_data.sun_color = Vec4(sun_color, 1.0f);
 
-  create_dynamic_textures(*vk_context->superframe_allocator, ext);
+  create_dynamic_textures(ext);
   update_frame_data(frame_allocator);
 
   if (!ran_static_passes) {
@@ -764,8 +764,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   auto forward_output = forward_pass(forward_image,
                                      depth_output,
                                      shadow_map,
-                                     vuk::declare_ia("sky_transmittance_lut", sky_transmittance_lut.as_attachment()),
-                                     vuk::declare_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment()),
+                                     vuk::acquire_ia("sky_transmittance_lut", sky_transmittance_lut.as_attachment(), vuk::eFragmentSampled),
+                                     vuk::acquire_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment(), vuk::eFragmentSampled),
                                      sky_envmap_output,
                                      gtao_output);
 
@@ -791,7 +791,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   auto fxaa_ia = vuk::ImageAttachment::from_preset(Preset::eGeneric2D, vuk::Format::eR32G32B32A32Sfloat, {}, vuk::Samples::e1);
   auto fxaa_image = vuk::clear_image(vuk::declare_ia("fxaa_image", fxaa_ia), vuk::Black<float>);
-  fxaa_image.same_extent_as(forward_output);
+  fxaa_image.same_extent_as(target);
   if (RendererCVar::cvar_fxaa_enable.get())
     fxaa_image = apply_fxaa(fxaa_image, forward_output);
   else
@@ -820,9 +820,11 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .set_scissor(0, vuk::Rect2D::framebuffer())
       .broadcast_color_blend(vuk::BlendPreset::eOff)
       .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+      .bind_image(2, 0, fwd_img)
       .draw(3, 1, 0, 0);
     return target;
   });
+
   return final_pass(target, grid_output, bloom_output);
 }
 

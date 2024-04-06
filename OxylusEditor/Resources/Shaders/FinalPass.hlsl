@@ -1,5 +1,7 @@
 ﻿#include "Globals.hlsli"
 
+[[vk::binding(0, 2)]] Texture2D<float4> final_texture;
+
 struct VSInput {
   float4 position : SV_Position;
   float2 uv : TEXCOORD;
@@ -27,11 +29,11 @@ float3 tonemap_aces(const float3 x) {
   const float c = 2.43;
   const float d = 0.59;
   const float e = 0.14;
-  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), float3(0, 0, 0), float3(0, 0, 0));
+  return clamp((x * (a * x + b)) / (x * (c * x + d) + e), float3(0, 0, 0), float3(1, 1, 1));
 }
 
 float4 main(VSInput input) : SV_TARGET {
-  float4 final_image = GetForwardTexture().Sample(LINEAR_CLAMPED_SAMPLER, input.uv);
+  float4 final_image = final_texture.Sample(LINEAR_CLAMPED_SAMPLER, input.uv);
 
   const float4 bloom = GetBloomTexture().Sample(LINEAR_CLAMPED_SAMPLER, input.uv);
 

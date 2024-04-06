@@ -358,8 +358,8 @@ private:
   CameraData get_main_camera_data() const;
   void create_dir_light_cameras(const LightComponent& light, Camera& camera, std::vector<CameraSH>& camera_data, uint32_t cascade_count);
   void update_frame_data(vuk::Allocator& allocator);
-  void create_static_resources(vuk::Allocator& allocator);
-  void create_dynamic_textures(vuk::Allocator& allocator, const vuk::Extent3D& ext);
+  void create_static_resources();
+  void create_dynamic_textures(const vuk::Extent3D& ext);
   void create_descriptor_sets(vuk::Allocator& allocator);
   void run_static_passes(vuk::Allocator& allocator);
 
