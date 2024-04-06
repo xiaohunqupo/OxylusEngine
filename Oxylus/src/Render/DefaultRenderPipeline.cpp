@@ -821,6 +821,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .broadcast_color_blend(vuk::BlendPreset::eOff)
       .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
       .bind_image(2, 0, fwd_img)
+      .bind_image(2, 1, bloom_img)
       .draw(3, 1, 0, 0);
     return target;
   });
@@ -1218,7 +1219,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
                                                                    vuk::Value<vuk::ImageAttachment>& upsample_image,
                                                                    vuk::Value<vuk::ImageAttachment>& input) {
   OX_SCOPED_ZONE;
-  auto bloom_mip_count = input->level_count;
+  auto bloom_mip_count = downsample_image->level_count;
 
   struct BloomPushConst {
     // x: threshold, y: clamp, z: radius, w: unused
@@ -1243,7 +1244,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
   });
 
   auto prefiltered_image = prefilter(downsample_image.mip(0), input);
-  auto downsampled_image = prefiltered_image;
+  auto src_mip = prefiltered_image;
 
   for (uint32_t i = 1; i < bloom_mip_count; i++) {
     auto pass = vuk::make_pass("bloom_downsample",
@@ -1259,11 +1260,16 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
       return target;
     });
 
-    downsampled_image = pass(prefiltered_image.mip(i), downsampled_image.mip(i - 1));
+    src_mip = pass(downsample_image.mip(i), src_mip);
   }
 
   // Upsampling
   // https://www.froyok.fr/blog/2021-12-ue4-custom-bloom/resources/code/bloom_down_up_demo.jpg
+
+  auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+
+  auto downsampled_image = converge(downsample_image);
+  auto upsample_src_mip = src_mip;
 
   for (int32_t i = (int32_t)bloom_mip_count - 2; i >= 0; i--) {
     auto pass = vuk::make_pass("bloom_upsample",
@@ -1285,9 +1291,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
       return output;
     });
 
-    const auto u_input = i == (int32_t)bloom_mip_count - 2 ? downsampled_image.mip(i + 1) : upsample_image.mip(i + 1);
-
-    upsample_image = pass(upsample_image.mip(i), u_input, downsampled_image.mip(i));
+    upsample_src_mip = pass(upsample_image.mip(i), upsample_src_mip, downsampled_image.mip(i));
   }
 
   return upsample_image;

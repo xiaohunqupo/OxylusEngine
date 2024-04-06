@@ -1,6 +1,7 @@
 ﻿#include "Globals.hlsli"
 
 [[vk::binding(0, 2)]] Texture2D<float4> final_texture;
+[[vk::binding(1, 2)]] Texture2D<float4> bloom_texture;
 
 struct VSInput {
   float4 position : SV_Position;
@@ -35,7 +36,7 @@ float3 tonemap_aces(const float3 x) {
 float4 main(VSInput input) : SV_TARGET {
   float4 final_image = final_texture.Sample(LINEAR_CLAMPED_SAMPLER, input.uv);
 
-  const float4 bloom = GetBloomTexture().Sample(LINEAR_CLAMPED_SAMPLER, input.uv);
+  const float4 bloom = bloom_texture.Sample(LINEAR_CLAMPED_SAMPLER, input.uv);
 
   if (get_scene().post_processing_data.enable_bloom) {
     final_image += bloom;
