@@ -15,7 +15,7 @@ public:
 
   const Vec3& get_origin() const { return origin; }
   const Vec3& get_direction() const { return direction; }
-  const Vec3& get_direction_inverse() const { return 1.0f / direction; }
+  Vec3 get_direction_inverse() const { return 1.0f / direction; }
 
 private:
   Vec3 origin = {};

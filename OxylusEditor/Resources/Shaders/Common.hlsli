@@ -61,8 +61,6 @@ struct PushConst {
 
 struct MeshInstance {
   float4x4 transform;
-
-  void init() { transform = 0; }
 };
 
 struct MeshInstancePointer {
@@ -122,20 +120,50 @@ struct CameraCB {
 #define POINT_LIGHT 1
 #define SPOT_LIGHT 2
 
-#define SHADOW_MAP_CASCADE_COUNT 4
-
 struct Light {
   float3 position;
-  float intensity;
-  float3 color;
-  float radius;
+  float _pad0;
+
   float3 rotation;
-  uint type;
-  float3 direction;
-  uint cascade_count;
+  uint type8_flags8_range16;
+
+  uint2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
+  uint2 color;                        // half4 packed
+
   float4 shadow_atlas_mul_add;
-  float3 _pad;
+
+  uint radius16_length16;
   uint matrix_index;
+  uint remap;
+  uint _pad1;
+
+  uint get_type() { return type8_flags8_range16 & 0xFF; }
+  uint get_flags() { return (type8_flags8_range16 >> 8u) & 0xFF; }
+  float get_range() { return f16tof32(type8_flags8_range16 >> 16u); }
+  float get_radius() { return f16tof32(radius16_length16); }
+  float get_length() { return f16tof32(radius16_length16 >> 16u); }
+  float3 get_direction() {
+    return normalize(float3(f16tof32(direction16_cone_angle_cos16.x),
+                            f16tof32(direction16_cone_angle_cos16.x >> 16u),
+                            f16tof32(direction16_cone_angle_cos16.y)));
+  }
+  float get_cone_angle_cos() { return f16tof32(direction16_cone_angle_cos16.y >> 16u); }
+  uint get_shadow_cascade_count() { return direction16_cone_angle_cos16.y >> 16u; }
+  float get_angle_scale() { return f16tof32(remap); }
+  float get_angle_offset() { return f16tof32(remap >> 16u); }
+  float get_cubemap_depth_remap_near() { return f16tof32(remap); }
+  float get_cubemap_depth_remap_far() { return f16tof32(remap >> 16u); }
+  float4 get_color() {
+    float4 retVal;
+    retVal.x = f16tof32(color.x);
+    retVal.y = f16tof32(color.x >> 16u);
+    retVal.z = f16tof32(color.y);
+    retVal.w = f16tof32(color.y >> 16u);
+    return retVal;
+  }
+  uint get_matrix_index() { return matrix_index; }
+  float get_gravity() { return get_cone_angle_cos(); }
+  float3 get_collider_tip() { return shadow_atlas_mul_add.xyz; }
 };
 
 struct SceneData {
@@ -204,13 +232,46 @@ bool is_nan(float3 vec) {
   return (asuint(vec.x) & 0x7fffffff) > 0x7f800000 || (asuint(vec.y) & 0x7fffffff) > 0x7f800000 || (asuint(vec.z) & 0x7fffffff) > 0x7f800000;
 }
 
-inline bool is_saturated(float a) { return a == saturate(a); }
-inline bool is_saturated(float2 a) { return all(a == saturate(a)); }
-inline bool is_saturated(float3 a) { return all(a == saturate(a)); }
-inline bool is_saturated(float4 a) { return all(a == saturate(a)); }
+bool is_saturated(float a) { return a == saturate(a); }
+bool is_saturated(float2 a) { return all(a == saturate(a)); }
+bool is_saturated(float3 a) { return all(a == saturate(a)); }
+bool is_saturated(float4 a) { return all(a == saturate(a)); }
 
-inline float3 clipspace_to_uv(in float3 clipspace) { return clipspace * float3(0.5, 0.5, 0.5) + 0.5; }
-inline float2 uv_to_clipspace(in float2 uv) { return uv * 2.0 - 1.0; }
+float3 clipspace_to_uv(in float3 clipspace) { return clipspace * float3(0.5, 0.5, 0.5) + 0.5; }
+float2 clipspace_to_uv(in float2 clipspace) { return clipspace * float2(0.5, -0.5) + 0.5; }
+float2 uv_to_clipspace(in float2 uv) { return uv * 2.0 - 1.0; }
+
+float3 cubemap_to_uv(in float3 r) {
+  float faceIndex = 0;
+  float3 absr = abs(r);
+  float3 uvw = 0;
+  if (absr.x > absr.y && absr.x > absr.z) {
+    // x major
+    float negx = step(r.x, 0.0);
+    uvw = float3(r.zy, absr.x) * float3(lerp(-1.0, 1.0, negx), -1, 1);
+    faceIndex = negx;
+  } else if (absr.y > absr.z) {
+    // y major
+    float negy = step(r.y, 0.0);
+    uvw = float3(r.xz, absr.y) * float3(1.0, lerp(1.0, -1.0, negy), 1.0);
+    faceIndex = 2.0 + negy;
+  } else {
+    // z major
+    const float negz = step(r.z, 0.0);
+    uvw = float3(r.xy, absr.z) * float3(lerp(1.0, -1.0, negz), -1, 1);
+    faceIndex = 4.0 + negz;
+  }
+  return float3((uvw.xy / uvw.z + 1) * 0.5, faceIndex);
+}
+
+// Return the closest point on the segment (with limit)
+float3 closest_point_on_segment(float3 a, float3 b, float3 c) {
+  float3 ab = b - a;
+  float t = dot(c - a, ab) / dot(ab, ab);
+  return a + saturate(t) * ab;
+}
+
+inline float sphere_volume(const float radius) { return 4.0 / 3.0 * PI * radius * radius * radius; }
 
 float2x2 inverse(float2x2 mat) {
   float2x2 m;

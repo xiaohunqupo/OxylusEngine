@@ -105,7 +105,7 @@ Texture2D<float4> GetMaterialPhysicalTexture(Material material) { return Materia
 Texture2D<float4> GetMaterialAOTexture(Material material) { return MaterialTextureMaps[material.ao_map_id]; }
 Texture2D<float4> GetMaterialEmissiveTexture(Material material) { return MaterialTextureMaps[material.emissive_map_id]; }
 
-ShaderEntity GetEntity(uint index) { return Buffers[get_scene().indices_.entites_buffer_index].Load<ShaderEntity>(index * sizeof(ShaderEntity)); }
+ShaderEntity get_entity(uint index) { return Buffers[get_scene().indices_.entites_buffer_index].Load<ShaderEntity>(index * sizeof(ShaderEntity)); }
 
 Material GetMaterial(int material_index) {
   return Buffers[get_scene().indices_.materials_buffer_index].Load<Material>(material_index * sizeof(Material));

@@ -8,9 +8,9 @@
 #include "Audio/AudioSource.hpp"
 
 #include "Render/Camera.hpp"
-#include "Render/Utils/RectPacker.hpp"
 #include "Render/Mesh.h"
 #include "Render/ParticleSystem.h"
+#include "Render/Utils/RectPacker.hpp"
 
 #include "Scripting/LuaSystem.hpp"
 
@@ -122,8 +122,10 @@ struct LightComponent {
   float intensity = 1.0f;
 
   float range = 1.0f;
-  float cut_off_angle = glm::radians(12.5f);
-  float outer_cut_off_angle = glm::radians(17.5f);
+  float radius = 0.025f;
+  float length = 0;
+  float outer_cone_angle = glm::pi<float>() / 4.0f;
+  float inner_cone_angle = 0;
 
   bool cast_shadows = true;
   uint32_t shadow_map_res = 0;
@@ -291,7 +293,8 @@ struct LuaScriptComponent {
   std::vector<Shared<LuaSystem>> lua_systems = {};
 };
 
-template <typename... Component> struct ComponentGroup {};
+template <typename... Component>
+struct ComponentGroup {};
 
 using AllComponents = ComponentGroup<TransformComponent,
                                      RelationshipComponent,

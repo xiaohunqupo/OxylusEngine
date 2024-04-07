@@ -248,7 +248,7 @@ void Mesh::load_textures(tinygltf::Model& model) {
 
     const auto ci = TextureLoadInfo{
       .path = {},
-      .preset = Preset::eRTT2D,
+      .preset = Preset::eMap2D,
       .extent = {(unsigned)img.width, (unsigned)img.height},
       .data = buffer,
       .mime = get_mime_type(img.mimeType)

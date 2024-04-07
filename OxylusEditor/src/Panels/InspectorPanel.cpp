@@ -296,7 +296,7 @@ void InspectorPanel::draw_components(Entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint32_t i = 0; i < (uint32_t)component.materials.size(); i++) {
+    for (uint i = 0; i < (uint)component.materials.size(); i++) {
       auto& material = component.materials[i];
       if (name_filter.PassFilter(material->name.c_str())) {
         ImGui::PushID(i);
@@ -325,7 +325,7 @@ void InspectorPanel::draw_components(Entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint32_t index = 0; index < (uint32_t)component.animations.size(); index++) {
+    for (uint index = 0; index < (uint)component.animations.size(); index++) {
       const auto& animation = component.animations[index];
       if (name_filter.PassFilter(animation->name.c_str())) {
         if (ImGui::TreeNodeEx(animation->name.c_str(), flags, "%s %s", StringUtils::from_char8_t(ICON_MDI_CIRCLE), animation->name.c_str())) {
@@ -463,7 +463,7 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<LightComponent>(" Light Component", context->registry, entity, [](LightComponent& component) {
     OxUI::begin_properties();
     const char* light_type_strings[] = {"Directional", "Point", "Spot"};
-    int light_type = static_cast<int>(component.type);
+    int light_type = component.type;
     if (OxUI::property("Light Type", &light_type, light_type_strings, 3))
       component.type = static_cast<LightComponent::LightType>(light_type);
 
@@ -472,40 +472,29 @@ void InspectorPanel::draw_components(Entity entity) {
     }
 
     if (component.color_temperature_mode) {
-      if (OxUI::property<uint32_t>("Temperature (K)", &component.temperature, 1000, 40000))
+      if (OxUI::property<uint>("Temperature (K)", &component.temperature, 1000, 40000))
         ColorUtils::TempratureToColor(component.temperature, component.color);
     } else {
       OxUI::property_vector("Color", component.color, true);
     }
 
-    if (OxUI::property("Intensity", &component.intensity) && component.intensity < 0.0f) {
-      component.intensity = 0.0f;
+    OxUI::property("Intensity", &component.intensity, 0.0f, 100.0f);
+
+    if (component.type != LightComponent::Directional) {
+      OxUI::property("Range", &component.range, 0.0f, 100.0f);
+      OxUI::property("Radius", &component.radius, 0.0f, 100.0f);
+      OxUI::property("Length", &component.length, 0.0f, 100.0f);
     }
 
-    ImGui::Spacing();
-
-    if (component.type == LightComponent::LightType::Point) {
-      OxUI::property("Range", &component.range);
-    } else if (component.type == LightComponent::LightType::Spot) {
-      OxUI::property("Range", &component.range);
-      float degrees = glm::degrees(component.outer_cut_off_angle);
-      if (OxUI::property("Outer Cut-Off Angle", &degrees, 1.0f, 90.0f))
-        component.outer_cut_off_angle = glm::radians(degrees);
-      degrees = glm::degrees(component.cut_off_angle);
-      if (OxUI::property("Cut-Off Angle", &degrees, 1.0f, 90.0f))
-        component.cut_off_angle = glm::radians(degrees);
-
-      if (component.range < 0.1f)
-        component.range = 0.1f;
-      if (component.outer_cut_off_angle < component.cut_off_angle)
-        component.cut_off_angle = component.outer_cut_off_angle;
-      if (component.cut_off_angle > component.outer_cut_off_angle)
-        component.outer_cut_off_angle = component.cut_off_angle;
+    if (component.type == LightComponent::Spot) {
+      OxUI::property("Outer Cone Angle", &component.outer_cone_angle, 0.0f, 100.0f);
+      OxUI::property("Inner Cone Angle", &component.inner_cone_angle, 0.0f, 100.0f);
     }
 
-    const ankerl::unordered_dense::map<uint32_t, int32_t> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
+    OxUI::property("Cast Shadows", &component.cast_shadows);
 
-    const ankerl::unordered_dense::map<int32_t, uint32_t> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
+    const ankerl::unordered_dense::map<uint, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
+    const ankerl::unordered_dense::map<int, uint> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
 
     const char* res_strings[] = {"Auto", "512", "1024", "2048"};
     int idx = res_map.at(component.shadow_map_res);
@@ -514,7 +503,7 @@ void InspectorPanel::draw_components(Entity entity) {
     }
 
     if (component.type == LightComponent::Directional) {
-      for (uint32_t i = 0; i < (uint32_t)component.cascade_distances.size(); ++i)
+      for (uint i = 0; i < (uint)component.cascade_distances.size(); ++i)
         OxUI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
     }
 
@@ -668,7 +657,7 @@ void InspectorPanel::draw_components(Entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint32_t i = 0; i < (uint32_t)component.lua_systems.size(); i++) {
+    for (uint i = 0; i < (uint)component.lua_systems.size(); i++) {
       const auto& system = component.lua_systems[i];
       auto name = FileSystem::get_file_name(system->get_path());
       if (name_filter.PassFilter(name.c_str())) {

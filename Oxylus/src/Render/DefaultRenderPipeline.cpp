@@ -53,7 +53,7 @@ void DefaultRenderPipeline::init(vuk::Allocator& allocator) {
 
   this->m_quad = RendererCommon::generate_quad();
   this->m_cube = RendererCommon::generate_cube();
-  task_scheduler->add_task([this, &allocator] { create_static_resources(); });
+  task_scheduler->add_task([this] { create_static_resources(); });
   task_scheduler->add_task([this, &allocator] { create_descriptor_sets(allocator); });
 
   task_scheduler->wait_for_all();
@@ -98,7 +98,7 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   });
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.add_hlsl(SHADER_FILE("DirectionalShadowPass.hlsl"), SS::eVertex, "VSmain");
+    bindless_pci.add_hlsl(SHADER_FILE("ShadowPass.hlsl"), SS::eVertex, "VSmain");
     TRY(allocator.get_context().create_named_pipeline("shadow_pipeline", bindless_pci))
   });
 
@@ -353,6 +353,23 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
   }
 }
 
+void DefaultRenderPipeline::create_cubemap_cameras(std::vector<DefaultRenderPipeline::CameraSH>& camera_data, const Vec3 pos, float near, float far) {
+  OX_CHECK_EQ(camera_data.size(), 6);
+  constexpr auto fov = 90.0f;
+  const auto shadowProj = glm::perspective(glm::radians(fov), 1.0f, near, far);
+
+  camera_data[0].projection_view = shadowProj * glm::lookAt(pos, pos + glm::vec3(1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0));
+  camera_data[1].projection_view = shadowProj * glm::lookAt(pos, pos + glm::vec3(-1.0, 0.0, 0.0), glm::vec3(0.0, -1.0, 0.0));
+  camera_data[2].projection_view = shadowProj * glm::lookAt(pos, pos + glm::vec3(0.0, 1.0, 0.0), glm::vec3(0.0, 0.0, 1.0));
+  camera_data[3].projection_view = shadowProj * glm::lookAt(pos, pos + glm::vec3(0.0, -1.0, 0.0), glm::vec3(0.0, 0.0, -1.0));
+  camera_data[4].projection_view = shadowProj * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, 1.0), glm::vec3(0.0, -1.0, 0.0));
+  camera_data[5].projection_view = shadowProj * glm::lookAt(pos, pos + glm::vec3(0.0, 0.0, -1.0), glm::vec3(0.0, -1.0, 0.0));
+
+  for (int i = 0; i < 6; i++) {
+    camera_data[i].frustum = Frustum::from_matrix(camera_data[i].projection_view);
+  }
+}
+
 void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   OX_SCOPED_ZONE;
   auto& ctx = allocator.get_context();
@@ -426,21 +443,55 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   const Vec2 atlas_dim_rcp = Vec2(1.0f / float(shadow_map_atlas.get_extent().width), 1.0f / float(shadow_map_atlas.get_extent().height));
 
   for (auto& lc : scene_lights) {
-    auto& light = light_datas.emplace_back(LightData{
-      .position = lc.position,
-      .intensity = lc.intensity,
-      .color = lc.color,
-      .radius = lc.range,
-      .rotation = lc.rotation,
-      .type = (uint32_t)lc.type,
-      .direction = lc.direction,
-      .cascade_count = (uint32_t)lc.cascade_distances.size(),
-    });
+    auto& light = light_datas.emplace_back();
+    light.position = lc.position;
+    light.set_range(lc.range);
+    light.set_type((uint)lc.type);
+    light.rotation = lc.rotation;
+    light.set_direction(lc.direction);
+    light.set_color(float4(lc.color * (lc.type == LightComponent::Directional ? 1.0f : lc.intensity), 1.0f));
+    light.set_radius(lc.radius);
+    light.set_length(lc.length);
 
-    light.shadow_atlas_mul_add.x = lc.shadow_rect.w * atlas_dim_rcp.x;
-    light.shadow_atlas_mul_add.y = lc.shadow_rect.h * atlas_dim_rcp.y;
-    light.shadow_atlas_mul_add.z = lc.shadow_rect.x * atlas_dim_rcp.x;
-    light.shadow_atlas_mul_add.w = lc.shadow_rect.y * atlas_dim_rcp.y;
+    bool cast_shadows = lc.cast_shadows;
+
+    if (cast_shadows) {
+      light.shadow_atlas_mul_add.x = lc.shadow_rect.w * atlas_dim_rcp.x;
+      light.shadow_atlas_mul_add.y = lc.shadow_rect.h * atlas_dim_rcp.y;
+      light.shadow_atlas_mul_add.z = lc.shadow_rect.x * atlas_dim_rcp.x;
+      light.shadow_atlas_mul_add.w = lc.shadow_rect.y * atlas_dim_rcp.y;
+    }
+
+    switch (lc.type) {
+      case LightComponent::LightType::Directional: {
+        light.set_shadow_cascade_count((uint)lc.cascade_distances.size());
+      } break;
+      case LightComponent::LightType::Point: {
+        if (cast_shadows) {
+          constexpr float far_z = 0.1f;
+          const float near_z = std::max(1.0f, lc.range);
+          const float f_range = far_z / (far_z - near_z);
+          const float cubemap_depth_remap_near = f_range;
+          const float cubemap_depth_remap_far = -f_range * near_z;
+          light.set_cube_remap_near(cubemap_depth_remap_near);
+          light.set_cube_remap_far(cubemap_depth_remap_far);
+        }
+      } break;
+      case LightComponent::LightType::Spot: {
+        const float outer_cone_angle = lc.outer_cone_angle;
+        const float inner_cone_angle = std::min(lc.inner_cone_angle, outer_cone_angle);
+        const float outer_cone_angle_cos = std::cos(outer_cone_angle);
+        const float inner_cone_angle_cos = std::cos(inner_cone_angle);
+
+        // https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
+        const float light_angle_scale = 1.0f / std::max(0.001f, inner_cone_angle_cos - outer_cone_angle_cos);
+        const float lightAngleOffset = -outer_cone_angle_cos * light_angle_scale;
+
+        light.set_cone_angle_cos(outer_cone_angle_cos);
+        light.set_angle_scale(light_angle_scale);
+        light.set_angle_offset(lightAngleOffset);
+      } break;
+    }
   }
 
   std::vector<ShaderEntity> shader_entities = {};
@@ -450,12 +501,29 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     const auto& lc = scene_lights[light_index];
 
     if (lc.cast_shadows) {
-      auto sh_cameras = std::vector<CameraSH>(light.cascade_count);
-      create_dir_light_cameras(lc, *current_camera, sh_cameras, light.cascade_count);
+      switch (lc.type) {
+        case LightComponent::Directional: {
+          auto cascade_count = (uint)lc.cascade_distances.size();
+          auto sh_cameras = std::vector<CameraSH>(cascade_count);
+          create_dir_light_cameras(lc, *current_camera, sh_cameras, cascade_count);
 
-      light.matrix_index = (uint32_t)shader_entities.size();
-      for (uint32_t cascade = 0; cascade < light.cascade_count; ++cascade) {
-        shader_entities.emplace_back(sh_cameras[cascade].projection_view);
+          light.matrix_index = (uint)shader_entities.size();
+          for (uint cascade = 0; cascade < cascade_count; ++cascade) {
+            shader_entities.emplace_back(sh_cameras[cascade].projection_view);
+          }
+          break;
+        }
+        case LightComponent::Point: {
+          break;
+        }
+        case LightComponent::Spot:
+// TODO:
+#if 0
+          auto sh_camera = create_spot_light_camera(lc, *current_camera);
+          light.matrix_index = (uint32_t)shader_entities.size();
+          shader_entities.emplace_back(sh_camera.projection_view);
+#endif
+          break;
       }
     }
   }
@@ -947,7 +1015,7 @@ void DefaultRenderPipeline::render_meshes(const RenderQueue& render_queue,
         continue;
 
       MeshInstancePointer poi;
-      poi.Create(instance_index, camera_index, 0 /*dither*/);
+      poi.create(instance_index, camera_index, 0 /*dither*/);
       std::memcpy((MeshInstancePointer*)instances + instance_count, &poi, sizeof(poi));
 
       instanced_batch.component_index = batch.component_index;
@@ -992,7 +1060,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
             for (uint32_t cascade = 0; cascade < cascade_count; ++cascade) {
               const auto frustum = sh_cameras[cascade].frustum;
               const auto aabb = mesh_component_list[batch.component_index].aabb;
-              if (cascade < cascade_count && true /* aabb.is_on_frustum(frustum) */) {
+              if (cascade < cascade_count && aabb.is_on_frustum(frustum)) {
                 camera_mask |= 1 << cascade;
               }
             }
@@ -1036,6 +1104,69 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
           break;
         }
         case LightComponent::Point: {
+          Sphere bounding_sphere(light.position, light.range);
+
+          auto sh_cameras = std::vector<CameraSH>(6);
+          create_cubemap_cameras(sh_cameras, light.position, std::max(1.0f, light.range), 0.1f); // reversed z
+
+          auto viewports = std::vector<vuk::Viewport>(6);
+
+          uint32_t camera_count = 0;
+          for (uint32_t shcam = 0; shcam < (uint32_t)sh_cameras.size(); ++shcam) {
+            // cube map frustum vs main camera frustum
+            if (current_camera->get_frustum().intersects(sh_cameras[shcam].frustum)) {
+              camera_cb.camera_data[camera_count] = {};
+              camera_cb.camera_data[camera_count].projection_view = sh_cameras[shcam].projection_view;
+              camera_cb.camera_data[camera_count].output_index = shcam;
+              camera_count++;
+            }
+          }
+
+          RenderQueue shadow_queue = {};
+          uint32_t batch_index = 0;
+          for (auto& batch : render_queue.batches) {
+            const auto aabb = mesh_component_list[batch.component_index].aabb;
+            if (!bounding_sphere.intersects(aabb))
+              continue;
+
+            uint16_t camera_mask = 0;
+            for (uint32_t camera_index = 0; camera_index < camera_count; ++camera_index) {
+              const auto frustum = sh_cameras[camera_index].frustum;
+              if (aabb.is_on_frustum(frustum)) {
+                camera_mask |= 1 << camera_index;
+              }
+            }
+
+            if (camera_mask == 0) {
+              continue;
+            }
+
+            auto& b = shadow_queue.add(batch);
+            b.instance_index = batch_index;
+            b.camera_mask = camera_mask;
+
+            batch_index++;
+          }
+
+          if (!shadow_queue.empty()) {
+            for (uint32_t shcam = 0; shcam < (uint32_t)sh_cameras.size(); ++shcam) {
+              viewports[shcam].x = float(light.shadow_rect.x + shcam * light.shadow_rect.w);
+              viewports[shcam].y = float(light.shadow_rect.y);
+              viewports[shcam].width = float(light.shadow_rect.w);
+              viewports[shcam].height = float(light.shadow_rect.h);
+              viewports[shcam].minDepth = 0.0f;
+              viewports[shcam].maxDepth = 1.0f;
+
+              command_buffer.set_scissor(shcam, vuk::Rect2D::framebuffer());
+              command_buffer.set_viewport(shcam, viewports[shcam]);
+            }
+
+            bind_camera_buffer(command_buffer);
+
+            shadow_queue.sort_opaque();
+
+            render_meshes(shadow_queue, command_buffer, FILTER_TRANSPARENT, RENDER_FLAGS_SHADOWS_PASS, camera_count);
+          }
           break;
         }
         case LightComponent::Spot: {
@@ -1138,7 +1269,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::forward_pass(const vuk::
       .set_viewport(0, vuk::Rect2D::framebuffer())
       .set_scissor(0, vuk::Rect2D::framebuffer())
       .broadcast_color_blend({})
-      .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
+      .set_depth_stencil({
         .depthTestEnable = true,
         .depthWriteEnable = false,
         .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
@@ -1545,24 +1676,11 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_multiscatter_pass(vu
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Value<vuk::ImageAttachment>& envmap_image) {
   auto pass = vuk::make_pass("sky_envmap_pass", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorRW) envmap) {
-    const auto capture_projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 90.0f);
-    const Mat4 capture_views[] = {
-      // POSITIVE_X
-      rotate(rotate(Mat4(1.0f), glm::radians(90.0f), Vec3(0.0f, 1.0f, 0.0f)), glm::radians(180.0f), Vec3(1.0f, 0.0f, 0.0f)),
-      // NEGATIVE_X
-      rotate(rotate(Mat4(1.0f), glm::radians(-90.0f), Vec3(0.0f, 1.0f, 0.0f)), glm::radians(180.0f), Vec3(1.0f, 0.0f, 0.0f)),
-      // POSITIVE_Y
-      rotate(Mat4(1.0f), glm::radians(-90.0f), Vec3(1.0f, 0.0f, 0.0f)),
-      // NEGATIVE_Y
-      rotate(Mat4(1.0f), glm::radians(90.0f), Vec3(1.0f, 0.0f, 0.0f)),
-      // POSITIVE_Z
-      rotate(Mat4(1.0f), glm::radians(180.0f), Vec3(1.0f, 0.0f, 0.0f)),
-      // NEGATIVE_Z
-      rotate(Mat4(1.0f), glm::radians(180.0f), Vec3(0.0f, 0.0f, 1.0f)),
-    };
+    auto sh_cameras = std::vector<CameraSH>(6);
+    create_cubemap_cameras(sh_cameras);
 
     for (int i = 0; i < 6; i++)
-      camera_cb.camera_data[i].projection_view = capture_projection * capture_views[i];
+      camera_cb.camera_data[i].projection_view = sh_cameras[i].projection_view;
 
     bind_camera_buffer(command_buffer);
 

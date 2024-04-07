@@ -11,8 +11,8 @@
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 
-#include "Utils/Archive.hpp"
 #include "Entity.hpp"
+#include "Utils/Archive.hpp"
 
 #include "Utils/Log.hpp"
 
@@ -91,8 +91,10 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
       TBL_FIELD_ARR(light, color),
       TBL_FIELD(light, intensity),
       TBL_FIELD(light, range),
-      TBL_FIELD(light, cut_off_angle),
-      TBL_FIELD(light, outer_cut_off_angle),
+      TBL_FIELD(light, radius),
+      TBL_FIELD(light, length),
+      TBL_FIELD(light, outer_cone_angle),
+      TBL_FIELD(light, inner_cone_angle),
       TBL_FIELD(light, cast_shadows),
       TBL_FIELD(light, shadow_map_res),
     };
@@ -317,8 +319,10 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       lc.color = get_vec3_toml_array(GET_ARRAY(light_node, "color"));
       GET_FLOAT(light_node, lc, intensity);
       GET_FLOAT(light_node, lc, range);
-      GET_FLOAT(light_node, lc, cut_off_angle);
-      GET_FLOAT(light_node, lc, outer_cut_off_angle);
+      GET_FLOAT(light_node, lc, radius);
+      GET_FLOAT(light_node, lc, length);
+      GET_FLOAT(light_node, lc, outer_cone_angle);
+      GET_FLOAT(light_node, lc, inner_cone_angle);
       GET_BOOL(light_node, lc, cast_shadows);
       GET_UINT32(light_node, lc, shadow_map_res);
     } else if (const auto pp_node = ent.as_table()->get("post_process_probe")) {

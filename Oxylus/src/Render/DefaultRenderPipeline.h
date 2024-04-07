@@ -1,5 +1,9 @@
 ﻿#pragma once
 
+#include <glm/ext/scalar_constants.hpp>
+#include <glm/fwd.hpp>
+#include <glm/gtc/packing.inl>
+
 #include "Passes/FSR.hpp"
 #include "RenderPipeline.h"
 #include "RendererConfig.h"
@@ -43,16 +47,12 @@ private:
   struct MeshInstancePointer {
     uint32_t data;
 
-    void init() { data = 0; }
-    void Create(uint32_t instance_index, uint32_t camera_index = 0, float dither = 0) {
+    void create(uint32_t instance_index, uint32_t camera_index = 0, float dither = 0) {
       data = 0;
       data |= instance_index & 0xFFFFFF;
       data |= (camera_index & 0xF) << 24u;
       data |= (uint32_t(dither * 15.0f) & 0xF) << 28u;
     }
-    uint32_t GetInstanceIndex() { return data & 0xFFFFFF; }
-    uint32_t GetCameraIndex() { return (data >> 24u) & 0xF; }
-    float GetDither() { return float((data >> 28u) & 0xF) / 15.0f; }
   };
 
   struct ShaderEntity {
@@ -80,17 +80,47 @@ private:
   static constexpr auto GTAO_BUFFER_IMAGE_INDEX = 4;
 
   struct LightData {
-    Vec3 position;
-    float intensity;
-    Vec3 color;
-    float radius;
-    Vec3 rotation;
-    uint32_t type;
-    Vec3 direction;
-    uint32_t cascade_count;
-    Vec4 shadow_atlas_mul_add;
-    Vec3 _pad;
-    uint32_t matrix_index;
+    float3 position;
+    float _pad0;
+
+    float3 rotation;
+    uint type8_flags8_range16;
+
+    uint2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
+    uint2 color;                      // half4 packed
+
+    float4 shadow_atlas_mul_add;
+
+    uint radius16_length16;
+    uint matrix_index;
+    uint remap;
+    uint _pad1;
+
+    void set_type(uint type) { type8_flags8_range16 |= type & 0xFF; }
+    void set_flags(uint flags) { type8_flags8_range16 |= (flags & 0xFF) << 8u; }
+    void set_range(float value) { type8_flags8_range16 |= glm::packHalf1x16(value) << 16u; }
+    void set_radius(float value) { radius16_length16 |= glm::packHalf1x16(value); }
+    void set_length(float value) { radius16_length16 |= glm::packHalf1x16(value) << 16u; }
+    void set_color(float4 value) {
+      color.x |= glm::packHalf1x16(value.x);
+      color.x |= glm::packHalf1x16(value.y) << 16u;
+      color.y |= glm::packHalf1x16(value.z);
+      color.y |= glm::packHalf1x16(value.w) << 16u;
+    }
+    void set_direction(float3 value) {
+      direction16_cone_angle_cos16.x |= glm::packHalf1x16(value.x);
+      direction16_cone_angle_cos16.x |= glm::packHalf1x16(value.y) << 16u;
+      direction16_cone_angle_cos16.y |= glm::packHalf1x16(value.z);
+    }
+    void set_cone_angle_cos(float value) { direction16_cone_angle_cos16.y |= glm::packHalf1x16(value) << 16u; }
+    void set_shadow_cascade_count(uint value) { direction16_cone_angle_cos16.y |= (value & 0xFFFF) << 16u; }
+    void set_angle_scale(float value) { remap |= glm::packHalf1x16(value); }
+    void set_angle_offset(float value) { remap |= glm::packHalf1x16(value) << 16u; }
+    void set_cube_remap_near(float value) { remap |= glm::packHalf1x16(value); }
+    void set_cube_remap_far(float value) { remap |= glm::packHalf1x16(value) << 16u; }
+    void set_indices(uint indices) { matrix_index = indices; }
+    void set_gravity(float value) { set_cone_angle_cos(value); }
+    void SetColliderTip(float3 value) { shadow_atlas_mul_add = float4(value.x, value.y, value.z, 0); }
   };
 
   std::vector<LightData> light_datas;
@@ -216,7 +246,7 @@ private:
   GTAOConstants gtao_constants = {};
   GTAOSettings gtao_settings = {};
 
-   FSR fsr = {};
+  FSR fsr = {};
 
   // PBR Resources
   Shared<Texture> cube_map = nullptr;
@@ -357,6 +387,7 @@ private:
   void bind_camera_buffer(vuk::CommandBuffer& command_buffer);
   CameraData get_main_camera_data() const;
   void create_dir_light_cameras(const LightComponent& light, Camera& camera, std::vector<CameraSH>& camera_data, uint32_t cascade_count);
+  void create_cubemap_cameras(std::vector<CameraSH>& camera_data, Vec3 pos = {}, float near = 0.1f, float far = 90.0f);
   void update_frame_data(vuk::Allocator& allocator);
   void create_static_resources();
   void create_dynamic_textures(const vuk::Extent3D& ext);
