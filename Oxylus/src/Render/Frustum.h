@@ -9,10 +9,14 @@ struct Plane {
   Plane() = default;
   Plane(Vec3 norm) : normal(normalize(norm)) {}
 
-  Plane(const Vec3& p1, const Vec3& norm) : normal(normalize(norm)),
-                                            distance(dot(normal, p1)) {}
+  Plane(const Vec3& p1, const Vec3& norm) : normal(normalize(norm)), distance(dot(normal, p1)) {}
 
   float get_distance(const Vec3& point) const { return dot(normal, point) - distance; }
+
+  bool intersect(const Plane other) const {
+    const auto d = glm::cross(normal, other.normal);
+    return (glm::dot(d, d) > glm::epsilon<float>()); // EPSILON = 0.0001f
+  }
 };
 
 struct Frustum {
@@ -46,6 +50,15 @@ struct Frustum {
     return true;
   }
 
+  bool intersects(const Frustum& other) const {
+    if (top_face.intersect(other.top_face) || bottom_face.intersect(other.bottom_face) || right_face.intersect(other.right_face) ||
+        left_face.intersect(other.left_face) || far_face.intersect(other.far_face) || near_face.intersect(other.near_face)) {
+      return true;
+    }
+
+    return false;
+  }
+
   static Frustum from_matrix(const Mat4& view_projection) {
     Frustum frustum = {};
 
@@ -71,4 +84,4 @@ struct Frustum {
     return frustum;
   }
 };
-}
+} // namespace ox
