@@ -728,11 +728,11 @@ void DefaultRenderPipeline::create_descriptor_sets(vuk::Allocator& allocator) {
 }
 
 void DefaultRenderPipeline::run_static_passes(vuk::Allocator& allocator) {
-  vuk::Compiler compiler{};
+  auto* compiler = get_compiler();
 
   auto transmittance_fut = sky_transmittance_pass();
   auto multiscatter_fut = sky_multiscatter_pass(transmittance_fut);
-  multiscatter_fut.wait(allocator, compiler);
+  multiscatter_fut.wait(allocator, *compiler);
 
   ran_static_passes = true;
 }
@@ -1635,16 +1635,16 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::apply_grid(vuk::Value<vu
 
 void DefaultRenderPipeline::generate_prefilter(vuk::Allocator& allocator) {
   OX_SCOPED_ZONE;
-  vuk::Compiler compiler{};
+  auto* compiler = get_compiler();
 
   auto brdf_img = Prefilter::generate_brdflut();
-  brdf_texture = *brdf_img.get(allocator, compiler);
+  brdf_texture = *brdf_img.get(allocator, *compiler);
 
   auto irradiance_img = Prefilter::generate_irradiance_cube(m_cube, cube_map);
-  irradiance_texture = *irradiance_img.get(allocator, compiler);
+  irradiance_texture = *irradiance_img.get(allocator, *compiler);
 
   auto prefilter_img = Prefilter::generate_prefiltered_cube(m_cube, cube_map);
-  prefiltered_texture = *prefilter_img.get(allocator, compiler);
+  prefiltered_texture = *prefilter_img.get(allocator, *compiler);
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_transmittance_pass() {

@@ -67,6 +67,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
   renderer_context.viewport_offset = rp->get_viewport_offset();
 
   rp->set_frame_allocator(&frame_allocator);
+  rp->set_compiler(renderer_context.compiler.get());
 
   if (rp->is_swapchain_attached()) {
     vuk::Value<vuk::ImageAttachment> result = rp->on_render(frame_allocator, cleared_image, extent);
@@ -78,7 +79,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
       system->imgui_update();
     imgui_layer->end();
 
-    result = imgui_layer->render_draw_data(frame_allocator, result);
+    result = imgui_layer->render_draw_data(frame_allocator, *renderer_context.compiler, result);
 
     auto entire_thing = vuk::enqueue_presentation(std::move(result));
     entire_thing.submit(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
@@ -99,7 +100,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
       system->imgui_update();
     imgui_layer->end();
 
-    vuk::Value<vuk::ImageAttachment> result = imgui_layer->render_draw_data(frame_allocator, cleared_image);
+    vuk::Value<vuk::ImageAttachment> result = imgui_layer->render_draw_data(frame_allocator, *renderer_context.compiler, cleared_image);
 
     auto entire_thing = vuk::enqueue_presentation(std::move(result));
     entire_thing.submit(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});

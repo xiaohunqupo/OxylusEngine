@@ -47,7 +47,9 @@ public:
   void begin();
   void end();
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> render_draw_data(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target) const;
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> render_draw_data(vuk::Allocator& allocator,
+                                                                  vuk::Compiler& compiler,
+                                                                  vuk::Value<vuk::ImageAttachment> target) const;
 
   ImGuiImage* add_image(const vuk::ImageView& view);
   ImGuiImage* add_attachment(const vuk::Value<vuk::ImageAttachment>& attach);

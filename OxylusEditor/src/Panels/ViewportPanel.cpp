@@ -290,12 +290,12 @@ void ViewportPanel::on_imgui_render() {
     vuk::Value<vuk::ImageAttachment>* final_image = rp->get_final_image();
 
     auto* frame_allocator = rp->get_frame_allocator();
-    vuk::Compiler compiler = {};
+    auto* compiler = rp->get_compiler();
 
     if (final_image) {
       auto outline = outline_pass(*frame_allocator, extent, *final_image);
       if (!context->is_running()) {
-        mouse_picking_pass(*frame_allocator, compiler, extent);
+        mouse_picking_pass(*frame_allocator, *compiler, extent);
         final_image = &outline;
       }
 

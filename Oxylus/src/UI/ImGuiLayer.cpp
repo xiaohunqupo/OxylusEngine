@@ -141,7 +141,9 @@ void ImGuiLayer::begin() {
   sampled_attachments.clear();
 }
 
-vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target) const {
+vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& allocator,
+                                                              vuk::Compiler& compiler,
+                                                              vuk::Value<vuk::ImageAttachment> target) const {
   OX_SCOPED_ZONE;
   auto reset_render_state = [this](const ImGuiData& data, vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
     command_buffer.bind_image(0, 0, *data.font_texture->get_view()).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
@@ -168,7 +170,6 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
   auto imind = *allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, index_size, 1});
 
   size_t vtx_dst = 0, idx_dst = 0;
-  vuk::Compiler comp;
   for (int n = 0; n < draw_data->CmdListsCount; n++) {
     const ImDrawList* cmd_list = draw_data->CmdLists[n];
     const auto imverto = imvert->add_offset(vtx_dst * sizeof(ImDrawVert));
@@ -176,9 +177,9 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
 
     // TODO:
     vuk::host_data_to_buffer(allocator, vuk::DomainFlagBits{}, imverto, std::span(cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size))
-      .wait(allocator, comp);
+      .wait(allocator, compiler);
     vuk::host_data_to_buffer(allocator, vuk::DomainFlagBits{}, imindo, std::span(cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size))
-      .wait(allocator, comp);
+      .wait(allocator, compiler);
     vtx_dst += cmd_list->VtxBuffer.Size;
     idx_dst += cmd_list->IdxBuffer.Size;
   }

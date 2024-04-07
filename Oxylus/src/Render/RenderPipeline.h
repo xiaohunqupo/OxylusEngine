@@ -44,6 +44,9 @@ public:
   virtual vuk::Allocator* get_frame_allocator() { return _frame_allocator; }
   virtual void set_frame_allocator(vuk::Allocator* allocator) { _frame_allocator = allocator; }
 
+  virtual void set_compiler(vuk::Compiler* compiler) { _compiler = compiler; }
+  virtual vuk::Compiler* get_compiler() { return _compiler; }
+
   virtual const std::string& get_name() { return _name; }
   virtual vuk::Extent3D get_extent() { return _extent; }
   virtual Vec2 get_viewport_offset() { return viewport_offset; }
@@ -55,7 +58,7 @@ protected:
   Vec2 viewport_offset = {};
   vuk::Value<vuk::ImageAttachment>* final_image = nullptr;
   vuk::Allocator* _frame_allocator;
-  vuk::Compiler* compiler = nullptr;
+  vuk::Compiler* _compiler = nullptr;
   std::mutex setup_lock;
 };
 } // namespace ox
