@@ -11,11 +11,11 @@
 #include "Utils/ColorUtils.hpp"
 
 #include "Core/FileSystem.hpp"
+#include "EditorLayer.hpp"
 #include "Scene/Entity.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
-#include "EditorLayer.hpp"
 
 #include "Render/SceneRendererEvents.h"
 
@@ -154,8 +154,10 @@ static void draw_particle_over_lifetime_module(const std::string_view module_nam
 }
 
 template <typename T>
-static void
-draw_particle_by_speed_module(const std::string_view module_name, BySpeedModule<T>& property_module, bool color = false, bool rotation = false) {
+static void draw_particle_by_speed_module(const std::string_view module_name,
+                                          BySpeedModule<T>& property_module,
+                                          bool color = false,
+                                          bool rotation = false) {
   static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
                                                    ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
 
@@ -183,7 +185,8 @@ draw_particle_by_speed_module(const std::string_view module_name, BySpeedModule<
   }
 }
 
-template <typename Component> void InspectorPanel::draw_add_component(entt::registry& reg, Entity entity, const char* name) {
+template <typename Component>
+void InspectorPanel::draw_add_component(entt::registry& reg, Entity entity, const char* name) {
   if (ImGui::MenuItem(name)) {
     if (!reg.all_of<Component>(entity))
       reg.emplace<Component>(entity);
@@ -367,8 +370,8 @@ void InspectorPanel::draw_components(Entity entity) {
 
   draw_component<AudioSourceComponent>(" Audio Source Component", context->registry, entity, [&entity, this](AudioSourceComponent& component) {
     auto& config = component.config;
-    const std::string filepath =
-      component.source ? component.source->get_path() : fmt::format("{} Drop an audio file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
+    const std::string filepath = component.source ? component.source->get_path()
+                                                  : fmt::format("{} Drop an audio file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
 
     auto load_file = [](const std::filesystem::path& path, AudioSourceComponent& comp) {
       if (const std::string ext = path.extension().string(); ext == ".mp3" || ext == ".wav" || ext == ".flac")
@@ -510,8 +513,10 @@ void InspectorPanel::draw_components(Entity entity) {
       component.shadow_map_res = id_map.at(idx);
     }
 
-    for (uint32_t i = 0; i < (uint32_t)component.cascade_distances.size(); ++i)
-      OxUI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
+    if (component.type == LightComponent::Directional) {
+      for (uint32_t i = 0; i < (uint32_t)component.cascade_distances.size(); ++i)
+        OxUI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
+    }
 
     OxUI::end_properties();
   });

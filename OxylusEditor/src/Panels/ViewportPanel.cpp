@@ -48,10 +48,10 @@ ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true)
   });
 
   task_scheduler->add_task([&superframe_allocator] {
-    vuk::PipelineBaseCreateInfo pci;
-    pci.add_glsl(FileSystem::read_shader_file("Editor/Editor_IDPass.vert"), "Editor_IDPass.vert");
-    pci.add_glsl(FileSystem::read_shader_file("Editor/Editor_IDPass.frag"), "Editor_IDPass.frag");
-    superframe_allocator->get_context().create_named_pipeline("id_pipeline", pci);
+    vuk::PipelineBaseCreateInfo pci_stencil;
+    pci_stencil.add_glsl(FileSystem::read_shader_file("Editor/Editor_StencilPass.vert"), "Editor_StencilPass.vert");
+    pci_stencil.add_glsl(FileSystem::read_shader_file("Editor/Editor_StencilPass.frag"), "Editor_StencilPass.frag");
+    superframe_allocator->get_context().create_named_pipeline("stencil_pipeline", pci_stencil);
   });
 
   task_scheduler->add_task([&superframe_allocator] {
