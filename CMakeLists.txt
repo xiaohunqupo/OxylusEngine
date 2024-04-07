@@ -35,6 +35,8 @@ endif ()
 # GIT_SUBMODULE "" policy
 cmake_policy(SET CMP0097 NEW)
 
+set(CMAKE_WARN_DEPRECATED OFF CACHE BOOL "")
+
 # Sub-projects
 add_subdirectory(Oxylus)
 add_subdirectory(OxylusEditor)
