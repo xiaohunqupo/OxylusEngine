@@ -81,7 +81,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
     result = imgui_layer->render_draw_data(frame_allocator, result);
 
     auto entire_thing = vuk::enqueue_presentation(std::move(result));
-    entire_thing.wait(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
+    entire_thing.submit(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
   } else {
     auto att = vuk::ImageAttachment::from_preset(Preset::eRTT2DUnmipped,
                                                  vkctx->swapchain->images[vkctx->current_frame].format,
@@ -102,7 +102,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
     vuk::Value<vuk::ImageAttachment> result = imgui_layer->render_draw_data(frame_allocator, cleared_image);
 
     auto entire_thing = vuk::enqueue_presentation(std::move(result));
-    entire_thing.wait(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
+    entire_thing.submit(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
   }
 
   vkctx->current_frame = (vkctx->current_frame + 1) % vkctx->num_inflight_frames;

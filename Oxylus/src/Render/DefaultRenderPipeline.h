@@ -233,7 +233,6 @@ private:
   Texture normal_texture;
   Texture depth_texture;
   Texture velocity_texture;
-  Texture bloom_texture;
 
   Texture sky_transmittance_lut;
   Texture sky_multiscatter_lut;

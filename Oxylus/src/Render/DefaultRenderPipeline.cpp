@@ -562,7 +562,6 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   descriptor_set_00->update_sampled_image(2, SHADOW_ATLAS_INDEX, *shadow_map_atlas.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(2, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(2, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, BLOOM_IMAGE_INDEX, *bloom_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(2, VELOCITY_IMAGE_INDEX, *velocity_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
   // scene uint texture array
@@ -609,8 +608,6 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
     depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
   if (velocity_texture.get_extent() != ext)
     velocity_texture.create_texture(ext, vuk::Format::eR16G16Sfloat, Preset::eRTT2DUnmipped);
-  if (bloom_texture.get_extent() != ext)
-    bloom_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2D);
 
   // Shadow atlas packing:
   {
@@ -837,25 +834,30 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                      sky_envmap_output,
                                      gtao_output);
 
-  constexpr uint32_t bloom_mip_count = 8;
+  auto bloom_output = vuk::declare_ia("bloom_output", vuk::dummy_attachment);
+  if (RendererCVar::cvar_bloom_enable.get()) {
+    constexpr uint32_t bloom_mip_count = 8;
 
-  auto bloom_ia = vuk::ImageAttachment{.format = vuk::Format::eR32G32B32A32Sfloat,
-                                       .sample_count = vuk::SampleCountFlagBits::e1,
-                                       .level_count = bloom_mip_count,
-                                       .layer_count = 1};
-  auto bloom_down_image = vuk::clear_image(vuk::declare_ia("bloom_down_image", bloom_ia), vuk::Black<float>);
-  bloom_down_image.same_extent_as(target);
+    auto bloom_ia = vuk::ImageAttachment{
+      .format = vuk::Format::eR32G32B32A32Sfloat,
+      .sample_count = vuk::SampleCountFlagBits::e1,
+      .level_count = bloom_mip_count,
+      .layer_count = 1,
+    };
+    auto bloom_down_image = vuk::clear_image(vuk::declare_ia("bloom_down_image", bloom_ia), vuk::Black<float>);
+    bloom_down_image.same_extent_as(target);
 
-  auto bloom_up_ia = vuk::ImageAttachment{.format = vuk::Format::eR32G32B32A32Sfloat,
-                                          .sample_count = vuk::SampleCountFlagBits::e1,
-                                          .level_count = bloom_mip_count - 1,
-                                          .layer_count = 1};
-  auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_up_ia), vuk::Black<float>);
-  bloom_up_image.same_extent_as(target);
+    auto bloom_up_ia = vuk::ImageAttachment{
+      .format = vuk::Format::eR32G32B32A32Sfloat,
+      .sample_count = vuk::SampleCountFlagBits::e1,
+      .level_count = bloom_mip_count - 1,
+      .layer_count = 1,
+    };
+    auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_up_ia), vuk::Black<float>);
+    bloom_up_image.same_extent_as(target);
 
-  auto bloom_output = vuk::clear_image(vuk::declare_ia("bloom_image", bloom_texture.as_attachment()), vuk::Black<float>);
-  if (RendererCVar::cvar_bloom_enable.get())
     bloom_output = bloom_pass(bloom_down_image, bloom_up_image, forward_output);
+  }
 
   auto fxaa_ia = vuk::ImageAttachment::from_preset(Preset::eGeneric2D, vuk::Format::eR32G32B32A32Sfloat, {}, vuk::Samples::e1);
   auto fxaa_image = vuk::clear_image(vuk::declare_ia("fxaa_image", fxaa_ia), vuk::Black<float>);
@@ -1375,7 +1377,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
   });
 
   auto prefiltered_image = prefilter(downsample_image.mip(0), input);
-  auto src_mip = prefiltered_image;
+  auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+  auto prefiltered_downsample_image = converge(downsample_image);
+  auto src_mip = prefiltered_downsample_image.mip(0);
 
   for (uint32_t i = 1; i < bloom_mip_count; i++) {
     auto pass = vuk::make_pass("bloom_downsample",
@@ -1391,16 +1395,14 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
       return target;
     });
 
-    src_mip = pass(downsample_image.mip(i), src_mip);
+    src_mip = pass(prefiltered_downsample_image.mip(i), src_mip);
   }
 
   // Upsampling
   // https://www.froyok.fr/blog/2021-12-ue4-custom-bloom/resources/code/bloom_down_up_demo.jpg
 
-  auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
-
-  auto downsampled_image = converge(downsample_image);
-  auto upsample_src_mip = src_mip;
+  auto downsampled_image = converge(prefiltered_downsample_image);
+  auto upsample_src_mip = downsampled_image.mip(bloom_mip_count - 1);
 
   for (int32_t i = (int32_t)bloom_mip_count - 2; i >= 0; i--) {
     auto pass = vuk::make_pass("bloom_upsample",
@@ -1698,9 +1700,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
     return envmap;
   });
 
-  auto envmap_output = pass(envmap_image.mip(0));
-
-  return vuk::generate_mips(envmap_output, envmap_image->level_count);
+  auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+  return vuk::generate_mips(converge(envmap_image), envmap_image->level_count);
 }
 
 #if 0 // UNUSED

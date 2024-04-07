@@ -9,7 +9,7 @@
 #include "Utils/Log.hpp"
 
 namespace vuk {
-vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment>& image, uint32_t mip_count) {
+vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment> image, uint32_t mip_count) {
   auto ia = image.mip(0);
 
   for (uint32_t mip_level = 1; mip_level < mip_count; mip_level++) {
@@ -37,7 +37,7 @@ vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment>&
       return dst;
     });
 
-    ia = pass(ia, image.mip(mip_level));
+    ia = pass(std::move(ia), image.mip(mip_level));
   }
 
   return image;

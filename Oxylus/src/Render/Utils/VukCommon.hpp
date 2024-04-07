@@ -1,22 +1,19 @@
 ﻿#pragma once
 
-#include <vector>
 #include <span>
-#include <vuk/Image.hpp>
+#include <vector>
 #include <vuk/Future.hpp>
+#include <vuk/Image.hpp>
 
 namespace vuk {
-struct Resource;
-struct ImageAttachment;
 inline SamplerCreateInfo NearestSamplerClamped = {
   .magFilter = Filter::eNearest,
   .minFilter = Filter::eNearest,
   .mipmapMode = SamplerMipmapMode::eNearest,
   .addressModeU = SamplerAddressMode::eClampToEdge,
   .addressModeV = SamplerAddressMode::eClampToEdge,
-  .addressModeW = SamplerAddressMode::eClampToEdge
+  .addressModeW = SamplerAddressMode::eClampToEdge,
 };
-
 
 inline SamplerCreateInfo NearestSamplerRepeated = {
   .magFilter = Filter::eNearest,
@@ -24,7 +21,7 @@ inline SamplerCreateInfo NearestSamplerRepeated = {
   .mipmapMode = SamplerMipmapMode::eNearest,
   .addressModeU = SamplerAddressMode::eRepeat,
   .addressModeV = SamplerAddressMode::eRepeat,
-  .addressModeW = SamplerAddressMode::eRepeat
+  .addressModeW = SamplerAddressMode::eRepeat,
 };
 
 inline SamplerCreateInfo NearestMagLinearMinSamplerClamped = {
@@ -33,7 +30,7 @@ inline SamplerCreateInfo NearestMagLinearMinSamplerClamped = {
   .mipmapMode = SamplerMipmapMode::eNearest,
   .addressModeU = SamplerAddressMode::eClampToEdge,
   .addressModeV = SamplerAddressMode::eClampToEdge,
-  .addressModeW = SamplerAddressMode::eClampToEdge
+  .addressModeW = SamplerAddressMode::eClampToEdge,
 };
 
 inline SamplerCreateInfo LinearMipmapNearestSamplerClamped = {
@@ -42,7 +39,7 @@ inline SamplerCreateInfo LinearMipmapNearestSamplerClamped = {
   .mipmapMode = SamplerMipmapMode::eLinear,
   .addressModeU = SamplerAddressMode::eClampToEdge,
   .addressModeV = SamplerAddressMode::eClampToEdge,
-  .addressModeW = SamplerAddressMode::eClampToEdge
+  .addressModeW = SamplerAddressMode::eClampToEdge,
 };
 
 inline SamplerCreateInfo LinearSamplerRepeated = {
@@ -62,7 +59,7 @@ inline SamplerCreateInfo LinearSamplerRepeatedAnisotropy = {
   .addressModeV = SamplerAddressMode::eRepeat,
   .addressModeW = SamplerAddressMode::eRepeat,
   .anisotropyEnable = true,
-  .maxAnisotropy = 16.0f
+  .maxAnisotropy = 16.0f,
 };
 
 inline SamplerCreateInfo LinearSamplerClamped = {
@@ -72,7 +69,7 @@ inline SamplerCreateInfo LinearSamplerClamped = {
   .addressModeU = SamplerAddressMode::eClampToEdge,
   .addressModeV = SamplerAddressMode::eClampToEdge,
   .addressModeW = SamplerAddressMode::eClampToEdge,
-  .borderColor = BorderColor::eFloatOpaqueWhite
+  .borderColor = BorderColor::eFloatOpaqueWhite,
 };
 
 inline SamplerCreateInfo CmpDepthSampler = {
@@ -88,10 +85,19 @@ inline SamplerCreateInfo CmpDepthSampler = {
   .maxLod = 0.0f,
 };
 
+inline vuk::ImageAttachment dummy_attachment = {
+  .extent = {1, 1, 1},
+  .format = vuk::Format::eR8G8B8A8Unorm,
+  .sample_count = vuk::SampleCountFlagBits::e1,
+  .layout = vuk::ImageLayout::eReadOnlyOptimal,
+  .level_count = 1,
+  .layer_count = 1,
+};
+
 template <class T>
 std::pair<Unique<Buffer>, Value<Buffer>> create_cpu_buffer(Allocator& allocator, std::span<T> data) {
   return create_buffer(allocator, MemoryUsage::eCPUtoGPU, DomainFlagBits::eTransferOnGraphics, data);
 }
 
-vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment>& image, uint32_t mip_count);
-}
+vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment> image, uint32_t mip_count);
+} // namespace vuk
