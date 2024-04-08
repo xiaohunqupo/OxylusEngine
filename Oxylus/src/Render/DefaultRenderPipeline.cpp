@@ -435,9 +435,6 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   auto [matBuff, matBufferFut] = create_cpu_buffer(allocator, std::span(material_parameters));
   auto& mat_buffer = *matBuff;
 
-  if (scene_lights.empty())
-    scene_lights.emplace_back();
-
   light_datas.reserve(scene_lights.size());
 
   const Vec2 atlas_dim_rcp = Vec2(1.0f / float(shadow_map_atlas.get_extent().width), 1.0f / float(shadow_map_atlas.get_extent().height));
@@ -533,6 +530,9 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
   auto [seBuff, seFut] = create_cpu_buffer(allocator, std::span(shader_entities));
   const auto& shader_entities_buffer = *seBuff;
+
+  if (light_datas.empty())
+    light_datas.emplace_back();
 
   auto [lights_buff, lights_buff_fut] = create_cpu_buffer(allocator, std::span(light_datas));
   const auto& lights_buffer = *lights_buff;
@@ -808,8 +808,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   }
 
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
-  if (dir_light_data && dir_light_data->cast_shadows)
-    shadow_map = shadow_pass(shadow_map);
+  shadow_map = shadow_pass(shadow_map);
 
   auto normal_image = vuk::clear_image(vuk::declare_ia("normal_image", normal_texture.as_attachment()), vuk::Black<float>);
 
@@ -1048,6 +1047,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
 
     const auto max_viewport_count = VkContext::get()->get_max_viewport_count();
     for (auto& light : scene_lights) {
+      if (!light.cast_shadows)
+        continue;
+
       switch (light.type) {
         case LightComponent::Directional: {
           const uint32_t cascade_count = std::min((uint32_t)light.cascade_distances.size(), max_viewport_count);
