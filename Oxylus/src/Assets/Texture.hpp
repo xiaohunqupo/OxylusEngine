@@ -23,9 +23,8 @@ struct TextureLoadInfo {
 class Texture : public Asset {
 public:
   Texture() = default;
-  explicit Texture(const std::string& file_path);
-  explicit Texture(const TextureLoadInfo& info);
-  ~Texture();
+  explicit Texture(const TextureLoadInfo& info, std::source_location loc = std::source_location::current());
+  ~Texture() = default;
 
   void create_texture(vuk::Extent3D extent,
                       vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
@@ -35,7 +34,7 @@ public:
   void create_texture(vuk::Extent3D extent,
                       const void* data,
                       vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
-                      Preset preset = Preset::eRTT2D,
+                      Preset preset = Preset::eMap2D,
                       std::source_location loc = std::source_location::current());
   void load(const TextureLoadInfo& load_info, std::source_location loc = std::source_location::current());
   vuk::ImageAttachment as_attachment() const { return _attachment; }

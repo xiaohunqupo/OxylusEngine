@@ -45,14 +45,6 @@ Shared<AudioSource> AssetManager::get_audio_asset(const std::string& path) {
   return load_audio_asset(path);
 }
 
-Shared<Texture> AssetManager::load_texture_asset(const std::string& path) {
-  OX_SCOPED_ZONE;
-
-  Shared<Texture> texture = create_shared<Texture>(path);
-  texture->asset_id = (uint32_t)asset_library.texture_assets.size();
-  return asset_library.texture_assets.emplace(path, texture).first->second;
-}
-
 Shared<Texture> AssetManager::load_texture_asset(const std::string& path, const TextureLoadInfo& info) {
   OX_SCOPED_ZONE;
 

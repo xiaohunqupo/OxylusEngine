@@ -12,26 +12,24 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
+static vuk::Compiler _compiler;
+
 Shared<Texture> Texture::_white_texture = nullptr;
 
-Texture::Texture(const std::string& file_path) { load(TextureLoadInfo{.path = file_path}); }
-
-Texture::Texture(const TextureLoadInfo& info) {
+Texture::Texture(const TextureLoadInfo& info, std::source_location loc) {
   if (!info.path.empty())
-    load(info);
+    load(info, loc);
   else
-    create_texture(info.extent, info.data, info.format);
+    create_texture(info.extent, info.data, info.format, info.preset, loc);
 }
 
-Texture::~Texture() = default;
-
 void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk::ImageAttachment::Preset preset, std::source_location loc) {
-  const auto ctx = VkContext::get();
+  auto& allocator = VkContext::get()->superframe_allocator;
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-  auto image = vuk::allocate_image(*ctx->superframe_allocator, ia);
+  auto image = vuk::allocate_image(*allocator, ia);
   ia.image = **image;
-  auto view = vuk::allocate_image_view(*ctx->superframe_allocator, ia);
+  auto view = vuk::allocate_image_view(*allocator, ia);
 
   _image = std::move(*image);
   _view = std::move(*view);
@@ -41,12 +39,12 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
 }
 
 void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc) {
-  const auto ctx = VkContext::get();
+  auto& allocator = VkContext::get()->superframe_allocator;
   auto ia = image_attachment;
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
-  auto image = vuk::allocate_image(*ctx->superframe_allocator, ia);
+  auto image = vuk::allocate_image(*allocator, ia);
   ia.image = **image;
-  auto view = vuk::allocate_image_view(*ctx->superframe_allocator, ia);
+  auto view = vuk::allocate_image_view(*allocator, ia);
 
   _image = std::move(*image);
   _view = std::move(*view);
@@ -57,18 +55,16 @@ void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::
 
 void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::Format format, Preset preset, std::source_location loc) {
   OX_SCOPED_ZONE;
-  const auto ctx = VkContext::get();
+  auto& allocator = VkContext::get()->superframe_allocator;
 
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-  auto& alloc = *ctx->superframe_allocator;
-  auto [tex, view, fut] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
+  auto [tex, view, fut] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
 
   if (ia.level_count > 1)
     fut = vuk::generate_mips(fut, ia.level_count);
 
-  vuk::Compiler compiler;
-  fut.as_released(vuk::eFragmentSampled).wait(*ctx->superframe_allocator, compiler);
+  fut.as_released(vuk::eFragmentSampled).wait(*allocator, _compiler);
 
   _image = std::move(tex);
   _view = std::move(view);
@@ -78,6 +74,8 @@ void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::
 }
 
 void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
+  auto& allocator = VkContext::get()->superframe_allocator;
+
   _path = load_info.path;
 
   uint32_t width, height, chans;
@@ -88,17 +86,13 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
   } else {
     auto ia = vuk::ImageAttachment::from_preset(load_info.preset, load_info.format, {width, height, 1}, vuk::Samples::e1);
     ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-    auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*VkContext::get()->superframe_allocator,
-                                                                       vuk::DomainFlagBits::eTransferOnTransfer,
-                                                                       ia,
-                                                                       data);
+    auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
 
     auto fut = RendererCommon::generate_cubemap_from_equirectangular(hdr_image);
-    vuk::Compiler compiler;
-    auto val = fut.get(*VkContext::get()->superframe_allocator, compiler);
+    auto val = fut.get(*allocator, _compiler);
 
-    _image = vuk::Unique(*VkContext::get()->superframe_allocator, val->image);
-    _view = vuk::Unique(*VkContext::get()->superframe_allocator, val->image_view);
+    _image = vuk::Unique(*allocator, val->image);
+    _view = vuk::Unique(*allocator, val->image_view);
     _attachment.format = val->format;
     _attachment.extent = val->extent;
   }

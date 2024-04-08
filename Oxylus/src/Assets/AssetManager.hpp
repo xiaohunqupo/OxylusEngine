@@ -30,7 +30,6 @@ private:
     ankerl::unordered_dense::map<AssetID, Shared<AudioSource>> audio_assets;
   } asset_library;
 
-  static Shared<Texture> load_texture_asset(const std::string& path);
   static Shared<Texture> load_texture_asset(const std::string& path, const TextureLoadInfo& info);
   static Shared<Mesh> load_mesh_asset(const std::string& path, uint32_t loadingFlags);
   static Shared<AudioSource> load_audio_asset(const std::string& path);

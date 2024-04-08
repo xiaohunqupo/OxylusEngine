@@ -103,7 +103,8 @@ void Mesh::load_from_file(const std::string& file_path, int file_loading_flags, 
 
   tinygltf::Model gltf_model;
   tinygltf::TinyGLTF gltf_context;
-  gltf_context.SetImageLoader(tinygltf::LoadImageData, this);
+  tinygltf::LoadImageDataOption option {.preserve_channels = false};
+  gltf_context.SetImageLoader(tinygltf::LoadImageData, &option);
 
   std::string error, warning;
   bool file_loaded = false;
@@ -227,17 +228,7 @@ void Mesh::load_textures(tinygltf::Model& model) {
   for (uint32_t image_index = 0; image_index < model.images.size(); image_index++) {
     auto& img = model.images[image_index];
     if (img.name.empty())
-      img.name = std::to_string(UUID());
-
-    unsigned char* buffer;
-    bool delete_buffer = false;
-    // Most devices don't support RGB only on Vulkan so convert if necessary
-    if (img.component == 3) {
-      buffer = Texture::convert_to_four_channels(img.width, img.height, &img.image[0]);
-      delete_buffer = true;
-    } else {
-      buffer = img.image.data();
-    }
+      img.name = fmt::format("{}_texture{}", FileSystem::get_file_name(path), image_index);
 
     const auto get_mime_type = [](const std::string& mime) -> TextureLoadInfo::MimeType {
       if (mime == "img/ktx" || mime == "img/ktx2") {
@@ -249,15 +240,14 @@ void Mesh::load_textures(tinygltf::Model& model) {
     const auto ci = TextureLoadInfo{
       .path = {},
       .preset = Preset::eMap2D,
-      .extent = {(unsigned)img.width, (unsigned)img.height},
-      .data = buffer,
+      .extent = {(unsigned)img.width, (unsigned)img.height, 1u},
+      .data = img.image.data(),
       .mime = get_mime_type(img.mimeType)
     };
 
     _textures[image_index] = AssetManager::get_texture_asset(img.name, ci);
 
-    if (delete_buffer)
-      delete[] buffer;
+    img.image.clear();
   }
 }
 
