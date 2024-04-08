@@ -2,7 +2,7 @@
 
 #include <sstream>
 
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 

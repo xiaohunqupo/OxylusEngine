@@ -4,7 +4,7 @@
 #include <fstream>
 
 #include "Scene.hpp"
-#include "SceneRenderer.h"
+#include "SceneRenderer.hpp"
 
 #include "Assets/AssetManager.hpp"
 

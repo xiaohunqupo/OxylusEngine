@@ -8,8 +8,8 @@
 #include "Audio/AudioSource.hpp"
 
 #include "Render/Camera.hpp"
-#include "Render/Mesh.h"
-#include "Render/ParticleSystem.h"
+#include "Render/Mesh.hpp"
+#include "Render/ParticleSystem.hpp"
 #include "Render/Utils/RectPacker.hpp"
 
 #include "Scripting/LuaSystem.hpp"

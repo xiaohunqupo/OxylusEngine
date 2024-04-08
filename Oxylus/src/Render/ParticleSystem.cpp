@@ -1,4 +1,4 @@
-#include "ParticleSystem.h"
+#include "ParticleSystem.hpp"
 
 #include <glm/gtx/norm.hpp>
 

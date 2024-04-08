@@ -1,4 +1,4 @@
-﻿#include "RendererCommon.h"
+﻿#include "RendererCommon.hpp"
 
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
@@ -8,7 +8,7 @@
 #include <vuk/Pipeline.hpp>
 #include <vuk/RenderGraph.hpp>
 
-#include "Mesh.h"
+#include "Mesh.hpp"
 
 #include "Assets/AssetManager.hpp"
 #include "Core/FileSystem.hpp"

@@ -5,8 +5,8 @@
 #include <glm/gtc/packing.inl>
 
 #include "Passes/FSR.hpp"
-#include "RenderPipeline.h"
-#include "RendererConfig.h"
+#include "RenderPipeline.hpp"
+#include "RendererConfig.hpp"
 
 #include "Passes/GTAO.hpp"
 #include "vuk/CommandBuffer.hpp"

@@ -7,7 +7,7 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/ViewportPanel.hpp"
 
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 #include "Utils/EditorConfig.hpp"
 
 #include "UI/RuntimeConsole.hpp"

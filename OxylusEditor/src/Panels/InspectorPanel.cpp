@@ -17,9 +17,9 @@
 #include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
 
-#include "Render/SceneRendererEvents.h"
+#include "Render/SceneRendererEvents.hpp"
 
-#include "Scene/SceneRenderer.h"
+#include "Scene/SceneRenderer.hpp"
 
 namespace ox {
 static bool s_rename_entity = false;

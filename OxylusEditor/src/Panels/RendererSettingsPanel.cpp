@@ -7,7 +7,7 @@
 #include "Render/Renderer.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "UI/OxUI.hpp"
-#include "Render/RendererConfig.h"
+#include "Render/RendererConfig.hpp"
 
 namespace ox {
 RendererSettingsPanel::RendererSettingsPanel() : EditorPanel("Renderer Settings", ICON_MDI_GPU, true) {}

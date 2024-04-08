@@ -2,7 +2,7 @@
 
 #include <vuk/Partials.hpp>
 
-#include "RendererCommon.h"
+#include "RendererCommon.hpp"
 
 #include "Utils/OxMath.hpp"
 #include "Utils/Profiler.hpp"

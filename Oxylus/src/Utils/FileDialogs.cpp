@@ -2,7 +2,7 @@
 
 #include "Profiler.hpp"
 
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 
 #include "Core/PlatformDetection.hpp"
 

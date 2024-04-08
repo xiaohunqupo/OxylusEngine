@@ -1,4 +1,4 @@
-﻿#include "SceneRenderer.h"
+﻿#include "SceneRenderer.hpp"
 
 #include <execution>
 #include <future>
@@ -13,7 +13,7 @@
 #include "Entity.hpp"
 
 #include "Render/DebugRenderer.hpp"
-#include "Render/DefaultRenderPipeline.h"
+#include "Render/DefaultRenderPipeline.hpp"
 #include "Render/Renderer.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 

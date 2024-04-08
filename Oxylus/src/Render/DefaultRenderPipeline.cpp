@@ -1,4 +1,4 @@
-#include "DefaultRenderPipeline.h"
+#include "DefaultRenderPipeline.hpp"
 
 #include <ankerl/unordered_dense.h>
 #include <cstdint>
@@ -6,8 +6,8 @@
 #include <vuk/Partials.hpp>
 
 #include "DebugRenderer.hpp"
-#include "RendererCommon.h"
-#include "SceneRendererEvents.h"
+#include "RendererCommon.hpp"
+#include "SceneRendererEvents.hpp"
 
 #include "Core/App.hpp"
 #include "Passes/Prefilter.hpp"
@@ -263,8 +263,8 @@ DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data() 
     .output_index = 0,
   };
 
-  // if (RendererCVar::cvar_fsr_enable.get())
-  // current_camera->set_jitter(fsr.get_jitter());
+  if (RendererCVar::cvar_fsr_enable.get())
+    current_camera->set_jitter(fsr.get_jitter());
 
   camera_data.temporalaa_jitter = current_camera->get_jitter();
   camera_data.temporalaa_jitter_prev = current_camera->get_previous_jitter();

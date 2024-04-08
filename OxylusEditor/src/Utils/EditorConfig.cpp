@@ -1,7 +1,7 @@
 #include "EditorConfig.hpp"
 #include <fstream>
 
-#include <Render/RendererConfig.h>
+#include <Render/RendererConfig.hpp>
 
 #include "Core/FileSystem.hpp"
 #include "Core/Project.hpp"

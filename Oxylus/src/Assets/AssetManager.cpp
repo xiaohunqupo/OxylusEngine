@@ -3,7 +3,7 @@
 #include <filesystem>
 
 #include "Audio/AudioSource.hpp"
-#include "Render/Mesh.h"
+#include "Render/Mesh.hpp"
 
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"

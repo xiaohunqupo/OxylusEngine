@@ -1,4 +1,4 @@
-#include "Mesh.h"
+#include "Mesh.hpp"
 #include "vuk/Types.hpp"
 
 #define TINYGLTF_IMPLEMENTATION

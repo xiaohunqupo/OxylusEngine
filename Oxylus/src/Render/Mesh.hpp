@@ -11,7 +11,7 @@
 #include <vuk/Buffer.hpp>
 
 #include "BoundingVolume.hpp"
-#include "MeshVertex.h"
+#include "MeshVertex.hpp"
 
 #include "Core/Types.hpp"
 

@@ -13,7 +13,7 @@
 
 #include "Render/Renderer.hpp"
 #include "Render/Vulkan/VkContext.hpp"
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 
 #include "Scripting/LuaManager.hpp"
 

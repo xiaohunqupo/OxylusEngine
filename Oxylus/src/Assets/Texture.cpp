@@ -5,7 +5,7 @@
 #include <vuk/Partials.hpp>
 
 #include "Core/FileSystem.hpp"
-#include "Render/RendererCommon.h"
+#include "Render/RendererCommon.hpp"
 #include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Log.hpp"

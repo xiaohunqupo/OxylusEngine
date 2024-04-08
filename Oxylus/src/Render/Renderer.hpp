@@ -2,8 +2,8 @@
 
 #include "Scene/Components.hpp"
 
-#include "Render/RenderPipeline.h"
-#include "Render/RendererConfig.h"
+#include "Render/RenderPipeline.hpp"
+#include "Render/RendererConfig.hpp"
 
 namespace ox {
 class DefaultRenderPipeline;

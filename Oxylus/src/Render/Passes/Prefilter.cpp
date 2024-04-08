@@ -7,7 +7,7 @@
 #include <vuk/Pipeline.hpp>
 
 #include "Core/FileSystem.hpp"
-#include "Render/Mesh.h"
+#include "Render/Mesh.hpp"
 #include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 

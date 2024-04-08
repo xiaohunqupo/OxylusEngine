@@ -11,10 +11,10 @@
 #include "imgui.h"
 
 #include "Render/Utils/VukCommon.hpp"
-#include "Render/RenderPipeline.h"
+#include "Render/RenderPipeline.hpp"
 
 #include "Scene/Scene.hpp"
-#include "Scene/SceneRenderer.h"
+#include "Scene/SceneRenderer.hpp"
 
 #include "UI/OxUI.hpp"
 

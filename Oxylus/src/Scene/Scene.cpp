@@ -13,7 +13,7 @@
 
 #include <sol/state.hpp>
 
-#include "SceneRenderer.h"
+#include "SceneRenderer.hpp"
 
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
@@ -34,7 +34,7 @@
 #include "Physics/Physics.hpp"
 #include "Physics/PhysicsMaterial.hpp"
 
-#include "Render/RenderPipeline.h"
+#include "Render/RenderPipeline.hpp"
 
 #include "Scripting/LuaManager.hpp"
 

@@ -9,7 +9,7 @@
 
 #include "EditorLayer.hpp"
 
-#include "Render/RendererCommon.h"
+#include "Render/RendererCommon.hpp"
 
 #include "Scene/EntitySerializer.hpp"
 #include "UI/OxUI.hpp"

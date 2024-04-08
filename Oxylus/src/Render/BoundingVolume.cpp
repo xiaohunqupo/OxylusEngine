@@ -1,6 +1,6 @@
 ﻿#include "BoundingVolume.hpp"
 
-#include "Frustum.h"
+#include "Frustum.hpp"
 #include "Physics/RayCast.hpp"
 
 #include "Utils/Profiler.hpp"

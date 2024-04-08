@@ -7,7 +7,7 @@
 #include "Core/Types.hpp"
 
 #include "Render/Renderer.hpp"
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 
 namespace ox::LuaBindings {
 void bind_renderer(const Shared<sol::state>& state) {

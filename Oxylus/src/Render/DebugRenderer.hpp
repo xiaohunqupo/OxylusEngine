@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Core/Types.hpp"
-#include "Mesh.h"
+#include "Mesh.hpp"
 
 namespace ox {
 struct LineVertexData {

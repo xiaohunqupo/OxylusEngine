@@ -9,7 +9,7 @@
 #include "Core/Systems/System.hpp"
 #include "Core/UUID.hpp"
 #include "Physics/PhysicsInterfaces.hpp"
-#include "Render/Mesh.h"
+#include "Render/Mesh.hpp"
 
 namespace ox {
 class RenderPipeline;

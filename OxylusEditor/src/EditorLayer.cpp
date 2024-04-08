@@ -20,9 +20,9 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Renderer.hpp"
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 
-#include "Scene/SceneRenderer.h"
+#include "Scene/SceneRenderer.hpp"
 
 #include "UI/OxUI.hpp"
 #include "Utils/EditorConfig.hpp"

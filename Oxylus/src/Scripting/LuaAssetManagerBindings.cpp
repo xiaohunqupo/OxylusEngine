@@ -6,7 +6,7 @@
 
 #include "Audio/AudioSource.hpp"
 
-#include "Render/Mesh.h"
+#include "Render/Mesh.hpp"
 
 namespace ox::LuaBindings {
 void bind_asset_manager(const Shared<sol::state>& state) {

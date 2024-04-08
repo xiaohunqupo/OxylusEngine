@@ -1,4 +1,4 @@
-#include "Window.h"
+#include "Window.hpp"
 
 #include "Utils/Log.hpp"
 #include "Core/EmbeddedLogo.hpp"
