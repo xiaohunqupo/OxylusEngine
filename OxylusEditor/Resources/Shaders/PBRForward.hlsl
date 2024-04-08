@@ -113,7 +113,7 @@ struct Surface {
 
     float4 surfaceMap = 1;
     if (material.physical_map_id != INVALID_ID) {
-      surfaceMap = GetMaterialPhysicalTexture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV);
+      surfaceMap = get_material_physical_texture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV);
     }
 
     surfaceMap.g *= material.roughness;
@@ -128,7 +128,7 @@ struct Surface {
     F0 *= lerp(reflectance.xxx, baseColor.rgb, metalness);
 
     if (material.ao_map_id != INVALID_ID)
-      Occlusion = GetMaterialAOTexture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV).r;
+      Occlusion = get_material_ao_texture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV).r;
     else
       Occlusion = 1.0;
   }
@@ -325,7 +325,7 @@ void LightDirectional(Light light, Surface surface, inout Lighting lighting) {
 
     AtmosphereParameters atmosphere;
     InitAtmosphereParameters(atmosphere);
-    light_color *= GetAtmosphericLightTransmittance(atmosphere, surface.P.xyz, L, GetSkyTransmittanceLUTTexture());
+    light_color *= GetAtmosphericLightTransmittance(atmosphere, surface.P.xyz, L, get_sky_transmittance_lut_texture());
 
     lighting.direct.diffuse = mad(light_color, BRDF_GetDiffuse(surface, surfaceToLight), lighting.direct.diffuse);
     lighting.direct.specular = mad(light_color, BRDF_GetSpecular(surface, surfaceToLight), lighting.direct.specular);
@@ -474,7 +474,7 @@ inline void LightSpot(Light light, Surface surface, inout Lighting lighting) {
 
 inline void ForwardLighting(inout Surface surface, inout Lighting lighting) {
   for (int i = 0; i < get_scene().num_lights; i++) {
-    Light light = GetLight(i);
+    Light light = get_light(i);
 
     switch (light.get_type()) {
       case DIRECTIONAL_LIGHT: {
@@ -513,16 +513,16 @@ float3 GetAmbient(float3 worldNormal) {
 }
 
 float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Target {
-  Material material = GetMaterial(push_const.material_index + input.draw_index);
+  Material material = get_material(push_const.material_index + input.draw_index);
   float2 scaledUV = input.uv;
   scaledUV *= material.uv_scale;
 
   float4 baseColor;
 
-  SamplerState materialSampler = Samplers[material.sampler];
+  SamplerState material_sampler = Samplers[material.sampler];
 
   if (material.albedo_map_id != INVALID_ID) {
-    baseColor = GetMaterialAlbedoTexture(material).Sample(materialSampler, scaledUV) * material.color;
+    baseColor = get_material_albedo_texture(material).Sample(material_sampler, scaledUV) * material.color;
   } else {
     baseColor = material.color;
   }
@@ -532,7 +532,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
 
   float3 emissive = float3(0.0, 0.0, 0.0);
   if (material.emissive_map_id != INVALID_ID) {
-    float3 value = GetMaterialEmissiveTexture(material).Sample(materialSampler, scaledUV).rgb;
+    float3 value = get_material_emissive_texture(material).Sample(material_sampler, scaledUV).rgb;
     emissive += value;
   } else {
     emissive += material.emissive.rgb * material.emissive.a;
@@ -550,7 +550,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
   surface.Create(material, baseColor, scaledUV);
 
   if (material.normal_map_id != INVALID_ID) {
-    surface.BumpColor = float3(GetMaterialNormalTexture(material).Sample(materialSampler, scaledUV).rg, 1.0);
+    surface.BumpColor = float3(get_material_normal_texture(material).Sample(material_sampler, scaledUV).rg, 1.0);
     surface.BumpColor = surface.BumpColor * 2.f - 1.f;
   }
 
@@ -567,7 +567,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
 #ifndef TRANSPARENT
   // Apply GTAO
   if (get_scene().post_processing_data.enable_gtao == 1) {
-    uint value = GetGTAOTexture().Sample(NEAREST_REPEATED_SAMPLER, screenCoords).r;
+    uint value = get_gtao_texture().Sample(NEAREST_REPEATED_SAMPLER, screenCoords).r;
     float aoVisibility = value / 255.0;
     surface.Occlusion *= aoVisibility;
   }
@@ -626,7 +626,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
 
   float3 ambient = GetAmbient(surface.N);
 
-  TextureCube cubemap = GetSkyEnvMapTexture();
+  TextureCube cubemap = get_sky_env_map_texture();
   uint2 dim;
   uint mips;
   cubemap.GetDimensions(0, dim.x, dim.y, mips);

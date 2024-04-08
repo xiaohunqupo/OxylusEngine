@@ -59,8 +59,8 @@ float3 AccurateAtmosphericScattering(float2 pixelPosition,
       multiScatteringApprox,
       volumetricCloudShadow,
       opaqueShadow,
-      GetSkyTransmittanceLUTTexture(),
-      GetSkyMultiScatterLUTTexture()
+      get_sky_transmittance_lut_texture(),
+      get_sky_multi_scatter_lut_texture()
     );
 
     luminance = ss.L;
@@ -70,7 +70,7 @@ float3 AccurateAtmosphericScattering(float2 pixelPosition,
 
   if (enableSun) {
     const float3 sunIlluminance = sunColor;
-    totalColor = luminance + GetSunLuminance(worldPosition, worldDirection, sunDirection, sunIlluminance, atmosphere, GetSkyTransmittanceLUTTexture());
+    totalColor = luminance + GetSunLuminance(worldPosition, worldDirection, sunDirection, sunIlluminance, atmosphere, get_sky_transmittance_lut_texture());
   }
   else {
     totalColor = luminance; // We cant really seperate mie from luminance due to precomputation, todo?

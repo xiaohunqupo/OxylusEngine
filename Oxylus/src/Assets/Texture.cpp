@@ -6,6 +6,7 @@
 
 #include "Core/FileSystem.hpp"
 #include "Render/RendererCommon.h"
+#include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
@@ -59,9 +60,13 @@ void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::
   const auto ctx = VkContext::get();
 
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
-  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
+  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
   auto& alloc = *ctx->superframe_allocator;
   auto [tex, view, fut] = vuk::create_image_and_view_with_data(alloc, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
+
+  if (ia.level_count > 1)
+    fut = vuk::generate_mips(fut, ia.level_count);
+
   vuk::Compiler compiler;
   fut.as_released(vuk::eFragmentSampled).wait(*ctx->superframe_allocator, compiler);
 
@@ -78,10 +83,17 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
   uint32_t width, height, chans;
   const uint8_t* data = load_stb_image(_path, &width, &height, &chans);
 
-  create_texture({width, height, 1}, data, load_info.format, load_info.preset, loc);
+  if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
+    create_texture({width, height, 1}, data, load_info.format, load_info.preset, loc);
+  } else {
+    auto ia = vuk::ImageAttachment::from_preset(load_info.preset, load_info.format, {width, height, 1}, vuk::Samples::e1);
+    ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
+    auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*VkContext::get()->superframe_allocator,
+                                                                       vuk::DomainFlagBits::eTransferOnTransfer,
+                                                                       ia,
+                                                                       data);
 
-  if (load_info.preset == Preset::eRTTCube || load_info.preset == Preset::eMapCube) {
-    auto fut = RendererCommon::generate_cubemap_from_equirectangular(as_attachment());
+    auto fut = RendererCommon::generate_cubemap_from_equirectangular(hdr_image);
     vuk::Compiler compiler;
     auto val = fut.get(*VkContext::get()->superframe_allocator, compiler);
 

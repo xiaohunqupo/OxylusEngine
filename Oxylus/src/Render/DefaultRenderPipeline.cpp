@@ -835,6 +835,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                      gtao_output);
 
   auto bloom_output = vuk::declare_ia("bloom_output", vuk::dummy_attachment);
+  auto transition = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+  bloom_output = transition(bloom_output);
   if (RendererCVar::cvar_bloom_enable.get()) {
     constexpr uint32_t bloom_mip_count = 8;
 
@@ -1700,8 +1702,10 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
     return envmap;
   });
 
+  auto envmap_output = pass(envmap_image.mip(0));
+
   auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
-  return vuk::generate_mips(converge(envmap_image), envmap_image->level_count);
+  return vuk::generate_mips(converge(envmap_output), envmap_image->level_count);
 }
 
 #if 0 // UNUSED

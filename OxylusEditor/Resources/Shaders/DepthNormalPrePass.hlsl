@@ -9,7 +9,7 @@ struct PixelOutput {
 };
 
 PixelOutput PSmain(VertexOutput input) : SV_Target0 {
-  Material material = GetMaterial(push_const.material_index + input.draw_index);
+  Material material = get_material(push_const.material_index + input.draw_index);
 
   float2 scaledUV = input.uv;
   scaledUV *= material.uv_scale;
@@ -17,7 +17,7 @@ PixelOutput PSmain(VertexOutput input) : SV_Target0 {
   float4 baseColor;
   const SamplerState materialSampler = Samplers[material.sampler];
   if (material.albedo_map_id != INVALID_ID) {
-    baseColor = GetMaterialAlbedoTexture(material).Sample(materialSampler, scaledUV) * material.color;
+    baseColor = get_material_albedo_texture(material).Sample(materialSampler, scaledUV) * material.color;
   } else {
     baseColor = material.color;
   }
@@ -30,7 +30,7 @@ PixelOutput PSmain(VertexOutput input) : SV_Target0 {
 
   const bool useNormalMap = material.normal_map_id != INVALID_ID;
   if (useNormalMap) {
-    float3 bumpColor = GetMaterialNormalTexture(material).Sample(materialSampler, scaledUV).rgb;
+    float3 bumpColor = get_material_normal_texture(material).Sample(materialSampler, scaledUV).rgb;
     bumpColor = bumpColor * 2.f - 1.f;
 
     const float3x3 TBN = GetNormalTangent(input.world_pos, input.normal, scaledUV);

@@ -13,7 +13,7 @@ using Preset = vuk::ImageAttachment::Preset;
 namespace ox {
 struct TextureLoadInfo {
   std::string path = {};
-  Preset preset = Preset::eRTT2D;
+  Preset preset = Preset::eMap2D;
   vuk::Extent3D extent = {};
   vuk::Format format = vuk::Format::eR8G8B8A8Unorm;
   void* data = nullptr;

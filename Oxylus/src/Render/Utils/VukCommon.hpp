@@ -89,7 +89,6 @@ inline vuk::ImageAttachment dummy_attachment = {
   .extent = {1, 1, 1},
   .format = vuk::Format::eR8G8B8A8Unorm,
   .sample_count = vuk::SampleCountFlagBits::e1,
-  .layout = vuk::ImageLayout::eReadOnlyOptimal,
   .level_count = 1,
   .layer_count = 1,
 };

@@ -23,12 +23,7 @@
 namespace ox {
 RendererCommon::MeshLib RendererCommon::mesh_lib = {};
 
-vuk::Value<vuk::ImageAttachment> RendererCommon::generate_cubemap_from_equirectangular(const vuk::ImageAttachment& cubemap) {
-  const auto hdr_image = vuk::clear_image(vuk::declare_ia("hdr_image", cubemap), vuk::Black<float>);
-  const auto blurred_hdr_image = vuk::clear_image(vuk::declare_ia("blurred_hdr_image", cubemap), vuk::Black<float>);
-  /// TODO: generate mips instead
-  apply_blur(hdr_image, blurred_hdr_image);
-
+vuk::Value<vuk::ImageAttachment> RendererCommon::generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttachment> hdr_image) {
   auto& allocator = VkContext::get()->superframe_allocator;
   if (!allocator->get_context().is_pipeline_available("equirectangular_to_cubemap")) {
     vuk::PipelineBaseCreateInfo equirectangular_to_cubemap;
@@ -77,7 +72,10 @@ vuk::Value<vuk::ImageAttachment> RendererCommon::generate_cubemap_from_equirecta
     return cube_map;
   });
 
-  return cubemap_pass(blurred_hdr_image, target);
+  auto envmap_output = cubemap_pass(hdr_image.mip(0), target);
+
+  auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+  return vuk::generate_mips(converge(envmap_output), target->level_count);
 }
 
 Shared<Mesh> RendererCommon::generate_quad() {

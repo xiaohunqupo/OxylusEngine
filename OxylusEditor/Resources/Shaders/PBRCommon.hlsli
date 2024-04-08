@@ -220,7 +220,7 @@ float Shadow(float2 pixelPosition,
 }
 
 inline float3 sample_shadow(float2 uv, float cmp) {
-  Texture2D texture_shadowatlas = GetShadowAtlas();
+  Texture2D texture_shadowatlas = get_shadow_atlas();
   float3 shadow = texture_shadowatlas.SampleCmpLevelZero(CMP_DEPTH_SAMPLER, uv, cmp).r;
 
 #ifndef DISABLE_SOFT_SHADOWMAP

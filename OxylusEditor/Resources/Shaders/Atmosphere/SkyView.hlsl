@@ -67,8 +67,8 @@ float4 main(VSInput input) : SV_TARGET {
                                                                 multiScatteringApprox,
                                                                 volumetricCloudShadow,
                                                                 opaqueShadow,
-                                                                GetSkyTransmittanceLUTTexture(),
-                                                                GetSkyMultiScatterLUTTexture());
+                                                                get_sky_transmittance_lut_texture(),
+                                                                get_sky_multi_scatter_lut_texture());
 
   float3 L = ss.L;
 
