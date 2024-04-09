@@ -1,4 +1,4 @@
-#include "RendererConfig.h"
+#include "RendererConfig.hpp"
 
 #include <fstream>
 #include <sstream>
