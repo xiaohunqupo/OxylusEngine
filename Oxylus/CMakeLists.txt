@@ -273,7 +273,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${rapidjson_SOURCE_DIR}/includ
 CPMAddPackage(
     NAME JoltPhysics
     GITHUB_REPOSITORY jrouwe/JoltPhysics
-    VERSION 4.0.2 
+    VERSION 5.0.0 
     SOURCE_SUBDIR Build
     GIT_SHALLOW ON
     OPTIONS
