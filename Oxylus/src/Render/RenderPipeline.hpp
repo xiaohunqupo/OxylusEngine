@@ -31,6 +31,7 @@ public:
   virtual void on_dispatcher_events(EventDispatcher& dispatcher) {}
 
   virtual void on_update(Scene* scene) {}
+  virtual void on_submit() {}
   virtual void register_mesh_component(const MeshComponent& render_object) {}
   virtual void register_light(const LightComponent& light) {}
   virtual void register_camera(Camera* camera) {}

@@ -227,6 +227,8 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   });
 
   task_scheduler->wait_for_all();
+
+  fsr.load_pipelines(allocator, bindless_pci);
 }
 
 void DefaultRenderPipeline::clear() {
@@ -595,7 +597,11 @@ void DefaultRenderPipeline::create_static_resources() {
   sky_envmap_texture.create_texture(envmap_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTTCube);
 }
 
+
 void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
+  if (fsr.get_render_res() != ext)
+    fsr.create_fs2_resources(ext, ext / 1.5f);
+
   if (gtao_final_texture.get_extent() != ext)
     gtao_final_texture.create_texture(ext, vuk::Format::eR8Uint, Preset::eSTT2DUnmipped);
   if (ssr_texture.get_extent() != ext)
@@ -833,6 +839,21 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                      sky_envmap_output,
                                      gtao_output);
 
+  auto ia = forward_texture.as_attachment();
+  ia.image = {};
+  ia.image_view = {};
+  auto fsr_image = vuk::clear_image(vuk::declare_ia("fsr_output", ia), vuk::Black<float>);
+  auto pre_alpha_image_dummy = vuk::clear_image(vuk::declare_ia("pre_alpha", ia), vuk::Black<float>);
+  auto fsr_output = fsr.dispatch(forward_output,
+                                 pre_alpha_image_dummy,
+                                 fsr_image,
+                                 depth_output,
+                                 velocity_output,
+                                 *current_camera,
+                                 App::get_timestep().get_elapsed_millis(),
+                                 1.0f,
+                                 vk_context->current_frame);
+
   auto bloom_output = vuk::declare_ia("bloom_output", vuk::dummy_attachment);
   auto transition = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
   bloom_output = transition(bloom_output);
@@ -883,7 +904,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                           VUK_IA(vuk::eColorRW) target,
                                           VUK_IA(vuk::eFragmentSampled) fwd_img,
                                           VUK_IA(vuk::eFragmentSampled) bloom_img) {
-    clear();
     command_buffer.bind_graphics_pipeline("final_pipeline")
       .bind_persistent(0, *descriptor_set_00)
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
@@ -912,6 +932,8 @@ void DefaultRenderPipeline::on_update(Scene* scene) {
     scene_data.post_processing_data.sharpen.y = component.sharpen_intensity;
   }
 }
+
+void DefaultRenderPipeline::on_submit() { clear(); }
 
 void DefaultRenderPipeline::update_skybox(const SkyboxLoadEvent& e) {
   OX_SCOPED_ZONE;

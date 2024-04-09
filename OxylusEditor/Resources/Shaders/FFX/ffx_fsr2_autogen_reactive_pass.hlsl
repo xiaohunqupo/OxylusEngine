@@ -21,12 +21,18 @@
 
 #define FFX_GPU
 #define FFX_HLSL
+
+#define FSR2_BIND_SRV_PRE_ALPHA_COLOR                       0
+#define FSR2_BIND_SRV_POST_ALPHA_COLOR                      1
+#define FSR2_BIND_UAV_REACTIVE                              2
+#define FSR2_BIND_CB_FSR2                                   4
+
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
 
-[[vk::binding(0, 0)]] Texture2D<float4> r_input_color_pre_alpha;
-[[vk::binding(1, 0)]] Texture2D<float4> r_input_color_post_alpha;
-[[vk::binding(2, 0)]] RWTexture2D<float> rw_output_reactive_mask;
+Texture2D<float4> r_input_color_pre_alpha : FFX_FSR2_DECLARE_SRV(FSR2_BIND_SRV_PRE_ALPHA_COLOR);
+Texture2D<float4> r_input_color_post_alpha : FFX_FSR2_DECLARE_SRV(FSR2_BIND_SRV_POST_ALPHA_COLOR);
+RWTexture2D<float> rw_output_reactive_mask : FFX_FSR2_DECLARE_UAV(FSR2_BIND_UAV_REACTIVE);
 
 #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
   #define FFX_FSR2_THREAD_GROUP_WIDTH 8

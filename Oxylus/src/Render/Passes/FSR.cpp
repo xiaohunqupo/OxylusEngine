@@ -76,9 +76,9 @@ int32_t ffxFsr2GetJitterPhaseCount(int32_t render_width, int32_t display_width) 
   return jitter_phase_count;
 }
 
-void SpdSetup(UVec2& dispatchThreadGroupCountXY,             // CPU side: dispatch thread group count xy
-              UVec2& workGroupOffset,                        // GPU side: pass in as constant
-              UVec2& numWorkGroupsAndMips,                   // GPU side: pass in as constant
+void SpdSetup(uint2& dispatchThreadGroupCountXY,             // CPU side: dispatch thread group count xy
+              uint2& workGroupOffset,                        // GPU side: pass in as constant
+              uint2& numWorkGroupsAndMips,                   // GPU side: pass in as constant
               UVec4 rectInfo,                                // left, top, width, height
               int32_t mips)                                  // optional: if -1, calculate based on rect width and height
 {
@@ -102,9 +102,9 @@ void SpdSetup(UVec2& dispatchThreadGroupCountXY,             // CPU side: dispat
   }
 }
 
-void SpdSetup(UVec2& dispatchThreadGroupCountXY, // CPU side: dispatch thread group count xy
-              UVec2& workGroupOffset,            // GPU side: pass in as constant
-              UVec2& numWorkGroupsAndMips,       // GPU side: pass in as constant
+void SpdSetup(uint2& dispatchThreadGroupCountXY, // CPU side: dispatch thread group count xy
+              uint2& workGroupOffset,            // GPU side: pass in as constant
+              uint2& numWorkGroupsAndMips,       // GPU side: pass in as constant
               UVec4 rectInfo)                    // left, top, width, height
 {
   SpdSetup(dispatchThreadGroupCountXY, workGroupOffset, numWorkGroupsAndMips, rectInfo, -1);
@@ -129,7 +129,7 @@ Vec2 FSR::get_jitter() const {
   return {x, y};
 }
 
-void FSR::create_fs2_resources(UVec2 render_resolution, UVec2 presentation_resolution) {
+void FSR::create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D presentation_resolution) {
   _render_res = render_resolution;
   _present_res = presentation_resolution;
 
@@ -142,7 +142,7 @@ void FSR::create_fs2_resources(UVec2 render_resolution, UVec2 presentation_resol
     lanczos2_weights[index] = int16_t(roundf(y * 32767.0f));
   }
 
-  lanczos_lut.create_texture({lanczos2_lut_width, 1}, &lanczos2_weights, vuk::Format::eR16Snorm, Preset::eSTT2DUnmipped);
+  lanczos_lut.create_texture({lanczos2_lut_width, 1u, 1u}, &lanczos2_weights, vuk::Format::eR16Snorm, Preset::eSTT2DUnmipped);
 
   // upload path only supports R16_SNORM, let's go and convert
   int16_t maximum_bias[FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH * FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT];
@@ -150,48 +150,48 @@ void FSR::create_fs2_resources(UVec2 render_resolution, UVec2 presentation_resol
     maximum_bias[i] = int16_t(roundf(ffxFsr2MaximumBias[i] / 2.0f * 32767.0f));
   }
 
-  maximum_bias_lut.create_texture({(uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH, (uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT},
+  maximum_bias_lut.create_texture({(uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH, (uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT, 1u},
                                   maximum_bias,
                                   vuk::Format::eR16Snorm,
                                   Preset::eSTT2DUnmipped);
 
-  fsr2_constants.renderSize[0] = render_resolution.x;
-  fsr2_constants.renderSize[1] = render_resolution.y;
-  fsr2_constants.displaySize[0] = presentation_resolution.x;
-  fsr2_constants.displaySize[1] = presentation_resolution.y;
-  fsr2_constants.displaySizeRcp[0] = 1.0f / presentation_resolution.x;
-  fsr2_constants.displaySizeRcp[1] = 1.0f / presentation_resolution.y;
+  fsr2_constants.renderSize[0] = render_resolution.width;
+  fsr2_constants.renderSize[1] = render_resolution.height;
+  fsr2_constants.displaySize[0] = presentation_resolution.width;
+  fsr2_constants.displaySize[1] = presentation_resolution.height;
+  fsr2_constants.displaySizeRcp[0] = 1.0f / presentation_resolution.width;
+  fsr2_constants.displaySizeRcp[1] = 1.0f / presentation_resolution.height;
 
-  adjusted_color.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR16G16B16A16Unorm, Preset::eSTT2DUnmipped);
-  exposure.create_texture({1, 1, 1}, vuk::Format::eR32G32Sfloat, Preset::eSTT2DUnmipped);
+  adjusted_color.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16G16B16A16Unorm, Preset::eSTT2DUnmipped);
+  exposure.create_texture({1u, 1u, 1u}, vuk::Format::eR32G32Sfloat, Preset::eSTT2DUnmipped);
 
   vuk::ImageAttachment luminance_ia = vuk::ImageAttachment::from_preset(Preset::eSTT2DUnmipped,
                                                                         vuk::Format::eR32G32Sfloat,
-                                                                        {render_resolution.x / 2, render_resolution.y / 2, 1},
+                                                                        {render_resolution.width / 2u, render_resolution.height / 2u, 1u},
                                                                         vuk::Samples::e1);
   luminance_ia.level_count = Texture::get_mip_count(luminance_ia.extent);
   luminance_current.create_texture(luminance_ia);
 
-  luminance_history.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR8G8B8A8Unorm, Preset::eSTT2DUnmipped);
-  previous_depth.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
-  dilated_depth.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR16Sfloat, Preset::eSTT2DUnmipped);
-  dilated_motion.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR16G16Sfloat, Preset::eSTT2DUnmipped);
-  dilated_reactive.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR8G8Unorm, Preset::eSTT2DUnmipped);
-  disocclusion_mask.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
-  reactive_mask.create_texture({render_resolution.x, render_resolution.y, 1}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
-  lock_status[0].create_texture({presentation_resolution.x, presentation_resolution.y, 1},
+  luminance_history.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8G8B8A8Unorm, Preset::eSTT2DUnmipped);
+  previous_depth.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
+  dilated_depth.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16Sfloat, Preset::eSTT2DUnmipped);
+  dilated_motion.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16G16Sfloat, Preset::eSTT2DUnmipped);
+  dilated_reactive.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8G8Unorm, Preset::eSTT2DUnmipped);
+  disocclusion_mask.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
+  reactive_mask.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
+  lock_status[0].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
                                 vuk::Format::eB10G11R11UfloatPack32,
                                 Preset::eSTT2DUnmipped);
-  lock_status[1].create_texture({presentation_resolution.x, presentation_resolution.y, 1},
+  lock_status[1].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
                                 vuk::Format::eB10G11R11UfloatPack32,
                                 Preset::eSTT2DUnmipped);
-  output_internal[0].create_texture({presentation_resolution.x, presentation_resolution.y, 1},
+  output_internal[0].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
                                     vuk::Format::eR16G16B16A16Sfloat,
                                     Preset::eSTT2DUnmipped);
-  output_internal[1].create_texture({presentation_resolution.x, presentation_resolution.y, 1},
+  output_internal[1].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
                                     vuk::Format::eR16G16B16A16Sfloat,
                                     Preset::eSTT2DUnmipped);
-  spd_global_atomic.create_texture({1, 1, 1}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
+  spd_global_atomic.create_texture({1u, 1u, 1u}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
 }
 
 void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci) {
@@ -200,43 +200,51 @@ void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo&
   auto* task_scheduler = App::get_system<TaskScheduler>();
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_autogen_reactive_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("autogen_reactive_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_autogen_reactive_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("autogen_reactive_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_compute_luminance_pyramid_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("luminance_pyramid_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_compute_luminance_pyramid_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("luminance_pyramid_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_prepare_input_color_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("prepare_input_color_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_prepare_input_color_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("prepare_input_color_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_reconstruct_previous_depth_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("reconstruct_previous_depth_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_reconstruct_previous_depth_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("reconstruct_previous_depth_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_depth_clip_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("depth_clip_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_depth_clip_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("depth_clip_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_lock_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("lock_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_lock_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("lock_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_accumulate_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("accumulate_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_accumulate_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("accumulate_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    pipeline_ci.add_hlsl(SHADER_FILE("FSR2/ffx_fsr2_rcas_pass.cso.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("rcas_pass", pipeline_ci))
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_rcas_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("rcas_pass", ci))
   });
 
   task_scheduler->wait_for_all();
@@ -339,9 +347,9 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
   const int32_t dispatch_dst_y = (fsr2_constants.displaySize[1] + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
 
   // Auto exposure
-  UVec2 dispatch_thread_group_count_xy;
-  UVec2 workGroupOffset;
-  UVec2 numWorkGroupsAndMips;
+  uint2 dispatch_thread_group_count_xy;
+  uint2 workGroupOffset;
+  uint2 numWorkGroupsAndMips;
   UVec4 rectInfo = {0, 0, (uint32_t)fsr2_constants.renderSize[0], (uint32_t)fsr2_constants.renderSize[1]};
   SpdSetup(dispatch_thread_group_count_xy, workGroupOffset, numWorkGroupsAndMips, rectInfo);
 
@@ -425,21 +433,24 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
       float binaryValue;
       uint32_t flags;
     };
-    Fsr2GenerateReactiveConstants constants;
+    Fsr2GenerateReactiveConstants reactive_constants;
     static float scale = 1.0f;
     static float threshold = 0.2f;
     static float binaryValue = 0.9f;
-    constants.scale = scale;
-    constants.threshold = threshold;
-    constants.binaryValue = binaryValue;
-    constants.flags = 0;
-    constants.flags |= FFX_FSR2_AUTOREACTIVEFLAGS_APPLY_TONEMAP;
+    reactive_constants.scale = scale;
+    reactive_constants.threshold = threshold;
+    reactive_constants.binaryValue = binaryValue;
+    reactive_constants.flags = 0;
+    reactive_constants.flags |= FFX_FSR2_AUTOREACTIVEFLAGS_APPLY_TONEMAP;
     // constants.flags |= FFX_FSR2_AUTOREACTIVEFLAGS_APPLY_INVERSETONEMAP;
     // constants.flags |= FFX_FSR2_AUTOREACTIVEFLAGS_USE_COMPONENTS_MAX;
     // constants.flags |= FFX_FSR2_AUTOREACTIVEFLAGS_APPLY_THRESHOLD;
 
     auto* buff = command_buffer.scratch_buffer<Fsr2GenerateReactiveConstants>(0, 3);
-    *buff = constants;
+    *buff = reactive_constants;
+
+    auto* constants = command_buffer.scratch_buffer<Fsr2Constants>(0, 4);
+    *constants = fsr2_constants;
 
     constexpr int32_t thread_group_work_region_dim = 8;
     const int32_t dispatch_src_x = (fsr2_constants.renderSize[0] + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
@@ -648,14 +659,16 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                                        rw_lock_output);
 
   auto rcas_pass = vuk::make_pass("sharpen(RCAS)",
-                                  [this](vuk::CommandBuffer& command_buffer,
-                                         VUK_IA(vuk::eComputeSampled) _exposure,
-                                         VUK_IA(vuk::eComputeSampled) _rw_output,
-                                         VUK_IA(vuk::eComputeRW) _output) {
+                                  [this, rcasConsts](vuk::CommandBuffer& command_buffer,
+                                                     VUK_IA(vuk::eComputeSampled) _exposure,
+                                                     VUK_IA(vuk::eComputeSampled) _rw_output,
+                                                     VUK_IA(vuk::eComputeRW) _output) {
     command_buffer.bind_compute_pipeline("rcas_pass").bind_image(0, 0, _exposure).bind_image(0, 1, _rw_output).bind_image(0, 2, _output);
 
     auto* constants = command_buffer.scratch_buffer<Fsr2Constants>(0, 3);
     *constants = fsr2_constants;
+    auto* rcas_constants = command_buffer.scratch_buffer<Fsr2RcasConstants>(0, 4);
+    *rcas_constants = rcasConsts;
 
     const int32_t thread_group_work_region_dim_rcas = 16;
     const int32_t dispatch_x = (fsr2_constants.displaySize[0] + (thread_group_work_region_dim_rcas - 1)) / thread_group_work_region_dim_rcas;

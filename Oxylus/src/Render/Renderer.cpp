@@ -106,6 +106,8 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
     entire_thing.submit(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
   }
 
+  rp->on_submit();
+
   vkctx->current_frame = (vkctx->current_frame + 1) % vkctx->num_inflight_frames;
   vkctx->num_frames = vkctx->context->get_frame_count();
 }

@@ -25,6 +25,9 @@
 
 #define FSR2_BIND_CB_FSR2 3
 
+#define FFX_GPU
+#define FFX_HLSL
+
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
 #include "ffx_fsr2_lock.h"
@@ -43,6 +46,7 @@
   #define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
 #endif // #ifndef FFX_FSR2_NUM_THREADS
 
+FFX_FSR2_NUM_THREADS
 void main(uint2 uGroupId : SV_GroupID, uint2 uGroupThreadId : SV_GroupThreadID) {
   uint2 uDispatchThreadId = uGroupId * uint2(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT) + uGroupThreadId;
 

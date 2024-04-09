@@ -57,13 +57,13 @@
 
 #define FSR2_BIND_CB_FSR2 13
 
-#include "ffx_fsr2_accumulate.h"
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
-#include "ffx_fsr2_postprocess_lock_status.h"
-#include "ffx_fsr2_reproject.h"
 #include "ffx_fsr2_sample.h"
 #include "ffx_fsr2_upsample.h"
+#include "ffx_fsr2_postprocess_lock_status.h"
+#include "ffx_fsr2_reproject.h"
+#include "ffx_fsr2_accumulate.h"
 
 #ifndef FFX_FSR2_THREAD_GROUP_WIDTH
   #define FFX_FSR2_THREAD_GROUP_WIDTH 8

@@ -26,13 +26,14 @@
 // CB   0 : cbFSR2
 // CB   1 : cbRCAS
 
-#include "ShaderInterop_FSR2.h"
-
 #define FSR2_BIND_SRV_EXPOSURE              0
 #define FSR2_BIND_SRV_RCAS_INPUT            1
-#define FSR2_BIND_UAV_UPSCALED_OUTPUT       0
-#define FSR2_BIND_CB_FSR2                   0
-#define FSR2_BIND_CB_RCAS                   1
+#define FSR2_BIND_UAV_UPSCALED_OUTPUT       2
+#define FSR2_BIND_CB_FSR2                   3
+#define FSR2_BIND_CB_RCAS                   4
+
+#define FFX_HLSL
+#define FFX_GPU
 
 #include "ffx_fsr2_callbacks_hlsl.h"
 #include "ffx_fsr2_common.h"
@@ -82,10 +83,7 @@ float4 LoadRCAS_Input(FfxInt32x2 iPxPos)
 #define FFX_FSR2_NUM_THREADS [numthreads(FFX_FSR2_THREAD_GROUP_WIDTH, FFX_FSR2_THREAD_GROUP_HEIGHT, FFX_FSR2_THREAD_GROUP_DEPTH)]
 #endif // #ifndef FFX_FSR2_NUM_THREADS
 
-#include "globals.hlsli"
-
 FFX_FSR2_NUM_THREADS
-FFX_FSR2_EMBED_CB2_ROOTSIG_CONTENT
 void main(uint3 LocalThreadId : SV_GroupThreadID, uint3 WorkGroupId : SV_GroupID, uint3 Dtid : SV_DispatchThreadID)
 {
     RCAS(LocalThreadId, WorkGroupId, Dtid);

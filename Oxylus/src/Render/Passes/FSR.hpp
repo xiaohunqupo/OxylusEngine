@@ -16,10 +16,11 @@ public:
   FSR() = default;
   ~FSR() = default;
 
-  std::unique_ptr<char[]> scratch_memory = nullptr;
-  Vec2 get_jitter() const;
+  float2 get_jitter() const;
+  vuk::Extent3D get_render_res() const { return _render_res;}
+  vuk::Extent3D get_present_res() const { return _present_res;}
 
-  void create_fs2_resources(UVec2 render_resolution, UVec2 presentation_resolution);
+  void create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D presentation_resolution);
   void load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci);
   vuk::Value<vuk::ImageAttachment> dispatch(vuk::Value<vuk::ImageAttachment>& input_color_post_alpha,
                                             vuk::Value<vuk::ImageAttachment>& input_color_pre_alpha,
@@ -29,15 +30,15 @@ public:
                                             Camera& camera,
                                             double dt,
                                             float sharpness,
-                                            uint32_t frame_index);
+                                            uint frame_index);
 
 private:
   struct Fsr2Constants {
-    int32_t renderSize[2];
-    int32_t displaySize[2];
-    uint32_t lumaMipDimensions[2];
-    uint32_t lumaMipLevelToUse;
-    uint32_t frameIndex;
+    int renderSize[2];
+    int displaySize[2];
+    uint lumaMipDimensions[2];
+    uint lumaMipLevelToUse;
+    uint frameIndex;
     float displaySizeRcp[2];
     float jitterOffset[2];
     float deviceToViewDepth[4];
@@ -57,8 +58,8 @@ private:
     float lumaMipRcp;
   } fsr2_constants;
 
-  UVec2 _render_res;
-  UVec2 _present_res;
+  vuk::Extent3D _render_res;
+  vuk::Extent3D _present_res;
 
   Texture adjusted_color;
   Texture luminance_current;

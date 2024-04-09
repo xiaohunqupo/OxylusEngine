@@ -28,6 +28,7 @@ public:
                                                            vuk::Value<vuk::ImageAttachment> target,
                                                            vuk::Extent3D ext) override;
   void on_update(Scene* scene) override;
+  void on_submit() override;
 
   void on_dispatcher_events(EventDispatcher& dispatcher) override;
   void register_mesh_component(const MeshComponent& render_object) override;

@@ -93,6 +93,10 @@ inline vuk::ImageAttachment dummy_attachment = {
   .layer_count = 1,
 };
 
+inline vuk::Extent3D operator/(const vuk::Extent3D& ext, float rhs) {
+  return {unsigned((float)ext.width / rhs), unsigned((float)ext.height / rhs), 1u};
+}
+
 template <class T>
 std::pair<Unique<Buffer>, Value<Buffer>> create_cpu_buffer(Allocator& allocator, std::span<T> data) {
   return create_buffer(allocator, MemoryUsage::eCPUtoGPU, DomainFlagBits::eTransferOnGraphics, data);

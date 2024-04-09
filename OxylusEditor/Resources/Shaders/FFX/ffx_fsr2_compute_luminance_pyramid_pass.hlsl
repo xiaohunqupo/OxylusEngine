@@ -19,7 +19,7 @@
 // OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 // THE SOFTWARE.
 
-#define FFX_HALF 0 // doesn't compile if enabled
+#define FFX_HALF 0
 #define FFX_HLSL
 #define FFX_GPU
 
@@ -41,7 +41,31 @@ struct cbSPD {
   uint2 renderSize;
 };
 
-[[vk::binding(FSR2_BIND_CB_SPD, 0)]] ConstantBuffer<cbSPD> cb;
+#if defined(FSR2_BIND_CB_SPD)
+cbuffer cbSPD : FFX_FSR2_DECLARE_CB(FSR2_BIND_CB_SPD) {
+
+  uint mips;
+  uint numWorkGroups;
+  uint2 workGroupOffset;
+  uint2 renderSize;
+};
+
+uint MipCount() { return mips; }
+
+uint NumWorkGroups() { return numWorkGroups; }
+
+uint2 WorkGroupOffset() { return workGroupOffset; }
+
+uint2 SPD_RenderSize() { return renderSize; }
+#else
+uint MipCount() { return 0; }
+
+uint NumWorkGroups() { return 0; }
+
+uint2 WorkGroupOffset() { return uint2(0, 0); }
+
+uint2 SPD_RenderSize() { return uint2(0, 0); }
+#endif
 
 float2 SPD_LoadExposureBuffer() {
 #if defined(FSR2_BIND_UAV_EXPOSURE) || defined(FFX_INTERNAL)
