@@ -1,6 +1,7 @@
 #pragma once
 
 #include <ankerl/unordered_dense.h>
+#include <plf_colony.h>
 
 #include "Core/Base.hpp"
 #include "Thread/TaskScheduler.hpp"
@@ -47,6 +48,8 @@ public:
   static Shared<Mesh> get_mesh_asset(const std::string& path, uint32_t loadingFlags = 0);
   static AssetTask<Mesh>* get_mesh_asset_future(const std::string& path, uint32_t loadingFlags = 0);
 
+  static Shared<Material> get_material_asset(const std::string& name);
+
   static Shared<AudioSource> get_audio_asset(const std::string& path);
 
   static void free_unused_assets();
@@ -59,6 +62,7 @@ private:
 
     ankerl::unordered_dense::map<AssetID, Shared<Texture>> texture_assets;
     ankerl::unordered_dense::map<AssetID, Shared<Mesh>> mesh_assets;
+    std::vector<Shared<Material>> material_assets;
     ankerl::unordered_dense::map<AssetID, Shared<AudioSource>> audio_assets;
   } _state;
 

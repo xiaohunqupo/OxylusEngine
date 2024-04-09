@@ -26,7 +26,6 @@ public:
   enum FileLoadingFlags : int {
     None = 0,
     DontLoadImages,
-    DontCreateMaterials,
   };
 
   struct Primitive {

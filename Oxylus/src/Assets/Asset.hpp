@@ -12,6 +12,7 @@ public:
   explicit Asset(const uint32_t id) : asset_id(id) {}
 
   uint32_t get_id() const { return asset_id; }
+  void set_id(uint32_t id) { asset_id = id; }
   bool is_valid_id() const { return asset_id != INVALID_ID; }
 
 private:
@@ -19,4 +20,4 @@ private:
 
   friend AssetManager;
 };
-}
+} // namespace ox

@@ -12,7 +12,7 @@ class CommandBuffer;
 } // namespace vuk
 
 namespace ox {
-class Material {
+class Material : public Asset {
 public:
   enum class AlphaMode : uint32_t {
     Opaque = 0,
@@ -51,7 +51,7 @@ public:
   std::string path{};
 
   Material() = default;
-  Material(const std::string& material_name);
+  explicit Material(const std::string& material_name);
   ~Material();
 
   void create(const std::string& material_name = "Material");

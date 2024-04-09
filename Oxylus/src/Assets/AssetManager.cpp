@@ -60,6 +60,12 @@ AssetTask<Mesh>* AssetManager::get_mesh_asset_future(const std::string& path, ui
   return t->get();
 }
 
+Shared<Material> AssetManager::get_material_asset(const std::string& name) {
+  const auto& ma = _state.material_assets.emplace_back(create_shared<Material>(name));
+  ma->set_id((uint)_state.material_assets.size() - 1);
+  return ma;
+}
+
 Shared<AudioSource> AssetManager::get_audio_asset(const std::string& path) {
   OX_SCOPED_ZONE;
   if (_state.audio_assets.contains(path)) {
@@ -102,6 +108,11 @@ void AssetManager::free_unused_assets() {
                                      [](const std::pair<std::string, Shared<Texture>>& pair) { return pair.second.use_count() <= 1; });
 
   if (t_count > 0)
-    OX_LOG_INFO("Cleaned up {} mesh assets.", t_count);
+    OX_LOG_INFO("Cleaned up {} texture assets.", t_count);
+
+  const auto ma_count = std::erase_if(_state.material_assets, [](const Shared<Material>& material) { return material.use_count() <= 1; });
+
+  if (ma_count > 0)
+    OX_LOG_INFO("Cleaned up {} material assets.", ma_count);
 }
 } // namespace ox

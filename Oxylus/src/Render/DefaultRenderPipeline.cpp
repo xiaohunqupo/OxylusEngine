@@ -412,6 +412,8 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     for (auto& mat : materials) {
       material_parameters.emplace_back(mat->parameters);
 
+      mat->set_id(material_parameters.size() - 1);
+
       const auto& albedo = mat->get_albedo_texture();
       const auto& normal = mat->get_normal_texture();
       const auto& physical = mat->get_physical_texture();
@@ -996,7 +998,7 @@ void DefaultRenderPipeline::render_meshes(const RenderQueue& render_queue,
       const auto pc = ShaderPC{
         mesh.mesh_base->vertex_buffer->device_address,
         instanced_batch.data_offset,
-        instanced_batch.component_index + primitive_index,
+        material->get_id(),
       };
 
       vuk::ShaderStageFlags stage = vuk::ShaderStageFlagBits::eVertex;
