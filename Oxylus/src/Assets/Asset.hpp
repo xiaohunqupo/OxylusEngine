@@ -4,7 +4,6 @@
 namespace ox {
 class AssetManager;
 
-
 class Asset {
 public:
   static constexpr uint32_t INVALID_ID = UINT32_MAX;

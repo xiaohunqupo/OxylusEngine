@@ -597,7 +597,6 @@ void DefaultRenderPipeline::create_static_resources() {
   sky_envmap_texture.create_texture(envmap_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTTCube);
 }
 
-
 void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
   if (fsr.get_render_res() != ext)
     fsr.create_fs2_resources(ext, ext / 1.5f);

@@ -18,7 +18,7 @@
 #include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
-void SceneRenderer::init() {
+void SceneRenderer::init(EventDispatcher& dispatcher) {
   OX_SCOPED_ZONE;
   if (!m_render_pipeline)
     m_render_pipeline = create_shared<DefaultRenderPipeline>("DefaultRenderPipeline");

@@ -393,7 +393,7 @@ void ViewportPanel::on_imgui_render() {
       constexpr float button_count = 3.0f;
       constexpr float y_pad = 8.0f;
       const ImVec2 gizmo_position = {viewport_bounds[0].x + m_viewport_size.x * 0.5f, viewport_bounds[0].y + y_pad};
-      const auto width = gizmo_position.x + button_size.x * button_count + 50.0f;
+      const auto width = gizmo_position.x + button_size.x * button_count + 45.0f;
       const ImRect bb(gizmo_position.x - 5.0f, gizmo_position.y, width, gizmo_position.y + button_size.y + 8);
       ImVec4 frame_color = ImGui::GetStyleColorVec4(ImGuiCol_Tab);
       frame_color.w = 0.5f;

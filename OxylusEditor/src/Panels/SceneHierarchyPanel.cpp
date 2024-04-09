@@ -7,11 +7,11 @@
 
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
 
-#include "Render/RendererCommon.hpp"
-
 #include "Scene/EntitySerializer.hpp"
+#include "Scene/SceneEvents.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/ImGuiScoped.hpp"
 #include "Utils/StringUtils.hpp"
@@ -263,8 +263,8 @@ void SceneHierarchyPanel::drag_drop_target() const {
         EditorLayer::get()->open_scene(path);
       }
       if (path.extension() == ".gltf" || path.extension() == ".glb") {
-        const auto mesh = AssetManager::get_mesh_asset(path.string());
-        context->load_mesh(mesh);
+        const auto mesh_task = AssetManager::get_mesh_asset_future(path.string());
+        context->trigger_future_mesh_load_event(FutureMeshLoadEvent{FileSystem::get_name_with_extension(path.string()), mesh_task});
       }
       if (path.extension() == ".oxprefab") {
         EntitySerializer::deserialize_entity_as_prefab(path.string().c_str(), context.get());

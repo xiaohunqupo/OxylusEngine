@@ -352,3 +352,7 @@ set_target_properties(unordered_dense PROPERTIES FOLDER "Vendor")
 # dylib
 CPMAddPackage("gh:martin-olivier/dylib#main")
 target_include_directories(${PROJECT_NAME} PUBLIC ${dylib_SOURCE_DIR}/include)
+
+# imspinner
+CPMAddPackage("gh:dalerank/imspinner#254b46994a76222a6da06111978a1674865a050d")
+target_include_directories(${PROJECT_NAME} PUBLIC ${imspinner_SOURCE_DIR})

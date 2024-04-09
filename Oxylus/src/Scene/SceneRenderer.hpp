@@ -1,6 +1,5 @@
 ﻿#pragma once
 #include "Components.hpp"
-#include "Event/Event.hpp"
 
 namespace ox {
 class RenderPipeline;
@@ -8,12 +7,10 @@ class Scene;
 
 class SceneRenderer {
 public:
-  EventDispatcher dispatcher;
-
   SceneRenderer(Scene* scene) : m_scene(scene) {}
   ~SceneRenderer() = default;
 
-  void init();
+  void init(EventDispatcher& dispatcher);
   void update() const;
 
   Shared<RenderPipeline> get_render_pipeline() const { return m_render_pipeline; }

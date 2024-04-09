@@ -4,6 +4,7 @@
 #include <icons/IconsMaterialDesignIcons.h>
 
 #include <imgui_internal.h>
+#include <imspinner.h>
 
 #include "EditorTheme.hpp"
 
@@ -126,6 +127,8 @@ void EditorLayer::on_imgui_render() {
     ImGui::ShowDemoWindow();
 
   editor_shortcuts();
+
+  render_load_indicators();
 
   constexpr ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
 
@@ -377,7 +380,7 @@ void EditorLayer::on_scene_stop() {
   active_scene = nullptr;
   set_editor_context(editor_scene);
   // initalize the renderer again manually since this scene was already alive...
-  editor_scene->get_renderer()->init();
+  editor_scene->get_renderer()->init(editor_scene->dispatcher);
 }
 
 void EditorLayer::on_scene_simulate() {
@@ -404,6 +407,48 @@ void EditorLayer::draw_panels() {
   runtime_console.on_imgui_render();
 }
 
+void EditorLayer::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) { mesh_load_indicators.emplace_back(event); }
+
+void EditorLayer::render_load_indicators() {
+  OX_SCOPED_ZONE;
+  if (mesh_load_indicators.empty())
+    return;
+
+  constexpr auto win_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                             ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize |
+                             ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+                             ImGuiWindowFlags_NoBackground;
+
+  const auto pos = ImVec2{ImGui::GetMainViewport()->Size.x - 200.0f, ImGui::GetMainViewport()->Size.y - 100.0f};
+  ImGui::SetNextWindowPos(pos, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+  if (ImGui::Begin("indicator_window", nullptr, win_flags)) {
+    if (ImGui::BeginTable("indicator_table", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+      for (auto& load_indicator : mesh_load_indicators) {
+        ImGui::TableNextRow();
+
+        const ImU32 row_bg_color = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 0.5f, 0.10f));
+        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, row_bg_color);
+
+        for (int column = 0; column < 1; column++) {
+          ImGui::TableSetColumnIndex(column);
+          ImSpinner::SpinnerFadeDots("##", 16.0f, 6.0f, ImVec4(1, 1, 1, 1), 8.0f, 8);
+          ImGui::SameLine();
+          auto fmt = fmt::format(" Loading asset: {}", load_indicator.name);
+          ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
+          ImGui::PushFont(ImGuiLayer::bold_font);
+          ImGui::Text(fmt.c_str());
+          ImGui::PopFont();
+        }
+      }
+      ImGui::EndTable();
+    }
+
+    ImGui::End();
+  }
+
+  std::erase_if(mesh_load_indicators, [](const FutureMeshLoadEvent& e) { return e.task->GetIsComplete(); });
+}
+
 Shared<Scene> EditorLayer::get_active_scene() { return active_scene; }
 
 void EditorLayer::set_editor_context(const Shared<Scene>& scene) {
@@ -413,6 +458,8 @@ void EditorLayer::set_editor_context(const Shared<Scene>& scene) {
   for (const auto& panel : viewport_panels) {
     panel->set_context(scene, *shpanel);
   }
+
+  scene->dispatcher.sink<FutureMeshLoadEvent>().connect<&EditorLayer::handle_future_mesh_load_event>(*this);
 }
 
 void EditorLayer::set_scene_state(const SceneState state) { scene_state = state; }

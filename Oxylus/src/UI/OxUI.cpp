@@ -521,4 +521,12 @@ void OxUI::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size,
   ImGui::End();
   ImGui::PopStyleVar();
 }
+
+void OxUI::push_style_compact() {
+  const ImGuiStyle& style = ImGui::GetStyle();
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, (float)(int)(style.FramePadding.y * 0.60f)));
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, (float)(int)(style.ItemSpacing.y * 0.60f)));
+}
+
+void OxUI::pop_style_compact() { ImGui::PopStyleVar(2); }
 } // namespace ox

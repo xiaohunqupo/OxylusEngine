@@ -2,6 +2,7 @@
 
 #include <ankerl/unordered_dense.h>
 
+#include "SceneEvents.hpp"
 #include "Components.hpp"
 #include "EntitySerializer.hpp"
 
@@ -22,6 +23,7 @@ public:
   // TODO: We are keeping this only for serializing relationship of entities.
   // Check how we can do that with entt id's instead.
   ankerl::unordered_dense::map<UUID, Entity> entity_map;
+  EventDispatcher dispatcher;
 
   Scene();
   Scene(std::string name);
@@ -62,8 +64,10 @@ public:
 
   // Physics interfaces
   void on_contact_added(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings);
-  void
-  on_contact_persisted(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings);
+  void on_contact_persisted(const JPH::Body& body1,
+                            const JPH::Body& body2,
+                            const JPH::ContactManifold& manifold,
+                            const JPH::ContactSettings& settings);
 
   Entity get_entity_by_uuid(UUID uuid);
 
@@ -71,6 +75,9 @@ public:
   Shared<SceneRenderer> get_renderer() { return scene_renderer; }
 
   entt::registry& get_registry() { return registry; }
+
+  // Events
+  void trigger_future_mesh_load_event(FutureMeshLoadEvent future_mesh_load_event);
 
 private:
   bool running = false;
@@ -96,6 +103,9 @@ private:
   void update_physics(const Timestep& delta_time);
   void create_rigidbody(Entity ent, const TransformComponent& transform, RigidbodyComponent& component);
   void create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const;
+
+  // Events
+  void handle_future_mesh_load_event(const FutureMeshLoadEvent& event);
 
   friend class SceneSerializer;
   friend class SceneHPanel;

@@ -207,5 +207,8 @@ public:
   static void center_next_window();
 
   static void draw_framerate_overlay(ImVec2 work_pos = {}, ImVec2 work_size = {}, ImVec2 padding = {}, bool* visible = nullptr);
+
+  static void push_style_compact();
+  static void pop_style_compact();
 };
 } // namespace ox
