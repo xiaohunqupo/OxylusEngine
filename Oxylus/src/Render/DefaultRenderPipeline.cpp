@@ -23,14 +23,14 @@
 
 #include "Vulkan/VkContext.hpp"
 
+#include "Core/FileSystem.hpp"
 #include "Renderer.hpp"
-#include "Utils/SPD.hpp"
 #include "Utils/VukCommon.hpp"
 
 #include "Utils/RectPacker.hpp"
 
 namespace ox {
-VkDescriptorSetLayoutBinding bindless_binding(uint32_t binding, vuk::DescriptorType descriptor_type, uint32_t count = 1024) {
+VkDescriptorSetLayoutBinding binding(uint32_t binding, vuk::DescriptorType descriptor_type, uint32_t count = 1024) {
   return {
     .binding = binding,
     .descriptorType = (VkDescriptorType)descriptor_type,
@@ -69,16 +69,16 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   vuk::PipelineBaseCreateInfo bindless_pci = {};
   vuk::DescriptorSetLayoutCreateInfo bindless_dslci_00 = {};
   bindless_dslci_00.bindings = {
-    bindless_binding(0, vuk::DescriptorType::eUniformBuffer, 1),
-    bindless_binding(1, vuk::DescriptorType::eStorageBuffer),
-    bindless_binding(2, vuk::DescriptorType::eSampledImage),
-    bindless_binding(3, vuk::DescriptorType::eSampledImage),
-    bindless_binding(4, vuk::DescriptorType::eSampledImage, 8),
-    bindless_binding(5, vuk::DescriptorType::eSampledImage, 8),
-    bindless_binding(6, vuk::DescriptorType::eStorageImage),
-    bindless_binding(7, vuk::DescriptorType::eSampledImage),
-    bindless_binding(8, vuk::DescriptorType::eSampler, 5),
-    bindless_binding(9, vuk::DescriptorType::eSampler, 5),
+    binding(0, vuk::DescriptorType::eUniformBuffer, 1),
+    binding(1, vuk::DescriptorType::eStorageBuffer),
+    binding(2, vuk::DescriptorType::eSampledImage),
+    binding(3, vuk::DescriptorType::eSampledImage),
+    binding(4, vuk::DescriptorType::eSampledImage, 8),
+    binding(5, vuk::DescriptorType::eSampledImage, 8),
+    binding(6, vuk::DescriptorType::eStorageImage),
+    binding(7, vuk::DescriptorType::eSampledImage),
+    binding(8, vuk::DescriptorType::eSampler, 5),
+    binding(9, vuk::DescriptorType::eSampler, 5),
   };
   bindless_dslci_00.index = 0;
   for (int i = 0; i < 10; i++)
@@ -229,6 +229,7 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   task_scheduler->wait_for_all();
 
   fsr.load_pipelines(allocator, bindless_pci);
+  spd.init(allocator);
 }
 
 void DefaultRenderPipeline::clear() {
@@ -596,7 +597,9 @@ void DefaultRenderPipeline::create_static_resources() {
   shadow_map_atlas_transparent.create_texture(ia);
 
   constexpr auto envmap_size = vuk::Extent3D{512, 512, 1};
-  sky_envmap_texture.create_texture(envmap_size, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTTCube);
+  auto ia2 = vuk::ImageAttachment::from_preset(Preset::eRTTCube, vuk::Format::eR32G32B32A32Sfloat, envmap_size, vuk::Samples::e1);
+  ia2.usage |= vuk::ImageUsageFlagBits::eStorage;
+  sky_envmap_texture.create_texture(ia2);
 }
 
 void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
@@ -1729,14 +1732,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
     return envmap;
   });
 
-  auto envmap_output = pass(envmap_image.mip(0));
+  auto map = pass(envmap_image.mip(0));
 
-  auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
-#if SPD
-  return vuk::generate_mips_spd(*VkContext::get()->context, converge(envmap_output), envmap_image->level_count);
-#else
-  return vuk::generate_mips(converge(envmap_output), envmap_image->level_count);
-#endif
+  return spd.dispatch(*get_frame_allocator(), map);
 }
 
 #if 0 // UNUSED

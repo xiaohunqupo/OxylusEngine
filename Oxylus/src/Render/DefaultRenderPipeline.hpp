@@ -9,6 +9,7 @@
 #include "RendererConfig.hpp"
 
 #include "Passes/GTAO.hpp"
+#include "Passes/SPD.hpp"
 #include "vuk/CommandBuffer.hpp"
 
 namespace ox {
@@ -247,6 +248,7 @@ private:
   GTAOSettings gtao_settings = {};
 
   FSR fsr = {};
+  SPD spd = {};
 
   // PBR Resources
   Shared<Texture> cube_map = nullptr;

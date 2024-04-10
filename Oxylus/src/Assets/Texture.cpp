@@ -30,7 +30,6 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
   auto image = vuk::allocate_image(*allocator, ia);
   ia.image = **image;
   auto view = vuk::allocate_image_view(*allocator, ia);
-  ia.image_view = **view;
 
   _image = std::move(*image);
   _view = std::move(*view);
@@ -46,7 +45,6 @@ void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::
   auto image = vuk::allocate_image(*allocator, ia);
   ia.image = **image;
   auto view = vuk::allocate_image_view(*allocator, ia);
-  ia.image_view = **view;
 
   _image = std::move(*image);
   _view = std::move(*view);
@@ -70,9 +68,6 @@ void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::
 
   _image = std::move(tex);
   _view = std::move(view);
-
-  ia.image = *_image;
-  ia.image_view = *_view;
   _attachment = ia;
 
   set_name(loc);
@@ -95,9 +90,6 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
 
     auto fut = RendererCommon::generate_cubemap_from_equirectangular(hdr_image);
     auto val = fut.get(*allocator, _compiler);
-
-    ia.image = val->image;
-    ia.image_view = val->image_view;
 
     _image = vuk::Unique(*allocator, val->image);
     _view = vuk::Unique(*allocator, val->image_view);
