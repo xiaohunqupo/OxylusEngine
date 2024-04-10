@@ -16,18 +16,18 @@ enum class ReductionType : uint32_t {
 
 // Generate all mips of an image using the Single Pass Downsampler
 inline vuk::Value<vuk::ImageAttachment> generate_mips_spd(Context& ctx,
-                                                          vuk::Value<vuk::ImageAttachment>& src,
-                                                          vuk::Value<vuk::ImageAttachment>& dst,
+                                                          vuk::Value<vuk::ImageAttachment> image,
+                                                          uint32_t mip_count,
                                                           ReductionType type = ReductionType::Avg) {
   if (!ctx.is_pipeline_available("spd_pipeline")) {
     PipelineBaseCreateInfo spd_pci = {};
-    spd_pci.add_hlsl(ox::FileSystem::read_shader_file("SPD/SPD.hlsl"), ox::FileSystem::get_shader_path("SPD/SPD.hlsl"), HlslShaderStage::eCompute);
+    spd_pci.add_hlsl(ox::FileSystem::read_shader_file("FFX/SPD/SPD.hlsl"), ox::FileSystem::get_shader_path("FFX/SPD/SPD.hlsl"), HlslShaderStage::eCompute);
     ctx.create_named_pipeline("spd_pipeline", spd_pci);
   }
 
-  auto pass = vuk::make_pass("SPD", [type](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output, VUK_IA(vuk::eComputeSampled) input) {
+  auto pass = vuk::make_pass("SPD", [type, mip_count](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output, VUK_IA(vuk::eComputeSampled) input) {
     const auto extent = input->extent;
-    const auto mips = input->level_count;
+    const auto mips = mip_count;
     OX_ASSERT(mips <= 13);
     std::array<vuk::ImageAttachment, 13> mip_ia{};
 
@@ -40,7 +40,7 @@ inline vuk::Value<vuk::ImageAttachment> generate_mips_spd(Context& ctx,
     dispatch.height = (extent.height + 63) >> 6;
 
     // Bind source mip
-    command_buffer.image_barrier(output, eComputeRW, eComputeSampled, 0, 1); // Prepare initial mip for read
+    command_buffer.image_barrier(input, eComputeRW, eComputeSampled, 0, 1); // Prepare initial mip for read
     command_buffer.bind_compute_pipeline("spd_pipeline");
     command_buffer.bind_image(0, 0, mip_ia[0]);
     switch (type) {
@@ -55,7 +55,7 @@ inline vuk::Value<vuk::ImageAttachment> generate_mips_spd(Context& ctx,
         break;
       }
       case ReductionType::Min: {
-        static const auto MIN_CLAMP_RMCI = VkSamplerReductionModeCreateInfo{
+        static constexpr auto MIN_CLAMP_RMCI = VkSamplerReductionModeCreateInfo{
           .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
           .reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN,
         };
@@ -70,7 +70,7 @@ inline vuk::Value<vuk::ImageAttachment> generate_mips_spd(Context& ctx,
         break;
       }
       case ReductionType::Max: {
-        static const auto MAX_CLAMP_RMCI = VkSamplerReductionModeCreateInfo{
+        static constexpr auto MAX_CLAMP_RMCI = VkSamplerReductionModeCreateInfo{
           .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
           .reductionMode = VK_SAMPLER_REDUCTION_MODE_MAX,
         };
@@ -100,9 +100,10 @@ inline vuk::Value<vuk::ImageAttachment> generate_mips_spd(Context& ctx,
 
     command_buffer.dispatch(dispatch.width, dispatch.height);
     command_buffer.image_barrier(input, eComputeSampled, eComputeRW, 0, 1); // Reconverge the image
+
     return output;
   });
 
-  return pass(src, dst);
+  return pass(image, image);
 }
 } // namespace vuk

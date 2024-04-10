@@ -129,6 +129,62 @@ Vec2 FSR::get_jitter() const {
   return {x, y};
 }
 
+void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci) {
+#define SHADER_FILE(path) FileSystem::read_shader_file(path), FileSystem::get_shader_path(path)
+
+  auto* task_scheduler = App::get_system<TaskScheduler>();
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_autogen_reactive_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("autogen_reactive_pass", ci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_compute_luminance_pyramid_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("luminance_pyramid_pass", ci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_prepare_input_color_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("prepare_input_color_pass", ci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_reconstruct_previous_depth_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("reconstruct_previous_depth_pass", ci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_depth_clip_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("depth_clip_pass", ci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_lock_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("lock_pass", ci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_accumulate_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("accumulate_pass", ci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    vuk::PipelineBaseCreateInfo ci;
+    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_rcas_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    TRY(allocator.get_context().create_named_pipeline("rcas_pass", ci))
+  });
+
+  task_scheduler->wait_for_all();
+}
+
 void FSR::create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D presentation_resolution) {
   _render_res = render_resolution;
   _present_res = presentation_resolution;
@@ -192,62 +248,6 @@ void FSR::create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D pr
                                     vuk::Format::eR16G16B16A16Sfloat,
                                     Preset::eSTT2DUnmipped);
   spd_global_atomic.create_texture({1u, 1u, 1u}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
-}
-
-void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci) {
-#define SHADER_FILE(path) FileSystem::read_shader_file(path), FileSystem::get_shader_path(path)
-
-  auto* task_scheduler = App::get_system<TaskScheduler>();
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_autogen_reactive_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("autogen_reactive_pass", ci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_compute_luminance_pyramid_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("luminance_pyramid_pass", ci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_prepare_input_color_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("prepare_input_color_pass", ci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_reconstruct_previous_depth_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("reconstruct_previous_depth_pass", ci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_depth_clip_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("depth_clip_pass", ci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_lock_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("lock_pass", ci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_accumulate_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("accumulate_pass", ci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/ffx_fsr2_rcas_pass.hlsl"), vuk::HlslShaderStage::eCompute);
-    TRY(allocator.get_context().create_named_pipeline("rcas_pass", ci))
-  });
-
-  task_scheduler->wait_for_all();
 }
 
 vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>& input_color_post_alpha,
@@ -326,7 +326,7 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
 
   // convert delta time to seconds and clamp to [0, 1].
   // context->constants.deltaTime = std::max(0.0f, std::min(1.0f, params->frameTimeDelta / 1000.0f));
-  fsr2_constants.deltaTime = (float)dt;
+  fsr2_constants.deltaTime = std::max(0.0f, std::min(1.0f, (float)dt / 1000.0f));
 
   fsr2_constants.frameIndex++;
 
@@ -367,23 +367,23 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
   const float sharpenessRemapped = -2.0f * sharpness + 2.0f;
   FsrRcasCon(rcasConsts.rcasConfig, sharpenessRemapped);
 
-  auto adjusted_color_ia = vuk::declare_ia("adjusted_color", adjusted_color.as_attachment());
-  auto luminance_current_ia = vuk::declare_ia("luminance_current", luminance_current.as_attachment());
-  auto luminance_history_ia = vuk::declare_ia("luminance_history", luminance_history.as_attachment());
-  auto exposure_ia = vuk::declare_ia("exposure", exposure.as_attachment());
-  auto previous_depth_ia = vuk::declare_ia("previous_depth", previous_depth.as_attachment());
-  auto dilated_depth_ia = vuk::declare_ia("dilated_depth", dilated_depth.as_attachment());
-  auto dilated_motion_ia = vuk::declare_ia("dilated_motion", dilated_motion.as_attachment());
-  auto dilated_reactive_ia = vuk::declare_ia("dilated_reactive", dilated_reactive.as_attachment());
-  auto disocclusion_mask_ia = vuk::declare_ia("disocclusion_mask", disocclusion_mask.as_attachment());
-  auto reactive_mask_ia = vuk::declare_ia("reactive_mask", reactive_mask.as_attachment());
-  auto spd_global_atomic_ia = vuk::declare_ia("spd_global_atomic", spd_global_atomic.as_attachment());
+  auto adjusted_color_ia = vuk::acquire_ia("adjusted_color", adjusted_color.as_attachment(), vuk::eNone);
+  auto luminance_current_ia = vuk::acquire_ia("luminance_current", luminance_current.as_attachment(), vuk::eNone);
+  auto luminance_history_ia = vuk::acquire_ia("luminance_history", luminance_history.as_attachment(), vuk::eNone);
+  auto exposure_ia = vuk::acquire_ia("exposure", exposure.as_attachment(), vuk::eNone);
+  auto previous_depth_ia = vuk::acquire_ia("previous_depth", previous_depth.as_attachment(), vuk::eNone);
+  auto dilated_depth_ia = vuk::acquire_ia("dilated_depth", dilated_depth.as_attachment(), vuk::eNone);
+  auto dilated_motion_ia = vuk::acquire_ia("dilated_motion", dilated_motion.as_attachment(), vuk::eNone);
+  auto dilated_reactive_ia = vuk::acquire_ia("dilated_reactive", dilated_reactive.as_attachment(), vuk::eNone);
+  auto disocclusion_mask_ia = vuk::acquire_ia("disocclusion_mask", disocclusion_mask.as_attachment(), vuk::eNone);
+  auto reactive_mask_ia = vuk::acquire_ia("reactive_mask", reactive_mask.as_attachment(), vuk::eNone);
+  auto spd_global_atomic_ia = vuk::acquire_ia("spd_global_atomic", spd_global_atomic.as_attachment(), vuk::eNone);
 
-  vuk::Value<vuk::ImageAttachment> output_ints[2] = {vuk::declare_ia("output_internal0", output_internal[0].as_attachment()),
-                                                     vuk::declare_ia("output_internal1", output_internal[1].as_attachment())};
+  vuk::Value<vuk::ImageAttachment> output_ints[2] = {vuk::acquire_ia("output_internal0", output_internal[0].as_attachment(), vuk::eNone),
+                                                     vuk::acquire_ia("output_internal1", output_internal[1].as_attachment(), vuk::eNone)};
 
-  vuk::Value<vuk::ImageAttachment> locks[2] = {vuk::declare_ia("lock_status0", lock_status[0].as_attachment()),
-                                               vuk::declare_ia("lock_status1", lock_status[1].as_attachment())};
+  vuk::Value<vuk::ImageAttachment> locks[2] = {vuk::acquire_ia("lock_status0", lock_status[0].as_attachment(), vuk::eNone),
+                                               vuk::acquire_ia("lock_status1", lock_status[1].as_attachment(), vuk::eNone)};
 
   if (resetAccumulation) {
     adjusted_color_ia = vuk::clear_image(adjusted_color_ia, vuk::Black<float>);
@@ -453,10 +453,10 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     *constants = fsr2_constants;
 
     constexpr int32_t thread_group_work_region_dim = 8;
-    const int32_t dispatch_src_x = (fsr2_constants.renderSize[0] + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
-    const int32_t dispatch_src_y = (fsr2_constants.renderSize[1] + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+    const int32_t src_x = (fsr2_constants.renderSize[0] + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
+    const int32_t src_y = (fsr2_constants.renderSize[1] + (thread_group_work_region_dim - 1)) / thread_group_work_region_dim;
 
-    command_buffer.dispatch(dispatch_src_x, dispatch_src_y, 1);
+    command_buffer.dispatch(src_x, src_y, 1);
 
     return output;
   });
@@ -468,9 +468,9 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                 luminance_pyramid_constants,
                                                 dispatch_thread_group_count_xy](vuk::CommandBuffer& command_buffer,
                                                                                 VUK_IA(vuk::eComputeSampled) _input_color_post_alpha,
-                                                                                VUK_IA(vuk::eComputeRW) spd_global,
-                                                                                VUK_IA(vuk::eComputeRW) luminance_curr,
-                                                                                VUK_IA(vuk::eComputeRW) luminance_mip5,
+                                                                                VUK_IA(vuk::eComputeRW) _spd_global,
+                                                                                VUK_IA(vuk::eComputeRW) _luminance_curr,
+                                                                                VUK_IA(vuk::eComputeRW) _luminance_mip5,
                                                                                 VUK_IA(vuk::eComputeRW) _exposure) {
     command_buffer.bind_compute_pipeline("luminance_pyramid_pass");
 
@@ -481,13 +481,13 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     *spdconstants = luminance_pyramid_constants;
 
     command_buffer.bind_image(0, 2, _input_color_post_alpha)
-      .bind_image(0, 3, spd_global)
-      .bind_image(0, 4, luminance_curr)
-      .bind_image(0, 5, luminance_mip5)
+      .bind_image(0, 3, _spd_global)
+      .bind_image(0, 4, _luminance_curr)
+      .bind_image(0, 5, _luminance_mip5)
       .bind_image(0, 6, _exposure)
       .dispatch(dispatch_thread_group_count_xy[0], dispatch_thread_group_count_xy[1], 1);
 
-    return std::make_tuple(spd_global, luminance_curr, luminance_mip5, _exposure);
+    return std::make_tuple(_spd_global, _luminance_curr, _luminance_mip5, _exposure);
   });
 
   auto [sdp_global_output, luminance_current_output, luminance_mip5, exposure_output] = luminance_pyramid_pass(input_color_post_alpha,
@@ -641,8 +641,8 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     return std::make_tuple(_rw_output, _rw_lock);
   });
 
-  auto lanczos_ia = vuk::declare_ia("lanczos_lut", lanczos_lut.as_attachment());
-  auto maximum_bias_ia = vuk::declare_ia("maximum_bias_lut", maximum_bias_lut.as_attachment());
+  auto lanczos_ia = vuk::acquire_ia("lanczos_lut", lanczos_lut.as_attachment(), vuk::eComputeSampled);
+  auto maximum_bias_ia = vuk::acquire_ia("maximum_bias_lut", maximum_bias_lut.as_attachment(), vuk::eComputeSampled);
 
   auto [rw_output_output, rw_lock_output2] = reproject_accumulate_pass(exposure_output,
                                                                        dilated_motion_output,

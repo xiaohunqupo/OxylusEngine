@@ -412,7 +412,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     for (auto& mat : materials) {
       material_parameters.emplace_back(mat->parameters);
 
-      mat->set_id(material_parameters.size() - 1);
+      mat->set_id((uint)material_parameters.size() - 1u);
 
       const auto& albedo = mat->get_albedo_texture();
       const auto& normal = mat->get_normal_texture();
@@ -840,13 +840,14 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                      sky_envmap_output,
                                      gtao_output);
 
+#if FSR
   auto ia = forward_texture.as_attachment();
   ia.image = {};
   ia.image_view = {};
   auto fsr_image = vuk::clear_image(vuk::declare_ia("fsr_output", ia), vuk::Black<float>);
-  auto pre_alpha_image_dummy = vuk::clear_image(vuk::declare_ia("pre_alpha", ia), vuk::Black<float>);
-  auto fsr_output = fsr.dispatch(forward_output,
-                                 pre_alpha_image_dummy,
+  auto pre_alpha_image_dummy = vuk::clear_image(vuk::declare_ia("pre_alpha_image", ia), vuk::Black<float>);
+  auto fsr_output = fsr.dispatch(pre_alpha_image_dummy,
+                                 forward_output,
                                  fsr_image,
                                  depth_output,
                                  velocity_output,
@@ -854,6 +855,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                  App::get_timestep().get_elapsed_millis(),
                                  1.0f,
                                  vk_context->current_frame);
+#endif
 
   auto bloom_output = vuk::declare_ia("bloom_output", vuk::dummy_attachment);
   auto transition = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
@@ -1730,7 +1732,11 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
   auto envmap_output = pass(envmap_image.mip(0));
 
   auto converge = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+#if SPD
+  return vuk::generate_mips_spd(*VkContext::get()->context, converge(envmap_output), envmap_image->level_count);
+#else
   return vuk::generate_mips(converge(envmap_output), envmap_image->level_count);
+#endif
 }
 
 #if 0 // UNUSED

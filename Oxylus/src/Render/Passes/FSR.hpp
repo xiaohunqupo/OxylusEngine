@@ -20,8 +20,8 @@ public:
   vuk::Extent3D get_render_res() const { return _render_res;}
   vuk::Extent3D get_present_res() const { return _present_res;}
 
-  void create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D presentation_resolution);
   void load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci);
+  void create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D presentation_resolution);
   vuk::Value<vuk::ImageAttachment> dispatch(vuk::Value<vuk::ImageAttachment>& input_color_post_alpha,
                                             vuk::Value<vuk::ImageAttachment>& input_color_pre_alpha,
                                             vuk::Value<vuk::ImageAttachment>& output,
