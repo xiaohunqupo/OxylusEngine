@@ -19,12 +19,13 @@ public:
 
   void init(vuk::Allocator& allocator, SPDLoad load = SPDLoad::Load);
 
-  vuk::Value<vuk::ImageAttachment> dispatch(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> image);
+  vuk::Value<vuk::ImageAttachment> dispatch(vuk::Name pass_name, vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> image);
 
 private:
   static constexpr auto SPD_MAX_MIP_LEVELS = 13;
   SPDLoad _load;
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set;
+  vuk::Buffer global_counter_buffer;
   std::string pipeline_name;
 };
 } // namespace ox

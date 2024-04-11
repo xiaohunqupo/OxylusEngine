@@ -55,7 +55,6 @@ class VkContext;
 #ifdef TRACY_ENABLE
 class TracyProfiler {
 public:
-
   TracyProfiler() = default;
   ~TracyProfiler();
 

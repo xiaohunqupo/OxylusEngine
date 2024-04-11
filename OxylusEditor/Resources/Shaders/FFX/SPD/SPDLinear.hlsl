@@ -25,6 +25,7 @@ struct SpdConstants {
   uint numWorkGroups;
   uint2 workGroupOffset;
   float2 invInputSize;
+  uint2 _pad;
 };
 
 [[vk::push_constant]] SpdConstants spdConstants;
@@ -46,7 +47,8 @@ struct SpdGlobalAtomicBuffer {
 
 #define A_GPU
 #define A_HLSL
-#define SPD_LINEAR_SAMPLER
+#define SPD_PACKED_ONLY
+#define A_HALF
 
 #include "ffx_a.h"
 

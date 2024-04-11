@@ -229,7 +229,7 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   task_scheduler->wait_for_all();
 
   fsr.load_pipelines(allocator, bindless_pci);
-  spd.init(allocator);
+  spd.init(allocator, SPD::SPDLoad::LinearSampler);
 }
 
 void DefaultRenderPipeline::clear() {
@@ -597,7 +597,7 @@ void DefaultRenderPipeline::create_static_resources() {
   shadow_map_atlas_transparent.create_texture(ia);
 
   constexpr auto envmap_size = vuk::Extent3D{512, 512, 1};
-  auto ia2 = vuk::ImageAttachment::from_preset(Preset::eRTTCube, vuk::Format::eR32G32B32A32Sfloat, envmap_size, vuk::Samples::e1);
+  auto ia2 = vuk::ImageAttachment::from_preset(Preset::eRTTCube, vuk::Format::eR16G16B16A16Sfloat, envmap_size, vuk::Samples::e1);
   ia2.usage |= vuk::ImageUsageFlagBits::eStorage;
   sky_envmap_texture.create_texture(ia2);
 }
@@ -1732,9 +1732,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
     return envmap;
   });
 
-  auto map = pass(envmap_image.mip(0));
+  [[maybe_unused]] auto map = pass(envmap_image.mip(0));
 
-  return spd.dispatch(*get_frame_allocator(), map);
+  return spd.dispatch("envmap_spd", *get_frame_allocator(), envmap_image);
 }
 
 #if 0 // UNUSED

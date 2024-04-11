@@ -43,6 +43,8 @@ struct SpdGlobalAtomicBuffer {
 
 #define A_GPU
 #define A_HLSL
+#define SPD_PACKED_ONLY
+#define A_HALF
 
 #include "ffx_a.h"
 

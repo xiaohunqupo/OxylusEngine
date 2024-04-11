@@ -7,6 +7,7 @@
 #include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Log.hpp"
+#include "Utils/Profiler.hpp"
 
 namespace ox {
 static void SpdSetup(uint2& dispatchThreadGroupCountXY,  // CPU side: dispatch thread group count xy
@@ -76,7 +77,7 @@ void SPD::init(vuk::Allocator& allocator, SPDLoad load) {
       binding(4, vuk::DescriptorType::eSampler, 1),
     };
     layout_create_info.index = 0;
-    for (int i = 0; i < 4; i++)
+    for (int i = 0; i < 5; i++)
       layout_create_info.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
     pci.explicit_set_layouts.emplace_back(layout_create_info);
   }
@@ -94,14 +95,16 @@ void SPD::init(vuk::Allocator& allocator, SPDLoad load) {
                                                                            64);
 }
 
-vuk::Value<vuk::ImageAttachment> SPD::dispatch(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> image) {
+vuk::Value<vuk::ImageAttachment> SPD::dispatch(vuk::Name pass_name, vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> image) {
+  OX_SCOPED_ZONE;
+
   OX_ASSERT(image->level_count <= 13);
 
   std::vector<uint> global_atomics(image->layer_count);
   std::fill(global_atomics.begin(), global_atomics.end(), 0u);
 
   auto buff = vuk::create_cpu_buffer(allocator, std::span(global_atomics));
-  const auto& global_counter_buffer = *buff.first;
+  global_counter_buffer = *buff.first;
   descriptor_set->update_storage_buffer(2, 0, global_counter_buffer);
 
   uint32_t num_uavs = image->level_count;
@@ -121,28 +124,46 @@ vuk::Value<vuk::ImageAttachment> SPD::dispatch(vuk::Allocator& allocator, vuk::V
       .subresourceRange =
         vuk::ImageSubresourceRange{
           .aspectMask = vuk::ImageAspectFlagBits::eColor,
-          .baseMipLevel = mip,
+          .baseMipLevel = mip + (_load == SPDLoad::LinearSampler ? 1 : 0),
           .levelCount = 1,
           .baseArrayLayer = 0,
-          .layerCount = image->layer_count
+          .layerCount = image->layer_count,
         },
-      .view_usage = vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment |
-                    vuk::ImageUsageFlagBits::eStorage,
+      .view_usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment | vuk::ImageUsageFlagBits::eStorage,
     };
   }
   allocator.allocate_image_views(views, cis);
 
   if (_load == SPDLoad::Load) {
-    for (uint i = 0; i < image->level_count; i++)
+    for (uint i = 0; i < num_uavs; i++)
       descriptor_set->update_storage_image(0, i, views[i]);
     descriptor_set->update_storage_image(1, 0, views[6]);
   }
 
   if (_load == SPDLoad::LinearSampler) {
-    for (uint i = 0; i < image->level_count - 1; i++)
-      descriptor_set->update_storage_image(0, i + 1, views[i + 1]);
+    for (uint i = 0; i < num_uavs; i++)
+      descriptor_set->update_storage_image(0, i, views[i]);
     descriptor_set->update_storage_image(1, 0, views[5]);
-    descriptor_set->update_sampled_image(3, 0, views[0], vuk::ImageLayout::eReadOnlyOptimal);
+
+    vuk::ImageView base_view = {};
+    auto ci = vuk::ImageViewCreateInfo{
+      .image = image->image.image,
+      .viewType = vuk::ImageViewType::e2DArray,
+      .format = image->format,
+      .subresourceRange =
+        vuk::ImageSubresourceRange{
+          .aspectMask = vuk::ImageAspectFlagBits::eColor,
+          .baseMipLevel = 0,
+          .levelCount = image->level_count,
+          .baseArrayLayer = 0,
+          .layerCount = image->layer_count,
+        },
+      .view_usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment | vuk::ImageUsageFlagBits::eStorage,
+    };
+    allocator.allocate_image_views(std::span(&base_view, 1), std::span(&ci, 1));
+
+    descriptor_set->update_sampled_image(3, 0, base_view, vuk::ImageLayout::eReadOnlyOptimal);
+
     vuk::SamplerCreateInfo info = {};
     info.magFilter = vuk::Filter::eLinear;
     info.minFilter = vuk::Filter::eLinear;
@@ -161,26 +182,17 @@ vuk::Value<vuk::ImageAttachment> SPD::dispatch(vuk::Allocator& allocator, vuk::V
 
   descriptor_set->commit(allocator.get_context());
 
-  auto pass = vuk::make_pass("SPD", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) input) {
+  auto pass = vuk::make_pass(pass_name, [this, num_uavs](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) input) {
     uint2 dispatchThreadGroupCountXY;
     uint2 workGroupOffset;                                                         // needed if Left and Top are not 0,0
     uint2 numWorkGroupsAndMips;
     const uint4 rectInfo = uint4(0, 0, input->extent.width, input->extent.height); // left, top, width, height
     SpdSetup(dispatchThreadGroupCountXY, workGroupOffset, numWorkGroupsAndMips, rectInfo);
 
-    command_buffer.image_barrier(input,
-                                 vuk::Access::eComputeRead | vuk::Access::eComputeWrite,
-                                 vuk::Access::eComputeRead | vuk::Access::eComputeWrite,
-                                 _load == SPDLoad::LinearSampler ? 1 : 0,
-                                 _load == SPDLoad::LinearSampler ? input->level_count - 1 : input->level_count);
+    command_buffer.image_barrier(input, vuk::Access::eComputeRW, vuk::Access::eComputeSampled, _load == SPDLoad::LinearSampler ? 1 : 0, num_uavs);
 
     if (_load == SPDLoad::LinearSampler) {
-      // TODO: set layer_count to input->layer_count but there is no way to do so with vuk
-      command_buffer.image_barrier(input,
-                                   vuk::Access::eComputeRead | vuk::Access::eComputeWrite,
-                                   vuk::Access::eComputeRead | vuk::Access::eComputeWrite,
-                                   0,
-                                   1);
+      command_buffer.image_barrier(input, vuk::Access::eComputeRW, vuk::Access::eComputeRW, 0, 1);
     }
 
     command_buffer.bind_compute_pipeline(pipeline_name.c_str());
@@ -227,11 +239,7 @@ vuk::Value<vuk::ImageAttachment> SPD::dispatch(vuk::Allocator& allocator, vuk::V
 
     command_buffer.dispatch(dispatchX, dispatchY, dispatchZ);
 
-    command_buffer.image_barrier(input,
-                                 vuk::Access::eNone,
-                                 vuk::Access::eComputeRead | vuk::Access::eComputeWrite,
-                                 _load == SPDLoad::LinearSampler ? 1 : 0,
-                                 _load == SPDLoad::LinearSampler ? input->level_count - 1 : input->level_count);
+    command_buffer.image_barrier(input, vuk::Access::eComputeSampled, vuk::Access::eComputeRW, _load == SPDLoad::LinearSampler ? 1 : 0, num_uavs);
 
     return input;
   });
