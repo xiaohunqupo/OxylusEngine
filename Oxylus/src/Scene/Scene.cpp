@@ -113,39 +113,21 @@ entt::entity Scene::create_entity_with_uuid(UUID uuid, const std::string& name) 
   return ent;
 }
 
-void Scene::iterate_mesh_node(const Shared<Mesh>& mesh, std::vector<Entity>& node_entities, const Entity parent_entity, const Mesh::Node* node) {
-  const auto node_entity = create_entity(node->name); // base_entity != entt::null ? base_entity : create_entity(node->name);
-
-  node_entities.emplace_back(node_entity);
-
-  if (node->mesh_data) {
-    auto& mc = registry.emplace_or_replace<MeshComponent>(node_entity, mesh, node->index);
-    mc.mesh_id = mesh->get_id();
-    registry.get<TransformComponent>(node_entity).set_from_matrix(node->get_matrix());
-  }
-
-  if (parent_entity != entt::null)
-    EUtil::set_parent(this, node_entity, parent_entity);
-
-  for (const auto& child : node->children)
-    iterate_mesh_node(mesh, node_entities, node_entity, child);
-}
-
 Entity Scene::load_mesh(const Shared<Mesh>& mesh) {
-  std::vector<Entity> node_entities = {};
+  const auto& root_node = mesh->rootNodes.front();
+  const auto root_entity = create_entity(root_node->name);
 
-  for (const auto* node : mesh->nodes) {
-    iterate_mesh_node(mesh, node_entities, entt::null, node);
+  for (const auto& node : mesh->nodes) {
+    const auto node_entity = create_entity(node.name);
+    EUtil::set_parent(this, node_entity, root_entity);
+    if (!node.meshlets.empty()) {
+      auto& mc = registry.emplace_or_replace<MeshComponent>(node_entity, mesh, node.index);
+      mc.mesh_id = mesh->get_id();
+      registry.get<TransformComponent>(node_entity).set_from_matrix(node.get_local_transform());
+    }
   }
 
-  Entity parent = entt::null;
-  if (node_entities.size() > 1) {
-    parent = create_entity(FileSystem::get_file_name(mesh->path));
-    for (const auto ent : node_entities)
-      EUtil::set_parent(this, ent, parent);
-  }
-
-  return parent == entt::null ? node_entities.front() : parent;
+  return root_entity;
 }
 
 void Scene::update_physics(const Timestep& delta_time) {
@@ -568,8 +550,8 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
     // TODO: We should only get the vertices and indices for this particular MeshComponent using MeshComponent::node_index
 
     const auto& mesh_component = registry.get<MeshComponent>(entity);
-    auto vertices = mesh_component.mesh_base->vertices;
-    const auto& indices = mesh_component.mesh_base->indices;
+    auto vertices = mesh_component.mesh_base->_vertices;
+    const auto& indices = mesh_component.mesh_base->_indices;
 
     // scale vertices
     const auto world_transform = EUtil::get_world_transform(this, entity);

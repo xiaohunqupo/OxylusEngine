@@ -1,6 +1,7 @@
 ﻿#include "Texture.hpp"
 
 #include <filesystem>
+#include <ktx.h>
 #include <stb_image.h>
 #include <vuk/Partials.hpp>
 
@@ -35,7 +36,7 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
   _view = std::move(*view);
   _attachment = ia;
 
-  set_name(loc);
+  set_name({}, loc);
 }
 
 void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc) {
@@ -50,7 +51,7 @@ void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::
   _view = std::move(*view);
   _attachment = ia;
 
-  set_name(loc);
+  set_name({}, loc);
 }
 
 void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::Format format, Preset preset, std::source_location loc) {
@@ -70,7 +71,7 @@ void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::
   _view = std::move(view);
   _attachment = ia;
 
-  set_name(loc);
+  set_name({}, loc);
 }
 
 void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
@@ -78,26 +79,54 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
 
   _path = load_info.path;
 
-  uint32_t width, height, chans;
-  const uint8_t* data = load_stb_image(_path, &width, &height, &chans);
+  if (load_info.mime == TextureLoadInfo::MimeType::Generic) {
+    uint32_t width, height, chans;
+    const uint8_t* data = load_stb_image(_path, &width, &height, &chans);
 
-  if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
-    create_texture({width, height, 1}, data, load_info.format, load_info.preset, loc);
+    if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
+      create_texture({width, height, 1}, data, load_info.format, load_info.preset, loc);
+    } else {
+      auto ia = vuk::ImageAttachment::from_preset(load_info.preset, load_info.format, {width, height, 1}, vuk::Samples::e1);
+      ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
+      auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
+
+      auto fut = RendererCommon::generate_cubemap_from_equirectangular(hdr_image);
+      auto val = fut.get(*allocator, _compiler);
+
+      _image = vuk::Unique(*allocator, val->image);
+      _view = vuk::Unique(*allocator, val->image_view);
+      _attachment.format = val->format;
+      _attachment.extent = val->extent;
+    }
+
+    delete[] data;
   } else {
-    auto ia = vuk::ImageAttachment::from_preset(load_info.preset, load_info.format, {width, height, 1}, vuk::Samples::e1);
-    ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-    auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
+    const auto file_data = FileSystem::read_file_binary(_path);
+    ktxTexture2* ktx{};
+    if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(),
+                                                         file_data.size(),
+                                                         KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+                                                         &ktx);
+        result != KTX_SUCCESS) {
+      OX_LOG_ERROR("Couldn't load KTX2 file {}", ktxErrorString(result));
+    }
 
-    auto fut = RendererCommon::generate_cubemap_from_equirectangular(hdr_image);
-    auto val = fut.get(*allocator, _compiler);
+    auto format_ktx = vuk::Format::eBc7UnormBlock;
+    constexpr ktx_transcode_fmt_e ktxTranscodeFormat = KTX_TTF_BC7_RGBA;
 
-    _image = vuk::Unique(*allocator, val->image);
-    _view = vuk::Unique(*allocator, val->image_view);
-    _attachment.format = val->format;
-    _attachment.extent = val->extent;
+    // If the image needs is in a supercompressed encoding, transcode it to a desired format
+    if (ktxTexture2_NeedsTranscoding(ktx)) {
+      OX_SCOPED_ZONE_N("Transcode KTX 2 Texture");
+      if (const auto result = ktxTexture2_TranscodeBasis(ktx, ktxTranscodeFormat, KTX_TF_HIGH_QUALITY); result != KTX_SUCCESS) {
+        OX_LOG_ERROR("Couldn't transcode KTX2 file {}", ktxErrorString(result));
+      }
+    } else {
+      // Use the format that the image is already in
+      format_ktx = vuk::Format(VkFormat(ktx->vkFormat));
+    }
+
+    create_texture({ktx->baseWidth, ktx->baseHeight}, ktx->kvData, format_ktx, load_info.preset, loc);
   }
-
-  delete[] data;
 }
 
 void Texture::create_white_texture() {
@@ -108,12 +137,17 @@ void Texture::create_white_texture() {
   _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 }
 
-void Texture::set_name(const std::source_location& loc) {
+void Texture::set_name(std::string_view name, const std::source_location& loc) {
   const auto ctx = VkContext::get();
-  auto file = FileSystem::get_file_name(loc.file_name());
-  const auto n = fmt::format("{0}:{1}", file, loc.line());
-  ctx->context->set_name(_image->image, vuk::Name(n));
-  ctx->context->set_name(_view->payload, vuk::Name(n));
+  if (!name.empty()) {
+    ctx->context->set_name(_image->image, vuk::Name(name));
+    ctx->context->set_name(_view->payload, vuk::Name(name));
+  } else {
+    auto file = FileSystem::get_file_name(loc.file_name());
+    const auto n = fmt::format("{0}:{1}", file, loc.line());
+    ctx->context->set_name(_image->image, vuk::Name(n));
+    ctx->context->set_name(_view->payload, vuk::Name(n));
+  }
 }
 
 uint8_t* Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* height, uint32_t* bits, bool srgb) {

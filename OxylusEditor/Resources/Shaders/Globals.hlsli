@@ -20,11 +20,11 @@
 [[vk::binding(6, 0)]] RWTexture2D<float4> SceneRWTextures[];
 [[vk::binding(7, 0)]] Texture2D<float4> MaterialTextureMaps[];
 
-// 0 - Linear Clamped
-// 1 - Linear Repeated
-// 2 - Linear Repeated
-// 3 - Nearest Clamped
-// 4 - Nearest Repeated
+// 0 - linear_sampler_clamped
+// 1 - linear_sampler_repeated
+// 2 - linear_sampler_repeated_anisotropy
+// 3 - nearest_sampler_clamped
+// 4 - nearest_sampler_repeated
 [[vk::binding(8, 0)]] SamplerState Samplers[5];
 [[vk::binding(9, 0)]] SamplerComparisonState ComparisonSamplers[5];
 
@@ -94,10 +94,7 @@ TextureCube<float4> get_sky_env_map_texture() { return SceneCubeTextures[get_sce
 Texture2D<uint> get_gtao_texture() { return SceneUintTextures[get_scene().indices_.gtao_buffer_image_index]; }
 
 // material textures
-SamplerState get_material_sampler(Material material) {
-  uint index = material.sampler > 1 ? 2 : 1;
-  return Samplers[index];
-}
+SamplerState get_material_sampler(Material material) { return Samplers[material.sampler]; }
 
 Texture2D<float4> get_material_albedo_texture(Material material) { return MaterialTextureMaps[material.albedo_map_id]; }
 Texture2D<float4> get_material_normal_texture(Material material) { return MaterialTextureMaps[material.normal_map_id]; }

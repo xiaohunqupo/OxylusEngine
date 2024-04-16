@@ -111,6 +111,11 @@ Material* Material::set_double_sided(bool double_sided) {
   return this;
 }
 
+Material* Material::set_sampler(Sampler sampler) {
+  parameters.sampling_mode = (uint)sampler;
+  return this;
+}
+
 bool Material::is_opaque() const {
   return parameters.alpha_mode == (uint32_t)AlphaMode::Opaque;
 }

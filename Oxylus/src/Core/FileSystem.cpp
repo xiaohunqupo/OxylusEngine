@@ -93,7 +93,7 @@ std::string FileSystem::read_file(std::string_view file_path) {
 }
 
 std::vector<uint8_t> FileSystem::read_file_binary(const std::string_view file_path) {
-  std::ifstream file(file_path.data(), std::ios::binary | std::ios::ate);
+  std::ifstream file(file_path.data(), std::ios::binary);
 
   std::vector<uint8_t> data = {};
   if (file.is_open()) {

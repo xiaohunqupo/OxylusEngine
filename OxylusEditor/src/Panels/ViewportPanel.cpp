@@ -119,21 +119,19 @@ vuk::Value<vuk::ImageAttachment> ViewportPanel::outline_pass(vuk::Allocator& fra
         mesh_component->mesh_base->bind_index_buffer(command_buffer);
         mesh_component->mesh_base->bind_vertex_buffer(command_buffer);
 
-        const auto node = mesh_component->mesh_base->linear_nodes[mesh_component->node_index];
-        if (node->mesh_data) {
-          for (const auto primitive : node->mesh_data->primitives) {
-            struct PushConstant {
-              Mat4 model_matrix;
-              Vec4 color;
-            } pc;
+        const auto flattened = mesh_component->get_flattened();
+        for (auto meshlet : flattened.meshlets) {
+          struct PushConstant {
+            Mat4 model_matrix;
+            Vec4 color;
+          } pc;
 
-            pc.model_matrix = model_matrix;
-            pc.color = Vec4(0.f);
+          pc.model_matrix = model_matrix;
+          pc.color = Vec4(0.f);
 
-            command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
+          command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
 
-            command_buffer.draw_indexed(primitive->index_count, 1, primitive->first_index, 0, 0);
-          }
+          command_buffer.draw_indexed(meshlet.index_count, 1, meshlet.index_offset, 0, 0);
         }
 
         constexpr auto stencil_state2 = vuk::StencilOpState{.failOp = vuk::StencilOp::eKeep,
@@ -158,20 +156,18 @@ vuk::Value<vuk::ImageAttachment> ViewportPanel::outline_pass(vuk::Allocator& fra
           .bind_graphics_pipeline("stencil_pipeline")
           .bind_buffer(0, 0, vs_buffer);
 
-        if (node->mesh_data) {
-          for (const auto primitive : node->mesh_data->primitives) {
-            struct PushConstant {
-              Mat4 model_matrix;
-              Vec4 color;
-            } pc;
+        for (auto meshlet : flattened.meshlets) {
+          struct PushConstant {
+            Mat4 model_matrix;
+            Vec4 color;
+          } pc;
 
-            pc.model_matrix = scale(model_matrix, Vec3(1.02f));
-            pc.color = Vec4(1.f, 0.45f, 0.f, 1.f);
+          pc.model_matrix = scale(model_matrix, Vec3(1.02f));
+          pc.color = Vec4(1.f, 0.45f, 0.f, 1.f);
 
-            command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
+          command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
 
-            command_buffer.draw_indexed(primitive->index_count, 1, primitive->first_index, 0, 0);
-          }
+          command_buffer.draw_indexed(meshlet.index_count, 1, meshlet.index_offset, 0, 0);
         }
 
         return dst;
@@ -494,20 +490,18 @@ void ViewportPanel::mouse_picking_pass(vuk::Allocator& frame_allocator, vuk::Com
       mesh.mesh_component.mesh_base->bind_index_buffer(command_buffer);
       mesh.mesh_component.mesh_base->bind_vertex_buffer(command_buffer);
 
-      const auto node = mesh.mesh_component.mesh_base->linear_nodes[mesh.mesh_component.node_index];
-      if (node->mesh_data) {
-        for (const auto primitive : node->mesh_data->primitives) {
-          struct PushConstant {
-            Mat4 model_matrix;
-            uint32_t entity_id;
-          } pc;
+      const auto flattened = mesh.mesh_component.get_flattened();
+      for (auto meshlet : flattened.meshlets) {
+        struct PushConstant {
+          Mat4 model_matrix;
+          uint32_t entity_id;
+        } pc;
 
-          pc.model_matrix = mesh.mesh_component.transform;
-          pc.entity_id = mesh.entity_id;
+        pc.model_matrix = mesh.mesh_component.transform;
+        pc.entity_id = mesh.entity_id;
 
-          command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc)
-            .draw_indexed(primitive->index_count, 1, primitive->first_index, 0, 0);
-        }
+        command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
+        command_buffer.draw_indexed(meshlet.index_count, 1, meshlet.index_offset, 0, 0);
       }
     }
 

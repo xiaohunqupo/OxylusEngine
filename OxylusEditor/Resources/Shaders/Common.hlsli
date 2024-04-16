@@ -19,7 +19,6 @@ struct Vertex {
   int _pad2 : PAD1;
   float2 uv : TEXCOORD0;
   float2 _pad3 : PAD2;
-  float4 tangent : TEXCOORD1;
   float4 color : TEXCOORD2;
   float4 joint0 : TEXCOORD3;
   float4 weight0 : TEXCOORD4;

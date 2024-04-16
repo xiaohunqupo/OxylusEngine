@@ -85,7 +85,7 @@ Shared<Texture> AssetManager::load_texture_asset(const std::string& path, const 
 
 Shared<Mesh> AssetManager::load_mesh_asset(const std::string& path, uint32_t loadingFlags) {
   OX_SCOPED_ZONE;
-  Shared<Mesh> asset = create_shared<Mesh>(path, loadingFlags);
+  Shared<Mesh> asset = create_shared<Mesh>(path);
   asset->asset_id = (uint32_t)_state.mesh_assets.size();
   return _state.mesh_assets.emplace(path, asset).first->second;
 }

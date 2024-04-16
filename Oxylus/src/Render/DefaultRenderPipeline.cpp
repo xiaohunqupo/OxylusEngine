@@ -977,13 +977,11 @@ void DefaultRenderPipeline::render_meshes(const RenderQueue& render_queue,
       return;
     }
 
-    const auto node = mesh.get_linear_node();
-
     mesh.mesh_base->bind_index_buffer(command_buffer);
 
     uint32_t primitive_index = 0;
-    for (const auto primitive : node->mesh_data->primitives) {
-      auto& material = mesh.materials[primitive_index];
+    for (const auto primitive : mesh.get_flattened().meshlets) {
+      auto& material = mesh.get_material(primitive.material_id);
       if (filter & FILTER_TRANSPARENT) {
         if (material->parameters.alpha_mode == (uint32_t)Material::AlphaMode::Blend) {
           continue;
@@ -1010,7 +1008,7 @@ void DefaultRenderPipeline::render_meshes(const RenderQueue& render_queue,
       if (!(flags & RENDER_FLAGS_SHADOWS_PASS))
         stage = stage | vuk::ShaderStageFlagBits::eFragment;
       command_buffer.push_constants(stage, 0, pc);
-      command_buffer.draw_indexed(primitive->index_count, instanced_batch.instance_count, primitive->first_index, 0, 0);
+      command_buffer.draw_indexed(primitive.index_count, instanced_batch.instance_count, primitive.index_offset, primitive.vertex_offset, 0);
 
       primitive_index++;
     }

@@ -40,17 +40,21 @@ source_group("src/Utils" FILES ${Utils})
 set(SOURCE_FILES ${src} ${Core} ${Assets} ${Audio} ${Event} ${Physics} ${Modules}
                   ${RENDERER_FILES} ${Scene} ${Thread} ${UI} ${Utils} ${Scripting})
 
-set(vendor__ImGuizmo "vendor/ImGuizmo/ImGuizmo.cpp" "vendor/ImGuizmo/ImGuizmo.h")
-source_group("vendor/ImGuizmo" FILES ${vendor__ImGuizmo})
+set(vendor_ImGuizmo "vendor/ImGuizmo/ImGuizmo.cpp" "vendor/ImGuizmo/ImGuizmo.h")
+source_group("vendor/ImGuizmo" FILES ${vendor_ImGuizmo})
 
-set(vendor__miniaudio "vendor/miniaudio/miniaudio.h")
-source_group("vendor/miniaudio" FILES ${vendor__miniaudio})
+set(vendor_miniaudio "vendor/miniaudio/miniaudio.h")
+source_group("vendor/miniaudio" FILES ${vendor_miniaudio})
+
+set(vendor_stb "vendor/stb/stb_image.h" "vendor/stb/stb_image.cpp")
+source_group("vendor/stb" FILES ${vendor_stb})
 
 set(ALL_FILES
   ${SOURCE_FILES}
-  ${vendor__ImGuizmo}
-  ${vendor__miniaudio}
-  )
+  ${vendor_ImGuizmo}
+  ${vendor_miniaudio}
+  ${vendor_stb}
+)
 
 # Target
 add_library(${PROJECT_NAME} STATIC ${ALL_FILES})
@@ -175,21 +179,23 @@ if (EnTT_ADDED)
     target_link_libraries(${PROJECT_NAME} PUBLIC EnTT)
 endif()
 
-# tinygltf
+# fastgltf
 CPMAddPackage(
-    NAME tinygltf
-    GIT_TAG release
-    GITHUB_REPOSITORY syoyo/tinygltf
+    NAME fastgltf
+    VERSION 0.7.1
+    GITHUB_REPOSITORY spnda/fastgltf
     GIT_SHALLOW ON
     OPTIONS
-        "TINYGLTF_NO_INCLUDE_JSON ON"
-        "TINYGLTF_USE_RAPIDJSON ON"
-        "TINYGLTF_USE_CPP14 ON"
-        "TINYGLTF_BUILD_LOADER_EXAMPLE OFF"
-        "TINYGLTF_HEADER_ONLY ON"
+        "FASTGLTF_COMPILE_AS_CPP20 ON"
+        "FASTGLTF_USE_CUSTOM_SMALLVECTOR ON"
 )
-set_target_properties(tinygltf PROPERTIES FOLDER "Vendor")
-target_link_libraries(${PROJECT_NAME} PUBLIC tinygltf)
+set_target_properties(fastgltf PROPERTIES FOLDER "Vendor")
+target_link_libraries(${PROJECT_NAME} PUBLIC fastgltf)
+
+# meshoptimizer
+CPMAddPackage("gh:zeux/meshoptimizer#v0.20")
+target_link_libraries(${PROJECT_NAME} PUBLIC meshoptimizer)
+set_target_properties(meshoptimizer PROPERTIES FOLDER "Vendor")
 
 # FMT
 CPMAddPackage("gh:fmtlib/fmt#10.1.1")
@@ -352,6 +358,31 @@ set_target_properties(unordered_dense PROPERTIES FOLDER "Vendor")
 # dylib
 CPMAddPackage("gh:martin-olivier/dylib#main")
 target_include_directories(${PROJECT_NAME} PUBLIC ${dylib_SOURCE_DIR}/include)
+
+# ktx
+CPMAddPackage(
+    NAME ktx
+    GITHUB_REPOSITORY KhronosGroup/KTX-Software
+    GIT_TAG main
+    GIT_SHALLOW ON
+    GIT_MODULES ""
+    OPTIONS
+        "KTX_FEATURE_STATIC_LIBRARY ON"
+        "KTX_FEATURE_LOADTEST_APPS OFF"
+        "KTX_FEATURE_DOC OFF"
+        "KTX_FEATURE_TESTS OFF"
+        "KTX_FEATURE_GL_UPLOAD OFF"
+        "KTX_FEATURE_TOOLS_CTS OFF"
+        "KTX_FEATURE_TOOLS OFF"
+)
+target_include_directories(${PROJECT_NAME} PUBLIC ${ktx_SOURCE_DIR}/include)
+target_link_libraries(${PROJECT_NAME} PUBLIC ktx)
+set_target_properties(ktx PROPERTIES FOLDER "Vendor")
+set_target_properties(astcenc-avx2-static PROPERTIES FOLDER "Vendor")
+set_target_properties(ktx_read PROPERTIES FOLDER "Vendor")
+set_target_properties(ktx_version PROPERTIES FOLDER "Vendor")
+set_target_properties(obj_basisu_cbind PROPERTIES FOLDER "Vendor")
+set_target_properties(objUtil PROPERTIES FOLDER "Vendor")
 
 # imspinner
 CPMAddPackage("gh:dalerank/imspinner#254b46994a76222a6da06111978a1674865a050d")

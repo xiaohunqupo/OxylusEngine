@@ -2,10 +2,6 @@
 #define ALPHA_MODE_BLEND 1
 #define ALPHA_MODE_MASK 2
 
-#define SAMPLER_BILINEAR 0
-#define SAMPLER_TRILINEAR 1
-#define SAMPELR_ANISOTROPY 2
-
 struct Material {
   float4 color;
   float4 emissive;

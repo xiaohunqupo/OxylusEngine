@@ -8,7 +8,6 @@
 
 #include "Core/FileSystem.hpp"
 #include "Render/Mesh.hpp"
-#include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 
 #define M_PI 3.14159265358979323846

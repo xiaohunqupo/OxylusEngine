@@ -273,9 +273,7 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<MeshComponent>(" Mesh Component", context->registry, entity, [](MeshComponent& component) {
     if (!component.mesh_base)
       return;
-    const char* file_name = component.mesh_base->name.empty() ? "Empty" : component.mesh_base->name.c_str();
     OxUI::begin_properties();
-    OxUI::text("Loaded mesh:", file_name);
     OxUI::text("Node index:", fmt::format("{}", component.node_index).c_str());
     OxUI::text("Node material count:", fmt::format("{}", component.materials.size()).c_str());
     OxUI::text("Mesh asset id:", fmt::format("{}", component.mesh_id).c_str());
@@ -306,34 +304,6 @@ void InspectorPanel::draw_components(Entity entity) {
           ImGui::TreePop();
         }
         ImGui::PopID();
-      }
-    }
-  });
-
-  draw_component<AnimationComponent>(" Animation Component", context->registry, entity, [](AnimationComponent& component) {
-    constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
-
-    const float filter_cursor_pos_x = ImGui::GetCursorPosX();
-    ImGuiTextFilter name_filter;
-
-    name_filter.Draw("##animation_filter",
-                     ImGui::GetContentRegionAvail().x - (OxUI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
-
-    if (!name_filter.IsActive()) {
-      ImGui::SameLine();
-      ImGui::SetCursorPosX(filter_cursor_pos_x + ImGui::GetFontSize() * 0.5f);
-      ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
-    }
-
-    for (uint index = 0; index < (uint)component.animations.size(); index++) {
-      const auto& animation = component.animations[index];
-      if (name_filter.PassFilter(animation->name.c_str())) {
-        if (ImGui::TreeNodeEx(animation->name.c_str(), flags, "%s %s", StringUtils::from_char8_t(ICON_MDI_CIRCLE), animation->name.c_str())) {
-          if (ImGui::Button("Play", {ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeight()})) {
-            component.current_animation_index = index;
-          }
-          ImGui::TreePop();
-        }
       }
     }
   });

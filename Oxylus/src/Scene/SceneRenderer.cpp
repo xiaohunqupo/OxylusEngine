@@ -39,7 +39,7 @@ void SceneRenderer::update() const {
         continue;
       const auto world_transform = EUtil::get_world_transform(m_scene, entity);
       mesh_component.transform = world_transform;
-      mesh_component.aabb = mesh_component.mesh_base->linear_nodes[mesh_component.node_index]->aabb.get_transformed(world_transform);
+      mesh_component.aabb = mesh_component.get_flattened().nodes[mesh_component.node_index]->aabb.get_transformed(world_transform);
       m_render_pipeline->register_mesh_component(mesh_component);
 
       if (RendererCVar::cvar_enable_debug_renderer.get() && RendererCVar::cvar_draw_bounding_boxes.get()) {
@@ -62,21 +62,6 @@ void SceneRenderer::update() const {
           auto aabb = convert_jolt_aabb(body->GetShape()->GetWorldSpaceBounds(body->GetCenterOfMassTransform(), scale));
           DebugRenderer::draw_aabb(aabb, Vec4(0, 1, 0, 1.0f));
         }
-      }
-    }
-  }
-
-  // Animation system
-  {
-    OX_SCOPED_ZONE_N("Animated Mesh System");
-    const auto animation_view = m_scene->registry.view<TransformComponent, MeshComponent, AnimationComponent, TagComponent>();
-    for (const auto&& [entity, transform, mesh_renderer, animation, tag] : animation_view.each()) {
-      if (!animation.animations.empty()) {
-        animation.animation_timer += (float)App::get_timestep() * animation.animation_speed;
-        if (animation.animation_timer > mesh_renderer.mesh_base->animations[animation.current_animation_index]->end) {
-          animation.animation_timer -= mesh_renderer.mesh_base->animations[animation.current_animation_index]->end;
-        }
-        mesh_renderer.mesh_base->update_animation(animation.current_animation_index, animation.animation_timer);
       }
     }
   }

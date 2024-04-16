@@ -16,11 +16,11 @@ class Material : public Asset {
 public:
   enum class AlphaMode : uint32_t {
     Opaque = 0,
-    Blend,
     Mask,
+    Blend,
   };
 
-  enum class Sampler : uint32_t { Bilinear, Trilinear, Anisotropy };
+  enum class Sampler : uint32_t { Bilinear = 1, Anisotropy = 2, Nearest = 4 }; // matching the shader
 
   struct Parameters {
     Vec4 color = Vec4(1.0f);
@@ -84,6 +84,7 @@ public:
   Material* set_alpha_cutoff(float cutoff);
 
   Material* set_double_sided(bool double_sided);
+  Material* set_sampler(Sampler sampler);
 
   bool is_opaque() const;
   const char* alpha_mode_to_string() const;

@@ -89,21 +89,15 @@ struct MeshComponent {
   MeshComponent() = default;
 
   MeshComponent(const Shared<Mesh>& mesh, const uint32_t node_idx = 0) : mesh_base(mesh), node_index(node_idx) {
-    materials = mesh->get_materials(node_index);
+    materials = mesh->flattened.nodes[node_idx + 1]->materials;
   }
 
-  constexpr Mesh::Node* get_linear_node() const { return mesh_base->linear_nodes[node_index]; }
+  const Mesh::SceneFlattened& get_flattened() const { return mesh_base->flattened; }
+  const Shared<Material>& get_material(uint idx) const { return materials[idx]; }
 };
 
 struct CameraComponent {
   Camera camera;
-};
-
-struct AnimationComponent {
-  float animation_timer = 0.0;
-  float animation_speed = 1.0f;
-  uint32_t current_animation_index = 0;
-  std::vector<Shared<Mesh::Animation>> animations;
 };
 
 struct ParticleSystemComponent {
@@ -291,6 +285,10 @@ struct AudioListenerComponent {
 // Scripting
 struct LuaScriptComponent {
   std::vector<Shared<LuaSystem>> lua_systems = {};
+};
+
+struct CPPScriptComponent {
+  Shared<System> system = nullptr;
 };
 
 template <typename... Component>
