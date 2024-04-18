@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <utility>
 
-#include <vuk/Future.hpp>
+#include <vuk/Value.hpp>
 
 #include "Core/Base.hpp"
 

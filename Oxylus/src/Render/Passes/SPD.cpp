@@ -85,7 +85,7 @@ void SPD::init(vuk::Allocator& allocator, SPDLoad load) {
   pipeline_name = load == SPDLoad::LinearSampler ? "spd_pipeline_linear" : "spd_pipeline";
   const auto shader_name = load == SPDLoad::LinearSampler ? "FFX/SPD/SPDLinear.hlsl" : "FFX/SPD/SPD.hlsl";
   if (!allocator.get_context().is_pipeline_available(pipeline_name.c_str())) {
-    pci.add_hlsl(FileSystem::read_shader_file(shader_name), FileSystem::get_shader_path(shader_name), vuk::HlslShaderStage::eCompute);
+    pci.add_hlsl(fs::read_shader_file(shader_name), fs::get_shader_path(shader_name), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline(pipeline_name.c_str(), pci))
   }
 

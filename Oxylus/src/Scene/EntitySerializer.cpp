@@ -511,7 +511,7 @@ Entity EntitySerializer::deserialize_entity_as_prefab(const char* filepath, Scen
   }
 
 #endif
-  OX_LOG_ERROR("There are not entities in the prefab to deserialize! {0}", FileSystem::get_file_name(filepath));
+  OX_LOG_ERROR("There are not entities in the prefab to deserialize! {0}", fs::get_file_name(filepath));
   return {};
 }
 } // namespace ox

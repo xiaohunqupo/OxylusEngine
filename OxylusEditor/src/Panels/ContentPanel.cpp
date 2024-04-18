@@ -127,12 +127,12 @@ static void open_file(const std::filesystem::path& path) {
       case FileType::Audio : [[fallthrough]];
       case FileType::Shader: [[fallthrough]];
       case FileType::Script: {
-        FileSystem::open_file_externally(filepath);
+        fs::open_file_externally(filepath);
         break;
       }
     }
   } else {
-    FileSystem::open_file_externally(filepath);
+    fs::open_file_externally(filepath);
   }
 }
 
@@ -186,7 +186,7 @@ std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std:
       drag_drop_target(entryPath);
     drag_drop_from(entryPath);
 
-    auto name = FileSystem::get_name_with_extension(filepath);
+    auto name = fs::get_name_with_extension(filepath);
 
     const char8_t* folderIcon = ICON_MDI_FILE;
     if (entryIsFile) {
@@ -780,11 +780,11 @@ void ContentPanel::draw_context_menu_items(const std::filesystem::path& context,
     }
   }
   if (ImGui::MenuItem("Show in Explorer")) {
-    FileSystem::open_folder_select_file(context.string().c_str());
+    fs::open_folder_select_file(context.string().c_str());
     ImGui::CloseCurrentPopup();
   }
   if (ImGui::MenuItem("Open")) {
-    FileSystem::open_file_externally(context.string().c_str());
+    fs::open_file_externally(context.string().c_str());
     ImGui::CloseCurrentPopup();
   }
   if (ImGui::MenuItem("Copy Path")) {

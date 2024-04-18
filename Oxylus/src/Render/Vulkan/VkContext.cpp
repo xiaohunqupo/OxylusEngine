@@ -7,7 +7,7 @@
 #include "Utils/Profiler.hpp"
 
 #include <vuk/Context.hpp>
-#include <vuk/Future.hpp>
+#include <vuk/Value.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/resources/DeviceFrameResource.hpp>
 #include <vuk/runtime/ThisThreadExecutor.hpp>

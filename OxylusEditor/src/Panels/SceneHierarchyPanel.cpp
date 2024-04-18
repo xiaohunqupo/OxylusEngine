@@ -264,7 +264,7 @@ void SceneHierarchyPanel::drag_drop_target() const {
       }
       if (path.extension() == ".gltf" || path.extension() == ".glb") {
         const auto mesh_task = AssetManager::get_mesh_asset_future(path.string());
-        context->trigger_future_mesh_load_event(FutureMeshLoadEvent{FileSystem::get_name_with_extension(path.string()), mesh_task});
+        context->trigger_future_mesh_load_event(FutureMeshLoadEvent{fs::get_name_with_extension(path.string()), mesh_task});
       }
       if (path.extension() == ".oxprefab") {
         EntitySerializer::deserialize_entity_as_prefab(path.string().c_str(), context.get());

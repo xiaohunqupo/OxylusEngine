@@ -244,7 +244,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
   path = file_path;
 
-  const auto extension = FileSystem::get_file_extension(file_path);
+  const auto extension = fs::get_file_extension(file_path);
   const auto isText = extension == "gltf";
   const auto isBinary = extension == "glb";
 
@@ -265,10 +265,10 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
     constexpr auto options = fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages | fastgltf::Options::LoadGLBBuffers;
     if (isBinary) {
-      return parser.loadGltfBinary(&data, FileSystem::get_directory(file_path), options);
+      return parser.loadGltfBinary(&data, fs::get_directory(file_path), options);
     }
 
-    return parser.loadGltfJson(&data, FileSystem::get_directory(file_path), options);
+    return parser.loadGltfJson(&data, fs::get_directory(file_path), options);
   }();
 
   if (auto err = maybeAsset.error(); err != fastgltf::Error::None) {
@@ -316,7 +316,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   const auto rootRotation = glm::quat{rootRotationArray[3], rootRotationArray[0], rootRotationArray[1], rootRotationArray[2]};
   const auto rootScale = glm::make_vec3(rootScaleArray.data());
 
-  Node* rootNode = &scene.nodes.emplace_back(FileSystem::get_file_name(file_path), rootTranslation, rootRotation, rootScale);
+  Node* rootNode = &scene.nodes.emplace_back(fs::get_file_name(file_path), rootTranslation, rootRotation, rootScale);
   rootNode->index = 0;
   scene.tempData.emplace_back();
 
@@ -659,7 +659,7 @@ std::vector<Shared<Texture>> Mesh::load_images(const fastgltf::Asset& asset) {
         OX_ASSERT(filePath->fileByteOffset == 0, "File offsets are not supported.");
         OX_ASSERT(filePath->uri.isLocalPath(), "Only loading local files are supported.");
 
-        const auto file_data = FileSystem::read_file_binary(filePath->uri.path());
+        const auto file_data = fs::read_file_binary(filePath->uri.path());
 
         return make_raw_image_data(file_data.data(), file_data.size(), filePath->mimeType, image.name);
       }

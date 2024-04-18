@@ -151,7 +151,7 @@ std::string App::get_asset_directory() {
   return instance->app_spec.assets_path;
 }
 
-std::string App::get_asset_directory(const std::string_view asset_path) { return FileSystem::append_paths(get_asset_directory(), asset_path); }
+std::string App::get_asset_directory(const std::string_view asset_path) { return fs::append_paths(get_asset_directory(), asset_path); }
 
 std::string App::get_asset_directory_absolute() {
   if (Project::get_active()) {
@@ -163,10 +163,10 @@ std::string App::get_asset_directory_absolute() {
 }
 
 std::string App::get_relative(const std::string& path) {
-  return FileSystem::preferred_path(std::filesystem::relative(path, get_asset_directory()).string());
+  return fs::preferred_path(std::filesystem::relative(path, get_asset_directory()).string());
 }
 
 std::string App::get_absolute(const std::string& path) {
-  return FileSystem::append_paths(FileSystem::preferred_path(get_asset_directory_absolute()), path);
+  return fs::append_paths(fs::preferred_path(get_asset_directory_absolute()), path);
 }
 } // namespace ox

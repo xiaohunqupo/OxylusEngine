@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <mutex>
+#include <vuk/Value.hpp>
 
-#include <vuk/Future.hpp>
 #include "Event/Event.hpp"
 
 #include "Core/Base.hpp"

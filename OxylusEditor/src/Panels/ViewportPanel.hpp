@@ -1,7 +1,8 @@
 #pragma once
 
+#include <vuk/Value.hpp>
+
 #include "EditorPanel.hpp"
-#include "EditorTheme.hpp"
 
 #include "Render/Camera.hpp"
 #include "Scene/Scene.hpp"
@@ -9,8 +10,6 @@
 
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
-
-#include "Utils/StringUtils.hpp"
 
 namespace ox {
 class ViewportPanel : public EditorPanel {

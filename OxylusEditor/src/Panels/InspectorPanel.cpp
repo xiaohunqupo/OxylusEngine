@@ -12,6 +12,7 @@
 
 #include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
+#include "EditorTheme.hpp"
 #include "Scene/Entity.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/FileDialogs.hpp"
@@ -629,7 +630,7 @@ void InspectorPanel::draw_components(Entity entity) {
 
     for (uint i = 0; i < (uint)component.lua_systems.size(); i++) {
       const auto& system = component.lua_systems[i];
-      auto name = FileSystem::get_file_name(system->get_path());
+      auto name = fs::get_file_name(system->get_path());
       if (name_filter.PassFilter(name.c_str())) {
         ImGui::PushID(i);
         constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
@@ -650,7 +651,7 @@ void InspectorPanel::draw_components(Entity entity) {
     auto load_script = [](const std::string& path, LuaScriptComponent& comp) {
       if (path.empty())
         return;
-      const auto ext = FileSystem::get_file_extension(path);
+      const auto ext = fs::get_file_extension(path);
       if (ext == "lua") {
         comp.lua_systems.emplace_back(create_shared<LuaSystem>(path));
       }

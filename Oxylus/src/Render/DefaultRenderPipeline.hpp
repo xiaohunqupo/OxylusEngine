@@ -3,6 +3,7 @@
 #include <glm/ext/scalar_constants.hpp>
 #include <glm/fwd.hpp>
 #include <glm/gtc/packing.inl>
+#include <vuk/Value.hpp>
 
 #include "Passes/FSR.hpp"
 #include "RenderPipeline.hpp"

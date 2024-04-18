@@ -101,7 +101,7 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
 
     delete[] data;
   } else {
-    const auto file_data = FileSystem::read_file_binary(_path);
+    const auto file_data = fs::read_file_binary(_path);
     ktxTexture2* ktx{};
     if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(),
                                                          file_data.size(),
@@ -143,7 +143,7 @@ void Texture::set_name(std::string_view name, const std::source_location& loc) {
     ctx->context->set_name(_image->image, vuk::Name(name));
     ctx->context->set_name(_view->payload, vuk::Name(name));
   } else {
-    auto file = FileSystem::get_file_name(loc.file_name());
+    auto file = fs::get_file_name(loc.file_name());
     const auto n = fmt::format("{0}:{1}", file, loc.line());
     ctx->context->set_name(_image->image, vuk::Name(n));
     ctx->context->set_name(_view->payload, vuk::Name(n));

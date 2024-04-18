@@ -68,7 +68,7 @@ void ProjectPanel::on_imgui_render() {
         ImGui::SameLine();
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FOLDER), {ImGui::GetContentRegionAvail().x, 0})) {
           project_dir = App::get_system<FileDialogs>()->open_dir();
-          project_dir = FileSystem::append_paths(project_dir, project_name);
+          project_dir = fs::append_paths(project_dir, project_name);
         }
         OxUI::end_property_grid();
       }
@@ -90,7 +90,7 @@ void ProjectPanel::on_imgui_render() {
     } else {
       const auto projects = EditorConfig::get()->get_recent_projects();
       for (auto& project : projects) {
-        auto project_name = FileSystem::get_file_name(project);
+        auto project_name = fs::get_file_name(project);
         if (ImGui::Button(project_name.c_str(), {x, y})) {
           load_project_for_editor(project);
         }
