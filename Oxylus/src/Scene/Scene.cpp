@@ -114,12 +114,14 @@ entt::entity Scene::create_entity_with_uuid(UUID uuid, const std::string& name) 
 }
 
 Entity Scene::load_mesh(const Shared<Mesh>& mesh) {
-  const auto& root_node = mesh->rootNodes.front();
-  const auto root_entity = create_entity(root_node->name);
+  entt::entity root_entity = entt::null;
 
   for (const auto& node : mesh->nodes) {
     const auto node_entity = create_entity(node.name);
-    EUtil::set_parent(this, node_entity, root_entity);
+    if (!node.parent)
+      root_entity = node_entity;
+    else
+      EUtil::set_parent(this, node_entity, root_entity);
     if (!node.meshlets.empty()) {
       auto& mc = registry.emplace_or_replace<MeshComponent>(node_entity, mesh, node.index);
       mc.mesh_id = mesh->get_id();

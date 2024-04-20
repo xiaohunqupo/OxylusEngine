@@ -71,7 +71,7 @@ public:
   std::vector<Node*> rootNodes;
   std::list<Node> nodes;
   std::vector<Vertex> _vertices;
-  std::vector<uint> _indices;
+  std::vector<uint32> _indices;
   std::vector<uint8_t> primitives;
   std::vector<Shared<Material>> materials;
 
@@ -79,8 +79,8 @@ public:
   mutable size_t previousTransformsSize{};
   mutable size_t previousLightsSize{};
 
-  uint index_count = 0;
-  uint vertex_count = 0;
+  uint32 index_count = 0;
+  uint32 vertex_count = 0;
   vuk::Unique<vuk::Buffer> vertex_buffer;
   vuk::Unique<vuk::Buffer> index_buffer;
 

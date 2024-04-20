@@ -30,15 +30,15 @@ public:
                                             Camera& camera,
                                             double dt,
                                             float sharpness,
-                                            uint frame_index);
+                                            uint32 frame_index);
 
 private:
   struct Fsr2Constants {
     int renderSize[2];
     int displaySize[2];
-    uint lumaMipDimensions[2];
-    uint lumaMipLevelToUse;
-    uint frameIndex;
+    uint32 lumaMipDimensions[2];
+    uint32 lumaMipLevelToUse;
+    uint32 frameIndex;
     float displaySizeRcp[2];
     float jitterOffset[2];
     float deviceToViewDepth[4];

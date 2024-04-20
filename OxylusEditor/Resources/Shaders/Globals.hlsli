@@ -18,21 +18,24 @@
 [[vk::binding(4, 0)]] TextureCube<float4> SceneCubeTextures[];
 [[vk::binding(5, 0)]] Texture2DArray<float4> SceneArrayTextures[];
 [[vk::binding(6, 0)]] RWTexture2D<float4> SceneRWTextures[];
-[[vk::binding(7, 0)]] Texture2D<float4> MaterialTextureMaps[];
+[[vk::binding(7, 0)]] RWTexture2D<float> SceneRWTexturesFloat[];
+[[vk::binding(8, 0)]] Texture2D<float4> MaterialTextureMaps[];
 
 // 0 - linear_sampler_clamped
 // 1 - linear_sampler_repeated
 // 2 - linear_sampler_repeated_anisotropy
 // 3 - nearest_sampler_clamped
 // 4 - nearest_sampler_repeated
-[[vk::binding(8, 0)]] SamplerState Samplers[5];
-[[vk::binding(9, 0)]] SamplerComparisonState ComparisonSamplers[5];
+// 5 - hiz_sampler
+[[vk::binding(9, 0)]] SamplerState Samplers[];
+[[vk::binding(10, 0)]] SamplerComparisonState ComparisonSamplers[];
 
 #define LINEAR_CLAMPED_SAMPLER Samplers[0]
 #define LINEAR_REPEATED_SAMPLER Samplers[1]
 #define LINEAR_REPEATED_SAMPLER_ANISOTROPY Samplers[2]
 #define NEAREST_CLAMPED_SAMPLER Samplers[3]
 #define NEAREST_REPEATED_SAMPLER Samplers[4]
+#define HIZ_SAMPLER Samplers[5]
 
 #define CMP_DEPTH_SAMPLER ComparisonSamplers[0]
 
@@ -53,23 +56,23 @@ struct VertexInput {
 
   MeshInstance get_instance(const uint instance_offset) { return load_instance(get_instance_pointer(instance_offset).get_instance_index()); }
 
-  float3 get_vertex_position(uint64_t ptr) {
-    uint64_t addressOffset = ptr + vertex_index * sizeof(Vertex);
+  float3 get_vertex_position(uint64 ptr) {
+    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex);
     return vk::RawBufferLoad<float4>(addressOffset).xyz;
   }
 
-  float3 get_vertex_normal(uint64_t ptr) {
-    uint64_t addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4);
+  float3 get_vertex_normal(uint64 ptr) {
+    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4);
     return vk::RawBufferLoad<float4>(addressOffset).xyz;
   }
 
-  float2 get_vertex_uv(uint64_t ptr) {
-    uint64_t addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4) * 2;
+  float2 get_vertex_uv(uint64 ptr) {
+    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4) * 2;
     return vk::RawBufferLoad<float4>(addressOffset).xy;
   }
 
-  float4 get_vertex_tangent(uint64_t ptr) {
-    uint64_t addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4) * 3;
+  float4 get_vertex_tangent(uint64 ptr) {
+    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4) * 3;
     return vk::RawBufferLoad<float4>(addressOffset);
   }
 };
@@ -86,6 +89,7 @@ Texture2D<float4> get_bloom_texture() { return SceneTextures[get_scene().indices
 // scene r/w textures
 RWTexture2D<float4> get_sky_transmittance_lutrw_texture() { return SceneRWTextures[get_scene().indices_.sky_transmittance_lut_index]; }
 RWTexture2D<float4> get_sky_multi_scatter_lutrw_texture() { return SceneRWTextures[get_scene().indices_.sky_multiscatter_lut_index]; }
+RWTexture2D<float> get_hiz_texture() { return SceneRWTexturesFloat[get_scene().indices_.hiz_image_index]; }
 
 // scene cube textures
 TextureCube<float4> get_sky_env_map_texture() { return SceneCubeTextures[get_scene().indices_.sky_env_map_index]; }

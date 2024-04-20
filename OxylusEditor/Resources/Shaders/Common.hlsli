@@ -12,6 +12,10 @@
 #define sqr(a) ((a) * (a))
 #define pow5(x) pow(x, 5)
 
+typedef uint64_t uint64;
+typedef uint32_t uint32;
+// typedef uint16_t uint16; - currently not needed - need to enable -enable-16bit-types to use it...
+
 struct Vertex {
   float3 position : POSITION;
   int _pad : PAD0;
@@ -53,7 +57,7 @@ struct VertexOutput {
 };
 
 struct PushConst {
-  uint64_t vertex_buffer_ptr;
+  uint64 vertex_buffer_ptr;
   uint instance_offset;
   uint material_index;
 };
@@ -124,20 +128,20 @@ struct Light {
   float _pad0;
 
   float3 rotation;
-  uint type8_flags8_range16;
+  uint32 type8_flags8_range16;
 
   uint2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
   uint2 color;                        // half4 packed
 
   float4 shadow_atlas_mul_add;
 
-  uint radius16_length16;
-  uint matrix_index;
-  uint remap;
-  uint _pad1;
+  uint32 radius16_length16;
+  uint32 matrix_index;
+  uint32 remap;
+  uint32 _pad1;
 
-  uint get_type() { return type8_flags8_range16 & 0xFF; }
-  uint get_flags() { return (type8_flags8_range16 >> 8u) & 0xFF; }
+  uint32 get_type() { return type8_flags8_range16 & 0xFF; }
+  uint32 get_flags() { return (type8_flags8_range16 >> 8u) & 0xFF; }
   float get_range() { return f16tof32(type8_flags8_range16 >> 16u); }
   float get_radius() { return f16tof32(radius16_length16); }
   float get_length() { return f16tof32(radius16_length16 >> 16u); }
@@ -147,7 +151,7 @@ struct Light {
                             f16tof32(direction16_cone_angle_cos16.y)));
   }
   float get_cone_angle_cos() { return f16tof32(direction16_cone_angle_cos16.y >> 16u); }
-  uint get_shadow_cascade_count() { return direction16_cone_angle_cos16.y >> 16u; }
+  uint32 get_shadow_cascade_count() { return direction16_cone_angle_cos16.y >> 16u; }
   float get_angle_scale() { return f16tof32(remap); }
   float get_angle_offset() { return f16tof32(remap >> 16u); }
   float get_cubemap_depth_remap_near() { return f16tof32(remap); }
@@ -160,7 +164,7 @@ struct Light {
     retVal.w = f16tof32(color.y >> 16u);
     return retVal;
   }
-  uint get_matrix_index() { return matrix_index; }
+  uint32 get_matrix_index() { return matrix_index; }
   float get_gravity() { return get_cone_angle_cos(); }
   float3 get_collider_tip() { return shadow_atlas_mul_add.xyz; }
 };
@@ -196,7 +200,8 @@ struct SceneData {
 
     int shadow_array_index;
     int gtao_buffer_image_index;
-    int2 _pad2;
+    int hiz_image_index;
+    int _pad2;
   } indices_;
 
   // TODO: use flags
@@ -220,11 +225,16 @@ struct SceneData {
   } post_processing_data;
 };
 
-struct SSRData {
-  int Samples;
-  int BinarySearchSamples;
-  float MaxDist;
-  int _pad;
+struct Meshlet {
+  uint32 vertexOffset;
+  uint32 indexOffset;
+  uint32 primitiveOffset;
+  uint32 indexCount;
+  uint32 primitiveCount;
+  uint32 materialId;
+  uint32 instanceId;
+  float3 aabbMin;
+  float3 aabbMax;
 };
 
 bool is_nan(float3 vec) {

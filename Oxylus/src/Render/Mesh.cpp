@@ -33,6 +33,8 @@
 #include "Vulkan/VkContext.hpp"
 #include "fastgltf/core.hpp"
 
+static constexpr auto GENERATE_MESHLETS = false;
+
 namespace ox {
 Mesh::Mesh(const std::string_view path) { load_from_file(path.data()); }
 
@@ -107,7 +109,7 @@ Mesh::SceneFlattened Mesh::flatten() const {
   return sceneFlattened;
 }
 
-Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint>& indices) {
+Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices) {
   this->_vertices = vertices;
   this->_indices = indices;
 
@@ -130,7 +132,7 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint>& indices
   iBufferFut.wait(*context->superframe_allocator, compiler);
   index_buffer = std::move(iBuffer);
 
-  index_count = (uint)indices.size();
+  index_count = (uint32)indices.size();
 }
 
 static std::vector<Vertex> ConvertVertexBufferFormat(const fastgltf::Asset& model,
@@ -183,12 +185,12 @@ static std::vector<Vertex> ConvertVertexBufferFormat(const fastgltf::Asset& mode
   return vertices;
 }
 
-static std::vector<uint> ConvertIndexBufferFormat(const fastgltf::Asset& model, std::size_t indicesAccessorIndex) {
+static std::vector<uint32> ConvertIndexBufferFormat(const fastgltf::Asset& model, std::size_t indicesAccessorIndex) {
   OX_SCOPED_ZONE;
-  auto indices = std::vector<uint>();
+  auto indices = std::vector<uint32>();
   auto& accessor = model.accessors[indicesAccessorIndex];
   indices.resize(accessor.count);
-  fastgltf::iterateAccessorWithIndex<uint>(model, accessor, [&](uint index, size_t idx) { indices[idx] = index; });
+  fastgltf::iterateAccessorWithIndex<uint32>(model, accessor, [&](uint32 index, size_t idx) { indices[idx] = index; });
   return indices;
 }
 
@@ -219,7 +221,7 @@ constexpr auto meshletConeWeight = 0.0f;
 
 struct RawMesh {
   std::vector<Vertex> vertices;
-  std::vector<uint> indices;
+  std::vector<uint32> indices;
   AABB boundingBox;
 };
 
@@ -305,30 +307,32 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   };
   std::stack<StackElement> nodeStack;
 
-  // Create the root node for this scene
-  std::array<float, 16> rootTransformArray{};
-  std::copy_n(&rootTransform[0][0], 16, rootTransformArray.data());
-  std::array<float, 3> rootScaleArray{};
-  std::array<float, 4> rootRotationArray{};
-  std::array<float, 3> rootTranslationArray{};
-  fastgltf::decomposeTransformMatrix(rootTransformArray, rootScaleArray, rootRotationArray, rootTranslationArray);
-  const auto rootTranslation = glm::make_vec3(rootTranslationArray.data());
-  const auto rootRotation = glm::quat{rootRotationArray[3], rootRotationArray[0], rootRotationArray[1], rootRotationArray[2]};
-  const auto rootScale = glm::make_vec3(rootScaleArray.data());
-
-  Node* rootNode = &scene.nodes.emplace_back(fs::get_file_name(file_path), rootTranslation, rootRotation, rootScale);
-  rootNode->index = 0;
-  scene.tempData.emplace_back();
-
-  // All nodes referenced in the scene MUST be root nodes
-  for (auto nodeIndex : asset.scenes[0].nodeIndices) {
-    const auto& assetNode = asset.nodes[nodeIndex];
-    const auto name = assetNode.name.empty() ? std::string("Node") : std::string(assetNode.name);
-    Node* sceneNode = &scene.nodes.emplace_back(name, rootTranslation, rootRotation, rootScale);
-    sceneNode->index = (uint)nodeIndex;
-    rootNode->children.emplace_back(sceneNode);
-    nodeStack.emplace(sceneNode, &assetNode, scene.tempData.size());
+  uint32 node_index = 0;
+  for (const fastgltf::Node& node : asset.nodes) {
+    const auto name = node.name.empty() ? std::string("Node") : std::string(node.name);
+    Node* sceneNode = &scene.nodes.emplace_back(name);
+    sceneNode->index = node_index;
+    nodeStack.emplace(sceneNode, &node, scene.tempData.size());
     scene.tempData.emplace_back();
+
+    std::visit(fastgltf::visitor{[&](const fastgltf::Node::TransformMatrix& matrix) { memcpy(&sceneNode->transform, matrix.data(), sizeof(matrix)); },
+                                 [&](const fastgltf::TRS& transform) {
+      const glm::vec3 tl(transform.translation[0], transform.translation[1], transform.translation[2]);
+      const glm::quat rot(transform.rotation[3], transform.rotation[0], transform.rotation[1], transform.rotation[2]);
+      const glm::vec3 sc(transform.scale[0], transform.scale[1], transform.scale[2]);
+
+      sceneNode->translation = tl;
+      sceneNode->rotation = rot;
+      sceneNode->scale = sc;
+
+      const glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
+      const glm::mat4 rm = glm::toMat4(rot);
+      const glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
+
+      sceneNode->transform = tm * rm * sm;
+    }},
+               node.transform);
+    node_index++;
   }
 
   while (!nodeStack.empty()) {
@@ -563,6 +567,9 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   }
 
   for (size_t i = 0; auto& node : scene.nodes) {
+    if (!node.parent)
+      rootNodes.emplace_back(&node);
+
     for (const auto& [rawMeshIndex, materialId] : scene.tempData[i++].indices) {
       for (auto& meshlet : perMeshMeshlets[rawMeshIndex]) {
         meshlet.material_id = (uint32_t)materialId;
@@ -572,13 +579,12 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
     }
   }
 
-  rootNodes.emplace_back(&scene.nodes.front());
   nodes.splice(nodes.end(), scene.nodes);
 
   flattened = flatten();
 
-  index_count = (uint)_indices.size();
-  vertex_count = (uint)_vertices.size();
+  index_count = (uint32)_indices.size();
+  vertex_count = (uint32)_vertices.size();
 
   // create buffers
   auto ctx = VkContext::get();
@@ -732,7 +738,7 @@ std::vector<Shared<Texture>> Mesh::load_images(const fastgltf::Asset& asset) {
   loaded_images.reserve(raw_image_datas.size());
 
   for (const auto& image : raw_image_datas) {
-    const vuk::Extent3D dims = {static_cast<uint>(image.width1), static_cast<uint>(image.height), 1u};
+    const vuk::Extent3D dims = {static_cast<uint32>(image.width1), static_cast<uint32>(image.height), 1u};
 
     const auto* ktx = image.ktx.get();
 
@@ -772,7 +778,7 @@ std::vector<Shared<Material>> Mesh::load_materials(const fastgltf::Asset& asset,
 
       auto& image = images[base_color_texture.imageIndex.value()];
       ma->set_albedo_texture(image);
-      
+
       // extract sampler
       if (!asset.samplers.empty()) {
         const auto extract_sampler = [](const fastgltf::Sampler& sampler) -> Material::Sampler {
@@ -828,7 +834,7 @@ std::vector<Shared<Material>> Mesh::load_materials(const fastgltf::Asset& asset,
       ->set_emissive(float4(glm::make_vec3(material.emissiveFactor.data()), material.emissiveStrength))
       ->set_reflectance(0.04f)
       ->set_double_sided(material.doubleSided)
-      ->set_alpha_mode((Material::AlphaMode)(uint)material.alphaMode)
+      ->set_alpha_mode((Material::AlphaMode)(uint32)material.alphaMode)
       ->set_alpha_cutoff(material.alphaCutoff);
   }
 

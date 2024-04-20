@@ -7,8 +7,8 @@
 #include "Utils/Profiler.hpp"
 
 #include <vuk/Context.hpp>
-#include <vuk/Value.hpp>
 #include <vuk/RenderGraph.hpp>
+#include <vuk/Value.hpp>
 #include <vuk/resources/DeviceFrameResource.hpp>
 #include <vuk/runtime/ThisThreadExecutor.hpp>
 
@@ -151,6 +151,8 @@ void VkContext::create_context(const AppSpec& spec) {
   vkb::PhysicalDeviceSelector selector{vkb_instance};
   surface = create_surface_glfw(instance, Window::get_glfw_window());
   selector.set_surface(surface)
+    .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+    .require_present()
     .set_minimum_version(1, 2)
     .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
     .add_required_extension(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
@@ -165,10 +167,14 @@ void VkContext::create_context(const AppSpec& spec) {
   vk10features.features.multiViewport = true;
   vk10features.features.samplerAnisotropy = true;
   vk10features.features.multiDrawIndirect = true;
+  vk10features.features.shaderCullDistance = true;
+  vk10features.features.shaderClipDistance = true;
   selector.set_required_features(vk10features.features);
+
   VkPhysicalDeviceVulkan11Features vk11features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
   vk11features.shaderDrawParameters = true;
   selector.set_required_features_11(vk11features);
+
   VkPhysicalDeviceVulkan12Features vk12features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
   vk12features.timelineSemaphore = true;
   vk12features.descriptorBindingPartiallyBound = true;

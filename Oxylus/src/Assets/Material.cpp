@@ -112,7 +112,7 @@ Material* Material::set_double_sided(bool double_sided) {
 }
 
 Material* Material::set_sampler(Sampler sampler) {
-  parameters.sampling_mode = (uint)sampler;
+  parameters.sampling_mode = (uint32)sampler;
   return this;
 }
 

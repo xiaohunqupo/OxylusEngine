@@ -62,7 +62,7 @@ AssetTask<Mesh>* AssetManager::get_mesh_asset_future(const std::string& path, ui
 
 Shared<Material> AssetManager::get_material_asset(const std::string& name) {
   const auto& ma = _state.material_assets.emplace_back(create_shared<Material>(name));
-  ma->set_id((uint)_state.material_assets.size() - 1);
+  ma->set_id((uint32)_state.material_assets.size() - 1);
   return ma;
 }
 

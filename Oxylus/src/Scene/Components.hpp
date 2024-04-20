@@ -89,11 +89,11 @@ struct MeshComponent {
   MeshComponent() = default;
 
   MeshComponent(const Shared<Mesh>& mesh, const uint32_t node_idx = 0) : mesh_base(mesh), node_index(node_idx) {
-    materials = mesh->flattened.nodes[node_idx + 1]->materials;
+    materials = mesh->flattened.nodes[node_idx]->materials;
   }
 
   const Mesh::SceneFlattened& get_flattened() const { return mesh_base->flattened; }
-  const Shared<Material>& get_material(uint idx) const { return materials[idx]; }
+  const Shared<Material>& get_material(uint32 idx) const { return materials[idx]; }
 };
 
 struct CameraComponent {

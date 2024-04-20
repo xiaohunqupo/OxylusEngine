@@ -30,6 +30,18 @@
 #include "Utils/RectPacker.hpp"
 
 namespace ox {
+static vuk::SamplerCreateInfo hiz_sampler_ci = {
+  .magFilter = vuk::Filter::eNearest,
+  .minFilter = vuk::Filter::eNearest,
+  .mipmapMode = vuk::SamplerMipmapMode::eNearest,
+  .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
+  .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
+  .addressModeW = vuk::SamplerAddressMode::eClampToEdge,
+  .maxAnisotropy = 1.0f,
+  .minLod = -1000,
+  .maxLod = 1000,
+};
+
 VkDescriptorSetLayoutBinding binding(uint32_t binding, vuk::DescriptorType descriptor_type, uint32_t count = 1024) {
   return {
     .binding = binding,
@@ -76,12 +88,13 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
     binding(4, vuk::DescriptorType::eSampledImage, 8),
     binding(5, vuk::DescriptorType::eSampledImage, 8),
     binding(6, vuk::DescriptorType::eStorageImage),
-    binding(7, vuk::DescriptorType::eSampledImage),
-    binding(8, vuk::DescriptorType::eSampler, 5),
-    binding(9, vuk::DescriptorType::eSampler, 5),
+    binding(7, vuk::DescriptorType::eStorageImage),
+    binding(8, vuk::DescriptorType::eSampledImage),
+    binding(9, vuk::DescriptorType::eSampler),
+    binding(10, vuk::DescriptorType::eSampler),
   };
   bindless_dslci_00.index = 0;
-  for (int i = 0; i < 10; i++)
+  for (int i = 0; i < 11; i++)
     bindless_dslci_00.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
   bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_00);
 
@@ -229,7 +242,21 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   task_scheduler->wait_for_all();
 
   fsr.load_pipelines(allocator, bindless_pci);
-  spd.init(allocator, SPD::SPDLoad::LinearSampler);
+
+  vuk::SamplerCreateInfo envmap_spd_sampler_ci = {};
+  envmap_spd_sampler_ci.magFilter = vuk::Filter::eLinear;
+  envmap_spd_sampler_ci.minFilter = vuk::Filter::eLinear;
+  envmap_spd_sampler_ci.mipmapMode = vuk::SamplerMipmapMode::eNearest;
+  envmap_spd_sampler_ci.addressModeU = vuk::SamplerAddressMode::eClampToEdge;
+  envmap_spd_sampler_ci.addressModeV = vuk::SamplerAddressMode::eClampToEdge;
+  envmap_spd_sampler_ci.addressModeW = vuk::SamplerAddressMode::eClampToEdge;
+  envmap_spd_sampler_ci.minLod = -1000;
+  envmap_spd_sampler_ci.maxLod = 1000;
+  envmap_spd_sampler_ci.maxAnisotropy = 1.0f;
+
+  envmap_spd.init(allocator, {.load = SPD::SPDLoad::LinearSampler, .view_type = vuk::ImageViewType::e2DArray, .sampler = envmap_spd_sampler_ci});
+
+  hiz_spd.init(allocator, {.load = SPD::SPDLoad::LinearSampler, .view_type = vuk::ImageViewType::e2D, .sampler = hiz_sampler_ci});
 }
 
 void DefaultRenderPipeline::clear() {
@@ -392,6 +419,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   scene_data.indices.sky_env_map_index = SKY_ENVMAP_INDEX;
   scene_data.indices.shadow_array_index = SHADOW_ATLAS_INDEX;
   scene_data.indices.gtao_buffer_image_index = GTAO_BUFFER_IMAGE_INDEX;
+  scene_data.indices.hiz_image_index = HIZ_IMAGE_INDEX;
   scene_data.indices.lights_buffer_index = LIGHTS_BUFFER_INDEX;
   scene_data.indices.materials_buffer_index = MATERIALS_BUFFER_INDEX;
   scene_data.indices.mesh_instance_buffer_index = MESH_INSTANCES_BUFFER_INDEX;
@@ -413,7 +441,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     for (auto& mat : materials) {
       material_parameters.emplace_back(mat->parameters);
 
-      mat->set_id((uint)material_parameters.size() - 1u);
+      mat->set_id((uint32)material_parameters.size() - 1u);
 
       const auto& albedo = mat->get_albedo_texture();
       const auto& normal = mat->get_normal_texture();
@@ -422,15 +450,15 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
       const auto& emissive = mat->get_emissive_texture();
 
       if (albedo && albedo->is_valid_id())
-        descriptor_set_00->update_sampled_image(7, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+        descriptor_set_00->update_sampled_image(8, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
       if (normal && normal->is_valid_id())
-        descriptor_set_00->update_sampled_image(7, normal->get_id(), *normal->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+        descriptor_set_00->update_sampled_image(8, normal->get_id(), *normal->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
       if (physical && physical->is_valid_id())
-        descriptor_set_00->update_sampled_image(7, physical->get_id(), *physical->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+        descriptor_set_00->update_sampled_image(8, physical->get_id(), *physical->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
       if (ao && ao->is_valid_id())
-        descriptor_set_00->update_sampled_image(7, ao->get_id(), *ao->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+        descriptor_set_00->update_sampled_image(8, ao->get_id(), *ao->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
       if (emissive && emissive->is_valid_id())
-        descriptor_set_00->update_sampled_image(7, emissive->get_id(), *emissive->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+        descriptor_set_00->update_sampled_image(8, emissive->get_id(), *emissive->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     }
   }
 
@@ -448,7 +476,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     auto& light = light_datas.emplace_back();
     light.position = lc.position;
     light.set_range(lc.range);
-    light.set_type((uint)lc.type);
+    light.set_type((uint32)lc.type);
     light.rotation = lc.rotation;
     light.set_direction(lc.direction);
     light.set_color(float4(lc.color * (lc.type == LightComponent::Directional ? 1.0f : lc.intensity), 1.0f));
@@ -466,7 +494,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
     switch (lc.type) {
       case LightComponent::LightType::Directional: {
-        light.set_shadow_cascade_count((uint)lc.cascade_distances.size());
+        light.set_shadow_cascade_count((uint32)lc.cascade_distances.size());
       } break;
       case LightComponent::LightType::Point: {
         if (cast_shadows) {
@@ -505,12 +533,12 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     if (lc.cast_shadows) {
       switch (lc.type) {
         case LightComponent::Directional: {
-          auto cascade_count = (uint)lc.cascade_distances.size();
+          auto cascade_count = (uint32)lc.cascade_distances.size();
           auto sh_cameras = std::vector<CameraSH>(cascade_count);
           create_dir_light_cameras(lc, *current_camera, sh_cameras, cascade_count);
 
-          light.matrix_index = (uint)shader_entities.size();
-          for (uint cascade = 0; cascade < cascade_count; ++cascade) {
+          light.matrix_index = (uint32)shader_entities.size();
+          for (uint32 cascade = 0; cascade < cascade_count; ++cascade) {
             shader_entities.emplace_back(sh_cameras[cascade].projection_view);
           }
           break;
@@ -578,6 +606,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   // scene Read/Write textures
   descriptor_set_00->update_storage_image(6, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view());
   descriptor_set_00->update_storage_image(6, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view());
+  descriptor_set_00->update_storage_image(7, HIZ_IMAGE_INDEX, *hiz_texture.get_view());
 
   descriptor_set_00->commit(ctx);
 }
@@ -614,8 +643,12 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
     forward_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
   if (normal_texture.get_extent() != ext)
     normal_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
-  if (depth_texture.get_extent() != ext)
-    depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
+  if (depth_texture.get_extent() != ext) {
+    depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2D);
+    auto ia = vuk::ImageAttachment::from_preset(Preset::eSTT2D, vuk::Format::eR32Sfloat, ext, vuk::Samples::e1);
+    ia.usage |= vuk::ImageUsageFlagBits::eSampled;
+    hiz_texture.create_texture(ext, vuk::Format::eR32Sfloat, Preset::eSTT2D);
+  }
   if (velocity_texture.get_extent() != ext)
     velocity_texture.create_texture(ext, vuk::Format::eR16G16Sfloat, Preset::eRTT2DUnmipped);
 
@@ -729,12 +762,14 @@ void DefaultRenderPipeline::create_descriptor_sets(vuk::Allocator& allocator) {
   const vuk::Sampler nearest_sampler_clamped = ctx.acquire_sampler(vuk::NearestSamplerClamped, ctx.get_frame_count());
   const vuk::Sampler nearest_sampler_repeated = ctx.acquire_sampler(vuk::NearestSamplerRepeated, ctx.get_frame_count());
   const vuk::Sampler cmp_depth_sampler = ctx.acquire_sampler(vuk::CmpDepthSampler, ctx.get_frame_count());
-  descriptor_set_00->update_sampler(8, 0, linear_sampler_clamped);
-  descriptor_set_00->update_sampler(8, 1, linear_sampler_repeated);
-  descriptor_set_00->update_sampler(8, 2, linear_sampler_repeated_anisotropy);
-  descriptor_set_00->update_sampler(8, 3, nearest_sampler_clamped);
-  descriptor_set_00->update_sampler(8, 4, nearest_sampler_repeated);
-  descriptor_set_00->update_sampler(9, 0, cmp_depth_sampler);
+  const vuk::Sampler hiz_sampler = ctx.acquire_sampler(hiz_sampler_ci, ctx.get_frame_count());
+  descriptor_set_00->update_sampler(9, 0, linear_sampler_clamped);
+  descriptor_set_00->update_sampler(9, 1, linear_sampler_repeated);
+  descriptor_set_00->update_sampler(9, 2, linear_sampler_repeated_anisotropy);
+  descriptor_set_00->update_sampler(9, 3, nearest_sampler_clamped);
+  descriptor_set_00->update_sampler(9, 4, nearest_sampler_repeated);
+  descriptor_set_00->update_sampler(9, 5, hiz_sampler);
+  descriptor_set_00->update_sampler(10, 0, cmp_depth_sampler);
 }
 
 void DefaultRenderPipeline::run_static_passes(vuk::Allocator& allocator) {
@@ -825,7 +860,11 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   auto depth_image = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
 
   auto velocity_image = vuk::clear_image(vuk::declare_ia("velocity_image", velocity_texture.as_attachment()), vuk::Black<float>);
-  auto [depth_output, normal_output, velocity_output] = depth_pre_pass(depth_image, normal_image, velocity_image);
+  auto [depth_output, normal_output, velocity_output] = depth_pre_pass(depth_image.mip(0), normal_image, velocity_image);
+
+  auto hiz_image = vuk::clear_image(vuk::declare_ia("hiz_image", hiz_texture.as_attachment()), vuk::Black<float>);
+  auto hiz_image_copied = depth_copy_pass(depth_output, hiz_image);
+  auto depth_hiz_output = hiz_pass(frame_allocator, hiz_image_copied);
 
   auto gtao_output = vuk::clear_image(vuk::declare_ia("gtao_output", gtao_final_texture.as_attachment()), vuk::Black<uint32_t>);
   if (RendererCVar::cvar_gtao_enable.get())
@@ -1261,6 +1300,23 @@ std::tuple<vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>, v
   });
 
   return pass(depth_image, normal_image, velocity_image);
+}
+
+vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::hiz_pass(vuk::Allocator& frame_allocator, vuk::Value<vuk::ImageAttachment>& depth_image) {
+  return hiz_spd.dispatch("hiz_pass", frame_allocator, depth_image);
+}
+
+vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::depth_copy_pass(vuk::Value<vuk::ImageAttachment>& depth_image,
+                                                                        vuk::Value<vuk::ImageAttachment>& hiz_image) {
+  auto pass = vuk::make_pass("depth_copy_pass",
+                             [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeSampled) src, VUK_IA(vuk::eComputeRW) dst) {
+    command_buffer.bind_compute_pipeline("depth_copy_pipeline")
+      .bind_persistent(0, *descriptor_set_00)
+      .dispatch((dst->extent.width + 15) / 16, (dst->extent.height + 15) / 16, 1);
+
+    return dst;
+  });
+  return pass(depth_image, hiz_image);
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::forward_pass(const vuk::Value<vuk::ImageAttachment>& output,
@@ -1732,7 +1788,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
 
   [[maybe_unused]] auto map = pass(envmap_image.mip(0));
 
-  return spd.dispatch("envmap_spd", *get_frame_allocator(), envmap_image);
+  return envmap_spd.dispatch("envmap_spd", *get_frame_allocator(), envmap_image);
 }
 
 #if 0 // UNUSED

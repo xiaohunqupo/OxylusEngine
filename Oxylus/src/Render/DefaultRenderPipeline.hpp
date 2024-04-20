@@ -74,6 +74,7 @@ private:
   static constexpr auto SKY_MULTISCATTER_LUT_INDEX = 5;
   static constexpr auto VELOCITY_IMAGE_INDEX = 6;
   static constexpr auto BLOOM_IMAGE_INDEX = 7;
+  static constexpr auto HIZ_IMAGE_INDEX = 8;
 
   // buffers and buffer/image combined indices
   static constexpr auto LIGHTS_BUFFER_INDEX = 0;
@@ -87,20 +88,20 @@ private:
     float _pad0;
 
     float3 rotation;
-    uint type8_flags8_range16;
+    uint32 type8_flags8_range16;
 
     uint2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
-    uint2 color;                      // half4 packed
+    uint2 color;                        // half4 packed
 
     float4 shadow_atlas_mul_add;
 
-    uint radius16_length16;
-    uint matrix_index;
-    uint remap;
-    uint _pad1;
+    uint32 radius16_length16;
+    uint32 matrix_index;
+    uint32 remap;
+    uint32 _pad1;
 
-    void set_type(uint type) { type8_flags8_range16 |= type & 0xFF; }
-    void set_flags(uint flags) { type8_flags8_range16 |= (flags & 0xFF) << 8u; }
+    void set_type(uint32 type) { type8_flags8_range16 |= type & 0xFF; }
+    void set_flags(uint32 flags) { type8_flags8_range16 |= (flags & 0xFF) << 8u; }
     void set_range(float value) { type8_flags8_range16 |= glm::packHalf1x16(value) << 16u; }
     void set_radius(float value) { radius16_length16 |= glm::packHalf1x16(value); }
     void set_length(float value) { radius16_length16 |= glm::packHalf1x16(value) << 16u; }
@@ -116,12 +117,12 @@ private:
       direction16_cone_angle_cos16.y |= glm::packHalf1x16(value.z);
     }
     void set_cone_angle_cos(float value) { direction16_cone_angle_cos16.y |= glm::packHalf1x16(value) << 16u; }
-    void set_shadow_cascade_count(uint value) { direction16_cone_angle_cos16.y |= (value & 0xFFFF) << 16u; }
+    void set_shadow_cascade_count(uint32 value) { direction16_cone_angle_cos16.y |= (value & 0xFFFF) << 16u; }
     void set_angle_scale(float value) { remap |= glm::packHalf1x16(value); }
     void set_angle_offset(float value) { remap |= glm::packHalf1x16(value) << 16u; }
     void set_cube_remap_near(float value) { remap |= glm::packHalf1x16(value); }
     void set_cube_remap_far(float value) { remap |= glm::packHalf1x16(value) << 16u; }
-    void set_indices(uint indices) { matrix_index = indices; }
+    void set_indices(uint32 indices) { matrix_index = indices; }
     void set_gravity(float value) { set_cone_angle_cos(value); }
     void SetColliderTip(float3 value) { shadow_atlas_mul_add = float4(value.x, value.y, value.z, 0); }
   };
@@ -199,7 +200,8 @@ private:
 
       int shadow_array_index;
       int gtao_buffer_image_index;
-      IVec2 _pad2;
+      int hiz_image_index;
+      int _pad2;
     } indices;
 
     struct PostProcessingData {
@@ -235,6 +237,7 @@ private:
   Texture forward_texture;
   Texture normal_texture;
   Texture depth_texture;
+  Texture hiz_texture;
   Texture velocity_texture;
 
   Texture sky_transmittance_lut;
@@ -249,7 +252,8 @@ private:
   GTAOSettings gtao_settings = {};
 
   FSR fsr = {};
-  SPD spd = {};
+  SPD envmap_spd = {};
+  SPD hiz_spd = {};
 
   // PBR Resources
   Shared<Texture> cube_map = nullptr;
@@ -407,6 +411,9 @@ private:
   depth_pre_pass(const vuk::Value<vuk::ImageAttachment>& depth_image,
                  const vuk::Value<vuk::ImageAttachment>& normal_image,
                  const vuk::Value<vuk::ImageAttachment>& velocity_image);
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> hiz_pass(vuk::Allocator& frame_allocator, vuk::Value<vuk::ImageAttachment>& depth_image);
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> depth_copy_pass(vuk::Value<vuk::ImageAttachment>& depth_image,
+                                                               vuk::Value<vuk::ImageAttachment>& hiz_image);
   void render_meshes(const RenderQueue& render_queue,
                      vuk::CommandBuffer& command_buffer,
                      uint32_t filter,

@@ -295,7 +295,7 @@ void InspectorPanel::draw_components(Entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint i = 0; i < (uint)component.materials.size(); i++) {
+    for (uint32 i = 0; i < (uint32)component.materials.size(); i++) {
       auto& material = component.materials[i];
       if (name_filter.PassFilter(material->name.c_str())) {
         ImGui::PushID(i);
@@ -443,7 +443,7 @@ void InspectorPanel::draw_components(Entity entity) {
     }
 
     if (component.color_temperature_mode) {
-      if (OxUI::property<uint>("Temperature (K)", &component.temperature, 1000, 40000))
+      if (OxUI::property<uint32>("Temperature (K)", &component.temperature, 1000, 40000))
         ColorUtils::TempratureToColor(component.temperature, component.color);
     } else {
       OxUI::property_vector("Color", component.color, true);
@@ -464,8 +464,8 @@ void InspectorPanel::draw_components(Entity entity) {
 
     OxUI::property("Cast Shadows", &component.cast_shadows);
 
-    const ankerl::unordered_dense::map<uint, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
-    const ankerl::unordered_dense::map<int, uint> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
+    const ankerl::unordered_dense::map<uint32, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
+    const ankerl::unordered_dense::map<int, uint32> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
 
     const char* res_strings[] = {"Auto", "512", "1024", "2048"};
     int idx = res_map.at(component.shadow_map_res);
@@ -474,7 +474,7 @@ void InspectorPanel::draw_components(Entity entity) {
     }
 
     if (component.type == LightComponent::Directional) {
-      for (uint i = 0; i < (uint)component.cascade_distances.size(); ++i)
+      for (uint32 i = 0; i < (uint32)component.cascade_distances.size(); ++i)
         OxUI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
     }
 
@@ -628,7 +628,7 @@ void InspectorPanel::draw_components(Entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint i = 0; i < (uint)component.lua_systems.size(); i++) {
+    for (uint32 i = 0; i < (uint32)component.lua_systems.size(); i++) {
       const auto& system = component.lua_systems[i];
       auto name = fs::get_file_name(system->get_path());
       if (name_filter.PassFilter(name.c_str())) {
