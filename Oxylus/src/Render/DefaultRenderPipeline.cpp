@@ -995,28 +995,35 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     run_static_passes(*vk_context->superframe_allocator);
   }
 
-  auto hiz_image = vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), vuk::Access::eNone);
-  auto [instanced_index_buff, indirect_buffer] = cull_meshlets_pass(hiz_image);
-#if 0
-  auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
-  auto vis_image = vuk::acquire_ia("visibility_image", visibility_texture.as_attachment(), vuk::eNone);
+  //static bool first_pass = false; // quick fix
 
-  auto micbuffer = vuk::acquire_buf("meshlet_indirect_commands_buffer", meshlet_indirect_commands_buff, vuk::Access:eNone);
+  auto hiz_image = vuk::clear_image(vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), vuk::Access::eNone), vuk::Black<float>);
+  //if (first_pass) {
+    //hiz_image = vuk::clear_image(hiz_image, vuk::Black<float>);
+    //first_pass = true;
+  //}
+  auto [instanced_index_buff, indirect_buffer] = cull_meshlets_pass(hiz_image);
+
+  auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
+  auto vis_image = vuk::clear_image(vuk::acquire_ia("visibility_image", visibility_texture.as_attachment(), vuk::eNone), vuk::Black<float>);
+  auto micbuffer = vuk::acquire_buf("meshlet_indirect_commands_buffer", *meshlet_indirect_commands_buffer, vuk::Access::eNone);
+
   auto [vis_image_output, depth_output] = main_vis_buffer_pass(vis_image, depth, instanced_index_buff, micbuffer);
 
   auto hiz_image_copied = depth_copy_pass(depth_output, hiz_image);
   auto depth_hiz_output = hiz_pass(frame_allocator, hiz_image_copied);
+  //#if 0
 
   auto material_depth = vuk::clear_image(vuk::declare_ia("material_depth_image", depth_texture.as_attachment()), vuk::DepthZero);
 
   // depth_hiz_output is not actually used in this pass, but passed here so it runs.
   auto material_depth_output = material_vis_buffer_pass(material_depth, vis_image_output, depth_hiz_output);
 
-  auto albedo = vuk::acquire_ia("albedo_texture", albedo_texture.as_attachment(), vuk::eColorRW);
-  auto normal = vuk::acquire_ia("normal_texture", normal_texture.as_attachment(), vuk::eColorRW);
-  auto metallic_roughness = vuk::acquire_ia("metallic_roughness_texture", metallic_roughness_texture.as_attachment(), vuk::eColorRW);
-  auto velocity = vuk::acquire_ia("velocity_texture", velocity_texture.as_attachment(), vuk::eColorRW);
-  auto emission = vuk::acquire_ia("emission_texture", emission_texture.as_attachment(), vuk::eColorRW);
+  auto albedo = vuk::clear_image(vuk::acquire_ia("albedo_texture", albedo_texture.as_attachment(), vuk::eColorRW), vuk::Black<float>);
+  auto normal = vuk::clear_image(vuk::acquire_ia("normal_texture", normal_texture.as_attachment(), vuk::eColorRW), vuk::Black<float>);
+  auto metallic_roughness = vuk::clear_image(vuk::acquire_ia("metallic_roughness_texture", metallic_roughness_texture.as_attachment(), vuk::eColorRW), vuk::Black<float>);
+  auto velocity = vuk::clear_image(vuk::acquire_ia("velocity_texture", velocity_texture.as_attachment(), vuk::eColorRW), vuk::Black<float>);
+  auto emission = vuk::clear_image(vuk::acquire_ia("emission_texture", emission_texture.as_attachment(), vuk::eColorRW), vuk::Black<float>);
   auto [albedo_output,
         normal_output,
         metallic_roughness_output,
@@ -1038,16 +1045,18 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                    vuk::acquire_ia("sky_transmittance_lut", sky_transmittance_lut.as_attachment(), vuk::eFragmentSampled),
                                    vuk::acquire_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment(), vuk::eFragmentSampled),
                                    sky_envmap_output);
-#endif
+  //#endif
+
   auto bloom_output = vuk::clear_image(vuk::declare_ia("bloom_output", vuk::dummy_attachment), vuk::Black<float>);
-  auto color_output = vuk::clear_image(vuk::declare_ia("color_output", vuk::dummy_attachment), vuk::Black<float>);
+  //auto color_output = vuk::clear_image(vuk::declare_ia("color_output", vuk::dummy_attachment), vuk::Black<float>);
 
   return vuk::make_pass("final_pass",
                         [this](vuk::CommandBuffer& command_buffer,
                                VUK_IA(vuk::eColorRW) target,
                                VUK_IA(vuk::eFragmentSampled) fwd_img,
                                VUK_IA(vuk::eFragmentSampled) bloom_img,
-                               VUK_BA(vuk::eFragmentSampled) buff) {
+                               VUK_BA(vuk::eFragmentSampled) buff,
+                               VUK_IA(vuk::eFragmentSampled) buff3) {
     command_buffer.bind_graphics_pipeline("final_pipeline")
       .bind_persistent(0, *descriptor_set_00)
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
@@ -1059,7 +1068,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .bind_image(2, 1, bloom_img)
       .draw(3, 1, 0, 0);
     return target;
-  })(target, color_output, bloom_output, instanced_index_buff);
+  })(target, color_output, bloom_output, instanced_index_buff, depth_hiz_output);
 #if 0
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);
