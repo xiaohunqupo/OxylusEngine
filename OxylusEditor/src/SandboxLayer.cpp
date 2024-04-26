@@ -7,7 +7,7 @@
 namespace ox {
 void SandboxLayer::on_attach(EventDispatcher& dispatcher) {
   EditorTheme::init();
-  Window::maximize();
+  //Window::maximize();
   Project::create_new();
 
   editor_config.load_config();

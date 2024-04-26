@@ -8,7 +8,7 @@ groupshared float3 LSharedMem[64];
 
 [numthreads(1, 1, 64)]
 void main(uint3 threadID : SV_DispatchThreadID) {
-  RWTexture2D<float4> MultiScatterLut = get_sky_multi_scatter_lutrw_texture();
+  RWTexture2D<float4> MultiScatterLut = get_sky_multi_scatter_lut_texturerw();
 
   float2 pixelPosition = float2(threadID.xy) + 0.5;
 

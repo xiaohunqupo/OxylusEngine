@@ -1,7 +1,9 @@
 ﻿#include "SPD.hpp"
 
-#include <vuk/Partials.hpp>
 #include <vuk/RenderGraph.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
+#include <vuk/runtime/vk/Descriptor.hpp>
+#include <vuk/runtime/vk/Pipeline.hpp>
 
 #include "Core/FileSystem.hpp"
 #include "Render/Utils/VukCommon.hpp"

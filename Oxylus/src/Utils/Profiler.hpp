@@ -1,6 +1,7 @@
 #pragma once
 
 #include <vuk/Types.hpp>
+#include <vuk/runtime/vk/VkTypes.hpp>
 
 // Profilers
 #define GPU_PROFILER_ENABLED 1

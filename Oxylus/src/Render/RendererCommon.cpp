@@ -3,10 +3,8 @@
 #include <glm/ext/matrix_clip_space.hpp>
 #include <glm/ext/matrix_transform.hpp>
 
-#include <vuk/CommandBuffer.hpp>
-#include <vuk/Partials.hpp>
-#include <vuk/Pipeline.hpp>
 #include <vuk/RenderGraph.hpp>
+#include <vuk/vsl/Core.hpp>
 
 #include "Mesh.hpp"
 

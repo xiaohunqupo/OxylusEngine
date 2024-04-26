@@ -1,9 +1,6 @@
 #include "ViewportPanel.hpp"
 
 #include <icons/IconsMaterialDesignIcons.h>
-#include <vuk/CommandBuffer.hpp>
-#include <vuk/Partials.hpp>
-#include <vuk/RenderGraph.hpp>
 
 #include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"

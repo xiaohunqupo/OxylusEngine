@@ -38,10 +38,12 @@ vuk::ProfilingCallbacks TracyProfiler::setup_vuk_callback() {
 #endif
   vuk::ProfilingCallbacks cbs;
   cbs.user_data = this;
-  cbs.on_begin_command_buffer = [](void* user_data, VkCommandBuffer cbuf) {
+  cbs.on_begin_command_buffer = [](void* user_data, vuk::ExecutorTag tag, VkCommandBuffer cbuf) {
     const auto* tracy_profiler = reinterpret_cast<TracyProfiler*>(user_data);
-    TracyVkCollect(tracy_profiler->get_graphics_ctx(), cbuf);
-    TracyVkCollect(tracy_profiler->get_transfer_ctx(), cbuf);
+    if ((tag.domain & vuk::DomainFlagBits::eQueueMask) != vuk::DomainFlagBits::eTransferQueue) {
+      TracyVkCollect(tracy_profiler->get_graphics_ctx(), cbuf);
+      TracyVkCollect(tracy_profiler->get_transfer_ctx(), cbuf);
+    }
     return (void*)nullptr;
   };
   // runs whenever entering a new vuk::Pass

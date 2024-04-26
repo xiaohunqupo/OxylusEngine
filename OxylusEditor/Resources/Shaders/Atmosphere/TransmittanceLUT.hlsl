@@ -4,7 +4,7 @@
 void main(uint3 threadID : SV_DispatchThreadID) {
   float2 pixelPosition = float2(threadID.xy) + 0.5;
 
-  RWTexture2D<float4> image = get_sky_transmittance_lutrw_texture();
+  RWTexture2D<float4> image = get_sky_transmittance_lut_texturerw();
 
   int width, height;
   image.GetDimensions(width, height);

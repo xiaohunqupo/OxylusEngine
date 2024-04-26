@@ -1,10 +1,11 @@
 #include "FSR.hpp"
 
 #include <glm/gtc/packing.hpp>
-#include <vuk/Context.hpp>
-#include <vuk/Partials.hpp>
-#include <vuk/Pipeline.hpp>
+#include <vuk/RenderGraph.hpp>
 #include <vuk/ShaderSource.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
+#include <vuk/runtime/vk/Pipeline.hpp>
+#include <vuk/vsl/Core.hpp>
 
 #include "Audio/AudioListener.hpp"
 #include "Core/App.hpp"

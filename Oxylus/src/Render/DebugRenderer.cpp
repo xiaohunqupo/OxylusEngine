@@ -1,6 +1,6 @@
 ﻿#include "DebugRenderer.hpp"
 
-#include <vuk/Partials.hpp>
+#include <vuk/vsl/Core.hpp>
 
 #include "RendererCommon.hpp"
 

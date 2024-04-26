@@ -15,6 +15,7 @@
 typedef uint64_t uint64;
 typedef uint32_t uint32;
 // typedef uint16_t uint16; - currently not needed - need to enable -enable-16bit-types to use it...
+// typedef uint8_t uint8; - not even supported in dxc
 
 struct Vertex {
   float3 position : POSITION;
@@ -105,6 +106,8 @@ struct CameraData {
   float2 temporalaa_jitter;
   float2 temporalaa_jitter_prev;
 
+  float4 frustum_planes[6]; // xyz normal, w distance
+
   float3 up;
   float near_clip;
   float3 forward;
@@ -178,12 +181,12 @@ struct SceneData {
   uint2 shadow_atlas_res;
 
   float3 sun_direction;
-  int _pad1;
+  uint32 meshlet_count;
 
   float4 sun_color; // pre-multipled with intensity
 
   struct Indices {
-    int forward_image_index;
+    int albedo_image_index;
     int normal_image_index;
     int depth_image_index;
     int bloom_image_index;
@@ -201,7 +204,11 @@ struct SceneData {
     int shadow_array_index;
     int gtao_buffer_image_index;
     int hiz_image_index;
-    int _pad2;
+    int vis_image_index;
+
+    int emission_image_index;
+    int metallic_roughness_ao_image_index;
+    int2 _pad1;
   } indices_;
 
   // TODO: use flags
@@ -235,6 +242,14 @@ struct Meshlet {
   uint32 instanceId;
   float3 aabbMin;
   float3 aabbMax;
+};
+
+struct DrawElementsIndirectCommand {
+  uint32 indexCount;
+  uint32 instanceCount;
+  uint32 firstIndex;
+  int baseVertex;
+  uint32 baseInstance;
 };
 
 bool is_nan(float3 vec) {
@@ -290,5 +305,12 @@ float2x2 inverse(float2x2 mat) {
   m[1][1] = mat[0][0];
 
   return mul((1.0f / mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0]), m);
+}
+
+// zero-to-one depth
+float3 unproject_uv_zo(float depth, float2 uv, float4x4 invXProj) {
+  float4 ndc = float4(uv * 2.0 - 1.0, depth, 1.0);
+  float4 world = mul(invXProj, ndc);
+  return world.xyz / world.w;
 }
 #endif

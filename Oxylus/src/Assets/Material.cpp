@@ -1,6 +1,6 @@
 #include "Material.hpp"
 
-#include <vuk/CommandBuffer.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
 
 #include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"

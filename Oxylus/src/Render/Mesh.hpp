@@ -60,9 +60,26 @@ public:
     }
   };
 
+  // TODO: So the transforms are coming from the original mesh instead of coming from the entities...
   struct SceneFlattened {
     std::vector<Meshlet> meshlets;
+    std::vector<Mat4> transforms;
     std::vector<const Node*> nodes;
+    std::vector<Shared<Material>> materials;
+
+    void merge(const SceneFlattened& flat) {
+      meshlets.insert(meshlets.end(), flat.meshlets.begin(), flat.meshlets.end());
+      transforms.insert(transforms.end(), flat.transforms.begin(), flat.transforms.end());
+      nodes.insert(nodes.end(), flat.nodes.begin(), flat.nodes.end());
+      materials.insert(materials.end(), flat.materials.begin(), flat.materials.end());
+    }
+
+    void clear() {
+      meshlets.clear();
+      transforms.clear();
+      nodes.clear();
+      materials.clear();
+    }
   };
 
   Mesh::SceneFlattened flattened;
@@ -74,10 +91,6 @@ public:
   std::vector<uint32> _indices;
   std::vector<uint8_t> primitives;
   std::vector<Shared<Material>> materials;
-
-  mutable size_t previousMeshletsSize{};
-  mutable size_t previousTransformsSize{};
-  mutable size_t previousLightsSize{};
 
   uint32 index_count = 0;
   uint32 vertex_count = 0;

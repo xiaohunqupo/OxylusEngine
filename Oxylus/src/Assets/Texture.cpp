@@ -3,7 +3,9 @@
 #include <filesystem>
 #include <ktx.h>
 #include <stb_image.h>
-#include <vuk/Partials.hpp>
+#include <vuk/RenderGraph.hpp>
+#include <vuk/runtime/vk/AllocatorHelpers.hpp>
+#include <vuk/vsl/Core.hpp>
 
 #include "Core/FileSystem.hpp"
 #include "Render/RendererCommon.hpp"
@@ -140,13 +142,13 @@ void Texture::create_white_texture() {
 void Texture::set_name(std::string_view name, const std::source_location& loc) {
   const auto ctx = VkContext::get();
   if (!name.empty()) {
-    ctx->context->set_name(_image->image, vuk::Name(name));
-    ctx->context->set_name(_view->payload, vuk::Name(name));
+    ctx->runtime->set_name(_image->image, vuk::Name(name));
+    ctx->runtime->set_name(_view->payload, vuk::Name(name));
   } else {
     auto file = fs::get_file_name(loc.file_name());
     const auto n = fmt::format("{0}:{1}", file, loc.line());
-    ctx->context->set_name(_image->image, vuk::Name(n));
-    ctx->context->set_name(_view->payload, vuk::Name(n));
+    ctx->runtime->set_name(_image->image, vuk::Name(n));
+    ctx->runtime->set_name(_view->payload, vuk::Name(n));
   }
 }
 

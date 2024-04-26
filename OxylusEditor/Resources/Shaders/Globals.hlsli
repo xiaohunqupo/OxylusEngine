@@ -14,12 +14,13 @@
 [[vk::binding(1, 0)]] ByteAddressBuffer Buffers[];
 
 [[vk::binding(2, 0)]] Texture2D<float4> SceneTextures[];
-[[vk::binding(3, 0)]] Texture2D<uint> SceneUintTextures[];
-[[vk::binding(4, 0)]] TextureCube<float4> SceneCubeTextures[];
-[[vk::binding(5, 0)]] Texture2DArray<float4> SceneArrayTextures[];
-[[vk::binding(6, 0)]] RWTexture2D<float4> SceneRWTextures[];
-[[vk::binding(7, 0)]] RWTexture2D<float> SceneRWTexturesFloat[];
-[[vk::binding(8, 0)]] Texture2D<float4> MaterialTextureMaps[];
+[[vk::binding(3, 0)]] Texture2D<float> SceneTexturesFloat[];
+[[vk::binding(4, 0)]] Texture2D<uint> SceneTexturesUint[];
+[[vk::binding(5, 0)]] TextureCube<float4> SceneCubeTextures[];
+[[vk::binding(6, 0)]] Texture2DArray<float4> SceneArrayTextures[];
+[[vk::binding(7, 0)]] RWTexture2D<float4> SceneRWTextures[];
+[[vk::binding(8, 0)]] RWTexture2D<float> SceneRWTexturesFloat[];
+[[vk::binding(9, 0)]] Texture2D<float4> MaterialTextureMaps[];
 
 // 0 - linear_sampler_clamped
 // 1 - linear_sampler_repeated
@@ -27,8 +28,8 @@
 // 3 - nearest_sampler_clamped
 // 4 - nearest_sampler_repeated
 // 5 - hiz_sampler
-[[vk::binding(9, 0)]] SamplerState Samplers[];
-[[vk::binding(10, 0)]] SamplerComparisonState ComparisonSamplers[];
+[[vk::binding(10, 0)]] SamplerState Samplers[];
+[[vk::binding(11, 0)]] SamplerComparisonState ComparisonSamplers[];
 
 #define LINEAR_CLAMPED_SAMPLER Samplers[0]
 #define LINEAR_REPEATED_SAMPLER Samplers[1]
@@ -43,7 +44,7 @@ SceneData get_scene() { return Scene; }
 
 CameraData get_camera(uint camera_index = 0) { return Camera.camera_data[camera_index]; }
 
-inline MeshInstance load_instance(uint instance_index) {
+inline MeshInstance load_instance(uint32 instance_index) {
   return Buffers[get_scene().indices_.mesh_instance_buffer_index].Load<MeshInstance>(instance_index * sizeof(MeshInstance));
 }
 
@@ -78,24 +79,28 @@ struct VertexInput {
 };
 
 // scene textures
-Texture2D<float4> get_forward_texture() { return SceneTextures[get_scene().indices_.forward_image_index]; }
+Texture2D<float4> get_albedo_texture() { return SceneTextures[get_scene().indices_.albedo_image_index]; }
 Texture2D<float4> get_normal_texture() { return SceneTextures[get_scene().indices_.normal_image_index]; }
 Texture2D<float4> get_depth_texture() { return SceneTextures[get_scene().indices_.depth_image_index]; }
 Texture2D<float4> get_shadow_atlas() { return SceneTextures[get_scene().indices_.shadow_array_index]; }
 Texture2D<float4> get_sky_transmittance_lut_texture() { return SceneTextures[get_scene().indices_.sky_transmittance_lut_index]; }
 Texture2D<float4> get_sky_multi_scatter_lut_texture() { return SceneTextures[get_scene().indices_.sky_multiscatter_lut_index]; }
 Texture2D<float4> get_bloom_texture() { return SceneTextures[get_scene().indices_.bloom_image_index]; }
+Texture2D<float4> get_emission_texture() { return SceneTextures[get_scene().indices_.emission_image_index]; }
+Texture2D<float4> get_metallic_roughness_ao_texture() { return SceneTextures[get_scene().indices_.metallic_roughness_ao_image_index]; }
+Texture2D<float> get_hiz_texture() { return SceneTexturesFloat[get_scene().indices_.hiz_image_index]; }
 
 // scene r/w textures
-RWTexture2D<float4> get_sky_transmittance_lutrw_texture() { return SceneRWTextures[get_scene().indices_.sky_transmittance_lut_index]; }
-RWTexture2D<float4> get_sky_multi_scatter_lutrw_texture() { return SceneRWTextures[get_scene().indices_.sky_multiscatter_lut_index]; }
-RWTexture2D<float> get_hiz_texture() { return SceneRWTexturesFloat[get_scene().indices_.hiz_image_index]; }
+RWTexture2D<float4> get_sky_transmittance_lut_texturerw() { return SceneRWTextures[get_scene().indices_.sky_transmittance_lut_index]; }
+RWTexture2D<float4> get_sky_multi_scatter_lut_texturerw() { return SceneRWTextures[get_scene().indices_.sky_multiscatter_lut_index]; }
+RWTexture2D<float> get_hiz_texturerw() { return SceneRWTexturesFloat[get_scene().indices_.hiz_image_index]; }
 
 // scene cube textures
 TextureCube<float4> get_sky_env_map_texture() { return SceneCubeTextures[get_scene().indices_.sky_env_map_index]; }
 
 // scene uint textures
-Texture2D<uint> get_gtao_texture() { return SceneUintTextures[get_scene().indices_.gtao_buffer_image_index]; }
+Texture2D<uint> get_visibility_texture() { return SceneTexturesUint[get_scene().indices_.vis_image_index]; }
+Texture2D<uint> get_gtao_texture() { return SceneTexturesUint[get_scene().indices_.gtao_buffer_image_index]; }
 
 // material textures
 SamplerState get_material_sampler(Material material) { return Samplers[material.sampler]; }
@@ -106,10 +111,10 @@ Texture2D<float4> get_material_physical_texture(Material material) { return Mate
 Texture2D<float4> get_material_ao_texture(Material material) { return MaterialTextureMaps[material.ao_map_id]; }
 Texture2D<float4> get_material_emissive_texture(Material material) { return MaterialTextureMaps[material.emissive_map_id]; }
 
-ShaderEntity get_entity(uint index) { return Buffers[get_scene().indices_.entites_buffer_index].Load<ShaderEntity>(index * sizeof(ShaderEntity)); }
+ShaderEntity get_entity(uint32 index) { return Buffers[get_scene().indices_.entites_buffer_index].Load<ShaderEntity>(index * sizeof(ShaderEntity)); }
 
-Material get_material(int material_index) {
+Material get_material(uint32 material_index) {
   return Buffers[get_scene().indices_.materials_buffer_index].Load<Material>(material_index * sizeof(Material));
 }
-Light get_light(int lightIndex) { return Buffers[get_scene().indices_.lights_buffer_index].Load<Light>(lightIndex * sizeof(Light)); }
+Light get_light(uint32 lightIndex) { return Buffers[get_scene().indices_.lights_buffer_index].Load<Light>(lightIndex * sizeof(Light)); }
 #endif // GLOBALS_HLSLI

@@ -1,6 +1,5 @@
 #pragma once
 #include <vuk/Value.hpp>
-#include <vuk/Image.hpp>
 
 #include "Assets/Texture.hpp"
 

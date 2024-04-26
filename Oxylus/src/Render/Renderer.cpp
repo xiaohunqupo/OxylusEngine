@@ -1,7 +1,8 @@
 #include "Renderer.hpp"
 
 #include <future>
-#include <vuk/Partials.hpp>
+#include <vuk/RenderGraph.hpp>
+#include <vuk/vsl/Core.hpp>
 
 #include "Assets/AssetManager.hpp"
 #include "Core/LayerStack.hpp"
@@ -51,7 +52,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
   //}
 
   auto& frame_resource = vkctx->superframe_resource->get_next_frame();
-  vkctx->context->next_frame();
+  vkctx->runtime->next_frame();
 
   vuk::Allocator frame_allocator(frame_resource);
 
@@ -109,6 +110,6 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
   rp->on_submit();
 
   vkctx->current_frame = (vkctx->current_frame + 1) % vkctx->num_inflight_frames;
-  vkctx->num_frames = vkctx->context->get_frame_count();
+  vkctx->num_frames = vkctx->runtime->get_frame_count();
 }
 } // namespace ox

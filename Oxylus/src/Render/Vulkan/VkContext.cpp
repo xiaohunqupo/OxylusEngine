@@ -1,16 +1,12 @@
 #include "VkContext.hpp"
 
 #include <sstream>
+#include <vuk/ImageAttachment.hpp>
+#include <vuk/runtime/ThisThreadExecutor.hpp>
 
 #include "Render/Window.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
-
-#include <vuk/Context.hpp>
-#include <vuk/RenderGraph.hpp>
-#include <vuk/Value.hpp>
-#include <vuk/resources/DeviceFrameResource.hpp>
-#include <vuk/runtime/ThisThreadExecutor.hpp>
 
 #include "GLFW/glfw3.h"
 
@@ -176,6 +172,9 @@ void VkContext::create_context(const AppSpec& spec) {
   selector.set_required_features_11(vk11features);
 
   VkPhysicalDeviceVulkan12Features vk12features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+  vk12features.shaderInt8 = true;
+  vk12features.uniformAndStorageBuffer8BitAccess = true;
+  vk12features.storageBuffer8BitAccess = true;
   vk12features.timelineSemaphore = true;
   vk12features.descriptorBindingPartiallyBound = true;
   vk12features.descriptorBindingUpdateUnusedWhilePending = true;
@@ -221,7 +220,7 @@ void VkContext::create_context(const AppSpec& spec) {
   transfer_queue = vkb_device.get_queue(vkb::QueueType::transfer).value();
   auto transfer_queue_family_index = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
   device = vkb_device.device;
-  vuk::rtvk::FunctionPointers fps;
+  vuk::FunctionPointers fps;
   fps.vkGetInstanceProcAddr = vkb_instance.fp_vkGetInstanceProcAddr;
   fps.vkGetDeviceProcAddr = vkb_instance.fp_vkGetDeviceProcAddr;
   fps.load_pfns(instance, device, true);
@@ -231,9 +230,9 @@ void VkContext::create_context(const AppSpec& spec) {
   executors.push_back(create_vkqueue_executor(fps, device, transfer_queue, transfer_queue_family_index, vuk::DomainFlagBits::eTransferQueue));
   executors.push_back(std::make_unique<vuk::ThisThreadExecutor>());
 
-  context.emplace(vuk::ContextCreateParameters{instance, device, physical_device, std::move(executors), fps});
+  runtime.emplace(vuk::RuntimeCreateParameters{instance, device, physical_device, std::move(executors), fps});
 
-  superframe_resource.emplace(*context, num_inflight_frames);
+  superframe_resource.emplace(*runtime, num_inflight_frames);
   superframe_allocator.emplace(*superframe_resource);
   swapchain = make_swapchain(*superframe_allocator, vkb_device, surface, {});
   present_ready = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);

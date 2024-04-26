@@ -1,7 +1,6 @@
 ﻿#pragma once
 #include <source_location>
 #include <string>
-#include <vuk/Image.hpp>
 #include <vuk/ImageAttachment.hpp>
 
 #include "Asset.hpp"

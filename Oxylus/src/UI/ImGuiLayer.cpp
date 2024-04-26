@@ -7,9 +7,11 @@
 
 #include <icons/IconsMaterialDesignIcons.h>
 #include <icons/MaterialDesign.inl>
-#include <vuk/Partials.hpp>
-#include <vuk/Pipeline.hpp>
 #include <vuk/RenderGraph.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
+#include <vuk/runtime/vk/AllocatorHelpers.hpp>
+#include <vuk/runtime/vk/Pipeline.hpp>
+#include <vuk/vsl/Core.hpp>
 
 #include "Core/App.hpp"
 #include "ImGuizmo.h"
@@ -108,7 +110,7 @@ void ImGuiLayer::init_for_vulkan() {
 
 void ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) {
   OX_SCOPED_ZONE;
-  vuk::Context& ctx = allocator.get_context();
+  auto& ctx = allocator.get_context();
   auto& io = ImGui::GetIO();
   io.BackendRendererName = "oxylus";
   io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset; // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.

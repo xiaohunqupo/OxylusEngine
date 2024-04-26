@@ -2,7 +2,6 @@
 
 #include <plf_colony.h>
 #include <vuk/Value.hpp>
-#include <vuk/Image.hpp>
 
 #include <imgui.h>
 

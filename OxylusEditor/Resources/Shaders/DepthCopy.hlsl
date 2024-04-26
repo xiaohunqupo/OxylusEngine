@@ -2,7 +2,7 @@
 
 [numthreads(16, 16, 1)] void main(uint3 threadID
                                   : SV_DispatchThreadID) {
-  RWTexture2D<float> hiz_texture = get_hiz_texture();
+  RWTexture2D<float> hiz_texture = get_hiz_texturerw();
   const float2 position = float2(threadID.xy);
   float width, height;
   hiz_texture.GetDimensions(width, height);

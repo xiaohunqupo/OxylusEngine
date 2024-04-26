@@ -1,12 +1,7 @@
 ﻿#include "RenderGraphPanel.hpp"
 
-#include <RenderGraphUtil.hpp>
 
 #include <icons/IconsMaterialDesignIcons.h>
-
-#include <vuk/RenderGraph.hpp>
-#include <vuk/RenderGraphReflection.hpp>
-#include <vuk/Partials.hpp>
 
 #include "imgui.h"
 

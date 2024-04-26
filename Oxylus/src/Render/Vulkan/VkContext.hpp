@@ -5,12 +5,8 @@
 #include <optional>
 
 #include <VkBootstrap.h>
-#include <vuk/Allocator.hpp>
-#include <vuk/AllocatorHelpers.hpp>
-#include <vuk/Context.hpp>
-#include <vuk/Types.hpp>
-#include <vuk/resources/DeviceFrameResource.hpp>
-
+#include <vuk/runtime/vk/DeviceFrameResource.hpp>
+#include <vuk/runtime/vk/VkRuntime.hpp>
 
 namespace vkb {
 struct Device;
@@ -29,7 +25,7 @@ public:
   VkQueue graphics_queue = nullptr;
   uint32_t graphics_queue_family_index = 0;
   VkQueue transfer_queue = nullptr;
-  std::optional<vuk::Context> context;
+  std::optional<vuk::Runtime> runtime;
   std::optional<vuk::DeviceSuperFrameResource> superframe_resource;
   std::optional<vuk::Allocator> superframe_allocator;
   bool suspend = false;

@@ -7,7 +7,6 @@
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <vuk/Value.hpp>
-#include <vuk/Image.hpp>
 
 #include "Core/Base.hpp"
 

@@ -1,9 +1,8 @@
 ﻿#pragma once
 
-#include <array>
-#include "vuk/CommandBuffer.hpp"
-#include "vuk/Value.hpp"
-
+#include <vuk/Value.hpp>
+#include <vuk/Types.hpp>
+#include <vuk/runtime/vk/Descriptor.hpp>
 #include "Core/Types.hpp"
 
 namespace ox {

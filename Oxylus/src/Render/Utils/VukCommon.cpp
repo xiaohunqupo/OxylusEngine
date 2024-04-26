@@ -3,8 +3,8 @@
 #include <fmt/format.h>
 #include <utility>
 #include <vector>
-#include <vuk/CommandBuffer.hpp>
 #include <vuk/RenderGraph.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
 
 #include "Utils/Log.hpp"
 

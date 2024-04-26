@@ -11,7 +11,6 @@
 
 #include "Passes/GTAO.hpp"
 #include "Passes/SPD.hpp"
-#include "vuk/CommandBuffer.hpp"
 
 namespace ox {
 struct SkyboxLoadEvent;
@@ -66,7 +65,7 @@ private:
   static constexpr auto SKY_ENVMAP_INDEX = 0;
 
   // scene textures
-  static constexpr auto FORWARD_IMAGE_INDEX = 0;
+  static constexpr auto ALBEDO_IMAGE_INDEX = 0;
   static constexpr auto NORMAL_IMAGE_INDEX = 1;
   static constexpr auto DEPTH_IMAGE_INDEX = 2;
   static constexpr auto SHADOW_ATLAS_INDEX = 3;
@@ -75,6 +74,9 @@ private:
   static constexpr auto VELOCITY_IMAGE_INDEX = 6;
   static constexpr auto BLOOM_IMAGE_INDEX = 7;
   static constexpr auto HIZ_IMAGE_INDEX = 8;
+  static constexpr auto VIS_IMAGE_INDEX = 9;
+  static constexpr auto METALROUGHAO_IMAGE_INDEX = 10;
+  static constexpr auto EMISSION_IMAGE_INDEX = 11;
 
   // buffers and buffer/image combined indices
   static constexpr auto LIGHTS_BUFFER_INDEX = 0;
@@ -154,6 +156,8 @@ private:
     Vec2 temporalaa_jitter = {};
     Vec2 temporalaa_jitter_prev = {};
 
+    Vec4 frustum_planes[6] = {};
+
     Vec3 up = {};
     float near_clip = 0;
     Vec3 forward = {};
@@ -178,12 +182,12 @@ private:
     UVec2 shadow_atlas_res;
 
     Vec3 sun_direction;
-    float _pad1;
+    uint32 meshlet_count;
 
     Vec4 sun_color; // pre-multipled with intensity
 
     struct Indices {
-      int forward_image_index;
+      int albedo_image_index;
       int normal_image_index;
       int depth_image_index;
       int bloom_image_index;
@@ -201,7 +205,11 @@ private:
       int shadow_array_index;
       int gtao_buffer_image_index;
       int hiz_image_index;
-      int _pad2;
+      int vis_image_index;
+
+      int emission_image_index;
+      int metallic_roughness_ao_image_index;
+      int2 _pad1;
     } indices;
 
     struct PostProcessingData {
@@ -233,12 +241,23 @@ private:
   };
 
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_00;
+  vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_01;
 
-  Texture forward_texture;
+  vuk::Unique<vuk::Buffer> visible_meshlets_buffer;
+  vuk::Unique<vuk::Buffer> cull_triangles_dispatch_params_buffer;
+  vuk::Unique<vuk::Buffer> index_buffer;
+  vuk::Unique<vuk::Buffer> instanced_index_buffer;
+  vuk::Unique<vuk::Buffer> meshlet_indirect_commands_buffer;
+
+  Texture color_texture;
+  Texture albedo_texture;
   Texture normal_texture;
+  Texture metallic_roughness_texture;
+  Texture emission_texture;
   Texture depth_texture;
   Texture hiz_texture;
   Texture velocity_texture;
+  Texture visibility_texture;
 
   Texture sky_transmittance_lut;
   Texture sky_multiscatter_lut;
@@ -255,7 +274,6 @@ private:
   SPD envmap_spd = {};
   SPD hiz_spd = {};
 
-  // PBR Resources
   Shared<Texture> cube_map = nullptr;
   vuk::ImageAttachment brdf_texture;
   vuk::ImageAttachment irradiance_texture;
@@ -381,6 +399,7 @@ private:
     size_t size() const { return batches.size(); }
   };
 
+  Mesh::SceneFlattened scene_flattened;
   std::vector<MeshComponent> mesh_component_list;
   RenderQueue render_queue;
   Shared<Mesh> m_quad = nullptr;
@@ -413,7 +432,7 @@ private:
                  const vuk::Value<vuk::ImageAttachment>& velocity_image);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> hiz_pass(vuk::Allocator& frame_allocator, vuk::Value<vuk::ImageAttachment>& depth_image);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> depth_copy_pass(vuk::Value<vuk::ImageAttachment>& depth_image,
-                                                               vuk::Value<vuk::ImageAttachment>& hiz_image);
+                                                                 vuk::Value<vuk::ImageAttachment>& hiz_image);
   void render_meshes(const RenderQueue& render_queue,
                      vuk::CommandBuffer& command_buffer,
                      uint32_t filter,
@@ -439,5 +458,41 @@ private:
                                                             vuk::Value<vuk::ImageAttachment>& input,
                                                             vuk::Value<vuk::ImageAttachment>& depth) const;
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> apply_grid(vuk::Value<vuk::ImageAttachment>& target, vuk::Value<vuk::ImageAttachment>& depth);
+  [[nodiscard]] std::tuple<vuk::Value<vuk::Buffer>, vuk::Value<vuk::Buffer>> cull_meshlets_pass(vuk::Value<vuk::ImageAttachment>& hiz);
+  [[nodiscard]] std::tuple<vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>> main_vis_buffer_pass(vuk::Value<vuk::ImageAttachment>
+                                                                                                                      vis_image,
+                                                                                                                    vuk::Value<vuk::ImageAttachment>
+                                                                                                                      depth,
+                                                                                                                    vuk::Value<vuk::Buffer>
+                                                                                                                      instanced_idx_buffer,
+                                                                                                                    vuk::Value<vuk::Buffer>
+                                                                                                                      meshlet_indirect_commands_buff);
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> material_vis_buffer_pass(vuk::Value<vuk::ImageAttachment> depth,
+                                                                          vuk::Value<vuk::ImageAttachment> vis,
+                                                                          vuk::Value<vuk::ImageAttachment> hiz);
+
+  [[nodiscard]] std::tuple<vuk::Value<vuk::ImageAttachment>,
+                           vuk::Value<vuk::ImageAttachment>,
+                           vuk::Value<vuk::ImageAttachment>,
+                           vuk::Value<vuk::ImageAttachment>,
+                           vuk::Value<vuk::ImageAttachment>>
+  resolve_vis_buffer_pass(vuk::Value<vuk::ImageAttachment> material_depth,
+                          vuk::Value<vuk::ImageAttachment> vis,
+                          vuk::Value<vuk::ImageAttachment> albedo,
+                          vuk::Value<vuk::ImageAttachment> normal,
+                          vuk::Value<vuk::ImageAttachment> metallic_roughness,
+                          vuk::Value<vuk::ImageAttachment> velocity,
+                          vuk::Value<vuk::ImageAttachment> emission);
+
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> shading_pass(vuk::Value<vuk::ImageAttachment> color,
+                                                              vuk::Value<vuk::ImageAttachment> depth,
+                                                              vuk::Value<vuk::ImageAttachment> albedo,
+                                                              vuk::Value<vuk::ImageAttachment> normal,
+                                                              vuk::Value<vuk::ImageAttachment> metallic_roughness,
+                                                              vuk::Value<vuk::ImageAttachment> velocity,
+                                                              vuk::Value<vuk::ImageAttachment> emission,
+                                                              vuk::Value<vuk::ImageAttachment> tranmisttance_lut,
+                                                              vuk::Value<vuk::ImageAttachment> multiscatter_lut,
+                                                              vuk::Value<vuk::ImageAttachment> envmap);
 };
 } // namespace ox

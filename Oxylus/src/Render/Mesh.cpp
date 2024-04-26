@@ -15,8 +15,7 @@
 #include <stack>
 
 #include <glm/gtc/type_ptr.hpp>
-#include <vuk/CommandBuffer.hpp>
-#include <vuk/Partials.hpp>
+#include <vuk/vsl/Core.hpp>
 
 #include "Assets/AssetManager.hpp"
 #include "Core/FileSystem.hpp"
@@ -33,22 +32,15 @@
 #include "Vulkan/VkContext.hpp"
 #include "fastgltf/core.hpp"
 
-static constexpr auto GENERATE_MESHLETS = false;
-
 namespace ox {
 Mesh::Mesh(const std::string_view path) { load_from_file(path.data()); }
 
 Mesh::SceneFlattened Mesh::flatten() const {
   SceneFlattened sceneFlattened;
 
-  // Use vector sizes from previous scene flattening to reduce copies
-  sceneFlattened.meshlets.reserve(previousMeshletsSize);
-  // sceneFlattened.transforms.reserve(previousTransformsSize);
-  // sceneFlattened.lights.reserve(previousLightsSize);
-
   struct StackElement {
     const Node* node;
-    glm::mat4 parentGlobalTransform;
+    Mat4 parentGlobalTransform;
   };
   std::stack<StackElement> nodeStack;
 
@@ -70,41 +62,15 @@ Mesh::SceneFlattened Mesh::flatten() const {
     }
 
     if (!node->meshlets.empty()) {
-      // const auto instanceId = sceneFlattened.transforms.size();
-      //  TODO: get previous transform from node
-      // sceneFlattened.transforms.emplace_back(globalTransform, globalTransform);
+      const auto instanceId = sceneFlattened.transforms.size();
+      sceneFlattened.transforms.emplace_back(globalTransform);
       for (auto meshlet : node->meshlets) {
-        // meshlet.instanceId = static_cast<uint32_t>(instanceId);
+        meshlet.instance_id = static_cast<uint32_t>(instanceId);
         sceneFlattened.meshlets.emplace_back(meshlet);
+        sceneFlattened.materials.emplace_back(materials[meshlet.material_id]);
       }
     }
-
-#if LIGHTS
-    if (node->light.has_value()) {
-      auto gpuLight = node->light.value();
-
-      std::array<float, 16> globalTransformArray{};
-      std::copy_n(&globalTransform[0][0], 16, globalTransformArray.data());
-      std::array<float, 3> scaleArray{};
-      std::array<float, 4> rotationArray{};
-      std::array<float, 3> translationArray{};
-      fastgltf::decomposeTransformMatrix(globalTransformArray, scaleArray, rotationArray, translationArray);
-
-      glm::quat rotation = {rotationArray[3], rotationArray[0], rotationArray[1], rotationArray[2]};
-      glm::vec3 translation = glm::make_vec3(translationArray.data());
-      // We rotate (0, 0, -1) because that is the default, un-rotated direction of spot and directional lights according to the glTF spec
-      gpuLight.direction = glm::normalize(rotation) * glm::vec3(0, 0, -1);
-      gpuLight.position = translation;
-
-      sceneFlattened.lights.emplace_back(gpuLight);
-    }
-#endif
   }
-
-  // Update cached values
-  previousMeshletsSize = sceneFlattened.meshlets.size();
-  // previousTransformsSize = sceneFlattened.transforms.size();
-  // previousLightsSize = sceneFlattened.lights.size();
 
   return sceneFlattened;
 }
@@ -403,36 +369,11 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
           rawMeshIndex = it->second;
         }
 
-        const auto materialId = primitive.materialIndex.has_value() ? *primitive.materialIndex : 0;
+        const auto materialId = primitive.materialIndex.value_or(0);
 
         scene.tempData[tempDataIndex].indices.emplace_back(rawMeshIndex, materialId);
       }
     }
-#if LIGHTS
-    // Deduplicating lights is not a concern (they are small and quick to decode), so we load them here for convenience.
-    if (gltfNode->lightIndex.has_value()) {
-      const auto& light = asset.lights[*gltfNode->lightIndex];
-
-      GpuLight gpuLight{};
-
-      if (light.type == fastgltf::LightType::Directional) {
-        gpuLight.type = LightType::DIRECTIONAL;
-      } else if (light.type == fastgltf::LightType::Spot) {
-        gpuLight.type = LightType::SPOT;
-      } else {
-        gpuLight.type = LightType::POINT;
-      }
-
-      gpuLight.color = glm::make_vec3(light.color.data());
-      gpuLight.intensity = light.intensity;
-      // If not present, range is infinite
-      gpuLight.range = light.range.value_or(std::numeric_limits<float>::infinity());
-      gpuLight.innerConeAngle = light.innerConeAngle.value_or(0);
-      gpuLight.outerConeAngle = light.outerConeAngle.value_or(0);
-
-      node->light = gpuLight;
-    }
-#endif
   }
 
   scene.rawMeshes.resize(uniqueAccessorCombinations.size());
@@ -572,7 +513,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
     for (const auto& [rawMeshIndex, materialId] : scene.tempData[i++].indices) {
       for (auto& meshlet : perMeshMeshlets[rawMeshIndex]) {
-        meshlet.material_id = (uint32_t)materialId;
+        meshlet.material_id = (uint32)materialId;
         node.meshlets.emplace_back(meshlet);
         node.materials.emplace_back(materials[meshlet.material_id]);
       }

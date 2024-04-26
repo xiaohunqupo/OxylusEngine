@@ -235,6 +235,7 @@ CPMAddPackage(
 target_compile_definitions(vuk PUBLIC VUK_MAX_VIEWPORTS=16 VUK_MAX_SCISSORS=16)
 target_link_libraries(${PROJECT_NAME} PUBLIC vuk)
 target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/src)
+target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/include)
 set_target_properties(vuk PROPERTIES FOLDER "Vendor")
 set_target_properties(spirv-cross-core PROPERTIES FOLDER "Vendor")
 set_target_properties(spirv-cross-glsl PROPERTIES FOLDER "Vendor")
