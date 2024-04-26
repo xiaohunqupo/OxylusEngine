@@ -783,6 +783,7 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
     color_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
     albedo_texture.create_texture(ext, vuk::Format::eR8G8B8A8Srgb, Preset::eRTT2DUnmipped);
     depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
+    material_depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
     hiz_texture.create_texture(ext, vuk::Format::eR32Sfloat, Preset::eSTT2D);
     normal_texture.create_texture(ext, vuk::Format::eR16G16B16A16Snorm, Preset::eRTT2DUnmipped);
     velocity_texture.create_texture(ext, vuk::Format::eR16G16Sfloat, Preset::eRTT2DUnmipped);
@@ -1014,7 +1015,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   auto depth_hiz_output = hiz_pass(frame_allocator, hiz_image_copied);
   //#if 0
 
-  auto material_depth = vuk::clear_image(vuk::declare_ia("material_depth_image", depth_texture.as_attachment()), vuk::DepthZero);
+  auto material_depth = vuk::clear_image(vuk::declare_ia("material_depth_image", material_depth_texture.as_attachment()), vuk::DepthZero);
 
   // depth_hiz_output is not actually used in this pass, but passed here so it runs.
   auto material_depth_output = material_vis_buffer_pass(material_depth, vis_image_output, depth_hiz_output);

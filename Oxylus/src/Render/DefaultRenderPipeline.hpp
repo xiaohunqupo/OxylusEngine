@@ -255,6 +255,7 @@ private:
   Texture metallic_roughness_texture;
   Texture emission_texture;
   Texture depth_texture;
+  Texture material_depth_texture;
   Texture hiz_texture;
   Texture velocity_texture;
   Texture visibility_texture;
