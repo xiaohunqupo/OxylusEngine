@@ -4,12 +4,12 @@
 struct VOut {
   float4 position : SV_POSITION;
   float2 uv : UV;
-  uint32 material_id : MAT_ID;
+  //uint32 material_id : MAT_ID;
 };
 
 VOut VSmain([[vk::builtin("BaseInstance")]] uint base_instance : DrawIndex, uint vertex_index : SV_VertexID) {
   VOut o;
-  o.material_id = base_instance;
+  //o.material_id = base_instance;
   const float materialId = asfloat(0x3f7fffff - (uint(base_instance) & MESHLET_MATERIAL_ID_MASK));
   float2 pos = float2(vertex_index == 0, vertex_index == 2);
   o.uv = pos.xy * 2.0;
@@ -178,7 +178,7 @@ POut PSmain(VOut input, float4 pixelPosition : SV_Position) {
   const uint meshletId = (payload >> MESHLET_PRIMITIVE_BITS) & MESHLET_ID_MASK;
   const uint primitiveId = payload & MESHLET_PRIMITIVE_MASK;
   const Meshlet meshlet = get_meshlet(meshletId);
-  const Material material = get_material(meshlet.materialId);
+  const Material material = get_material(meshlet.materialId); // Or we can pass it with draw parameters :)
   const float4x4 transform = get_instance(meshlet.instanceId).transform;
   // const float4x4 transformPrevious = get_instance(meshlet.instanceId).modelPrevious;
 

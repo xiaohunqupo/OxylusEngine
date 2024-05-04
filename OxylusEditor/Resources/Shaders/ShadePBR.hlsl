@@ -104,7 +104,7 @@ struct Surface {
     BumpColor = 0;
   }
 
-  void Create(Material material, float4 baseColor, float2 scaledUV, float4 surfaceMap) {
+  void Create(float4 baseColor, float4 surfaceMap) {
     BaseColor = baseColor;
     Opacity = baseColor.a;
 
@@ -113,12 +113,12 @@ struct Surface {
 
     // metallic roughness workflow
     Roughness = surfaceMap.g;
-    const float metalness = surfaceMap.r * material.metallic;
-    const float reflectance = material.reflectance;
-    Albedo = baseColor.rgb * (1.0f - max(reflectance, metalness));
-    F0 *= lerp(reflectance.xxx, baseColor.rgb, metalness);
-
+    Metallic = surfaceMap.r;
     Occlusion = surfaceMap.b;
+
+    const float reflectance = 0.0f; // TODO:?
+    Albedo = baseColor.rgb * (1.0f - max(reflectance, Metallic));
+    F0 *= lerp(reflectance.xxx, baseColor.rgb, Metallic);
   }
 
   void Update() {
@@ -500,11 +500,12 @@ float3 GetAmbient(float3 worldNormal) {
   return ambient;
 }
 
-float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Target {
-  Material material = get_material(push_const.material_index + input.draw_index);
-  float2 scaledUV = input.uv;
-  scaledUV *= material.uv_scale;
+struct VOut {
+  float4 position : SV_Position;
+  float2 uv : TEXCOORD;
+};
 
+float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
   const float3 albedo = get_albedo_texture().Load(float3(pixelPosition.xy, 0)).rgb;
   const float3 normal = get_normal_texture().Load(float3(pixelPosition.xy, 0)).rgb;
   const float depth = get_depth_texture().Load(float3(pixelPosition.xy, 0)).r;
@@ -523,9 +524,9 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
   surface.V /= length(surface.V);
   surface.PixelPosition = pixelPosition.xy;
   surface.EmissiveColor = emissive;
-  //surface.ViewPos = input.view_pos; not used
-  //surface.BumpColor = normal; not used
-  surface.Create(material, float4(albedo, 1.0f), scaledUV, float4(metallic_roughness_ao, 1.0f));
+  // surface.ViewPos = input.view_pos; not used
+  // surface.BumpColor = normal; not used
+  surface.Create(float4(albedo, 1.0f), float4(metallic_roughness_ao, 1.0f));
 
   float2 screenCoords = pixelPosition.xy / float2(get_scene().screen_size.x, get_scene().screen_size.y);
 
@@ -599,7 +600,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
   float mip = surface.Roughness * mips;
   float3 envColor = cubemap.SampleLevel(LINEAR_CLAMPED_SAMPLER, surface.R, mip).rgb * surface.F;
 
-  Lighting lighting;
+  Lighting lighting = (Lighting)0;
   lighting.Create(0, 0, ambient, max(0, envColor));
 
   float4 color = surface.BaseColor;

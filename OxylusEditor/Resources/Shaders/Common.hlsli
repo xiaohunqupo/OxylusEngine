@@ -17,6 +17,12 @@ typedef uint32_t uint32;
 // typedef uint16_t uint16; - currently not needed - need to enable -enable-16bit-types to use it...
 // typedef uint8_t uint8; - not even supported in dxc
 
+struct PackedFloat3 {
+  float x, y, z;
+
+  float3 unpack() { return float3(x, y, z); }
+};
+
 struct Vertex {
   float3 position : POSITION;
   int _pad : PAD0;
@@ -240,8 +246,8 @@ struct Meshlet {
   uint32 primitiveCount;
   uint32 materialId;
   uint32 instanceId;
-  float3 aabbMin;
-  float3 aabbMax;
+  PackedFloat3 aabbMin;
+  PackedFloat3 aabbMax;
 };
 
 struct DrawElementsIndirectCommand {

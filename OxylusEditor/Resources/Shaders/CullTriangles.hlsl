@@ -90,7 +90,7 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
   // https://redirect.cs.umbc.edu/~olano/papers/2dh-tri/
   // This is equivalent to the HLSL code that was ported, except the mat3 is transposed.
   // However, the determinant of a matrix and its transpose are the same, so this is fine.
-  const bool cull_primitive_backface = true;
+  const bool cull_primitive_backface = false; // TODO:
   if (cull_primitive_backface) {
     const float det = determinant(float3x3(posClip0.xyw, posClip1.xyw, posClip2.xyw));
     if (det <= 0) {
@@ -120,7 +120,7 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
 
   // Frustum culling
   if (frustum_culling) {
-    if (!RectIntersectRect(bboxNdcMin, bboxNdcMax, float2(-1.0, -1.0), float2(1.0, 1.0))) {
+    if (!rect_intersect_rect(bboxNdcMin, bboxNdcMax, float2(-1.0, -1.0), float2(1.0, 1.0))) {
       return false;
     }
   }
@@ -149,7 +149,7 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
 
   if (localId == 0) {
     sh_primitivesPassed = 0;
-    sh_mvp = get_camera(0).projection_view * instance.transform;
+    sh_mvp = mul(get_camera(0).projection_view, instance.transform);
   }
 
   GroupMemoryBarrierWithGroupSync();
@@ -166,7 +166,7 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
   GroupMemoryBarrierWithGroupSync();
 
   if (localId == 0) {
-    buffers_rw[DRAW_ELEMENTS_INDIRECT_COMMAND_INDEX].InterlockedAdd(0, sh_primitivesPassed * 3, sh_baseIndex);
+    buffers_rw[INDIRECT_COMMAND_BUFFER_INDEX].InterlockedAdd(0, sh_primitivesPassed * 3, sh_baseIndex);
   }
 
   GroupMemoryBarrierWithGroupSync();

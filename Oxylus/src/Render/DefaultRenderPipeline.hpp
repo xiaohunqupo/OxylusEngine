@@ -40,7 +40,7 @@ private:
   Camera* current_camera = nullptr;
 
   bool initalized = false;
-  bool ran_static_passes = false;
+  bool first_pass = false;
 
   struct MeshInstance {
     Mat4 transform;
@@ -241,24 +241,24 @@ private:
   };
 
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_00;
-  vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_01;
+  vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_02;
 
   vuk::Unique<vuk::Buffer> visible_meshlets_buffer;
   vuk::Unique<vuk::Buffer> cull_triangles_dispatch_params_buffer;
   vuk::Unique<vuk::Buffer> index_buffer;
   vuk::Unique<vuk::Buffer> instanced_index_buffer;
-  vuk::Unique<vuk::Buffer> meshlet_indirect_commands_buffer;
+  vuk::Unique<vuk::Buffer> indirect_commands_buffer;
 
   Texture color_texture;
   Texture albedo_texture;
-  Texture normal_texture;
-  Texture metallic_roughness_texture;
-  Texture emission_texture;
   Texture depth_texture;
   Texture material_depth_texture;
   Texture hiz_texture;
+  Texture normal_texture;
   Texture velocity_texture;
   Texture visibility_texture;
+  Texture emission_texture;
+  Texture metallic_roughness_texture;
 
   Texture sky_transmittance_lut;
   Texture sky_multiscatter_lut;
@@ -431,9 +431,6 @@ private:
   depth_pre_pass(const vuk::Value<vuk::ImageAttachment>& depth_image,
                  const vuk::Value<vuk::ImageAttachment>& normal_image,
                  const vuk::Value<vuk::ImageAttachment>& velocity_image);
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> hiz_pass(vuk::Allocator& frame_allocator, vuk::Value<vuk::ImageAttachment>& depth_image);
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> depth_copy_pass(vuk::Value<vuk::ImageAttachment>& depth_image,
-                                                                 vuk::Value<vuk::ImageAttachment>& hiz_image);
   void render_meshes(const RenderQueue& render_queue,
                      vuk::CommandBuffer& command_buffer,
                      uint32_t filter,
@@ -459,41 +456,10 @@ private:
                                                             vuk::Value<vuk::ImageAttachment>& input,
                                                             vuk::Value<vuk::ImageAttachment>& depth) const;
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> apply_grid(vuk::Value<vuk::ImageAttachment>& target, vuk::Value<vuk::ImageAttachment>& depth);
-  [[nodiscard]] std::tuple<vuk::Value<vuk::Buffer>, vuk::Value<vuk::Buffer>> cull_meshlets_pass(vuk::Value<vuk::ImageAttachment>& hiz);
-  [[nodiscard]] std::tuple<vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>> main_vis_buffer_pass(vuk::Value<vuk::ImageAttachment>
-                                                                                                                      vis_image,
-                                                                                                                    vuk::Value<vuk::ImageAttachment>
-                                                                                                                      depth,
-                                                                                                                    vuk::Value<vuk::Buffer>
-                                                                                                                      instanced_idx_buffer,
-                                                                                                                    vuk::Value<vuk::Buffer>
-                                                                                                                      meshlet_indirect_commands_buff);
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> material_vis_buffer_pass(vuk::Value<vuk::ImageAttachment> depth,
-                                                                          vuk::Value<vuk::ImageAttachment> vis,
-                                                                          vuk::Value<vuk::ImageAttachment> hiz);
-
-  [[nodiscard]] std::tuple<vuk::Value<vuk::ImageAttachment>,
-                           vuk::Value<vuk::ImageAttachment>,
-                           vuk::Value<vuk::ImageAttachment>,
-                           vuk::Value<vuk::ImageAttachment>,
-                           vuk::Value<vuk::ImageAttachment>>
-  resolve_vis_buffer_pass(vuk::Value<vuk::ImageAttachment> material_depth,
-                          vuk::Value<vuk::ImageAttachment> vis,
-                          vuk::Value<vuk::ImageAttachment> albedo,
-                          vuk::Value<vuk::ImageAttachment> normal,
-                          vuk::Value<vuk::ImageAttachment> metallic_roughness,
-                          vuk::Value<vuk::ImageAttachment> velocity,
-                          vuk::Value<vuk::ImageAttachment> emission);
-
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> shading_pass(vuk::Value<vuk::ImageAttachment> color,
-                                                              vuk::Value<vuk::ImageAttachment> depth,
-                                                              vuk::Value<vuk::ImageAttachment> albedo,
-                                                              vuk::Value<vuk::ImageAttachment> normal,
-                                                              vuk::Value<vuk::ImageAttachment> metallic_roughness,
-                                                              vuk::Value<vuk::ImageAttachment> velocity,
-                                                              vuk::Value<vuk::ImageAttachment> emission,
-                                                              vuk::Value<vuk::ImageAttachment> tranmisttance_lut,
-                                                              vuk::Value<vuk::ImageAttachment> multiscatter_lut,
-                                                              vuk::Value<vuk::ImageAttachment> envmap);
+  [[nodiscard]] std::tuple<vuk::Value<vuk::Buffer>, vuk::Value<vuk::Buffer>> cull_meshlets_pass(vuk::Value<vuk::ImageAttachment>& hiz,
+                                                                                                vuk::Value<vuk::Buffer> vis_meshlets_buf,
+                                                                                                vuk::Value<vuk::Buffer> cull_triangles_buf,
+                                                                                                vuk::Value<vuk::Buffer> instanced_idx_buffer,
+                                                                                                vuk::Value<vuk::Buffer> meshlet_indirect_buf);
 };
 } // namespace ox

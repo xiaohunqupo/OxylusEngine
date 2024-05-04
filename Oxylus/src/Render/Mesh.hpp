@@ -28,7 +28,8 @@ public:
     uint32_t primitive_count = 0;
     uint32_t material_id = 0;
     uint32_t instance_id = 0;
-    AABB aabb = {};
+    float aabbMin[3];
+    float aabbMax[3];
   };
 
   struct Node {
@@ -90,7 +91,7 @@ public:
   std::vector<Vertex> _vertices;
   std::vector<uint32> _indices;
   std::vector<uint8_t> primitives;
-  std::vector<Shared<Material>> materials;
+  std::vector<Shared<Material>> _materials;
 
   uint32 index_count = 0;
   uint32 vertex_count = 0;

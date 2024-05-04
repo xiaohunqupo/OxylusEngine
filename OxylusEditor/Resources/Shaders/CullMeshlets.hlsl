@@ -6,8 +6,8 @@ void DebugDrawMeshletAabb(in uint meshletId) {
   const Meshlet meshlet = MeshletDataBuffers[meshletDataIndex].meshlets[meshletId];
   const uint instanceId = meshlet.instanceId;
   const float4x4 transform = TransformBuffers[transformsIndex].transforms[instanceId].modelCurrent;
-  const float3 aabbMin = meshlet.aabbMin;
-  const float3 aabbMax = meshlet.aabbMax;
+  const float3 aabbMin = meshlet.aabbMin.unpack();
+  const float3 aabbMax = meshlet.aabbMax.unpack();
   const float3 aabbSize = aabbMax - aabbMin;
   const float3 aabbCorners[] = {aabbMin,
                                 aabbMin + float3(aabbSize.x, 0.0, 0.0),
@@ -53,8 +53,8 @@ void GetMeshletUvBounds(GetMeshletUvBoundsParams params, out float2 minXY, out f
   const uint instanceId = meshlet.instanceId;
   const MeshInstance instance = get_instance(instanceId);
   const float4x4 transform = instance.transform;
-  const float3 aabbMin = meshlet.aabbMin;
-  const float3 aabbMax = meshlet.aabbMax;
+  const float3 aabbMin = meshlet.aabbMin.unpack();
+  const float3 aabbMax = meshlet.aabbMax.unpack();
   const float3 aabbSize = aabbMax - aabbMin;
   const float3 aabbCorners[] = {aabbMin,
                                 aabbMin + float3(aabbSize.x, 0.0, 0.0),
@@ -135,8 +135,8 @@ bool CullMeshletFrustum(in uint meshletId, CameraData camera) {
   const uint instanceId = meshlet.instanceId;
   const MeshInstance instance = get_instance(instanceId);
   const float4x4 transform = instance.transform;
-  const float3 aabbMin = meshlet.aabbMin;
-  const float3 aabbMax = meshlet.aabbMax;
+  const float3 aabbMin = meshlet.aabbMin.unpack();
+  const float3 aabbMax = meshlet.aabbMax.unpack();
   const float3 aabbCenter = (aabbMin + aabbMax) / 2.0;
   const float3 aabbExtent = aabbMax - aabbCenter;
   const float3 worldAabbCenter = float3(mul(transform, float4(aabbCenter, 1.0)).xyz);

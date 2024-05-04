@@ -67,10 +67,11 @@ Mesh::SceneFlattened Mesh::flatten() const {
       for (auto meshlet : node->meshlets) {
         meshlet.instance_id = static_cast<uint32_t>(instanceId);
         sceneFlattened.meshlets.emplace_back(meshlet);
-        sceneFlattened.materials.emplace_back(materials[meshlet.material_id]);
       }
     }
   }
+
+  sceneFlattened.materials = _materials;
 
   return sceneFlattened;
 }
@@ -249,7 +250,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   OX_ASSERT(asset.scenes.size() == 1, "Multiple scenes are not supported for now...");
 
   auto images = load_images(asset);
-  materials = load_materials(asset, images);
+  _materials = load_materials(asset, images);
 
   LoadModelResult scene;
 
@@ -494,7 +495,8 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
         .primitive_offset = primitiveOffset + meshlet.triangle_offset,
         .index_count = meshlet.vertex_count,
         .primitive_count = meshlet.triangle_count,
-        .aabb = {{min.x, min.y, min.z}, {max.x, max.y, max.z}},
+        .aabbMin = {min.x, min.y, min.z},
+        .aabbMax = {max.x, max.y, max.z},
       });
     }
 
@@ -515,7 +517,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
       for (auto& meshlet : perMeshMeshlets[rawMeshIndex]) {
         meshlet.material_id = (uint32)materialId;
         node.meshlets.emplace_back(meshlet);
-        node.materials.emplace_back(materials[meshlet.material_id]);
+        node.materials.emplace_back(_materials[meshlet.material_id]);
       }
     }
   }
@@ -692,7 +694,7 @@ std::vector<Shared<Texture>> Mesh::load_images(const fastgltf::Asset& asset) {
       .mime = image.is_ktx ? TextureLoadInfo::MimeType::KTX : TextureLoadInfo::MimeType::Generic,
     };
 
-    const auto& t = loaded_images.emplace_back(AssetManager::get_texture_asset(ci));
+    const auto& t = loaded_images.emplace_back(AssetManager::get_texture_asset(image.name, ci));
     t->set_name(image.name);
   }
 

@@ -12,7 +12,7 @@ void SandboxLayer::on_attach(EventDispatcher& dispatcher) {
 
   editor_config.load_config();
 
-  camera.set_position({-2, 2, 0});
+  camera.set_position({0, 1, 0});
 
   editor_scene = create_shared<Scene>();
   EditorLayer::load_default_scene(editor_scene);
