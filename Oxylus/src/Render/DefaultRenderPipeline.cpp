@@ -693,15 +693,16 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   constexpr auto INDEX_BUFFER_INDEX = 4;
   constexpr auto VERTEX_BUFFER_INDEX = 5;
   constexpr auto PRIMITIVES_BUFFER_INDEX = 6;
-  constexpr auto MESH_INSTANCES_BUFFER_INDEX = 7;
+  constexpr auto TRANSFORMS_BUFFER_INDEX = 7;
   constexpr auto INSTANCED_INDEX_BUFFER_INDEX = 8;
 
   auto [meshletBuff, meshletBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlets));
   const auto& meshlet_data_buffer = *meshletBuff;
   descriptor_set_02->update_storage_buffer(0, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
 
-  visible_meshlets_buffer = allocate_cpu_buffer(allocator, scene_flattened.meshlets.size());
+  visible_meshlets_buffer = allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * 3);
   descriptor_set_02->update_storage_buffer(1, VISIBLE_MESHLETS_BUFFER_INDEX, *visible_meshlets_buffer);
+  descriptor_set_02->update_storage_buffer(0, VISIBLE_MESHLETS_BUFFER_INDEX, *visible_meshlets_buffer);
 
   struct DispatchParams {
     uint32 groupCountX;
@@ -749,10 +750,10 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
   auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.transforms));
   const auto& transforms_buffer = *transBuff;
-  descriptor_set_02->update_storage_buffer(0, MESH_INSTANCES_BUFFER_INDEX, transforms_buffer);
+  descriptor_set_02->update_storage_buffer(0, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
 
   constexpr auto max_meshlet_primitives = 64;
-  instanced_index_buffer = allocate_cpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3);
+  instanced_index_buffer = allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3);
   descriptor_set_02->update_storage_buffer(1, INSTANCED_INDEX_BUFFER_INDEX, *instanced_index_buffer);
 
   descriptor_set_02->commit(ctx);
@@ -1004,9 +1005,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   }
 
   auto vis_meshlets_buf = vuk::acquire_buf("visible_meshlets_buffer", *visible_meshlets_buffer, vuk::eNone);
-  auto cull_triangles_buf = vuk::declare_buf("dispatch_params_buffer", *cull_triangles_dispatch_params_buffer);
+  auto cull_triangles_buf = vuk::acquire_buf("dispatch_params_buffer", *cull_triangles_dispatch_params_buffer, vuk::eNone);
   auto instanced_idx_buf = vuk::acquire_buf("instanced_index_buffer", *instanced_index_buffer, vuk::eNone);
-  auto indirect_commands_buff = vuk::declare_buf("meshlet_indirect_commands_buffer", *indirect_commands_buffer);
+  auto indirect_commands_buff = vuk::acquire_buf("meshlet_indirect_commands_buffer", *indirect_commands_buffer, vuk::eNone);
 
   auto [vis_meshlets_buff_output, triangles_dis_buffer_output] = vuk::make_pass("cull_meshlets",
                                                                                 [this](vuk::CommandBuffer& command_buffer,
@@ -1017,7 +1018,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     camera_cb.camera_data[0] = get_main_camera_data();
     bind_camera_buffer(command_buffer);
 
-    command_buffer.dispatch(((uint32_t)scene_flattened.meshlets.size() + 128 - 1) / 128, 1, 1);
+    command_buffer.dispatch(((uint32_t)scene_flattened.meshlets.size() + 128 - 1) / 128);
 
     return std::make_tuple(_vis_meshlets_buff, _triangles_dispatch_buffer);
   })(hiz_image, vis_meshlets_buf, cull_triangles_buf);
@@ -1572,43 +1573,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
   });
 
   return pass(shadow_map);
-}
-
-std::tuple<vuk::Value<vuk::Buffer>, vuk::Value<vuk::Buffer>> DefaultRenderPipeline::cull_meshlets_pass(vuk::Value<vuk::ImageAttachment>& hiz,
-                                                                                                       vuk::Value<vuk::Buffer> vis_meshlets_buf,
-                                                                                                       vuk::Value<vuk::Buffer> cull_triangles_buf,
-                                                                                                       vuk::Value<vuk::Buffer> instanced_idx_buffer,
-                                                                                                       vuk::Value<vuk::Buffer> meshlet_indirect_buf) {
-  auto [vis_meshlets_buff_output, triangles_dis_buffer_output] = vuk::make_pass("cull_meshlets",
-                                                                                [this](vuk::CommandBuffer& command_buffer,
-                                                                                       VUK_IA(vuk::eComputeSampled) _hiz,
-                                                                                       VUK_BA(vuk::eComputeRW) _vis_meshlets_buff,
-                                                                                       VUK_BA(vuk::eComputeRW) _triangles_dispatch_buffer) {
-    command_buffer.bind_compute_pipeline("cull_meshlets_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
-    camera_cb.camera_data[0] = get_main_camera_data();
-    bind_camera_buffer(command_buffer);
-
-    command_buffer.dispatch(((uint32_t)scene_flattened.meshlets.size() + 128 - 1) / 128, 1, 1);
-
-    return std::make_tuple(_vis_meshlets_buff, _triangles_dispatch_buffer);
-  })(hiz, vis_meshlets_buf, cull_triangles_buf);
-
-  return vuk::make_pass("cull_triangles",
-                        [this](vuk::CommandBuffer& command_buffer,
-                               VUK_BA(vuk::eComputeRead) meshlets,
-                               VUK_BA(vuk::eComputeRW) _index_buffer,
-                               VUK_BA(vuk::eComputeWrite) _indirect_buffer,
-                               VUK_BA(vuk::eComputeRead) _triangles_dispatch_buffer) {
-    command_buffer.bind_compute_pipeline("cull_triangles_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
-    camera_cb.camera_data[0] = get_main_camera_data();
-    bind_camera_buffer(command_buffer);
-
-    command_buffer.dispatch_indirect(_triangles_dispatch_buffer);
-
-    command_buffer.memory_barrier(vuk::eComputeRW, vuk::eComputeRW);
-
-    return std::make_tuple(_index_buffer, _indirect_buffer);
-  })(vis_meshlets_buff_output, instanced_idx_buffer, meshlet_indirect_buf, triangles_dis_buffer_output);
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::forward_pass(const vuk::Value<vuk::ImageAttachment>& output,

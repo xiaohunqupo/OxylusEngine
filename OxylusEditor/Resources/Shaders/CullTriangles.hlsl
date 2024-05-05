@@ -115,8 +115,8 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
     return true;
   }
 
-  bool frustum_culling = true;
-  bool small_primitive_culling = true;
+  const bool frustum_culling = false; // TODO: 
+  const bool small_primitive_culling = false; // TODO:
 
   // Frustum culling
   if (frustum_culling) {
@@ -139,11 +139,12 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
   return true;
 }
 
-[numthreads(MAX_PRIMITIVES, 1, 1)] void main(uint3 threadID
-                                             : SV_DispatchThreadID) {
-  const uint meshletId = get_visible_meshlet(threadID.x);
+[numthreads(MAX_PRIMITIVES, 1, 1)] void main(uint3 groupID
+                                             : SV_GroupID, uint3 invocationID
+                                             : SV_GroupThreadID) {
+  const uint meshletId = get_visible_meshlet(groupID.x);
   const Meshlet meshlet = get_meshlet(meshletId);
-  const uint localId = threadID.x;
+  const uint localId = invocationID.x;
   const uint primitiveId = localId * 3;
   const MeshInstance instance = get_instance(meshlet.instanceId);
 

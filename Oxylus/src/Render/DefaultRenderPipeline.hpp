@@ -456,10 +456,5 @@ private:
                                                             vuk::Value<vuk::ImageAttachment>& input,
                                                             vuk::Value<vuk::ImageAttachment>& depth) const;
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> apply_grid(vuk::Value<vuk::ImageAttachment>& target, vuk::Value<vuk::ImageAttachment>& depth);
-  [[nodiscard]] std::tuple<vuk::Value<vuk::Buffer>, vuk::Value<vuk::Buffer>> cull_meshlets_pass(vuk::Value<vuk::ImageAttachment>& hiz,
-                                                                                                vuk::Value<vuk::Buffer> vis_meshlets_buf,
-                                                                                                vuk::Value<vuk::Buffer> cull_triangles_buf,
-                                                                                                vuk::Value<vuk::Buffer> instanced_idx_buffer,
-                                                                                                vuk::Value<vuk::Buffer> meshlet_indirect_buf);
 };
 } // namespace ox

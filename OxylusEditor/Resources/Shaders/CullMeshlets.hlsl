@@ -173,7 +173,7 @@ bool CullMeshletFrustum(in uint meshletId, CameraData camera) {
     GetMeshletUvBoundsParams params;
     params.meshletId = meshletId;
 
-    params.viewProj = get_camera(0).previous_projection_view;
+    params.viewProj = get_camera(0).projection_view;
     params.clampNdc = true;
     params.reverseZ = true;
 
@@ -184,9 +184,9 @@ bool CullMeshletFrustum(in uint meshletId, CameraData camera) {
     GetMeshletUvBounds(params, minXY, maxXY, nearestZ, intersectsNearPlane);
     isVisible = intersectsNearPlane;
 
-    const bool CULL_MESHLET_HIZ = true;
+    const bool CULL_MESHLET_HIZ = false;
     if (!isVisible) {
-      if ((CULL_MESHLET_HIZ) == 0) {
+      if (!CULL_MESHLET_HIZ) {
         isVisible = true;
       } else {
         // Hack to get around apparent precision issue for tiny meshlets
@@ -197,7 +197,7 @@ bool CullMeshletFrustum(in uint meshletId, CameraData camera) {
     if (isVisible) {
       uint idx = 0;
       buffers_rw[CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX].InterlockedAdd(0, 1, idx);
-      set_visible_meshlet(idx, meshletId);
+      buffers_rw[VISIBLE_MESHLETS_BUFFER_INDEX].Store(idx * sizeof(uint), meshletId);
 
 #ifdef ENABLE_DEBUG_DRAWING
       if (d_currentView.type == VIEW_TYPE_MAIN) {
