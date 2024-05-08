@@ -35,38 +35,38 @@ void DebugDrawMeshletAabb(in uint meshletId) {
 }
 #endif // ENABLE_DEBUG_DRAWING
 
-bool IsAABBInsidePlane(in float3 center, in float3 extent, in float4 plane) {
+bool is_aabb_inside_plane(in float3 center, in float3 extent, in float4 plane) {
   const float3 normal = plane.xyz;
   const float radius = dot(extent, abs(normal));
   return (dot(normal, center) - plane.w) >= -radius;
 }
 
 struct GetMeshletUvBoundsParams {
-  uint meshletId;
-  float4x4 viewProj;
-  bool clampNdc;
-  bool reverseZ;
+  uint meshlet_id;
+  float4x4 view_proj;
+  bool clamp_ndc;
+  bool reverse_z;
 };
 
-void GetMeshletUvBounds(GetMeshletUvBoundsParams params, out float2 minXY, out float2 maxXY, out float nearestZ, out int intersectsNearPlane) {
-  const Meshlet meshlet = get_meshlet(params.meshletId);
+void get_meshlet_uv_bounds(GetMeshletUvBoundsParams params, out float2 minXY, out float2 maxXY, out float nearestZ, out int intersects_near_plane) {
+  const Meshlet meshlet = get_meshlet(params.meshlet_id);
   const uint instanceId = meshlet.instanceId;
   const MeshInstance instance = get_instance(instanceId);
   const float4x4 transform = instance.transform;
-  const float3 aabbMin = meshlet.aabbMin.unpack();
-  const float3 aabbMax = meshlet.aabbMax.unpack();
-  const float3 aabbSize = aabbMax - aabbMin;
-  const float3 aabbCorners[] = {aabbMin,
-                                aabbMin + float3(aabbSize.x, 0.0, 0.0),
-                                aabbMin + float3(0.0, aabbSize.y, 0.0),
-                                aabbMin + float3(0.0, 0.0, aabbSize.z),
-                                aabbMin + float3(aabbSize.xy, 0.0),
-                                aabbMin + float3(0.0, aabbSize.yz),
-                                aabbMin + float3(aabbSize.x, 0.0, aabbSize.z),
-                                aabbMin + aabbSize};
+  const float3 aabb_min = meshlet.aabbMin.unpack();
+  const float3 aabb_max = meshlet.aabbMax.unpack();
+  const float3 aabb_size = aabb_max - aabb_min;
+  const float3 aabb_corners[] = {aabb_min,
+                                 aabb_min + float3(aabb_size.x, 0.0, 0.0),
+                                 aabb_min + float3(0.0, aabb_size.y, 0.0),
+                                 aabb_min + float3(0.0, 0.0, aabb_size.z),
+                                 aabb_min + float3(aabb_size.xy, 0.0),
+                                 aabb_min + float3(0.0, aabb_size.yz),
+                                 aabb_min + float3(aabb_size.x, 0.0, aabb_size.z),
+                                 aabb_min + aabb_size};
 
   // The nearest projected depth of the object's AABB
-  if (params.reverseZ) {
+  if (params.reverse_z) {
     nearestZ = 0;
   } else {
     nearestZ = 1;
@@ -75,35 +75,35 @@ void GetMeshletUvBounds(GetMeshletUvBoundsParams params, out float2 minXY, out f
   // Min and max projected coordinates of the object's AABB in UV space
   minXY = float2(1e20, 1e20);
   maxXY = float2(-1e20, -1e20);
-  const float4x4 mvp = params.viewProj * transform;
+  const float4x4 mvp = params.view_proj * transform;
   for (uint i = 0; i < 8; ++i) {
-    float4 clip = mul(mvp, float4(aabbCorners[i], 1.0));
+    float4 clip = mul(mvp, float4(aabb_corners[i], 1.0));
 
     // AABBs that go behind the camera at all are considered visible
     if (clip.w <= 0) {
-      intersectsNearPlane = true;
+      intersects_near_plane = true;
       return;
     }
 
     clip.z = max(clip.z, 0.0);
     clip /= clip.w;
-    if (params.clampNdc) {
+    if (params.clamp_ndc) {
       clip.xy = clamp(clip.xy, -1.0, 1.0);
     }
     clip.xy = clip.xy * 0.5 + 0.5;
     minXY = min(minXY, clip.xy);
     maxXY = max(maxXY, clip.xy);
-    if (params.reverseZ) {
+    if (params.reverse_z) {
       nearestZ = clamp(max(nearestZ, clip.z), 0.0, 1.0);
     } else {
       nearestZ = clamp(min(nearestZ, clip.z), 0.0, 1.0);
     }
   }
 
-  intersectsNearPlane = false;
+  intersects_near_plane = false;
 }
 
-bool CullQuadHiz(float2 minXY, float2 maxXY, float nearestZ) {
+bool cull_quad_hiz(float2 minXY, float2 maxXY, float nearestZ) {
   const float4 boxUvs = float4(minXY, maxXY);
   Texture2D<float> hiz_texture = get_hiz_texture();
   float hizwidth, hizheight;
@@ -130,7 +130,7 @@ bool CullQuadHiz(float2 minXY, float2 maxXY, float nearestZ) {
   return true;
 }
 
-bool CullMeshletFrustum(in uint meshletId, CameraData camera) {
+bool cull_meshlet_frustum(in uint meshletId, CameraData camera) {
   const Meshlet meshlet = get_meshlet(meshletId);
   const uint instanceId = meshlet.instanceId;
   const MeshInstance instance = get_instance(instanceId);
@@ -151,7 +151,7 @@ bool CullMeshletFrustum(in uint meshletId, CameraData camera) {
                                     abs(dot(float3(0.0, 0.0, 1.0), right)) + abs(dot(float3(0.0, 0.0, 1.0), up)) +
                                       abs(dot(float3(0.0, 0.0, 1.0), forward)));
   for (uint i = 0; i < 6; ++i) {
-    if (!IsAABBInsidePlane(worldAabbCenter, worldExtent, camera.frustum_planes[i])) {
+    if (!is_aabb_inside_plane(worldAabbCenter, worldExtent, camera.frustum_planes[i])) {
       return false;
     }
   }
@@ -167,34 +167,34 @@ bool CullMeshletFrustum(in uint meshletId, CameraData camera) {
     return;
   }
 
-  if (CullMeshletFrustum(meshletId, get_camera(0))) {
-    bool isVisible = false;
+  if (cull_meshlet_frustum(meshletId, get_camera(0))) {
+    bool is_visible = false;
 
     GetMeshletUvBoundsParams params;
-    params.meshletId = meshletId;
+    params.meshlet_id = meshletId;
 
-    params.viewProj = get_camera(0).projection_view;
-    params.clampNdc = true;
-    params.reverseZ = true;
+    params.view_proj = get_camera(0).projection_view;
+    params.clamp_ndc = true;
+    params.reverse_z = true;
 
     float2 minXY;
     float2 maxXY;
     float nearestZ;
-    bool intersectsNearPlane;
-    GetMeshletUvBounds(params, minXY, maxXY, nearestZ, intersectsNearPlane);
-    isVisible = intersectsNearPlane;
+    bool intersects_near_plane;
+    get_meshlet_uv_bounds(params, minXY, maxXY, nearestZ, intersects_near_plane);
+    is_visible = intersects_near_plane;
 
     const bool CULL_MESHLET_HIZ = false;
-    if (!isVisible) {
+    if (!is_visible) {
       if (!CULL_MESHLET_HIZ) {
-        isVisible = true;
+        is_visible = true;
       } else {
         // Hack to get around apparent precision issue for tiny meshlets
-        isVisible = CullQuadHiz(minXY, maxXY, nearestZ + 0.0001);
+        is_visible = cull_quad_hiz(minXY, maxXY, nearestZ + 0.0001);
       }
     }
 
-    if (isVisible) {
+    if (is_visible) {
       uint idx = 0;
       buffers_rw[CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX].InterlockedAdd(0, 1, idx);
       buffers_rw[VISIBLE_MESHLETS_BUFFER_INDEX].Store(idx * sizeof(uint), meshletId);

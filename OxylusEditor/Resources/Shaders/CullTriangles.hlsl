@@ -8,7 +8,7 @@ groupshared float4x4 sh_mvp;
 // Taken from:
 // https://github.com/GPUOpen-Effects/GeometryFX/blob/master/amd_geometryfx/src/Shaders/AMD_GeometryFX_Filtering.hlsl
 // Parameters: vertices in UV space, viewport extent
-bool CullSmallPrimitive(float2 vertices[3], float2 viewportExtent) {
+bool cull_small_primitive(float2 vertices[3], float2 viewportExtent) {
   const uint SUBPIXEL_BITS = 8;
   const uint SUBPIXEL_MASK = 0xFF;
   const uint SUBPIXEL_SAMPLES = 1 << SUBPIXEL_BITS;
@@ -57,7 +57,7 @@ bool CullSmallPrimitive(float2 vertices[3], float2 viewportExtent) {
 
 // Returns true if the triangle is visible
 // https://www.slideshare.net/gwihlidal/optimizing-the-graphics-pipeline-with-compute-gdc-2016
-bool CullTriangle(Meshlet meshlet, uint localId) {
+bool cull_triangle(Meshlet meshlet, uint localId) {
   // Skip if no culling flags are enabled
   const bool culling_disabled = false;
   if (culling_disabled) {
@@ -115,7 +115,7 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
     return true;
   }
 
-  const bool frustum_culling = false; // TODO: 
+  const bool frustum_culling = false;         // TODO:
   const bool small_primitive_culling = false; // TODO:
 
   // Frustum culling
@@ -131,7 +131,7 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
     const float2 posUv1 = posNdc1.xy * 0.5 + 0.5;
     const float2 posUv2 = posNdc2.xy * 0.5 + 0.5;
     float2 arg[3] = {posUv0, posUv1, posUv2};
-    if (!CullSmallPrimitive(arg, get_scene().screen_size.xy)) {
+    if (!cull_small_primitive(arg, get_scene().screen_size.xy)) {
       return false;
     }
   }
@@ -155,12 +155,12 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
 
   GroupMemoryBarrierWithGroupSync();
 
-  bool primitivePassed = false;
-  uint activePrimitiveId = 0;
+  bool primitive_passed = false;
+  uint active_primitive_id = 0;
   if (localId < meshlet.primitiveCount) {
-    primitivePassed = CullTriangle(meshlet, localId);
-    if (primitivePassed) {
-      InterlockedAdd(sh_primitivesPassed, 1, activePrimitiveId);
+    primitive_passed = cull_triangle(meshlet, localId);
+    if (primitive_passed) {
+      InterlockedAdd(sh_primitivesPassed, 1, active_primitive_id);
     }
   }
 
@@ -172,8 +172,8 @@ bool CullTriangle(Meshlet meshlet, uint localId) {
 
   GroupMemoryBarrierWithGroupSync();
 
-  if (primitivePassed) {
-    const uint indexOffset = sh_baseIndex + activePrimitiveId * 3;
+  if (primitive_passed) {
+    const uint indexOffset = sh_baseIndex + active_primitive_id * 3;
     set_index(indexOffset + 0, (meshletId << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 0) & MESHLET_PRIMITIVE_MASK));
     set_index(indexOffset + 1, (meshletId << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 1) & MESHLET_PRIMITIVE_MASK));
     set_index(indexOffset + 2, (meshletId << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 2) & MESHLET_PRIMITIVE_MASK));

@@ -243,11 +243,11 @@ private:
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_00;
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_02;
 
-  vuk::Unique<vuk::Buffer> visible_meshlets_buffer;
-  vuk::Unique<vuk::Buffer> cull_triangles_dispatch_params_buffer;
-  vuk::Unique<vuk::Buffer> index_buffer;
-  vuk::Unique<vuk::Buffer> instanced_index_buffer;
-  vuk::Unique<vuk::Buffer> indirect_commands_buffer;
+  vuk::Buffer visible_meshlets_buffer;
+  vuk::Buffer cull_triangles_dispatch_params_buffer;
+  vuk::Buffer index_buffer;
+  vuk::Buffer instanced_index_buffer;
+  vuk::Buffer indirect_commands_buffer;
 
   Texture color_texture;
   Texture albedo_texture;

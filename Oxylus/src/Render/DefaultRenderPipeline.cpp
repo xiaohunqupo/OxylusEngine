@@ -147,8 +147,8 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   // --- Culling ---
   vuk::DescriptorSetLayoutCreateInfo bindless_dslci_01 = {};
   bindless_dslci_01.bindings = {
-    binding(0, vuk::DescriptorType::eStorageBuffer, 9), // read
-    binding(1, vuk::DescriptorType::eStorageBuffer, 9), // rw
+    binding(0, vuk::DescriptorType::eStorageBuffer, 5), // read
+    binding(1, vuk::DescriptorType::eStorageBuffer, 4), // rw
   };
   bindless_dslci_01.index = 2;
   for (int i = 0; i < 2; i++)
@@ -687,22 +687,25 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   descriptor_set_00->commit(ctx);
 
   constexpr auto MESHLET_DATA_BUFFERS_INDEX = 0;
-  constexpr auto VISIBLE_MESHLETS_BUFFER_INDEX = 1;
-  constexpr auto CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX = 2;
-  constexpr auto INDIRECT_COMMAND_BUFFER_INDEX = 3;
-  constexpr auto INDEX_BUFFER_INDEX = 4;
-  constexpr auto VERTEX_BUFFER_INDEX = 5;
-  constexpr auto PRIMITIVES_BUFFER_INDEX = 6;
-  constexpr auto TRANSFORMS_BUFFER_INDEX = 7;
-  constexpr auto INSTANCED_INDEX_BUFFER_INDEX = 8;
+  constexpr auto INDEX_BUFFER_INDEX = 1;
+  constexpr auto VERTEX_BUFFER_INDEX = 2;
+  constexpr auto PRIMITIVES_BUFFER_INDEX = 3;
+  constexpr auto TRANSFORMS_BUFFER_INDEX = 4;
+
+  constexpr auto VISIBLE_MESHLETS_BUFFER_INDEX = 0;
+  constexpr auto CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX = 1;
+  constexpr auto INDIRECT_COMMAND_BUFFER_INDEX = 2;
+  constexpr auto INSTANCED_INDEX_BUFFER_INDEX = 3;
+
+  constexpr auto READ_ONLY = 0;
+  constexpr auto READ_WRITE = 1;
 
   auto [meshletBuff, meshletBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlets));
   const auto& meshlet_data_buffer = *meshletBuff;
-  descriptor_set_02->update_storage_buffer(0, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
+  descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
 
-  visible_meshlets_buffer = allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * 3);
-  descriptor_set_02->update_storage_buffer(1, VISIBLE_MESHLETS_BUFFER_INDEX, *visible_meshlets_buffer);
-  descriptor_set_02->update_storage_buffer(0, VISIBLE_MESHLETS_BUFFER_INDEX, *visible_meshlets_buffer);
+  visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * 3);
+  descriptor_set_02->update_storage_buffer(READ_WRITE, VISIBLE_MESHLETS_BUFFER_INDEX, visible_meshlets_buffer);
 
   struct DispatchParams {
     uint32 groupCountX;
@@ -712,8 +715,8 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
   DispatchParams params{0, 1, 1};
   auto [dispatchBuff, dispatchBuffFut] = create_cpu_buffer(allocator, std::span(&params, 1));
-  cull_triangles_dispatch_params_buffer = std::move(dispatchBuff);
-  descriptor_set_02->update_storage_buffer(1, CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX, *cull_triangles_dispatch_params_buffer);
+  cull_triangles_dispatch_params_buffer = *dispatchBuff;
+  descriptor_set_02->update_storage_buffer(READ_WRITE, CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX, cull_triangles_dispatch_params_buffer);
 
   constexpr auto draw_command = vuk::DrawIndexedIndirectCommand{
     .indexCount = 0,
@@ -724,37 +727,37 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   };
 
   auto [indirectBuff, indirectBuffFut] = create_cpu_buffer(allocator, std::span(&draw_command, 1));
-  indirect_commands_buffer = std::move(indirectBuff);
-  descriptor_set_02->update_storage_buffer(1, INDIRECT_COMMAND_BUFFER_INDEX, *indirect_commands_buffer);
+  indirect_commands_buffer = *indirectBuff;
+  descriptor_set_02->update_storage_buffer(READ_WRITE, INDIRECT_COMMAND_BUFFER_INDEX, indirect_commands_buffer);
 
   std::vector<uint32> indices{};
   for (auto& mc : mesh_component_list)
     indices.insert(indices.end(), mc.mesh_base->_indices.begin(), mc.mesh_base->_indices.end());
   auto [indicesBuff, indicesBuffFut] = create_cpu_buffer(allocator, std::span(indices));
-  index_buffer = std::move(indicesBuff);
-  descriptor_set_02->update_storage_buffer(0, INDEX_BUFFER_INDEX, *indicesBuff);
+  index_buffer = *indicesBuff;
+  descriptor_set_02->update_storage_buffer(READ_ONLY, INDEX_BUFFER_INDEX, *indicesBuff);
 
   std::vector<Vertex> vertices{};
   for (auto& mc : mesh_component_list)
     vertices.insert(vertices.end(), mc.mesh_base->_vertices.begin(), mc.mesh_base->_vertices.end());
   auto [vertBuff, vertBuffFut] = create_cpu_buffer(allocator, std::span(vertices));
   const auto& vertices_buffer = *vertBuff;
-  descriptor_set_02->update_storage_buffer(0, VERTEX_BUFFER_INDEX, vertices_buffer);
+  descriptor_set_02->update_storage_buffer(READ_ONLY, VERTEX_BUFFER_INDEX, vertices_buffer);
 
   std::vector<uint32> primitives{};
   for (auto& mc : mesh_component_list)
     primitives.insert(primitives.end(), mc.mesh_base->primitives.begin(), mc.mesh_base->primitives.end());
   auto [primsBuff, primsBuffFut] = create_cpu_buffer(allocator, std::span(primitives));
   const auto& primitives_buffer = *primsBuff;
-  descriptor_set_02->update_storage_buffer(0, PRIMITIVES_BUFFER_INDEX, primitives_buffer);
+  descriptor_set_02->update_storage_buffer(READ_ONLY, PRIMITIVES_BUFFER_INDEX, primitives_buffer);
 
   auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.transforms));
   const auto& transforms_buffer = *transBuff;
-  descriptor_set_02->update_storage_buffer(0, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
+  descriptor_set_02->update_storage_buffer(READ_ONLY, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
 
   constexpr auto max_meshlet_primitives = 64;
-  instanced_index_buffer = allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3);
-  descriptor_set_02->update_storage_buffer(1, INSTANCED_INDEX_BUFFER_INDEX, *instanced_index_buffer);
+  instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3);
+  descriptor_set_02->update_storage_buffer(READ_WRITE, INSTANCED_INDEX_BUFFER_INDEX, instanced_index_buffer);
 
   descriptor_set_02->commit(ctx);
 }
@@ -1004,10 +1007,10 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     first_pass = true;
   }
 
-  auto vis_meshlets_buf = vuk::acquire_buf("visible_meshlets_buffer", *visible_meshlets_buffer, vuk::eNone);
-  auto cull_triangles_buf = vuk::acquire_buf("dispatch_params_buffer", *cull_triangles_dispatch_params_buffer, vuk::eNone);
-  auto instanced_idx_buf = vuk::acquire_buf("instanced_index_buffer", *instanced_index_buffer, vuk::eNone);
-  auto indirect_commands_buff = vuk::acquire_buf("meshlet_indirect_commands_buffer", *indirect_commands_buffer, vuk::eNone);
+  auto vis_meshlets_buf = vuk::acquire_buf("visible_meshlets_buffer", visible_meshlets_buffer, vuk::eNone);
+  auto cull_triangles_buf = vuk::acquire_buf("dispatch_params_buffer", cull_triangles_dispatch_params_buffer, vuk::eNone);
+  auto instanced_idx_buf = vuk::acquire_buf("instanced_index_buffer", instanced_index_buffer, vuk::eNone);
+  auto indirect_commands_buff = vuk::acquire_buf("meshlet_indirect_commands_buffer", indirect_commands_buffer, vuk::eNone);
 
   auto [vis_meshlets_buff_output, triangles_dis_buffer_output] = vuk::make_pass("cull_meshlets",
                                                                                 [this](vuk::CommandBuffer& command_buffer,
@@ -1045,8 +1048,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                          [this](vuk::CommandBuffer& command_buffer,
                                                                 VUK_IA(vuk::eColorRW) _vis_buffer,
                                                                 VUK_IA(vuk::eDepthStencilRW) _depth,
-                                                                VUK_BA(vuk::eIndexRead) instanced_idx_buff,
-                                                                VUK_BA(vuk::eIndirectRead) indirect_commands_buffer) {
+                                                                VUK_BA(vuk::eIndexRead | vuk::eComputeRead) instanced_idx_buff,
+                                                                VUK_BA(vuk::eIndirectRead | vuk::eComputeRead) indirect_commands_buffer) {
     command_buffer.bind_graphics_pipeline("vis_buffer_pipeline")
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
       .set_viewport(0, vuk::Rect2D::framebuffer())
