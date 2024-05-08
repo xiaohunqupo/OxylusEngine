@@ -147,8 +147,8 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   // --- Culling ---
   vuk::DescriptorSetLayoutCreateInfo bindless_dslci_01 = {};
   bindless_dslci_01.bindings = {
-    binding(0, vuk::DescriptorType::eStorageBuffer), // read
-    binding(1, vuk::DescriptorType::eStorageBuffer), // rw
+    binding(0, vuk::DescriptorType::eStorageBuffer, 9), // read
+    binding(1, vuk::DescriptorType::eStorageBuffer, 9), // rw
   };
   bindless_dslci_01.index = 2;
   for (int i = 0; i < 2; i++)
@@ -1027,7 +1027,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                                      [this](vuk::CommandBuffer& command_buffer,
                                                                             VUK_BA(vuk::eComputeRead) meshlets,
                                                                             VUK_BA(vuk::eComputeRW) _index_buffer,
-                                                                            VUK_BA(vuk::eComputeWrite) _indirect_buffer,
+                                                                            VUK_BA(vuk::eComputeRW) _indirect_buffer,
                                                                             VUK_BA(vuk::eComputeRead) _triangles_dispatch_buffer) {
     command_buffer.bind_compute_pipeline("cull_triangles_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
     camera_cb.camera_data[0] = get_main_camera_data();
@@ -1045,8 +1045,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                          [this](vuk::CommandBuffer& command_buffer,
                                                                 VUK_IA(vuk::eColorRW) _vis_buffer,
                                                                 VUK_IA(vuk::eDepthStencilRW) _depth,
-                                                                VUK_BA(vuk::eFragmentRead) instanced_idx_buff,
-                                                                VUK_BA(vuk::eFragmentRead) indirect_commands_buffer) {
+                                                                VUK_BA(vuk::eIndexRead) instanced_idx_buff,
+                                                                VUK_BA(vuk::eIndirectRead) indirect_commands_buffer) {
     command_buffer.bind_graphics_pipeline("vis_buffer_pipeline")
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
       .set_viewport(0, vuk::Rect2D::framebuffer())
