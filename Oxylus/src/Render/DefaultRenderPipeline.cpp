@@ -1031,7 +1031,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                                             VUK_BA(vuk::eComputeRead) meshlets,
                                                                             VUK_BA(vuk::eComputeRW) _index_buffer,
                                                                             VUK_BA(vuk::eComputeRW) _indirect_buffer,
-                                                                            VUK_BA(vuk::eComputeRead) _triangles_dispatch_buffer) {
+                                                                            VUK_BA(vuk::eIndirectRead) _triangles_dispatch_buffer) {
     command_buffer.bind_compute_pipeline("cull_triangles_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
     camera_cb.camera_data[0] = get_main_camera_data();
     bind_camera_buffer(command_buffer);
