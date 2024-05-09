@@ -17,10 +17,47 @@ typedef uint32_t uint32;
 // typedef uint16_t uint16; - currently not needed - need to enable -enable-16bit-types to use it...
 // typedef uint8_t uint8; - not even supported in dxc
 
+struct PackedFloat2 {
+  float x, y;
+
+  float2 unpack() { return float2(x, y); }
+  void pack(float2 v) {
+    x = v.x;
+    y = v.y;
+  }
+};
+
+struct PackedUint2 {
+  uint32 x, y;
+
+  uint2 unpack() { return uint2(x, y); }
+  void pack(uint2 v) {
+    x = v.x;
+    y = v.y;
+  }
+};
+
 struct PackedFloat3 {
   float x, y, z;
 
   float3 unpack() { return float3(x, y, z); }
+  void pack(float3 v) {
+    x = v.x;
+    y = v.y;
+    z = v.z;
+  }
+};
+
+struct PackedFloat4 {
+  float x, y, z, w;
+
+  float4 unpack() { return float4(x, y, z, w); }
+  void pack(float4 v) {
+    x = v.x;
+    y = v.y;
+    z = v.z;
+    w = v.w;
+  }
 };
 
 struct Vertex {
@@ -133,22 +170,21 @@ struct CameraCB {
 #define SPOT_LIGHT 2
 
 struct Light {
-  float3 position;
-  float _pad0;
+  PackedFloat3 position;
 
-  float3 rotation;
+  PackedFloat3 rotation;
   uint32 type8_flags8_range16;
 
-  uint2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
-  uint2 color;                        // half4 packed
+  PackedUint2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
+  PackedUint2 color;                        // half4 packed
 
-  float4 shadow_atlas_mul_add;
+  PackedFloat4 shadow_atlas_mul_add;
 
   uint32 radius16_length16;
   uint32 matrix_index;
   uint32 remap;
-  uint32 _pad1;
 
+  float3 get_position() { return position.unpack(); }
   uint32 get_type() { return type8_flags8_range16 & 0xFF; }
   uint32 get_flags() { return (type8_flags8_range16 >> 8u) & 0xFF; }
   float get_range() { return f16tof32(type8_flags8_range16 >> 16u); }
@@ -175,21 +211,21 @@ struct Light {
   }
   uint32 get_matrix_index() { return matrix_index; }
   float get_gravity() { return get_cone_angle_cos(); }
-  float3 get_collider_tip() { return shadow_atlas_mul_add.xyz; }
+  float3 get_collider_tip() { return shadow_atlas_mul_add.unpack().xyz; }
 };
 
 struct SceneData {
   int num_lights;
   float grid_max_distance;
-  uint2 screen_size;
+  PackedUint2 screen_size;
 
-  float2 screen_size_rcp;
-  uint2 shadow_atlas_res;
+  PackedFloat2 screen_size_rcp;
+  PackedUint2 shadow_atlas_res;
 
-  float3 sun_direction;
+  PackedFloat3 sun_direction;
   uint32 meshlet_count;
 
-  float4 sun_color; // pre-multipled with intensity
+  PackedFloat4 sun_color; // pre-multipled with intensity
 
   struct Indices {
     int albedo_image_index;
@@ -214,7 +250,6 @@ struct SceneData {
 
     int emission_image_index;
     int metallic_roughness_ao_image_index;
-    int2 _pad1;
   } indices_;
 
   // TODO: use flags
@@ -222,19 +257,16 @@ struct SceneData {
     int tonemapper;
     float exposure;
     float gamma;
-    int _pad;
 
     int enable_bloom;
     int enable_ssr;
     int enable_gtao;
-    int _pad2;
 
-    float4 vignette_color;       // rgb: color, a: intensity
-    float4 vignette_offset;      // xy: offset, z: useMask, w: enable effect
-    float2 film_grain;           // x: enable, y: amount
-    float2 chromatic_aberration; // x: enable, y: amount
-    float2 sharpen;              // x: enable, y: amount
-    float2 _pad3;
+    PackedFloat4 vignette_color;       // rgb: color, a: intensity
+    PackedFloat4 vignette_offset;      // xy: offset, z: useMask, w: enable effect
+    PackedFloat2 film_grain;           // x: enable, y: amount
+    PackedFloat2 chromatic_aberration; // x: enable, y: amount
+    PackedFloat2 sharpen;              // x: enable, y: amount
   } post_processing_data;
 };
 
@@ -250,12 +282,19 @@ struct Meshlet {
   PackedFloat3 aabbMax;
 };
 
-struct DrawElementsIndirectCommand {
-  uint32 indexCount;
+struct DrawIndirectCommand {
+  uint32 vertexCount;
   uint32 instanceCount;
-  uint32 firstIndex;
-  int baseVertex;
-  uint32 baseInstance;
+  uint32 firstVertex;
+  uint32 firstInstance;
+};
+
+#define MAX_AABB_COUNT 100000
+
+struct DebugAabb {
+  PackedFloat3 center;
+  PackedFloat3 extent;
+  PackedFloat4 color;
 };
 
 bool is_nan(float3 vec) {
@@ -319,4 +358,15 @@ float3 unproject_uv_zo(float depth, float2 uv, float4x4 invXProj) {
   float4 world = mul(invXProj, ndc);
   return world.xyz / world.w;
 }
+
+float3 hsv_to_rgb(const float3 hsv) {
+  float3 rgb = clamp(abs(fmod(hsv.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  return hsv.z * lerp(float3(1.0, 1.0, 1.0), rgb, hsv.y);
+}
+
+float3 create_cube(in uint vertexID) {
+  uint b = 1u << vertexID;
+  return float3((0x287au & b) != 0u, (0x02afu & b) != 0u, (0x31e3u & b) != 0u);
+}
+
 #endif

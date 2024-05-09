@@ -62,8 +62,10 @@ void DefaultRenderPipeline::init(vuk::Allocator& allocator) {
 
   load_pipelines(allocator);
 
-  if (initalized)
+  if (initalized) {
+    OX_LOG_INFO("Reloaded render pipeline.");
     return;
+  }
 
   const auto task_scheduler = App::get_system<TaskScheduler>();
 
@@ -85,21 +87,22 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   vuk::PipelineBaseCreateInfo bindless_pci = {};
   vuk::DescriptorSetLayoutCreateInfo bindless_dslci_00 = {};
   bindless_dslci_00.bindings = {
-    binding(0, vuk::DescriptorType::eUniformBuffer, 1),
+    binding(0, vuk::DescriptorType::eStorageBuffer, 1),
     binding(1, vuk::DescriptorType::eStorageBuffer),
-    binding(2, vuk::DescriptorType::eSampledImage),
+    binding(2, vuk::DescriptorType::eStorageBuffer),
     binding(3, vuk::DescriptorType::eSampledImage),
     binding(4, vuk::DescriptorType::eSampledImage),
-    binding(5, vuk::DescriptorType::eSampledImage, 8),
+    binding(5, vuk::DescriptorType::eSampledImage),
     binding(6, vuk::DescriptorType::eSampledImage, 8),
-    binding(7, vuk::DescriptorType::eStorageImage),
+    binding(7, vuk::DescriptorType::eSampledImage, 8),
     binding(8, vuk::DescriptorType::eStorageImage),
-    binding(9, vuk::DescriptorType::eSampledImage),
-    binding(10, vuk::DescriptorType::eSampler),
+    binding(9, vuk::DescriptorType::eStorageImage),
+    binding(10, vuk::DescriptorType::eSampledImage),
     binding(11, vuk::DescriptorType::eSampler),
+    binding(12, vuk::DescriptorType::eSampler),
   };
   bindless_dslci_00.index = 0;
-  for (int i = 0; i < 12; i++)
+  for (int i = 0; i < 13; i++)
     bindless_dslci_00.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
   bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_00);
 
@@ -121,19 +124,6 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   });
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.add_hlsl(SHADER_FILE("PBRForward.hlsl"), SS::eVertex, "VSmain");
-    bindless_pci.add_hlsl(SHADER_FILE("PBRForward.hlsl"), SS::ePixel, "PSmain");
-    TRY(allocator.get_context().create_named_pipeline("pbr_pipeline", bindless_pci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
-    bindless_pci.add_hlsl(SHADER_FILE("PBRForward.hlsl"), SS::eVertex, "VSmain");
-    bindless_pci.add_hlsl(SHADER_FILE("PBRForward.hlsl"), SS::ePixel, "PSmain");
-    bindless_pci.define("TRANSPARENT", "");
-    TRY(allocator.get_context().create_named_pipeline("pbr_transparency_pipeline", bindless_pci))
-  });
-
-  task_scheduler->add_task([=]() mutable {
     bindless_pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);
     bindless_pci.add_hlsl(SHADER_FILE("FinalPass.hlsl"), SS::ePixel);
     TRY(allocator.get_context().create_named_pipeline("final_pipeline", bindless_pci))
@@ -142,6 +132,12 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   task_scheduler->add_task([=]() mutable {
     bindless_pci.add_hlsl(SHADER_FILE("DepthCopy.hlsl"), SS::eCompute);
     TRY(allocator.get_context().create_named_pipeline("depth_copy_pipeline", bindless_pci))
+  });
+
+  task_scheduler->add_task([=]() mutable {
+    bindless_pci.add_hlsl(SHADER_FILE("Debug/DebugAABB.hlsl"), SS::eVertex, "VSmain");
+    bindless_pci.add_hlsl(SHADER_FILE("Debug/DebugAABB.hlsl"), SS::ePixel, "PSmain");
+    TRY(allocator.get_context().create_named_pipeline("debug_aabb_pipeline", bindless_pci))
   });
 
   // --- Culling ---
@@ -360,10 +356,34 @@ DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data() 
   camera_data.temporalaa_jitter = current_camera->get_jitter();
   camera_data.temporalaa_jitter_prev = current_camera->get_previous_jitter();
 
-  for (uint32 i = 0; i < 6; i++) {
-    const auto* plane = current_camera->get_frustum().planes[i];
-    camera_data.frustum_planes[i] = {plane->normal, plane->distance};
+  for (auto i = 0; i < 4; ++i) {
+    camera_data.frustum_planes[0][i] = camera_data.projection_view[i][3] + camera_data.projection_view[i][0];
   }
+  for (auto i = 0; i < 4; ++i) {
+    camera_data.frustum_planes[1][i] = camera_data.projection_view[i][3] - camera_data.projection_view[i][0];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    camera_data.frustum_planes[2][i] = camera_data.projection_view[i][3] + camera_data.projection_view[i][1];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    camera_data.frustum_planes[3][i] = camera_data.projection_view[i][3] - camera_data.projection_view[i][1];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    camera_data.frustum_planes[4][i] = camera_data.projection_view[i][3] + camera_data.projection_view[i][2];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    camera_data.frustum_planes[5][i] = camera_data.projection_view[i][3] - camera_data.projection_view[i][2];
+  }
+
+  for (auto& plane : camera_data.frustum_planes) {
+    plane /= glm::length(glm::vec3(plane));
+    plane.w = -plane.w;
+  }
+
+  // for (uint32 i = 0; i < 6; i++) {
+  //  const auto* plane = current_camera->get_frustum().planes[i];
+  //  camera_data.frustum_planes[i] = {plane->normal, plane->distance};
+  // }
 
   return camera_data;
 }
@@ -517,15 +537,15 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     const auto& emissive = mat->get_emissive_texture();
 
     if (albedo && albedo->is_valid_id())
-      descriptor_set_00->update_sampled_image(9, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     if (normal && normal->is_valid_id())
-      descriptor_set_00->update_sampled_image(9, normal->get_id(), *normal->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      descriptor_set_00->update_sampled_image(10, normal->get_id(), *normal->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     if (physical && physical->is_valid_id())
-      descriptor_set_00->update_sampled_image(9, physical->get_id(), *physical->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      descriptor_set_00->update_sampled_image(10, physical->get_id(), *physical->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     if (ao && ao->is_valid_id())
-      descriptor_set_00->update_sampled_image(9, ao->get_id(), *ao->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      descriptor_set_00->update_sampled_image(10, ao->get_id(), *ao->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     if (emissive && emissive->is_valid_id())
-      descriptor_set_00->update_sampled_image(9, emissive->get_id(), *emissive->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      descriptor_set_00->update_sampled_image(10, emissive->get_id(), *emissive->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
     material_parameters.emplace_back(mat->parameters);
   }
@@ -650,39 +670,44 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   auto [instBuff, instanceBuffFut] = create_cpu_buffer(allocator, std::span(mesh_instances));
   const auto& mesh_instances_buffer = *instBuff;
 
-  descriptor_set_00->update_uniform_buffer(0, 0, scene_buffer);
+  descriptor_set_00->update_storage_buffer(0, 0, scene_buffer);
   descriptor_set_00->update_storage_buffer(1, LIGHTS_BUFFER_INDEX, lights_buffer);
   descriptor_set_00->update_storage_buffer(1, MATERIALS_BUFFER_INDEX, mat_buffer);
   descriptor_set_00->update_storage_buffer(1, MESH_INSTANCES_BUFFER_INDEX, mesh_instances_buffer);
   descriptor_set_00->update_storage_buffer(1, ENTITIES_BUFFER_INDEX, shader_entities_buffer);
 
+  debug_aabb_buffer = *vuk::allocate_cpu_buffer(allocator, sizeof(DebugAabb) + (sizeof(vuk::DrawIndirectCommand) * MAX_AABB_COUNT));
+  uint32 vert_count = 14;
+  std::memcpy(debug_aabb_buffer.mapped_ptr, &vert_count, sizeof(uint32));
+  descriptor_set_00->update_storage_buffer(2, DEBUG_AABB_INDEX, debug_aabb_buffer);
+
   // scene textures
-  descriptor_set_00->update_sampled_image(2, ALBEDO_IMAGE_INDEX, *albedo_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, NORMAL_IMAGE_INDEX, *normal_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, DEPTH_IMAGE_INDEX, *depth_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, SHADOW_ATLAS_INDEX, *shadow_map_atlas.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, VELOCITY_IMAGE_INDEX, *velocity_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, METALROUGHAO_IMAGE_INDEX, *metallic_roughness_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(2, EMISSION_IMAGE_INDEX, *emission_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, ALBEDO_IMAGE_INDEX, *albedo_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, NORMAL_IMAGE_INDEX, *normal_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, DEPTH_IMAGE_INDEX, *depth_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, SHADOW_ATLAS_INDEX, *shadow_map_atlas.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, VELOCITY_IMAGE_INDEX, *velocity_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, METALROUGHAO_IMAGE_INDEX, *metallic_roughness_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, EMISSION_IMAGE_INDEX, *emission_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
   // scene texture float
-  descriptor_set_00->update_sampled_image(3, HIZ_IMAGE_INDEX, *hiz_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(4, HIZ_IMAGE_INDEX, *hiz_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
   // scene uint texture array
-  descriptor_set_00->update_sampled_image(4, GTAO_BUFFER_IMAGE_INDEX, *gtao_final_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(4, VIS_IMAGE_INDEX, *visibility_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(5, GTAO_BUFFER_IMAGE_INDEX, *gtao_final_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(5, VIS_IMAGE_INDEX, *visibility_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
   // scene cubemap texture array
-  descriptor_set_00->update_sampled_image(5, SKY_ENVMAP_INDEX, *sky_envmap_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(6, SKY_ENVMAP_INDEX, *sky_envmap_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
   // scene Read/Write float4 textures
-  descriptor_set_00->update_storage_image(7, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view());
-  descriptor_set_00->update_storage_image(7, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view());
+  descriptor_set_00->update_storage_image(8, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view());
+  descriptor_set_00->update_storage_image(8, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view());
 
   // scene Read/Write float textures
-  descriptor_set_00->update_storage_image(8, HIZ_IMAGE_INDEX, *hiz_texture.get_view());
+  descriptor_set_00->update_storage_image(9, HIZ_IMAGE_INDEX, *hiz_texture.get_view());
 
   descriptor_set_00->commit(ctx);
 
@@ -704,7 +729,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   const auto& meshlet_data_buffer = *meshletBuff;
   descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
 
-  visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * 3);
+  visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size());
   descriptor_set_02->update_storage_buffer(READ_WRITE, VISIBLE_MESHLETS_BUFFER_INDEX, visible_meshlets_buffer);
 
   struct DispatchParams {
@@ -906,7 +931,7 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
 
 void DefaultRenderPipeline::create_descriptor_sets(vuk::Allocator& allocator) {
   auto& ctx = allocator.get_context();
-  descriptor_set_00 = ctx.create_persistent_descriptorset(allocator, *ctx.get_named_pipeline("pbr_pipeline"), 0, 64);
+  descriptor_set_00 = ctx.create_persistent_descriptorset(allocator, *ctx.get_named_pipeline("shading_pipeline"), 0, 64);
   ctx.set_name(descriptor_set_00->backing_set, "global_set_0");
 
   const vuk::Sampler linear_sampler_clamped = ctx.acquire_sampler(vuk::LinearSamplerClamped, ctx.get_frame_count());
@@ -916,16 +941,16 @@ void DefaultRenderPipeline::create_descriptor_sets(vuk::Allocator& allocator) {
   const vuk::Sampler nearest_sampler_repeated = ctx.acquire_sampler(vuk::NearestSamplerRepeated, ctx.get_frame_count());
   const vuk::Sampler cmp_depth_sampler = ctx.acquire_sampler(vuk::CmpDepthSampler, ctx.get_frame_count());
   const vuk::Sampler hiz_sampler = ctx.acquire_sampler(hiz_sampler_ci, ctx.get_frame_count());
-  descriptor_set_00->update_sampler(10, 0, linear_sampler_clamped);
-  descriptor_set_00->update_sampler(10, 1, linear_sampler_repeated);
-  descriptor_set_00->update_sampler(10, 2, linear_sampler_repeated_anisotropy);
-  descriptor_set_00->update_sampler(10, 3, nearest_sampler_clamped);
-  descriptor_set_00->update_sampler(10, 4, nearest_sampler_repeated);
-  descriptor_set_00->update_sampler(10, 5, hiz_sampler);
-  descriptor_set_00->update_sampler(11, 0, cmp_depth_sampler);
+  descriptor_set_00->update_sampler(11, 0, linear_sampler_clamped);
+  descriptor_set_00->update_sampler(11, 1, linear_sampler_repeated);
+  descriptor_set_00->update_sampler(11, 2, linear_sampler_repeated_anisotropy);
+  descriptor_set_00->update_sampler(11, 3, nearest_sampler_clamped);
+  descriptor_set_00->update_sampler(11, 4, nearest_sampler_repeated);
+  descriptor_set_00->update_sampler(11, 5, hiz_sampler);
+  descriptor_set_00->update_sampler(12, 0, cmp_depth_sampler);
 
   descriptor_set_02 = ctx.create_persistent_descriptorset(allocator, *ctx.get_named_pipeline("cull_meshlets_pipeline"), 2, 64);
-  ctx.set_name(descriptor_set_00->backing_set, "global_set_2");
+  ctx.set_name(descriptor_set_02->backing_set, "global_set_2");
 }
 
 void DefaultRenderPipeline::run_static_passes(vuk::Allocator& allocator) {
@@ -1007,31 +1032,35 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     first_pass = true;
   }
 
-  auto vis_meshlets_buf = vuk::acquire_buf("visible_meshlets_buffer", visible_meshlets_buffer, vuk::eNone);
-  auto cull_triangles_buf = vuk::acquire_buf("dispatch_params_buffer", cull_triangles_dispatch_params_buffer, vuk::eNone);
-  auto instanced_idx_buf = vuk::acquire_buf("instanced_index_buffer", instanced_index_buffer, vuk::eNone);
-  auto indirect_commands_buff = vuk::acquire_buf("meshlet_indirect_commands_buffer", indirect_commands_buffer, vuk::eNone);
+  auto vis_meshlets_buf = vuk::declare_buf("visible_meshlets_buffer", visible_meshlets_buffer);
+  auto cull_triangles_buf = vuk::declare_buf("dispatch_params_buffer", cull_triangles_dispatch_params_buffer);
+  auto instanced_idx_buf = vuk::declare_buf("instanced_index_buffer", instanced_index_buffer);
+  auto indirect_commands_buff = vuk::declare_buf("meshlet_indirect_commands_buffer", indirect_commands_buffer);
+  auto debug_aabb_buff = vuk::declare_buf("debug_aabb_buffer", debug_aabb_buffer);
 
-  auto [vis_meshlets_buff_output, triangles_dis_buffer_output] = vuk::make_pass("cull_meshlets",
-                                                                                [this](vuk::CommandBuffer& command_buffer,
-                                                                                       VUK_IA(vuk::eComputeSampled) _hiz,
-                                                                                       VUK_BA(vuk::eComputeRW) _vis_meshlets_buff,
-                                                                                       VUK_BA(vuk::eComputeRW) _triangles_dispatch_buffer) {
+  auto [vis_meshlets_buff_output,
+        triangles_dis_buffer_output,
+        debug_buffer_output] = vuk::make_pass("cull_meshlets",
+                                              [this](vuk::CommandBuffer& command_buffer,
+                                                     VUK_IA(vuk::eComputeSampled) _hiz,
+                                                     VUK_BA(vuk::eComputeRW) _vis_meshlets_buff,
+                                                     VUK_BA(vuk::eComputeRW) _triangles_dispatch_buffer,
+                                                     VUK_BA(vuk::eComputeRW) _debug_buffer) {
     command_buffer.bind_compute_pipeline("cull_meshlets_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
     camera_cb.camera_data[0] = get_main_camera_data();
     bind_camera_buffer(command_buffer);
 
     command_buffer.dispatch(((uint32_t)scene_flattened.meshlets.size() + 128 - 1) / 128);
 
-    return std::make_tuple(_vis_meshlets_buff, _triangles_dispatch_buffer);
-  })(hiz_image, vis_meshlets_buf, cull_triangles_buf);
+    return std::make_tuple(_vis_meshlets_buff, _triangles_dispatch_buffer, _debug_buffer);
+  })(hiz_image, vis_meshlets_buf, cull_triangles_buf, debug_aabb_buff);
 
   auto [instanced_index_buff, indirect_buff_output] = vuk::make_pass("cull_triangles",
                                                                      [this](vuk::CommandBuffer& command_buffer,
                                                                             VUK_BA(vuk::eComputeRead) meshlets,
+                                                                            VUK_BA(vuk::eIndirectRead) _triangles_dispatch_buffer,
                                                                             VUK_BA(vuk::eComputeRW) _index_buffer,
-                                                                            VUK_BA(vuk::eComputeRW) _indirect_buffer,
-                                                                            VUK_BA(vuk::eIndirectRead) _triangles_dispatch_buffer) {
+                                                                            VUK_BA(vuk::eComputeRW) _indirect_buffer) {
     command_buffer.bind_compute_pipeline("cull_triangles_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
     camera_cb.camera_data[0] = get_main_camera_data();
     bind_camera_buffer(command_buffer);
@@ -1039,7 +1068,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     command_buffer.dispatch_indirect(_triangles_dispatch_buffer);
 
     return std::make_tuple(_index_buffer, _indirect_buffer);
-  })(vis_meshlets_buff_output, instanced_idx_buf, indirect_commands_buff, triangles_dis_buffer_output);
+  })(vis_meshlets_buff_output, triangles_dis_buffer_output, instanced_idx_buf, indirect_commands_buff);
 
   auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
   auto vis_image = vuk::clear_image(vuk::acquire_ia("visibility_image", visibility_texture.as_attachment(), vuk::eNone), vuk::Black<float>);
@@ -1048,8 +1077,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                          [this](vuk::CommandBuffer& command_buffer,
                                                                 VUK_IA(vuk::eColorRW) _vis_buffer,
                                                                 VUK_IA(vuk::eDepthStencilRW) _depth,
-                                                                VUK_BA(vuk::eIndexRead | vuk::eComputeRead) instanced_idx_buff,
-                                                                VUK_BA(vuk::eIndirectRead | vuk::eComputeRead) indirect_commands_buffer) {
+                                                                VUK_BA(vuk::eIndexRead) instanced_idx_buff,
+                                                                VUK_BA(vuk::eIndirectRead) indirect_commands_buffer) {
     command_buffer.bind_graphics_pipeline("vis_buffer_pipeline")
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
       .set_viewport(0, vuk::Rect2D::framebuffer())
@@ -1065,6 +1094,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     bind_camera_buffer(command_buffer);
 
     command_buffer.draw_indexed_indirect(1, indirect_commands_buffer);
+
     return std::make_tuple(_vis_buffer, _depth);
   })(vis_image, depth, instanced_index_buff, indirect_buff_output);
 
@@ -1179,6 +1209,31 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
      vuk::acquire_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment(), vuk::eFragmentSampled),
      sky_envmap_output);
 
+  auto debug_output = vuk::make_pass("debug_pass",
+                                     [this](vuk::CommandBuffer& command_buffer,
+                                            VUK_IA(vuk::eDepthStencilRead) _depth,
+                                            VUK_IA(vuk::eColorWrite) _output,
+                                            VUK_BA(vuk::eIndirectRead) indirect_draw_buffer) {
+    command_buffer.bind_graphics_pipeline("debug_aabb_pipeline")
+      .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eDepthBias)
+      .set_viewport(0, vuk::Rect2D::framebuffer())
+      .set_scissor(0, vuk::Rect2D::framebuffer())
+      .broadcast_color_blend(vuk::BlendPreset::eAlphaBlend)
+      .set_rasterization({.polygonMode = vuk::PolygonMode::eLine,
+                          .cullMode = vuk::CullModeFlagBits::eNone,
+                          .depthBiasEnable = true,
+                          .depthBiasConstantFactor = 50.0f})
+      .set_depth_stencil({.depthTestEnable = true, .depthWriteEnable = false, .depthCompareOp = vuk::CompareOp::eGreater})
+      .bind_persistent(0, *descriptor_set_00);
+
+    camera_cb.camera_data[0] = get_main_camera_data();
+    bind_camera_buffer(command_buffer);
+
+    command_buffer.draw_indirect(1, indirect_draw_buffer);
+
+    return _output;
+  })(depth_output, color_output, debug_buffer_output);
+
   auto bloom_output = vuk::clear_image(vuk::declare_ia("bloom_output", vuk::dummy_attachment), vuk::Black<float>);
 
   return vuk::make_pass("final_pass",
@@ -1197,7 +1252,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .bind_image(2, 1, bloom_img)
       .draw(3, 1, 0, 0);
     return target;
-  })(target, color_output, bloom_output);
+  })(target, debug_output, bloom_output);
 #if 0
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);

@@ -3,6 +3,7 @@
 #include "Core/Project.hpp"
 #include "EditorLayer.hpp"
 #include "EditorTheme.hpp"
+#include "Render/RendererConfig.hpp"
 
 namespace ox {
 void SandboxLayer::on_attach(EventDispatcher& dispatcher) {
@@ -107,6 +108,10 @@ void SandboxLayer::on_imgui_render() {
     ImGui::ShowStyleEditor();
   if (EditorCVar::cvar_show_imgui_demo.get())
     ImGui::ShowDemoWindow();
+
+  if (Input::get_key_pressed(KeyCode::R)) {
+    RendererCVar::cvar_reload_render_pipeline.toggle();
+  }
 
   runtime_console.on_imgui_render();
 }

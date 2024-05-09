@@ -254,7 +254,7 @@ inline float3 sample_shadow(float2 uv, float cmp) {
 
 // This is used to clamp the uvs to last texel center to avoid sampling on the border and overfiltering into a different shadow
 inline void shadow_border_shrink(in Light light, inout float2 shadow_uv) {
-  const float2 shadow_resolution = light.shadow_atlas_mul_add.xy * get_scene().shadow_atlas_res;
+  const float2 shadow_resolution = light.shadow_atlas_mul_add.unpack().xy * get_scene().shadow_atlas_res.unpack();
 #ifdef DISABLE_SOFT_SHADOWMAP
   const float border_size = 0.5;
 #else
@@ -266,18 +266,19 @@ inline void shadow_border_shrink(in Light light, inout float2 shadow_uv) {
 inline float3 shadow_2D(in Light light, in float3 shadow_pos, in float2 shadow_uv, in uint cascade) {
   shadow_border_shrink(light, shadow_uv);
   shadow_uv.x += cascade;
-  shadow_uv = mad(shadow_uv, light.shadow_atlas_mul_add.xy, light.shadow_atlas_mul_add.zw);
+  shadow_uv = mad(shadow_uv, light.shadow_atlas_mul_add.unpack().xy, light.shadow_atlas_mul_add.unpack().zw);
   return sample_shadow(shadow_uv, shadow_pos.z);
 }
 
 inline float3 shadow_cube(in Light light, in float3 Lunnormalized) {
-  const float remapped_distance = light.get_cubemap_depth_remap_near() + light.get_cubemap_depth_remap_far() / (max(max(abs(Lunnormalized.x), abs(Lunnormalized.y)), abs(Lunnormalized.z)) *
-                                                            0.989); // little bias to avoid artifact
+  const float remapped_distance = light.get_cubemap_depth_remap_near() +
+                                  light.get_cubemap_depth_remap_far() / (max(max(abs(Lunnormalized.x), abs(Lunnormalized.y)), abs(Lunnormalized.z)) *
+                                                                         0.989); // little bias to avoid artifact
   const float3 uv_slice = cubemap_to_uv(-Lunnormalized);
   float2 shadow_uv = uv_slice.xy;
   shadow_border_shrink(light, shadow_uv);
   shadow_uv.x += uv_slice.z;
-  shadow_uv = mad(shadow_uv, light.shadow_atlas_mul_add.xy, light.shadow_atlas_mul_add.zw);
+  shadow_uv = mad(shadow_uv, light.shadow_atlas_mul_add.unpack().xy, light.shadow_atlas_mul_add.unpack().zw);
   return sample_shadow(shadow_uv, remapped_distance);
 }
 

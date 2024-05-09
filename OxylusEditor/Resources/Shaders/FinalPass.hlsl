@@ -49,7 +49,7 @@ float4 main(VSInput input) : SV_TARGET {
 
   // Vignette
   if (get_scene().post_processing_data.vignette_offset.w > 0.0) {
-    final_color *= vignette(get_scene().post_processing_data.vignette_offset, get_scene().post_processing_data.vignette_color, input.uv);
+    final_color *= vignette(get_scene().post_processing_data.vignette_offset.unpack(), get_scene().post_processing_data.vignette_color.unpack(), input.uv);
   }
 
   // Gamma correction

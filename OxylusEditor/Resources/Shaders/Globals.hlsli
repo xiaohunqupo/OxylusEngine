@@ -9,18 +9,19 @@
 [[vk::binding(1, 1)]] StructuredBuffer<MeshInstancePointer> MeshInstancePointers;
 
 // set 0
-[[vk::binding(0, 0)]] ConstantBuffer<SceneData> Scene;
+[[vk::binding(0, 0)]] StructuredBuffer<SceneData> Scene;
 
 [[vk::binding(1, 0)]] ByteAddressBuffer Buffers[];
+[[vk::binding(2, 0)]] RWByteAddressBuffer BuffersRW[];
 
-[[vk::binding(2, 0)]] Texture2D<float4> SceneTextures[];
-[[vk::binding(3, 0)]] Texture2D<float> SceneTexturesFloat[];
-[[vk::binding(4, 0)]] Texture2D<uint> SceneTexturesUint[];
-[[vk::binding(5, 0)]] TextureCube<float4> SceneCubeTextures[];
-[[vk::binding(6, 0)]] Texture2DArray<float4> SceneArrayTextures[];
-[[vk::binding(7, 0)]] RWTexture2D<float4> SceneRWTextures[];
-[[vk::binding(8, 0)]] RWTexture2D<float> SceneRWTexturesFloat[];
-[[vk::binding(9, 0)]] Texture2D<float4> MaterialTextureMaps[];
+[[vk::binding(3, 0)]] Texture2D<float4> SceneTextures[];
+[[vk::binding(4, 0)]] Texture2D<float> SceneTexturesFloat[];
+[[vk::binding(5, 0)]] Texture2D<uint> SceneTexturesUint[];
+[[vk::binding(6, 0)]] TextureCube<float4> SceneCubeTextures[];
+[[vk::binding(7, 0)]] Texture2DArray<float4> SceneArrayTextures[];
+[[vk::binding(8, 0)]] RWTexture2D<float4> SceneRWTextures[];
+[[vk::binding(9, 0)]] RWTexture2D<float> SceneRWTexturesFloat[];
+[[vk::binding(10, 0)]] Texture2D<float4> MaterialTextureMaps[];
 
 // 0 - linear_sampler_clamped
 // 1 - linear_sampler_repeated
@@ -28,8 +29,8 @@
 // 3 - nearest_sampler_clamped
 // 4 - nearest_sampler_repeated
 // 5 - hiz_sampler
-[[vk::binding(10, 0)]] SamplerState Samplers[];
-[[vk::binding(11, 0)]] SamplerComparisonState ComparisonSamplers[];
+[[vk::binding(11, 0)]] SamplerState Samplers[];
+[[vk::binding(12, 0)]] SamplerComparisonState ComparisonSamplers[];
 
 #define LINEAR_CLAMPED_SAMPLER Samplers[0]
 #define LINEAR_REPEATED_SAMPLER Samplers[1]
@@ -40,7 +41,7 @@
 
 #define CMP_DEPTH_SAMPLER ComparisonSamplers[0]
 
-SceneData get_scene() { return Scene; }
+SceneData get_scene() { return Scene.Load(0); }
 
 CameraData get_camera(uint camera_index = 0) { return Camera.camera_data[camera_index]; }
 
@@ -117,4 +118,23 @@ Material get_material(uint32 material_index) {
   return Buffers[get_scene().indices_.materials_buffer_index].Load<Material>(material_index * sizeof(Material));
 }
 Light get_light(uint32 lightIndex) { return Buffers[get_scene().indices_.lights_buffer_index].Load<Light>(lightIndex * sizeof(Light)); }
+
+DebugAabb get_debug_aabb(uint32 index) { return BuffersRW[0].Load<DebugAabb>(sizeof(DrawIndirectCommand) + sizeof(DebugAabb) * index); }
+
+bool try_push_debug_aabb(DebugAabb aabb) {
+  uint index = 0;
+  BuffersRW[0].InterlockedAdd(sizeof(uint32), 1, index);
+
+#if TODO
+  // Check if buffer is full
+  if (index >= debugAabbBuffer.aabbs.length()) {
+    atomicAdd(debugAabbBuffer.drawCommand.instanceCount, -1);
+    return false;
+  }
+#endif
+
+  BuffersRW[0].Store<DebugAabb>(sizeof(DrawIndirectCommand) + sizeof(DebugAabb) * index, aabb);
+  return true;
+}
+
 #endif // GLOBALS_HLSLI

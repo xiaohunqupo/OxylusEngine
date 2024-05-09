@@ -85,9 +85,11 @@ private:
   static constexpr auto ENTITIES_BUFFER_INDEX = 3;
   static constexpr auto GTAO_BUFFER_IMAGE_INDEX = 4;
 
+  // rw buffers indices
+  static constexpr auto DEBUG_AABB_INDEX = 0;
+
   struct LightData {
     float3 position;
-    float _pad0;
 
     float3 rotation;
     uint32 type8_flags8_range16;
@@ -100,7 +102,6 @@ private:
     uint32 radius16_length16;
     uint32 matrix_index;
     uint32 remap;
-    uint32 _pad1;
 
     void set_type(uint32 type) { type8_flags8_range16 |= type & 0xFF; }
     void set_flags(uint32 flags) { type8_flags8_range16 |= (flags & 0xFF) << 8u; }
@@ -126,7 +127,7 @@ private:
     void set_cube_remap_far(float value) { remap |= glm::packHalf1x16(value) << 16u; }
     void set_indices(uint32 indices) { matrix_index = indices; }
     void set_gravity(float value) { set_cone_angle_cos(value); }
-    void SetColliderTip(float3 value) { shadow_atlas_mul_add = float4(value.x, value.y, value.z, 0); }
+    void set_collider_tip(float3 value) { shadow_atlas_mul_add = float4(value.x, value.y, value.z, 0); }
   };
 
   std::vector<LightData> light_datas;
@@ -209,28 +210,22 @@ private:
 
       int emission_image_index;
       int metallic_roughness_ao_image_index;
-      int2 _pad1;
     } indices;
 
     struct PostProcessingData {
       int tonemapper = RendererConfig::TONEMAP_ACES;
       float exposure = 1.0f;
       float gamma = 2.5f;
-      int _pad;
 
       int enable_bloom = 1;
       int enable_ssr = 1;
       int enable_gtao = 1;
-      int _pad2;
 
       Vec4 vignette_color = Vec4(0.0f, 0.0f, 0.0f, 0.25f); // rgb: color, a: intensity
       Vec4 vignette_offset = Vec4(0.0f, 0.0f, 0.0f, 0.0f); // xy: offset, z: useMask, w: enable effect
-
       Vec2 film_grain = {};                                // x: enable, y: amount
       Vec2 chromatic_aberration = {};                      // x: enable, y: amount
-
       Vec2 sharpen = {};                                   // x: enable, y: amount
-      Vec2 _pad3;
     } post_processing_data;
   } scene_data;
 
@@ -238,6 +233,14 @@ private:
     uint64_t vertex_buffer_ptr;
     uint32_t mesh_index;
     uint32_t material_index;
+  };
+
+#define MAX_AABB_COUNT 100000
+
+  struct DebugAabb {
+    float3 center;
+    float3 extent;
+    float4 color;
   };
 
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_00;
@@ -248,6 +251,7 @@ private:
   vuk::Buffer index_buffer;
   vuk::Buffer instanced_index_buffer;
   vuk::Buffer indirect_commands_buffer;
+  vuk::Buffer debug_aabb_buffer;
 
   Texture color_texture;
   Texture albedo_texture;
@@ -427,10 +431,6 @@ private:
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_envmap_pass(vuk::Value<vuk::ImageAttachment>& envmap_image);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_transmittance_pass();
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_multiscatter_pass(vuk::Value<vuk::ImageAttachment>& transmittance_lut);
-  [[nodiscard]] std::tuple<vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>, vuk::Value<vuk::ImageAttachment>>
-  depth_pre_pass(const vuk::Value<vuk::ImageAttachment>& depth_image,
-                 const vuk::Value<vuk::ImageAttachment>& normal_image,
-                 const vuk::Value<vuk::ImageAttachment>& velocity_image);
   void render_meshes(const RenderQueue& render_queue,
                      vuk::CommandBuffer& command_buffer,
                      uint32_t filter,

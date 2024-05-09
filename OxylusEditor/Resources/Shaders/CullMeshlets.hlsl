@@ -1,39 +1,63 @@
 #include "Globals.hlsli"
 #include "VisBufferCommon.hlsli"
 
-#ifdef ENABLE_DEBUG_DRAWING
-void DebugDrawMeshletAabb(in uint meshletId) {
-  const Meshlet meshlet = MeshletDataBuffers[meshletDataIndex].meshlets[meshletId];
-  const uint instanceId = meshlet.instanceId;
-  const float4x4 transform = TransformBuffers[transformsIndex].transforms[instanceId].modelCurrent;
-  const float3 aabbMin = meshlet.aabbMin.unpack();
-  const float3 aabbMax = meshlet.aabbMax.unpack();
-  const float3 aabbSize = aabbMax - aabbMin;
-  const float3 aabbCorners[] = {aabbMin,
-                                aabbMin + float3(aabbSize.x, 0.0, 0.0),
-                                aabbMin + float3(0.0, aabbSize.y, 0.0),
-                                aabbMin + float3(0.0, 0.0, aabbSize.z),
-                                aabbMin + float3(aabbSize.xy, 0.0),
-                                aabbMin + float3(0.0, aabbSize.yz),
-                                aabbMin + float3(aabbSize.x, 0.0, aabbSize.z),
-                                aabbMin + aabbSize};
+#define ENABLE_DEBUG_DRAWING
 
-  float3 worldAabbMin = float3(1e20, 1e20, 1e20);
-  float3 worldAabbMax = float3(-1e20, -1e20, -1e20);
+#ifdef ENABLE_DEBUG_DRAWING
+void debug_draw_meshlet_aabb(const uint meshletId) {
+  const Meshlet meshlet = get_meshlet(meshletId);
+  const uint instance_id = meshlet.instanceId;
+  const float4x4 transform = get_instance(instance_id).transform;
+  const float3 aabb_min = meshlet.aabbMin.unpack();
+  const float3 aabb_max = meshlet.aabbMax.unpack();
+  const float3 aabb_size = aabb_max - aabb_min;
+  const float3 aabb_corners[] = {aabb_min,
+                                 aabb_min + float3(aabb_size.x, 0.0, 0.0),
+                                 aabb_min + float3(0.0, aabb_size.y, 0.0),
+                                 aabb_min + float3(0.0, 0.0, aabb_size.z),
+                                 aabb_min + float3(aabb_size.xy, 0.0),
+                                 aabb_min + float3(0.0, aabb_size.yz),
+                                 aabb_min + float3(aabb_size.x, 0.0, aabb_size.z),
+                                 aabb_min + aabb_size};
+
+  float3 world_aabb_min = float3(1e20, 1e20, 1e20);
+  float3 world_aabb_max = float3(-1e20, -1e20, -1e20);
   for (uint i = 0; i < 8; ++i) {
-    float3 world = float3(transform * float4(aabbCorners[i], 1.0));
-    worldAabbMin = min(worldAabbMin, world);
-    worldAabbMax = max(worldAabbMax, world);
+    float3 world = float3(mul(transform, float4(aabb_corners[i], 1.0)).xyz);
+    world_aabb_min = min(world_aabb_min, world);
+    world_aabb_max = max(world_aabb_max, world);
   }
 
-  const float3 aabbCenter = (worldAabbMin + worldAabbMax) / 2.0;
-  const float3 extent = (worldAabbMax - worldAabbMin);
+  const float3 aabb_center = (world_aabb_min + world_aabb_max) / 2.0;
+  PackedFloat3 center_packed = (PackedFloat3)0;
+  center_packed.pack(aabb_center);
+
+  const float3 extent = (world_aabb_max - world_aabb_min);
+  PackedFloat3 extent_packed = (PackedFloat3)0;
+  extent_packed.pack(extent);
 
   const float GOLDEN_CONJ = 0.6180339887498948482045868343656;
-  float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshletId) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
-  TryPushDebugAabb(debugAabbBufferIndex, DebugAabb(Vec3ToPacked(aabbCenter), Vec3ToPacked(extent), Vec4ToPacked(color)));
+  const float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshletId) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
+  PackedFloat4 color_packed = (PackedFloat4)0;
+  color_packed.pack(color);
+
+  DebugAabb aabb;
+  aabb.extent = extent_packed;
+  aabb.center = center_packed;
+  aabb.color = color_packed;
+
+  try_push_debug_aabb(aabb);
 }
 #endif // ENABLE_DEBUG_DRAWING
+
+#if 0
+bool is_on_plane(in float3 center, in float3 extent, const float4 plane) {
+  // projection interval radius of b onto L(t) = b.c + t * p.n
+  const float r = extent.x * abs(plane.xyz.x) + extent.y * abs(plane.xyz.y) + extent.z * abs(plane.xyz.z);
+
+  return -r <= dot(plane.xyz, center) - plane.w;
+}
+#endif
 
 bool is_aabb_inside_plane(in float3 center, in float3 extent, in float4 plane) {
   const float3 normal = plane.xyz;
@@ -45,14 +69,12 @@ struct GetMeshletUvBoundsParams {
   uint meshlet_id;
   float4x4 view_proj;
   bool clamp_ndc;
-  bool reverse_z;
 };
 
 void get_meshlet_uv_bounds(GetMeshletUvBoundsParams params, out float2 minXY, out float2 maxXY, out float nearestZ, out int intersects_near_plane) {
   const Meshlet meshlet = get_meshlet(params.meshlet_id);
   const uint instanceId = meshlet.instanceId;
-  const MeshInstance instance = get_instance(instanceId);
-  const float4x4 transform = instance.transform;
+  const float4x4 transform = get_instance(instanceId).transform;
   const float3 aabb_min = meshlet.aabbMin.unpack();
   const float3 aabb_max = meshlet.aabbMax.unpack();
   const float3 aabb_size = aabb_max - aabb_min;
@@ -66,11 +88,7 @@ void get_meshlet_uv_bounds(GetMeshletUvBoundsParams params, out float2 minXY, ou
                                  aabb_min + aabb_size};
 
   // The nearest projected depth of the object's AABB
-  if (params.reverse_z) {
-    nearestZ = 0;
-  } else {
-    nearestZ = 1;
-  }
+  nearestZ = 0;
 
   // Min and max projected coordinates of the object's AABB in UV space
   minXY = float2(1e20, 1e20);
@@ -93,11 +111,7 @@ void get_meshlet_uv_bounds(GetMeshletUvBoundsParams params, out float2 minXY, ou
     clip.xy = clip.xy * 0.5 + 0.5;
     minXY = min(minXY, clip.xy);
     maxXY = max(maxXY, clip.xy);
-    if (params.reverse_z) {
-      nearestZ = clamp(max(nearestZ, clip.z), 0.0, 1.0);
-    } else {
-      nearestZ = clamp(min(nearestZ, clip.z), 0.0, 1.0);
-    }
+    nearestZ = clamp(max(nearestZ, clip.z), 0.0, 1.0);
   }
 
   intersects_near_plane = false;
@@ -130,14 +144,13 @@ bool cull_quad_hiz(float2 minXY, float2 maxXY, float nearestZ) {
   return true;
 }
 
-bool cull_meshlet_frustum(in uint meshletId, CameraData camera) {
+bool cull_meshlet_frustum(const uint meshletId) {
   const Meshlet meshlet = get_meshlet(meshletId);
   const uint instanceId = meshlet.instanceId;
-  const MeshInstance instance = get_instance(instanceId);
-  const float4x4 transform = instance.transform;
+  const float4x4 transform = get_instance(instanceId).transform; // TODO: instanceId
   const float3 aabbMin = meshlet.aabbMin.unpack();
   const float3 aabbMax = meshlet.aabbMax.unpack();
-  const float3 aabbCenter = (aabbMin + aabbMax) / 2.0;
+  const float3 aabbCenter = (aabbMin + aabbMax) * 0.5f;
   const float3 aabbExtent = aabbMax - aabbCenter;
   const float3 worldAabbCenter = float3(mul(transform, float4(aabbCenter, 1.0)).xyz);
   const float3 right = transform[0].xyz * aabbExtent.x;
@@ -146,12 +159,15 @@ bool cull_meshlet_frustum(in uint meshletId, CameraData camera) {
 
   const float3 worldExtent = float3(abs(dot(float3(1.0, 0.0, 0.0), right)) + abs(dot(float3(1.0, 0.0, 0.0), up)) +
                                       abs(dot(float3(1.0, 0.0, 0.0), forward)),
+
                                     abs(dot(float3(0.0, 1.0, 0.0), right)) + abs(dot(float3(0.0, 1.0, 0.0), up)) +
                                       abs(dot(float3(0.0, 1.0, 0.0), forward)),
+
                                     abs(dot(float3(0.0, 0.0, 1.0), right)) + abs(dot(float3(0.0, 0.0, 1.0), up)) +
                                       abs(dot(float3(0.0, 0.0, 1.0), forward)));
+
   for (uint i = 0; i < 6; ++i) {
-    if (!is_aabb_inside_plane(worldAabbCenter, worldExtent, camera.frustum_planes[i])) {
+    if (!is_aabb_inside_plane(worldAabbCenter, worldExtent, get_camera(0).frustum_planes[i])) {
       return false;
     }
   }
@@ -167,22 +183,18 @@ bool cull_meshlet_frustum(in uint meshletId, CameraData camera) {
     return;
   }
 
-  if (cull_meshlet_frustum(meshletId, get_camera(0))) {
-    bool is_visible = false;
-
+  if (cull_meshlet_frustum(meshletId)) {
     GetMeshletUvBoundsParams params;
     params.meshlet_id = meshletId;
-
     params.view_proj = get_camera(0).projection_view;
     params.clamp_ndc = true;
-    params.reverse_z = true;
 
     float2 minXY;
     float2 maxXY;
     float nearestZ;
     bool intersects_near_plane;
     get_meshlet_uv_bounds(params, minXY, maxXY, nearestZ, intersects_near_plane);
-    is_visible = intersects_near_plane;
+    bool is_visible = intersects_near_plane;
 
     const bool CULL_MESHLET_HIZ = false;
     if (!is_visible) {
@@ -197,20 +209,18 @@ bool cull_meshlet_frustum(in uint meshletId, CameraData camera) {
     if (is_visible) {
       uint idx = 0;
       buffers_rw[CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX].InterlockedAdd(0, 1, idx);
-      buffers_rw[VISIBLE_MESHLETS_BUFFER_INDEX].Store(idx * sizeof(uint), meshletId);
+      buffers_rw[VISIBLE_MESHLETS_BUFFER_INDEX].Store<uint32>(idx * sizeof(uint32), meshletId);
 
 #ifdef ENABLE_DEBUG_DRAWING
-      if (d_currentView.type == VIEW_TYPE_MAIN) {
-        DebugDrawMeshletAabb(meshletId);
-        // DebugRect rect;
-        // rect.minOffset = Vec2ToPacked(minXY);
-        // rect.maxOffset = Vec2ToPacked(maxXY);
-        // const float GOLDEN_CONJ = 0.6180339887498948482045868343656;
-        // float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshletId) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
-        // rect.color = Vec4ToPacked(color);
-        // rect.depth = nearestZ;
-        // TryPushDebugRect(rect);
-      }
+      debug_draw_meshlet_aabb(meshletId);
+      // DebugRect rect;
+      // rect.minOffset = Vec2ToPacked(minXY);
+      // rect.maxOffset = Vec2ToPacked(maxXY);
+      // const float GOLDEN_CONJ = 0.6180339887498948482045868343656;
+      // float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshletId) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
+      // rect.color = Vec4ToPacked(color);
+      // rect.depth = nearestZ;
+      // TryPushDebugRect(rect);
 #endif // ENABLE_DEBUG_DRAWING
     }
   }

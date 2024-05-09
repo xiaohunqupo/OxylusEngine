@@ -131,7 +131,7 @@ bool cull_triangle(Meshlet meshlet, uint localId) {
     const float2 posUv1 = posNdc1.xy * 0.5 + 0.5;
     const float2 posUv2 = posNdc2.xy * 0.5 + 0.5;
     float2 arg[3] = {posUv0, posUv1, posUv2};
-    if (!cull_small_primitive(arg, get_scene().screen_size.xy)) {
+    if (!cull_small_primitive(arg, get_scene().screen_size.unpack().xy)) {
       return false;
     }
   }

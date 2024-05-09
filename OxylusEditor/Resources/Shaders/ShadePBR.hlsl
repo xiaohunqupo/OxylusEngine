@@ -331,12 +331,12 @@ float attenuation_point_light(in float dist, in float dist2, in float range, in 
 }
 
 void LightPoint(Light light, Surface surface, inout Lighting lighting) {
-  float3 L = light.position - surface.P;
+  float3 L = light.get_position() - surface.P;
 
   if (light.get_length() > 0) {
     // Diffuse representative point on line:
-    const float3 line_point = closest_point_on_segment(light.position - light.get_direction() * light.get_length() * 0.5,
-                                                       light.position + light.get_direction() * light.get_length() * 0.5,
+    const float3 line_point = closest_point_on_segment(light.get_position() - light.get_direction() * light.get_length() * 0.5,
+                                                       light.get_position() + light.get_direction() * light.get_length() * 0.5,
                                                        surface.P);
     L = line_point - surface.P;
   }
@@ -355,7 +355,7 @@ void LightPoint(Light light, Surface surface, inout Lighting lighting) {
     if (any(surface_to_light.NdotL)) {
       float3 shadow = 1;
 
-      shadow *= shadow_cube(light, light.position - surface.P);
+      shadow *= shadow_cube(light, light.get_position() - surface.P);
 
       if (any(shadow)) {
         float3 light_color = light.get_color() * shadow;
@@ -365,8 +365,8 @@ void LightPoint(Light light, Surface surface, inout Lighting lighting) {
 
         if (light.get_length() > 0) {
           // Specular representative point on line:
-          float3 P0 = light.position - light.get_direction() * light.get_length() * 0.5;
-          float3 P1 = light.position + light.get_direction() * light.get_length() * 0.5;
+          float3 P0 = light.get_position() - light.get_direction() * light.get_length() * 0.5;
+          float3 P1 = light.get_position() + light.get_direction() * light.get_length() * 0.5;
           float3 L0 = P0 - surface.P;
           float3 L1 = P1 - surface.P;
           float3 Ld = L1 - L0;
@@ -375,7 +375,7 @@ void LightPoint(Light light, Surface surface, inout Lighting lighting) {
           t /= dot(Ld, Ld) - RdotLd * RdotLd;
           L = (L0 + saturate(t) * Ld);
         } else {
-          L = light.position - surface.P;
+          L = light.get_position() - surface.P;
         }
         if (light.get_radius() > 0) {
           // Specular representative point on sphere:
@@ -410,7 +410,7 @@ inline float attenuation_spot_light(in float dist,
 }
 
 inline void LightSpot(Light light, Surface surface, inout Lighting lighting) {
-  float3 L = light.position - surface.P;
+  float3 L = light.get_position() - surface.P;
   const float dist2 = dot(L, L);
   const float range = light.get_range();
   const float range2 = range * range;
@@ -444,7 +444,7 @@ inline void LightSpot(Light light, Surface surface, inout Lighting lighting) {
 
           if (light.get_radius() > 0) {
             // Specular representative point on sphere:
-            L = light.position - surface.P;
+            L = light.get_position() - surface.P;
             float3 centerToRay = mad(dot(L, surface.R), surface.R, -L);
             L = mad(centerToRay, saturate(light.get_radius() / length(centerToRay)), L);
             L = normalize(L);

@@ -21,7 +21,7 @@ float4 main(VSInput input) : SV_TARGET {
   UvToSkyViewLutParams(atmosphere, viewZenithCosAngle, lightViewCosAngle, viewHeight, input.UV);
 
   const float3 upVector = min(worldPosition / viewHeight, 1.0); // Causes flickering without min(x, 1.0) for untouched/edited directional lights
-  float sunZenithCosAngle = dot(upVector, get_scene().sun_direction);
+  float sunZenithCosAngle = dot(upVector, get_scene().sun_direction.unpack());
   const float3 sunDirection = normalize(float3(sqrt(1.0 - sunZenithCosAngle * sunZenithCosAngle), 0.0, sunZenithCosAngle));
 
   worldPosition = float3(0.0, 0.0, viewHeight);
@@ -37,7 +37,7 @@ float4 main(VSInput input) : SV_TARGET {
     return float4(0, 0, 0, 1);
   }
 
-  const float3 sunIlluminance = get_scene().sun_color;
+  const float3 sunIlluminance = get_scene().sun_color.unpack();
 
   const float tDepth = 0.0;
   const float sampleCountIni = 30.0;

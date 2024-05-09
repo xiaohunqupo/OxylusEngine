@@ -22,8 +22,8 @@ void main(uint3 threadID : SV_DispatchThreadID) {
   // A few ekstra needed constants
   float3 worldPosition = float3(0.0, 0.0, viewHeight);
   float3 worldDirection = float3(0.0f, sqrt(1.0 - viewZenithCosAngle * viewZenithCosAngle), viewZenithCosAngle);
-  float3 sunDirection = get_scene().sun_direction;
-  float3 sunIlluminance = get_scene().sun_color;
+  float3 sunDirection = get_scene().sun_direction.unpack();
+  float3 sunIlluminance = get_scene().sun_color.unpack();
 
   const float tDepth = 0.0;
   const float sampleCountIni = 40.0;
