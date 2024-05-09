@@ -31,7 +31,7 @@ VOut VSmain(uint vertex_index : SV_VertexID) {
   vout.uv = uv;
   vout.objectSpacePos = position;
 
-  vout.position = mul(get_camera(0).projection_view * transform, float4(position, 1.0));
+  vout.position = mul(mul(get_camera(0).projection_view, transform), float4(position, 1.0));
 
   return vout;
 }

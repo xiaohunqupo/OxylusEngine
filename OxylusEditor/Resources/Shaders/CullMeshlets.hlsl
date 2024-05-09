@@ -75,7 +75,7 @@ void get_meshlet_uv_bounds(GetMeshletUvBoundsParams params, out float2 minXY, ou
   // Min and max projected coordinates of the object's AABB in UV space
   minXY = float2(1e20, 1e20);
   maxXY = float2(-1e20, -1e20);
-  const float4x4 mvp = params.view_proj * transform;
+  const float4x4 mvp = mul(params.view_proj, transform);
   for (uint i = 0; i < 8; ++i) {
     float4 clip = mul(mvp, float4(aabb_corners[i], 1.0));
 
