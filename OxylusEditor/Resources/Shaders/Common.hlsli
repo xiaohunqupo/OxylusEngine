@@ -354,18 +354,18 @@ float2x2 inverse(float2x2 mat) {
 
 // zero-to-one depth
 float3 unproject_uv_zo(float depth, float2 uv, float4x4 invXProj) {
-  float4 ndc = float4(uv * 2.0 - 1.0, depth, 1.0);
+  const float4 ndc = float4(uv * 2.0 - 1.0, depth, 1.0);
   float4 world = mul(invXProj, ndc);
   return world.xyz / world.w;
 }
 
 float3 hsv_to_rgb(const float3 hsv) {
-  float3 rgb = clamp(abs(fmod(hsv.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
+  const float3 rgb = clamp(abs(fmod(hsv.x * 6.0 + float3(0.0, 4.0, 2.0), 6.0) - 3.0) - 1.0, 0.0, 1.0);
   return hsv.z * lerp(float3(1.0, 1.0, 1.0), rgb, hsv.y);
 }
 
 float3 create_cube(in uint vertexID) {
-  uint b = 1u << vertexID;
+  const uint b = 1u << vertexID;
   return float3((0x287au & b) != 0u, (0x02afu & b) != 0u, (0x31e3u & b) != 0u);
 }
 

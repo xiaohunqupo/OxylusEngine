@@ -98,7 +98,7 @@ bool try_push_debug_aabb(DebugAabb aabb) {
   }
 #endif
 
-  BuffersRW[0].Store<DebugAabb>(sizeof(DrawIndirectCommand) + sizeof(DebugAabb) * index, aabb);
+  BuffersRW[0].Store(sizeof(DrawIndirectCommand) + sizeof(DebugAabb) * index, aabb);
   return true;
 }
 

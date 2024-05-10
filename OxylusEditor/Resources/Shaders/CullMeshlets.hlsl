@@ -1,7 +1,7 @@
 #include "Globals.hlsli"
 #include "VisBufferCommon.hlsli"
 
-#define ENABLE_DEBUG_DRAWING
+//#define ENABLE_DEBUG_DRAWING
 
 #ifdef ENABLE_DEBUG_DRAWING
 void debug_draw_meshlet_aabb(const uint meshletId) {

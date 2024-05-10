@@ -676,7 +676,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   descriptor_set_00->update_storage_buffer(1, MESH_INSTANCES_BUFFER_INDEX, mesh_instances_buffer);
   descriptor_set_00->update_storage_buffer(1, ENTITIES_BUFFER_INDEX, shader_entities_buffer);
 
-  debug_aabb_buffer = *vuk::allocate_cpu_buffer(allocator, sizeof(DebugAabb) + (sizeof(vuk::DrawIndirectCommand) * MAX_AABB_COUNT));
+  debug_aabb_buffer = *vuk::allocate_cpu_buffer(allocator, sizeof(vuk::DrawIndirectCommand) + sizeof(DebugAabb) * MAX_AABB_COUNT);
   uint32 vert_count = 14;
   std::memcpy(debug_aabb_buffer.mapped_ptr, &vert_count, sizeof(uint32));
   descriptor_set_00->update_storage_buffer(2, DEBUG_AABB_INDEX, debug_aabb_buffer);
