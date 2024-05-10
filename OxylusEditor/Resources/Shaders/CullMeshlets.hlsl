@@ -111,7 +111,7 @@ void get_meshlet_uv_bounds(GetMeshletUvBoundsParams params, out float2 minXY, ou
     clip.xy = clip.xy * 0.5 + 0.5;
     minXY = min(minXY, clip.xy);
     maxXY = max(maxXY, clip.xy);
-    nearestZ = clamp(max(nearestZ, clip.z), 0.0, 1.0);
+    nearestZ = saturate(max(nearestZ, clip.z));
   }
 
   intersects_near_plane = false;
@@ -150,12 +150,14 @@ bool cull_meshlet_frustum(const uint meshletId) {
   const float4x4 transform = get_instance(instanceId).transform; // TODO: instanceId
   const float3 aabbMin = meshlet.aabbMin.unpack();
   const float3 aabbMax = meshlet.aabbMax.unpack();
-  const float3 aabbCenter = (aabbMin + aabbMax) * 0.5f;
+  const float3 aabbCenter = (aabbMin + aabbMax) / 2.0f;
   const float3 aabbExtent = aabbMax - aabbCenter;
   const float3 worldAabbCenter = float3(mul(transform, float4(aabbCenter, 1.0)).xyz);
-  const float3 right = transform[0].xyz * aabbExtent.x;
-  const float3 up = transform[1].xyz * aabbExtent.y;
-  const float3 forward = -transform[2].xyz * aabbExtent.z;
+
+  const float4x4 transformT = transpose(transform);
+  const float3 right = transformT[0].xyz * aabbExtent.x;
+  const float3 up = transformT[1].xyz * aabbExtent.y;
+  const float3 forward = -transformT[2].xyz * aabbExtent.z;
 
   const float3 worldExtent = float3(abs(dot(float3(1.0, 0.0, 0.0), right)) + abs(dot(float3(1.0, 0.0, 0.0), up)) +
                                       abs(dot(float3(1.0, 0.0, 0.0), forward)),
@@ -166,8 +168,9 @@ bool cull_meshlet_frustum(const uint meshletId) {
                                     abs(dot(float3(0.0, 0.0, 1.0), right)) + abs(dot(float3(0.0, 0.0, 1.0), up)) +
                                       abs(dot(float3(0.0, 0.0, 1.0), forward)));
 
+  const CameraData cam = get_camera(0);
   for (uint i = 0; i < 6; ++i) {
-    if (!is_aabb_inside_plane(worldAabbCenter, worldExtent, get_camera(0).frustum_planes[i])) {
+    if (!is_aabb_inside_plane(worldAabbCenter, worldExtent, cam.frustum_planes[i])) {
       return false;
     }
   }

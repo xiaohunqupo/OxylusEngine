@@ -112,16 +112,16 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
 
   auto* task_scheduler = App::get_system<TaskScheduler>();
 
-  task_scheduler->add_task([=]() mutable {
-    bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::eVertex, "VSmain");
-    bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::ePixel, "PSmain");
-    TRY(allocator.get_context().create_named_pipeline("depth_pre_pass_pipeline", bindless_pci))
-  });
+  //task_scheduler->add_task([=]() mutable {
+    //bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::eVertex, "VSmain");
+    //bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::ePixel, "PSmain");
+    //TRY(allocator.get_context().create_named_pipeline("depth_pre_pass_pipeline", bindless_pci))
+  //});
 
-  task_scheduler->add_task([=]() mutable {
-    bindless_pci.add_hlsl(SHADER_FILE("ShadowPass.hlsl"), SS::eVertex, "VSmain");
-    TRY(allocator.get_context().create_named_pipeline("shadow_pipeline", bindless_pci))
-  });
+  //task_scheduler->add_task([=]() mutable {
+    //bindless_pci.add_hlsl(SHADER_FILE("ShadowPass.hlsl"), SS::eVertex, "VSmain");
+    //TRY(allocator.get_context().create_named_pipeline("shadow_pipeline", bindless_pci))
+  //});
 
   task_scheduler->add_task([=]() mutable {
     bindless_pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);
@@ -729,7 +729,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   const auto& meshlet_data_buffer = *meshletBuff;
   descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
 
-  visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size());
+  visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * sizeof(uint32_t));
   descriptor_set_02->update_storage_buffer(READ_WRITE, VISIBLE_MESHLETS_BUFFER_INDEX, visible_meshlets_buffer);
 
   struct DispatchParams {
@@ -781,7 +781,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   descriptor_set_02->update_storage_buffer(READ_ONLY, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
 
   constexpr auto max_meshlet_primitives = 64;
-  instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3);
+  instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3 * sizeof(uint32));
   descriptor_set_02->update_storage_buffer(READ_WRITE, INSTANCED_INDEX_BUFFER_INDEX, instanced_index_buffer);
 
   descriptor_set_02->commit(ctx);

@@ -1,7 +1,4 @@
-﻿#define FORWARD_PASS
-#include "ObjectVS.hlsl"
-
-#include "Atmosphere/SkyCommonShading.hlsli"
+﻿#include "Atmosphere/SkyCommonShading.hlsli"
 #include "PBRCommon.hlsli"
 
 float D_GGX(float roughness, float NoH, const float3 h) {

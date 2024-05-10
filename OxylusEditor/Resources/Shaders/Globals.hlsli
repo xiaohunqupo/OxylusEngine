@@ -6,7 +6,6 @@
 
 // set 1
 [[vk::binding(0, 1)]] ConstantBuffer<CameraCB> Camera;
-[[vk::binding(1, 1)]] StructuredBuffer<MeshInstancePointer> MeshInstancePointers;
 
 // set 0
 [[vk::binding(0, 0)]] StructuredBuffer<SceneData> Scene;
@@ -44,40 +43,6 @@
 SceneData get_scene() { return Scene.Load(0); }
 
 CameraData get_camera(uint camera_index = 0) { return Camera.camera_data[camera_index]; }
-
-inline MeshInstance load_instance(uint32 instance_index) {
-  return Buffers[get_scene().indices_.mesh_instance_buffer_index].Load<MeshInstance>(instance_index * sizeof(MeshInstance));
-}
-
-struct VertexInput {
-  uint vertex_index : SV_VertexID;
-  uint instance_index : SV_InstanceID;
-  [[vk::builtin("DrawIndex")]] uint draw_index : DrawIndex;
-
-  MeshInstancePointer get_instance_pointer(const uint instance_offset) { return MeshInstancePointers[instance_offset + instance_index]; }
-
-  MeshInstance get_instance(const uint instance_offset) { return load_instance(get_instance_pointer(instance_offset).get_instance_index()); }
-
-  float3 get_vertex_position(uint64 ptr) {
-    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex);
-    return vk::RawBufferLoad<float4>(addressOffset).xyz;
-  }
-
-  float3 get_vertex_normal(uint64 ptr) {
-    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4);
-    return vk::RawBufferLoad<float4>(addressOffset).xyz;
-  }
-
-  float2 get_vertex_uv(uint64 ptr) {
-    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4) * 2;
-    return vk::RawBufferLoad<float4>(addressOffset).xy;
-  }
-
-  float4 get_vertex_tangent(uint64 ptr) {
-    uint64 addressOffset = ptr + vertex_index * sizeof(Vertex) + sizeof(float4) * 3;
-    return vk::RawBufferLoad<float4>(addressOffset);
-  }
-};
 
 // scene textures
 Texture2D<float4> get_albedo_texture() { return SceneTextures[get_scene().indices_.albedo_image_index]; }

@@ -5,10 +5,10 @@ struct VOut {
   float4 color : COLOR;
 };
 
-VOut VSmain(uint vertex_index : SV_VertexID, uint instance_id : SV_InstanceID, [[vk::builtin("BaseInstance")]] uint base_instance : DrawIndex) {
+VOut VSmain(uint vertex_index : SV_VertexID, uint instance_id : SV_InstanceID) {
   VOut vout;
 
-  DebugAabb box = get_debug_aabb(instance_id + base_instance);
+  DebugAabb box = get_debug_aabb(instance_id);
   vout.color = box.color.unpack();
 
   float3 a_pos = create_cube(vertex_index) - 0.5;
