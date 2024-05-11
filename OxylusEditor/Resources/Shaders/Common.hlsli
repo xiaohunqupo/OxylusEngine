@@ -230,24 +230,21 @@ struct SceneData {
   struct Indices {
     int albedo_image_index;
     int normal_image_index;
+    int normal_vertex_image_index;
     int depth_image_index;
     int bloom_image_index;
-
     int mesh_instance_buffer_index;
     int entites_buffer_index;
     int materials_buffer_index;
     int lights_buffer_index;
-
     int sky_env_map_index;
     int sky_transmittance_lut_index;
     int sky_multiscatter_lut_index;
     int velocity_image_index;
-
     int shadow_array_index;
     int gtao_buffer_image_index;
     int hiz_image_index;
     int vis_image_index;
-
     int emission_image_index;
     int metallic_roughness_ao_image_index;
   } indices_;
@@ -367,6 +364,20 @@ float3 hsv_to_rgb(const float3 hsv) {
 float3 create_cube(in uint vertexID) {
   const uint b = 1u << vertexID;
   return float3((0x287au & b) != 0u, (0x02afu & b) != 0u, (0x31e3u & b) != 0u);
+}
+
+float3 oct_to_vec3(float2 e) {
+  float3 v = float3(e.xy, 1.0 - abs(e.x) - abs(e.y));
+  float2 signNotZero = float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+  if (v.z < 0.0)
+    v.xy = (1.0 - abs(v.yx)) * signNotZero;
+  return normalize(v);
+}
+
+float2 vec3_to_oct(float3 v) {
+  float2 p = float2(v.x, v.y) * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
+  float2 signNotZero = float2((p.x >= 0.0) ? 1.0 : -1.0, (p.y >= 0.0) ? 1.0 : -1.0);
+  return (v.z <= 0.0) ? ((1.0 - abs(float2(p.y, p.x))) * signNotZero) : p;
 }
 
 #endif

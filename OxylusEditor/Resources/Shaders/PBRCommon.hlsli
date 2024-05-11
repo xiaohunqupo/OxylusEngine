@@ -13,12 +13,7 @@ float3 F_Schlick(const float3 f0, float VoH) {
 }
 
 float3x3 GetNormalTangent(float3 worldPos, float3 normal, float2 uv) {
-  float3 q1 = ddx(worldPos);
-  float3 q2 = ddy(worldPos);
-  float2 st1 = ddx(uv);
-  float2 st2 = ddy(uv);
-
-  float3 T = normalize(q1 * st2.y - q2 * st1.y);
+  float3 T = normalize(ddx(worldPos) * ddy(uv).y - ddy(worldPos) * ddx(uv).y);
   float3 B = -normalize(cross(normal, T));
   float3x3 TBN = float3x3(T, B, normal);
 

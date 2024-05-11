@@ -47,6 +47,7 @@ CameraData get_camera(uint camera_index = 0) { return Camera.camera_data[camera_
 // scene textures
 Texture2D<float4> get_albedo_texture() { return SceneTextures[get_scene().indices_.albedo_image_index]; }
 Texture2D<float4> get_normal_texture() { return SceneTextures[get_scene().indices_.normal_image_index]; }
+Texture2D<float4> get_normal_vertex_texture() { return SceneTextures[get_scene().indices_.normal_vertex_image_index]; }
 Texture2D<float4> get_depth_texture() { return SceneTextures[get_scene().indices_.depth_image_index]; }
 Texture2D<float4> get_shadow_atlas() { return SceneTextures[get_scene().indices_.shadow_array_index]; }
 Texture2D<float4> get_sky_transmittance_lut_texture() { return SceneTextures[get_scene().indices_.sky_transmittance_lut_index]; }

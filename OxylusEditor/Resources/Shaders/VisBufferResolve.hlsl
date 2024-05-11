@@ -20,9 +20,10 @@ VOut VSmain([[vk::builtin("BaseInstance")]] uint base_instance : DrawIndex, uint
 struct POut {
   float4 albedo : SV_TARGET0;
   float4 normal : SV_TARGET1;
-  float3 metallic_roughness_ao : SV_TARGET2;
-  float2 velocity : SV_TARGET3;
-  float3 emission : SV_TARGET4;
+  float2 vertex_normal : SV_TARGET2;
+  float3 metallic_roughness_ao : SV_TARGET3;
+  float2 velocity : SV_TARGET4;
+  float3 emission : SV_TARGET5;
 };
 
 struct PartialDerivatives {
@@ -235,18 +236,19 @@ POut PSmain(VOut input, float4 pixelPosition : SV_Position) {
 
     float3x3 TBN = float3x3(T, B, N);
 
-    float3 sampledNormal = normalize(get_material_normal_texture(material).SampleGrad(material_sampler, uv_grad.uv, uv_grad.ddx, uv_grad.ddy));
-    normal = normalize(mul(TBN, sampledNormal));
+    float3 sampledNormal = float3(get_material_normal_texture(material).SampleGrad(material_sampler, uv_grad.uv, uv_grad.ddx, uv_grad.ddy).rg, 1.0f);
+    sampledNormal = sampledNormal * 2.f - 1.f;
+    normal = normalize(mul(sampledNormal, TBN));
   }
 
   o.albedo = sample_base_color(material, material_sampler, uv_grad);
   o.metallic_roughness_ao = float3(sample_metallic_roughness(material, material_sampler, uv_grad),
                                    sample_occlusion(material, material_sampler, uv_grad));
-  o.normal = float4(normal, 1.0);
-  // o_normalAndFaceNormal.zw = Vec3ToOct(flatNormal);
-  // o_smoothVertexNormal = Vec3ToOct(smoothWorldNormal);
-  o.emission = 0; // o_emission = SampleEmission(material, uvGrad);
-  o.velocity = 0; // o_motion = MakeSmoothMotion(partialDerivatives, worldPosition, worldPositionPrevious);
+  o.normal.xy = vec3_to_oct(normal);
+  o.normal.zw = vec3_to_oct(flatNormal);
+  o.vertex_normal = vec3_to_oct(smoothWorldNormal);
+  o.emission = 0; // o_emission = sample_emission(material, uvGrad);
+  o.velocity = 0; // o_motion = make_smooth_motion(partialDerivatives, worldPosition, worldPositionPrevious);
 
   return o;
 }

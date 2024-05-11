@@ -104,7 +104,7 @@ struct Surface {
     BumpColor = 0;
   }
 
-  void Create(Material material, float4 baseColor, float2 scaledUV) {
+  void create(Material material, float4 baseColor, float2 scaledUV) {
     BaseColor = baseColor;
     Opacity = baseColor.a;
 
@@ -547,7 +547,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
   surface.PixelPosition = pixelPosition.xy;
   surface.EmissiveColor = emissive;
   surface.ViewPos = input.view_pos;
-  surface.Create(material, baseColor, scaledUV);
+  surface.create(material, baseColor, scaledUV);
 
   if (material.normal_map_id != INVALID_ID) {
     surface.BumpColor = float3(get_material_normal_texture(material).Sample(material_sampler, scaledUV).rg, 1.0);

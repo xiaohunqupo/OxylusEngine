@@ -112,15 +112,15 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
 
   auto* task_scheduler = App::get_system<TaskScheduler>();
 
-  //task_scheduler->add_task([=]() mutable {
-    //bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::eVertex, "VSmain");
-    //bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::ePixel, "PSmain");
-    //TRY(allocator.get_context().create_named_pipeline("depth_pre_pass_pipeline", bindless_pci))
+  // task_scheduler->add_task([=]() mutable {
+  // bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::eVertex, "VSmain");
+  // bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::ePixel, "PSmain");
+  // TRY(allocator.get_context().create_named_pipeline("depth_pre_pass_pipeline", bindless_pci))
   //});
 
-  //task_scheduler->add_task([=]() mutable {
-    //bindless_pci.add_hlsl(SHADER_FILE("ShadowPass.hlsl"), SS::eVertex, "VSmain");
-    //TRY(allocator.get_context().create_named_pipeline("shadow_pipeline", bindless_pci))
+  // task_scheduler->add_task([=]() mutable {
+  // bindless_pci.add_hlsl(SHADER_FILE("ShadowPass.hlsl"), SS::eVertex, "VSmain");
+  // TRY(allocator.get_context().create_named_pipeline("shadow_pipeline", bindless_pci))
   //});
 
   task_scheduler->add_task([=]() mutable {
@@ -498,6 +498,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
   scene_data.indices.albedo_image_index = ALBEDO_IMAGE_INDEX;
   scene_data.indices.normal_image_index = NORMAL_IMAGE_INDEX;
+  scene_data.indices.normal_vertex_image_index = NORMAL_VERTEX_IMAGE_INDEX;
   scene_data.indices.depth_image_index = DEPTH_IMAGE_INDEX;
   scene_data.indices.bloom_image_index = BLOOM_IMAGE_INDEX;
   scene_data.indices.sky_transmittance_lut_index = SKY_TRANSMITTANCE_LUT_INDEX;
@@ -684,6 +685,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   // scene textures
   descriptor_set_00->update_sampled_image(3, ALBEDO_IMAGE_INDEX, *albedo_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(3, NORMAL_IMAGE_INDEX, *normal_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+  descriptor_set_00->update_sampled_image(3, NORMAL_VERTEX_IMAGE_INDEX, *normal_vertex_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(3, DEPTH_IMAGE_INDEX, *depth_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(3, SHADOW_ATLAS_INDEX, *shadow_map_atlas.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
   descriptor_set_00->update_sampled_image(3, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
@@ -818,6 +820,7 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
     material_depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
     hiz_texture.create_texture(ext, vuk::Format::eR32Sfloat, Preset::eSTT2D);
     normal_texture.create_texture(ext, vuk::Format::eR16G16B16A16Snorm, Preset::eRTT2DUnmipped);
+    normal_vertex_texture.create_texture(ext, vuk::Format::eR16G16Snorm, Preset::eRTT2DUnmipped);
     velocity_texture.create_texture(ext, vuk::Format::eR16G16Sfloat, Preset::eRTT2DUnmipped);
     visibility_texture.create_texture(ext, vuk::Format::eR32Uint, Preset::eRTT2DUnmipped);
     emission_texture.create_texture(ext, vuk::Format::eB10G11R11UfloatPack32, Preset::eRTT2DUnmipped);
@@ -1133,12 +1136,14 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   auto albedo = vuk::clear_image(vuk::declare_ia("albedo_texture", albedo_texture.as_attachment()), vuk::Black<float>);
   auto normal = vuk::clear_image(vuk::declare_ia("normal_texture", normal_texture.as_attachment()), vuk::Black<float>);
+  auto normal_vertex = vuk::clear_image(vuk::declare_ia("normal_vertex_texture", normal_vertex_texture.as_attachment()), vuk::Black<float>);
   auto metallic_roughness = vuk::clear_image(vuk::declare_ia("metallic_roughness_texture", metallic_roughness_texture.as_attachment()),
                                              vuk::Black<float>);
   auto velocity = vuk::clear_image(vuk::declare_ia("velocity_texture", velocity_texture.as_attachment()), vuk::Black<float>);
   auto emission = vuk::clear_image(vuk::declare_ia("emission_texture", emission_texture.as_attachment()), vuk::Black<float>);
   auto [albedo_output,
         normal_output,
+        normal_vertex_output,
         metallic_roughness_output,
         velocity_output,
         emission_output] = vuk::make_pass("resolve_vis_buffer_pass",
@@ -1146,6 +1151,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                  VUK_IA(vuk::eDepthStencilRead) _depth,
                                                  VUK_IA(vuk::eColorRW) _albedo,
                                                  VUK_IA(vuk::eColorRW) _normal,
+                                                 VUK_IA(vuk::eColorRW) _normal_vertex,
                                                  VUK_IA(vuk::eColorRW) _metallic_roughness,
                                                  VUK_IA(vuk::eColorRW) _velocity,
                                                  VUK_IA(vuk::eColorRW) _emission,
@@ -1167,8 +1173,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       command_buffer.draw(3, 1, 0, material->get_id());
     }
 
-    return std::make_tuple(_albedo, _normal, _metallic_roughness, _velocity, _emission);
-  })(material_depth_output, albedo, normal, metallic_roughness, velocity, emission, vis_image_output);
+    return std::make_tuple(_albedo, _normal, _normal_vertex, _metallic_roughness, _velocity, _emission);
+  })(material_depth_output, albedo, normal, normal_vertex, metallic_roughness, velocity, emission, vis_image_output);
 
   auto envmap_image = vuk::clear_image(vuk::declare_ia("sky_envmap_image", sky_envmap_texture.as_attachment()), vuk::Black<float>);
   auto sky_envmap_output = sky_envmap_pass(envmap_image);
@@ -1180,6 +1186,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                             VUK_IA(vuk::eColorRW) _out,
                                             VUK_IA(vuk::eFragmentSampled) _albedo,
                                             VUK_IA(vuk::eFragmentSampled) _normal,
+                                            VUK_IA(vuk::eFragmentSampled) _normal_vertex,
                                             VUK_IA(vuk::eFragmentSampled) _metallic_roughness,
                                             VUK_IA(vuk::eFragmentSampled) _velocity,
                                             VUK_IA(vuk::eFragmentSampled) _emission,
@@ -1202,6 +1209,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   })(color_image,
      albedo_output,
      normal_output,
+     normal_vertex_output,
      metallic_roughness_output,
      velocity_output,
      emission_output,
