@@ -84,7 +84,7 @@ struct Surface {
   float3 R;    // reflection vector
   float3 F;    // fresnel term computed from NdotV
 
-  void Init() {
+  void init() {
     P = 0;
     V = 0;
     N = 0;
@@ -101,9 +101,9 @@ struct Surface {
     BumpColor = 0;
   }
 
-  void Create(float4 baseColor, float4 surfaceMap) {
+  void create(float4 baseColor, float3 surfaceMap) {
     BaseColor = baseColor;
-    Opacity = baseColor.a;
+    Opacity = baseColor.a; // TODO: UNUSED
 
     float4 specularMap = 1;
     F0 = specularMap.rgb * specularMap.a;
@@ -118,7 +118,7 @@ struct Surface {
     F0 *= lerp(reflectance.xxx, baseColor.rgb, Metallic);
   }
 
-  void Update() {
+  void update() {
     Roughness = saturate(Roughness);
     NdotV = saturate(dot(N, V) + 1e-5);
     F = EnvBRDFApprox(F0, Roughness, NdotV);
@@ -261,7 +261,7 @@ struct Lighting {
   }
 };
 
-inline void ApplyLighting(Surface surface, Lighting lighting, inout float4 color) {
+inline void apply_lighting(Surface surface, Lighting lighting, inout float4 color) {
   const float3 diffuse = lighting.direct.diffuse / PI + lighting.indirect.diffuse * (1 - surface.F) * surface.Occlusion;
   // reminder: cannot apply surface.F for whole indirect specular, because multiple layers have separate fresnels (sheen, clearcoat)
   const float3 specular = lighting.direct.specular + lighting.indirect.specular * surface.Occlusion;
@@ -270,7 +270,7 @@ inline void ApplyLighting(Surface surface, Lighting lighting, inout float4 color
   color.rgb += surface.EmissiveColor;
 }
 
-void LightDirectional(Light light, Surface surface, inout Lighting lighting) {
+void light_directional(Light light, Surface surface, inout Lighting lighting) {
   float3 L = normalize(light.get_direction());
 
   SurfaceToLight surfaceToLight = (SurfaceToLight)0;
@@ -327,7 +327,7 @@ float attenuation_point_light(in float dist, in float dist2, in float range, in 
   return saturate(1 - dist_per_range) / max(0.0001, dist2);
 }
 
-void LightPoint(Light light, Surface surface, inout Lighting lighting) {
+void light_point(Light light, Surface surface, inout Lighting lighting) {
   float3 L = light.get_position() - surface.P;
 
   if (light.get_length() > 0) {
@@ -406,7 +406,7 @@ inline float attenuation_spot_light(in float dist,
   return attenuation;
 }
 
-inline void LightSpot(Light light, Surface surface, inout Lighting lighting) {
+inline void light_spot(Light light, Surface surface, inout Lighting lighting) {
   float3 L = light.get_position() - surface.P;
   const float dist2 = dot(L, L);
   const float range = light.get_range();
@@ -457,25 +457,25 @@ inline void LightSpot(Light light, Surface surface, inout Lighting lighting) {
   }
 }
 
-inline void ForwardLighting(inout Surface surface, inout Lighting lighting) {
+inline void forward_lighting(inout Surface surface, inout Lighting lighting) {
   for (int i = 0; i < get_scene().num_lights; i++) {
     Light light = get_light(i);
 
     switch (light.get_type()) {
       case DIRECTIONAL_LIGHT: {
-        LightDirectional(light, surface, lighting);
+        light_directional(light, surface, lighting);
       } break;
       case POINT_LIGHT: {
-        LightPoint(light, surface, lighting);
+        light_point(light, surface, lighting);
       } break;
       case SPOT_LIGHT: {
-        LightSpot(light, surface, lighting);
+        light_spot(light, surface, lighting);
       } break;
     }
   }
 }
 
-float GeometricOcclusion(Surface pixelData, float NoL) {
+float geometric_occlusion(Surface pixelData, float NoL) {
   float NdotL = NoL;
   float NdotV = pixelData.NdotV;
   float r = pixelData.Roughness * pixelData.Roughness;
@@ -485,7 +485,7 @@ float GeometricOcclusion(Surface pixelData, float NoL) {
   return attenuationL * attenuationV;
 }
 
-float3 GetAmbient(float3 worldNormal) {
+float3 get_ambient(float3 worldNormal) {
   // Set realistic_sky_stationary to true so we capture ambient at float3(0.0, 0.0, 0.0), similar to the standard sky to avoid flickering and weird
   // behavior
   float3 ambient = lerp(GetDynamicSkyColor(float2(0.0f, 0.0f), float3(0, -1, 0), false, false, true),
@@ -504,7 +504,10 @@ struct VOut {
 
 float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
   const float3 albedo = get_albedo_texture().Load(float3(pixelPosition.xy, 0)).rgb;
-  const float3 normal = get_normal_texture().Load(float3(pixelPosition.xy, 0)).rgb;
+  const float4 normal_oct_and_flat_normal_oct = get_normal_texture().Load(float3(pixelPosition.xy, 0)).rgba;
+  float3 mapped_normal = oct_to_vec3(normal_oct_and_flat_normal_oct.xy);
+  // UNUSED... const float3 flat_normal = oct_to_vec3(normal_oct_and_flat_normal_oct.zw);
+  const float3 smooth_normal = oct_to_vec3(get_normal_vertex_texture().Load(float3(pixelPosition.xy, 0)).rg);
   const float depth = get_depth_texture().Load(float3(pixelPosition.xy, 0)).r;
   const float3 emissive = get_emission_texture().Load(float3(pixelPosition.xy, 0)).rgb;
   const float3 metallic_roughness_ao = get_metallic_roughness_ao_texture().Load(float3(pixelPosition.xy, 0)).rgb;
@@ -513,17 +516,17 @@ float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
     discard;
   }
 
+  const float3 normal = normalize(lerp(smooth_normal, mapped_normal, length(mapped_normal)));
+
   Surface surface = (Surface)0;
-  surface.Init();
+  surface.init();
   surface.P = unproject_uv_zo(depth, input.uv, get_camera(0).inv_projection_view); // world pos
   surface.N = normal;
   surface.V = get_camera().position.xyz - surface.P;
   surface.V /= length(surface.V);
   surface.PixelPosition = pixelPosition.xy;
   surface.EmissiveColor = emissive;
-  // surface.ViewPos = input.view_pos; not used
-  // surface.BumpColor = normal; not used
-  surface.Create(float4(albedo, 1.0f), float4(metallic_roughness_ao, 1.0f));
+  surface.create(float4(albedo, 1.0f), metallic_roughness_ao);
 
   float2 screenCoords = pixelPosition.xy / float2(get_scene().screen_size.x, get_scene().screen_size.y);
 
@@ -585,9 +588,9 @@ float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
 
 #endif // CLEARCOAT
 
-  surface.Update();
+  surface.update();
 
-  float3 ambient = GetAmbient(surface.N);
+  float3 ambient = get_ambient(surface.N);
 
   TextureCube cubemap = get_sky_env_map_texture();
   uint2 dim;
@@ -602,7 +605,7 @@ float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
 
   float4 color = surface.BaseColor;
 
-  ForwardLighting(surface, lighting);
+  forward_lighting(surface, lighting);
 
 #if 0
   if (GetScene().PostProcessingData.EnableSSR == 1) {
@@ -611,7 +614,7 @@ float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
   }
 #endif
 
-  ApplyLighting(surface, lighting, color);
+  apply_lighting(surface, lighting, color);
 
   color = clamp(color, 0, 65000);
 
