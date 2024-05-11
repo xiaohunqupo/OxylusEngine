@@ -1193,6 +1193,19 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                             VUK_IA(vuk::eFragmentSampled) _tranmisttance_lut,
                                             VUK_IA(vuk::eFragmentSampled) _multiscatter_lut,
                                             VUK_IA(vuk::eFragmentSampled) _envmap) {
+    camera_cb.camera_data[0] = get_main_camera_data();
+    bind_camera_buffer(command_buffer);
+
+    command_buffer.bind_persistent(0, *descriptor_set_00)
+      .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
+      .set_viewport(0, vuk::Rect2D::framebuffer())
+      .set_scissor(0, vuk::Rect2D::framebuffer())
+      .broadcast_color_blend(vuk::BlendPreset::eOff)
+      .set_depth_stencil({.depthTestEnable = false, .depthWriteEnable = false, .depthCompareOp = vuk::CompareOp::eGreaterOrEqual})
+      .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+      .bind_graphics_pipeline("sky_view_final_pipeline")
+      .draw(3, 1, 0, 0);
+
     command_buffer.bind_graphics_pipeline("shading_pipeline")
       .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
       .set_viewport(0, vuk::Rect2D::framebuffer())
