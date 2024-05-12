@@ -176,9 +176,10 @@ private:
 
   // GPU Buffer
   struct SceneData {
-    int num_lights;
+    uint32 num_lights;
     float grid_max_distance;
     UVec2 screen_size;
+    int draw_meshlet_aabbs;
 
     Vec2 screen_size_rcp;
     UVec2 shadow_atlas_res;
@@ -297,12 +298,6 @@ private:
 
     // Include everything:
     FILTER_ALL = ~0,
-  };
-
-  enum RenderFlags {
-    RENDER_FLAGS_NONE = 0,
-
-    RENDER_FLAGS_SHADOWS_PASS = 1 << 0,
   };
 
   struct RenderBatch {
@@ -430,18 +425,6 @@ private:
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_envmap_pass(vuk::Value<vuk::ImageAttachment>& envmap_image);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_transmittance_pass();
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_multiscatter_pass(vuk::Value<vuk::ImageAttachment>& transmittance_lut);
-  void render_meshes(const RenderQueue& render_queue,
-                     vuk::CommandBuffer& command_buffer,
-                     uint32_t filter,
-                     uint32_t flags = 0,
-                     uint32_t camera_count = 1) const;
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> forward_pass(const vuk::Value<vuk::ImageAttachment>& output,
-                                                              const vuk::Value<vuk::ImageAttachment>& depth_input,
-                                                              const vuk::Value<vuk::ImageAttachment>& shadow_map,
-                                                              const vuk::Value<vuk::ImageAttachment>& transmittance_lut,
-                                                              const vuk::Value<vuk::ImageAttachment>& multiscatter_lut,
-                                                              const vuk::Value<vuk::ImageAttachment>& envmap,
-                                                              const vuk::Value<vuk::ImageAttachment>& gtao);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> apply_fxaa(vuk::Value<vuk::ImageAttachment>& target, vuk::Value<vuk::ImageAttachment>& input);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> shadow_pass(vuk::Value<vuk::ImageAttachment>& shadow_map);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> gtao_pass(vuk::Allocator& frame_allocator,

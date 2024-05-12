@@ -1,9 +1,6 @@
 #include "Globals.hlsli"
 #include "VisBufferCommon.hlsli"
 
-//#define ENABLE_DEBUG_DRAWING
-
-#ifdef ENABLE_DEBUG_DRAWING
 void debug_draw_meshlet_aabb(const uint meshletId) {
   const Meshlet meshlet = get_meshlet(meshletId);
   const uint instance_id = meshlet.instanceId;
@@ -48,7 +45,6 @@ void debug_draw_meshlet_aabb(const uint meshletId) {
 
   try_push_debug_aabb(aabb);
 }
-#endif // ENABLE_DEBUG_DRAWING
 
 #if 0
 bool is_on_plane(in float3 center, in float3 extent, const float4 plane) {
@@ -214,17 +210,17 @@ bool cull_meshlet_frustum(const uint meshletId) {
       buffers_rw[CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX].InterlockedAdd(0, 1, idx);
       buffers_rw[VISIBLE_MESHLETS_BUFFER_INDEX].Store<uint32>(idx * sizeof(uint32), meshletId);
 
-#ifdef ENABLE_DEBUG_DRAWING
-      debug_draw_meshlet_aabb(meshletId);
-      // DebugRect rect;
-      // rect.minOffset = Vec2ToPacked(minXY);
-      // rect.maxOffset = Vec2ToPacked(maxXY);
-      // const float GOLDEN_CONJ = 0.6180339887498948482045868343656;
-      // float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshletId) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
-      // rect.color = Vec4ToPacked(color);
-      // rect.depth = nearestZ;
-      // TryPushDebugRect(rect);
-#endif // ENABLE_DEBUG_DRAWING
+      if (get_scene().draw_meshlet_aabbs) {
+        debug_draw_meshlet_aabb(meshletId);
+        // DebugRect rect;
+        // rect.minOffset = Vec2ToPacked(minXY);
+        // rect.maxOffset = Vec2ToPacked(maxXY);
+        // const float GOLDEN_CONJ = 0.6180339887498948482045868343656;
+        // float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshletId) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
+        // rect.color = Vec4ToPacked(color);
+        // rect.depth = nearestZ;
+        // TryPushDebugRect(rect);
+      }
     }
   }
 }

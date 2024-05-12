@@ -215,9 +215,10 @@ struct Light {
 };
 
 struct SceneData {
-  int num_lights;
+  uint32 num_lights;
   float grid_max_distance;
   PackedUint2 screen_size;
+  int draw_meshlet_aabbs;
 
   PackedFloat2 screen_size_rcp;
   PackedUint2 shadow_atlas_res;

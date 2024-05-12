@@ -13,10 +13,10 @@
 namespace ox {
 VkContext* VkContext::s_instance = nullptr;
 
-static VkBool32 DebugCallback(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                              VkDebugUtilsMessageTypeFlagsEXT messageType,
-                              const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                              void* pUserData) {
+static VkBool32 debug_callback(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+                               VkDebugUtilsMessageTypeFlagsEXT messageType,
+                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+                               void* pUserData) {
   std::string prefix;
   if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
     prefix = "VULKAN VERBOSE: ";
@@ -128,12 +128,12 @@ void VkContext::create_context(const AppSpec& spec) {
   bool enable_validation = spec.command_line_args.contains("vulkan-validation");
 
   if (enable_validation) {
-    OX_LOG_INFO("Vulkan validation layers enabled.");
+    OX_LOG_INFO("Enabled vulkan validation layers.");
     builder.request_validation_layers().set_debug_callback([](const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                                               const VkDebugUtilsMessageTypeFlagsEXT messageType,
                                                               const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
                                                               void* pUserData) -> VkBool32 {
-      return DebugCallback(messageSeverity, messageType, pCallbackData, pUserData);
+      return debug_callback(messageSeverity, messageType, pCallbackData, pUserData);
     });
   }
 
@@ -238,7 +238,7 @@ void VkContext::create_context(const AppSpec& spec) {
   present_ready = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
   render_complete = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
 
-  // context->set_shader_target_version(VK_API_VERSION_1_2);
+  // runtime->set_shader_target_version(VK_API_VERSION_1_3);
 
   superframe_allocator->allocate_semaphores(*present_ready);
   superframe_allocator->allocate_semaphores(*render_complete);
