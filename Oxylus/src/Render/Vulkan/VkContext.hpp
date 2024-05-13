@@ -8,6 +8,8 @@
 #include <vuk/runtime/vk/DeviceFrameResource.hpp>
 #include <vuk/runtime/vk/VkRuntime.hpp>
 
+#include "Core/Types.hpp"
+
 namespace vkb {
 struct Device;
 struct Instance;
@@ -49,6 +51,9 @@ public:
   static VkContext* get() { return s_instance; }
 
   void create_context(const AppSpec& spec);
+  void handle_resize(uint32 width, uint32 height);
+  void set_vsync(bool enable);
+  bool is_vsync() const;
 
   uint32_t get_max_viewport_count() const { return vkbphysical_device.properties.limits.maxViewports; }
 

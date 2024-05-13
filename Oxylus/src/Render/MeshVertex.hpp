@@ -5,15 +5,9 @@
 
 namespace ox {
 struct Vertex {
-  Vec3 position;
-  int _pad;
-  Vec3 normal;
-  int _pad2;
-  Vec2 uv;
-  Vec2 _pad3;
-  Vec4 color;
-  Vec4 joint0;
-  Vec4 weight0;
+  float3 position;
+  uint32 normal;
+  float2 uv;
 };
 
 inline auto vertex_pack = vuk::Packed{

@@ -88,21 +88,21 @@ uint3 visbuffer_load_index_ids(const Meshlet meshlet, in uint primitiveId) {
 }
 
 void visbuffer_load_position(uint3 indexIds, uint vertexOffset, out float3 positions[3]) {
-  positions[0] = get_vertex(vertexOffset + indexIds.x).position;
-  positions[1] = get_vertex(vertexOffset + indexIds.y).position;
-  positions[2] = get_vertex(vertexOffset + indexIds.z).position;
+  positions[0] = get_vertex(vertexOffset + indexIds.x).position.unpack();
+  positions[1] = get_vertex(vertexOffset + indexIds.y).position.unpack();
+  positions[2] = get_vertex(vertexOffset + indexIds.z).position.unpack();
 }
 
 void visbuffer_load_uv(uint3 indexIds, uint vertexOffset, out float2 uvs[3]) {
-  uvs[0] = get_vertex(vertexOffset + indexIds.x).uv;
-  uvs[1] = get_vertex(vertexOffset + indexIds.y).uv;
-  uvs[2] = get_vertex(vertexOffset + indexIds.z).uv;
+  uvs[0] = get_vertex(vertexOffset + indexIds.x).uv.unpack();
+  uvs[1] = get_vertex(vertexOffset + indexIds.y).uv.unpack();
+  uvs[2] = get_vertex(vertexOffset + indexIds.z).uv.unpack();
 }
 
 void visbuffer_load_normal(uint3 indexIds, uint vertexOffset, out float3 normals[3]) {
-  normals[0] = get_vertex(vertexOffset + indexIds.x).normal;
-  normals[1] = get_vertex(vertexOffset + indexIds.y).normal;
-  normals[2] = get_vertex(vertexOffset + indexIds.z).normal;
+  normals[0] = oct_to_vec3(unpack_snorm2_x16(get_vertex(vertexOffset + indexIds.x).normal));
+  normals[1] = oct_to_vec3(unpack_snorm2_x16(get_vertex(vertexOffset + indexIds.y).normal));
+  normals[2] = oct_to_vec3(unpack_snorm2_x16(get_vertex(vertexOffset + indexIds.z).normal));
 }
 
 UvGradient make_uv_gradient(const PartialDerivatives derivatives, const float2 uvs[3]) {

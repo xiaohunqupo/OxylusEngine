@@ -39,6 +39,7 @@ void RendererSettingsPanel::on_imgui_render() {
     ImGui::SeparatorText("Debug");
     if (OxUI::begin_properties(OxUI::default_properties_flags, true, 0.3f)) {
       OxUI::property("Draw AABBs", (bool*)RendererCVar::cvar_draw_bounding_boxes.get_ptr());
+      OxUI::property("Draw meshlet AABBs", (bool*)RendererCVar::cvar_draw_meshlet_aabbs.get_ptr());
       OxUI::property("Draw physics shapes", (bool*)RendererCVar::cvar_draw_physics_shapes.get_ptr());
       OxUI::end_properties();
     }

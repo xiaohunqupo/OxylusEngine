@@ -405,6 +405,11 @@ private:
   Shared<Mesh> m_cube = nullptr;
   Shared<Camera> default_camera;
 
+  uint32 last_indices_size = 0;
+  uint32 last_vertices_size = 0;
+  uint32 last_primitives_size = 0;
+  uint32 last_transforms_size = 0;
+
   std::vector<LightComponent> scene_lights = {};
   LightComponent* dir_light_data = nullptr;
 

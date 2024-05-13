@@ -112,17 +112,6 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
 
   auto* task_scheduler = App::get_system<TaskScheduler>();
 
-  // task_scheduler->add_task([=]() mutable {
-  // bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::eVertex, "VSmain");
-  // bindless_pci.add_hlsl(SHADER_FILE("DepthNormalPrePass.hlsl"), SS::ePixel, "PSmain");
-  // TRY(allocator.get_context().create_named_pipeline("depth_pre_pass_pipeline", bindless_pci))
-  //});
-
-  // task_scheduler->add_task([=]() mutable {
-  // bindless_pci.add_hlsl(SHADER_FILE("ShadowPass.hlsl"), SS::eVertex, "VSmain");
-  // TRY(allocator.get_context().create_named_pipeline("shadow_pipeline", bindless_pci))
-  //});
-
   task_scheduler->add_task([=]() mutable {
     bindless_pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);
     bindless_pci.add_hlsl(SHADER_FILE("FinalPass.hlsl"), SS::ePixel);
@@ -471,7 +460,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   scene_data.screen_size = IVec2(Renderer::get_viewport_width(), Renderer::get_viewport_height());
   scene_data.screen_size_rcp = {1.0f / (float)std::max(1u, scene_data.screen_size.x), 1.0f / (float)std::max(1u, scene_data.screen_size.y)};
   scene_data.meshlet_count = (uint32)scene_flattened.meshlets.size();
-  scene_data.draw_meshlet_aabbs = RendererCVar::cvar_draw_meslet_aabbs.get();
+  scene_data.draw_meshlet_aabbs = RendererCVar::cvar_draw_meshlet_aabbs.get();
 
   scene_data.indices.albedo_image_index = ALBEDO_IMAGE_INDEX;
   scene_data.indices.normal_image_index = NORMAL_IMAGE_INDEX;
@@ -500,270 +489,278 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   scene_data.post_processing_data.enable_ssr = RendererCVar::cvar_ssr_enable.get();
   scene_data.post_processing_data.enable_gtao = RendererCVar::cvar_gtao_enable.get();
 
-  auto [scene_buff, scene_buff_fut] = create_cpu_buffer(allocator, std::span(&scene_data, 1));
-  const auto& scene_buffer = *scene_buff;
+  {
+    OX_SCOPED_ZONE_N("Update 1st set data");
 
-  std::vector<Material::Parameters> material_parameters = {};
-  material_parameters.reserve(scene_flattened.materials.size());
-  for (auto& mat : scene_flattened.materials) {
-    mat->set_id((uint32)material_parameters.size() - 1u);
+    auto [scene_buff, scene_buff_fut] = create_cpu_buffer(allocator, std::span(&scene_data, 1));
+    const auto& scene_buffer = *scene_buff;
 
-    const auto& albedo = mat->get_albedo_texture();
-    const auto& normal = mat->get_normal_texture();
-    const auto& physical = mat->get_physical_texture();
-    const auto& ao = mat->get_ao_texture();
-    const auto& emissive = mat->get_emissive_texture();
+    std::vector<Material::Parameters> material_parameters = {};
+    material_parameters.reserve(scene_flattened.materials.size());
+    for (auto& mat : scene_flattened.materials) {
+      mat->set_id((uint32)material_parameters.size() - 1u);
 
-    if (albedo && albedo->is_valid_id())
-      descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-    if (normal && normal->is_valid_id())
-      descriptor_set_00->update_sampled_image(10, normal->get_id(), *normal->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-    if (physical && physical->is_valid_id())
-      descriptor_set_00->update_sampled_image(10, physical->get_id(), *physical->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-    if (ao && ao->is_valid_id())
-      descriptor_set_00->update_sampled_image(10, ao->get_id(), *ao->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-    if (emissive && emissive->is_valid_id())
-      descriptor_set_00->update_sampled_image(10, emissive->get_id(), *emissive->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      const auto& albedo = mat->get_albedo_texture();
+      const auto& normal = mat->get_normal_texture();
+      const auto& physical = mat->get_physical_texture();
+      const auto& ao = mat->get_ao_texture();
+      const auto& emissive = mat->get_emissive_texture();
 
-    material_parameters.emplace_back(mat->parameters);
-  }
+      if (albedo && albedo->is_valid_id())
+        descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      if (normal && normal->is_valid_id())
+        descriptor_set_00->update_sampled_image(10, normal->get_id(), *normal->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      if (physical && physical->is_valid_id())
+        descriptor_set_00->update_sampled_image(10, physical->get_id(), *physical->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      if (ao && ao->is_valid_id())
+        descriptor_set_00->update_sampled_image(10, ao->get_id(), *ao->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      if (emissive && emissive->is_valid_id())
+        descriptor_set_00->update_sampled_image(10, emissive->get_id(), *emissive->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
-  if (material_parameters.empty())
-    material_parameters.emplace_back();
-
-  auto [matBuff, matBufferFut] = create_cpu_buffer(allocator, std::span(material_parameters));
-  auto& mat_buffer = *matBuff;
-
-  light_datas.reserve(scene_lights.size());
-
-  const Vec2 atlas_dim_rcp = Vec2(1.0f / float(shadow_map_atlas.get_extent().width), 1.0f / float(shadow_map_atlas.get_extent().height));
-
-  for (auto& lc : scene_lights) {
-    auto& light = light_datas.emplace_back();
-    light.position = lc.position;
-    light.set_range(lc.range);
-    light.set_type((uint32)lc.type);
-    light.rotation = lc.rotation;
-    light.set_direction(lc.direction);
-    light.set_color(float4(lc.color * (lc.type == LightComponent::Directional ? 1.0f : lc.intensity), 1.0f));
-    light.set_radius(lc.radius);
-    light.set_length(lc.length);
-
-    bool cast_shadows = lc.cast_shadows;
-
-    if (cast_shadows) {
-      light.shadow_atlas_mul_add.x = lc.shadow_rect.w * atlas_dim_rcp.x;
-      light.shadow_atlas_mul_add.y = lc.shadow_rect.h * atlas_dim_rcp.y;
-      light.shadow_atlas_mul_add.z = lc.shadow_rect.x * atlas_dim_rcp.x;
-      light.shadow_atlas_mul_add.w = lc.shadow_rect.y * atlas_dim_rcp.y;
+      material_parameters.emplace_back(mat->parameters);
     }
 
-    switch (lc.type) {
-      case LightComponent::LightType::Directional: {
-        light.set_shadow_cascade_count((uint32)lc.cascade_distances.size());
-      } break;
-      case LightComponent::LightType::Point: {
-        if (cast_shadows) {
-          constexpr float far_z = 0.1f;
-          const float near_z = std::max(1.0f, lc.range);
-          const float f_range = far_z / (far_z - near_z);
-          const float cubemap_depth_remap_near = f_range;
-          const float cubemap_depth_remap_far = -f_range * near_z;
-          light.set_cube_remap_near(cubemap_depth_remap_near);
-          light.set_cube_remap_far(cubemap_depth_remap_far);
-        }
-      } break;
-      case LightComponent::LightType::Spot: {
-        const float outer_cone_angle = lc.outer_cone_angle;
-        const float inner_cone_angle = std::min(lc.inner_cone_angle, outer_cone_angle);
-        const float outer_cone_angle_cos = std::cos(outer_cone_angle);
-        const float inner_cone_angle_cos = std::cos(inner_cone_angle);
+    if (material_parameters.empty())
+      material_parameters.emplace_back();
 
-        // https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
-        const float light_angle_scale = 1.0f / std::max(0.001f, inner_cone_angle_cos - outer_cone_angle_cos);
-        const float lightAngleOffset = -outer_cone_angle_cos * light_angle_scale;
+    auto [matBuff, matBufferFut] = create_cpu_buffer(allocator, std::span(material_parameters));
+    auto& mat_buffer = *matBuff;
 
-        light.set_cone_angle_cos(outer_cone_angle_cos);
-        light.set_angle_scale(light_angle_scale);
-        light.set_angle_offset(lightAngleOffset);
-      } break;
-    }
-  }
+    light_datas.reserve(scene_lights.size());
 
-  std::vector<ShaderEntity> shader_entities = {};
+    const Vec2 atlas_dim_rcp = Vec2(1.0f / float(shadow_map_atlas.get_extent().width), 1.0f / float(shadow_map_atlas.get_extent().height));
 
-  for (uint32_t light_index = 0; light_index < light_datas.size(); ++light_index) {
-    auto& light = light_datas[light_index];
-    const auto& lc = scene_lights[light_index];
+    for (auto& lc : scene_lights) {
+      auto& light = light_datas.emplace_back();
+      light.position = lc.position;
+      light.set_range(lc.range);
+      light.set_type((uint32)lc.type);
+      light.rotation = lc.rotation;
+      light.set_direction(lc.direction);
+      light.set_color(float4(lc.color * (lc.type == LightComponent::Directional ? 1.0f : lc.intensity), 1.0f));
+      light.set_radius(lc.radius);
+      light.set_length(lc.length);
 
-    if (lc.cast_shadows) {
+      bool cast_shadows = lc.cast_shadows;
+
+      if (cast_shadows) {
+        light.shadow_atlas_mul_add.x = lc.shadow_rect.w * atlas_dim_rcp.x;
+        light.shadow_atlas_mul_add.y = lc.shadow_rect.h * atlas_dim_rcp.y;
+        light.shadow_atlas_mul_add.z = lc.shadow_rect.x * atlas_dim_rcp.x;
+        light.shadow_atlas_mul_add.w = lc.shadow_rect.y * atlas_dim_rcp.y;
+      }
+
       switch (lc.type) {
-        case LightComponent::Directional: {
-          auto cascade_count = (uint32)lc.cascade_distances.size();
-          auto sh_cameras = std::vector<CameraSH>(cascade_count);
-          create_dir_light_cameras(lc, *current_camera, sh_cameras, cascade_count);
-
-          light.matrix_index = (uint32)shader_entities.size();
-          for (uint32 cascade = 0; cascade < cascade_count; ++cascade) {
-            shader_entities.emplace_back(sh_cameras[cascade].projection_view);
+        case LightComponent::LightType::Directional: {
+          light.set_shadow_cascade_count((uint32)lc.cascade_distances.size());
+        } break;
+        case LightComponent::LightType::Point: {
+          if (cast_shadows) {
+            constexpr float far_z = 0.1f;
+            const float near_z = std::max(1.0f, lc.range);
+            const float f_range = far_z / (far_z - near_z);
+            const float cubemap_depth_remap_near = f_range;
+            const float cubemap_depth_remap_far = -f_range * near_z;
+            light.set_cube_remap_near(cubemap_depth_remap_near);
+            light.set_cube_remap_far(cubemap_depth_remap_far);
           }
-          break;
-        }
-        case LightComponent::Point: {
-          break;
-        }
-        case LightComponent::Spot:
+        } break;
+        case LightComponent::LightType::Spot: {
+          const float outer_cone_angle = lc.outer_cone_angle;
+          const float inner_cone_angle = std::min(lc.inner_cone_angle, outer_cone_angle);
+          const float outer_cone_angle_cos = std::cos(outer_cone_angle);
+          const float inner_cone_angle_cos = std::cos(inner_cone_angle);
+
+          // https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#inner-and-outer-cone-angles
+          const float light_angle_scale = 1.0f / std::max(0.001f, inner_cone_angle_cos - outer_cone_angle_cos);
+          const float lightAngleOffset = -outer_cone_angle_cos * light_angle_scale;
+
+          light.set_cone_angle_cos(outer_cone_angle_cos);
+          light.set_angle_scale(light_angle_scale);
+          light.set_angle_offset(lightAngleOffset);
+        } break;
+      }
+    }
+
+    std::vector<ShaderEntity> shader_entities = {};
+
+    for (uint32_t light_index = 0; light_index < light_datas.size(); ++light_index) {
+      auto& light = light_datas[light_index];
+      const auto& lc = scene_lights[light_index];
+
+      if (lc.cast_shadows) {
+        switch (lc.type) {
+          case LightComponent::Directional: {
+            auto cascade_count = (uint32)lc.cascade_distances.size();
+            auto sh_cameras = std::vector<CameraSH>(cascade_count);
+            create_dir_light_cameras(lc, *current_camera, sh_cameras, cascade_count);
+
+            light.matrix_index = (uint32)shader_entities.size();
+            for (uint32 cascade = 0; cascade < cascade_count; ++cascade) {
+              shader_entities.emplace_back(sh_cameras[cascade].projection_view);
+            }
+            break;
+          }
+          case LightComponent::Point: {
+            break;
+          }
+          case LightComponent::Spot:
 // TODO:
 #if 0
           auto sh_camera = create_spot_light_camera(lc, *current_camera);
           light.matrix_index = (uint32_t)shader_entities.size();
           shader_entities.emplace_back(sh_camera.projection_view);
 #endif
-          break;
+            break;
+        }
       }
     }
+
+    if (shader_entities.empty())
+      shader_entities.emplace_back();
+
+    auto [seBuff, seFut] = create_cpu_buffer(allocator, std::span(shader_entities));
+    const auto& shader_entities_buffer = *seBuff;
+
+    if (light_datas.empty())
+      light_datas.emplace_back();
+
+    auto [lights_buff, lights_buff_fut] = create_cpu_buffer(allocator, std::span(light_datas));
+    const auto& lights_buffer = *lights_buff;
+
+    descriptor_set_00->update_storage_buffer(0, 0, scene_buffer);
+    descriptor_set_00->update_storage_buffer(1, LIGHTS_BUFFER_INDEX, lights_buffer);
+    descriptor_set_00->update_storage_buffer(1, MATERIALS_BUFFER_INDEX, mat_buffer);
+    descriptor_set_00->update_storage_buffer(1, ENTITIES_BUFFER_INDEX, shader_entities_buffer);
+
+    debug_aabb_buffer = *vuk::allocate_cpu_buffer(allocator, sizeof(vuk::DrawIndirectCommand) + sizeof(DebugAabb) * MAX_AABB_COUNT);
+    uint32 vert_count = 14;
+    std::memcpy(debug_aabb_buffer.mapped_ptr, &vert_count, sizeof(uint32));
+    descriptor_set_00->update_storage_buffer(2, DEBUG_AABB_INDEX, debug_aabb_buffer);
+
+    // scene textures
+    descriptor_set_00->update_sampled_image(3, ALBEDO_IMAGE_INDEX, *albedo_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, NORMAL_IMAGE_INDEX, *normal_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, NORMAL_VERTEX_IMAGE_INDEX, *normal_vertex_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, DEPTH_IMAGE_INDEX, *depth_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, SHADOW_ATLAS_INDEX, *shadow_map_atlas.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, VELOCITY_IMAGE_INDEX, *velocity_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3,
+                                            METALROUGHAO_IMAGE_INDEX,
+                                            *metallic_roughness_texture.get_view(),
+                                            vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, EMISSION_IMAGE_INDEX, *emission_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+
+    // scene texture float
+    descriptor_set_00->update_sampled_image(4, HIZ_IMAGE_INDEX, *hiz_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+
+    // scene uint texture array
+    descriptor_set_00->update_sampled_image(5, GTAO_BUFFER_IMAGE_INDEX, *gtao_final_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(5, VIS_IMAGE_INDEX, *visibility_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+
+    // scene cubemap texture array
+    descriptor_set_00->update_sampled_image(6, SKY_ENVMAP_INDEX, *sky_envmap_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+
+    // scene Read/Write float4 textures
+    descriptor_set_00->update_storage_image(8, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view());
+    descriptor_set_00->update_storage_image(8, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view());
+
+    // scene Read/Write float textures
+    descriptor_set_00->update_storage_image(9, HIZ_IMAGE_INDEX, *hiz_texture.get_view());
+
+    descriptor_set_00->commit(ctx);
   }
 
-  if (shader_entities.empty())
-    shader_entities.emplace_back();
+  {
+    OX_SCOPED_ZONE_N("Update 2nd set data");
 
-  auto [seBuff, seFut] = create_cpu_buffer(allocator, std::span(shader_entities));
-  const auto& shader_entities_buffer = *seBuff;
+    constexpr auto MESHLET_DATA_BUFFERS_INDEX = 0;
+    constexpr auto INDEX_BUFFER_INDEX = 1;
+    constexpr auto VERTEX_BUFFER_INDEX = 2;
+    constexpr auto PRIMITIVES_BUFFER_INDEX = 3;
+    constexpr auto TRANSFORMS_BUFFER_INDEX = 4;
 
-  if (light_datas.empty())
-    light_datas.emplace_back();
+    constexpr auto VISIBLE_MESHLETS_BUFFER_INDEX = 0;
+    constexpr auto CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX = 1;
+    constexpr auto INDIRECT_COMMAND_BUFFER_INDEX = 2;
+    constexpr auto INSTANCED_INDEX_BUFFER_INDEX = 3;
 
-  auto [lights_buff, lights_buff_fut] = create_cpu_buffer(allocator, std::span(light_datas));
-  const auto& lights_buffer = *lights_buff;
+    constexpr auto READ_ONLY = 0;
+    constexpr auto READ_WRITE = 1;
 
-  std::vector<MeshInstance> mesh_instances = {};
-  mesh_instances.reserve(mesh_component_list.size());
-  for (const auto& mc : mesh_component_list) {
-    mesh_instances.emplace_back(mc.transform);
+    auto [meshletBuff, meshletBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlets));
+    const auto& meshlet_data_buffer = *meshletBuff;
+    descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
+
+    visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * sizeof(uint32_t));
+    descriptor_set_02->update_storage_buffer(READ_WRITE, VISIBLE_MESHLETS_BUFFER_INDEX, visible_meshlets_buffer);
+
+    struct DispatchParams {
+      uint32 groupCountX;
+      uint32 groupCountY;
+      uint32 groupCountZ;
+    };
+
+    DispatchParams params{0, 1, 1};
+    auto [dispatchBuff, dispatchBuffFut] = create_cpu_buffer(allocator, std::span(&params, 1));
+    cull_triangles_dispatch_params_buffer = *dispatchBuff;
+    descriptor_set_02->update_storage_buffer(READ_WRITE, CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX, cull_triangles_dispatch_params_buffer);
+
+    constexpr auto draw_command = vuk::DrawIndexedIndirectCommand{
+      .indexCount = 0,
+      .instanceCount = 1,
+      .firstIndex = 0,
+      .vertexOffset = 0,
+      .firstInstance = 0,
+    };
+
+    auto [indirectBuff, indirectBuffFut] = create_cpu_buffer(allocator, std::span(&draw_command, 1));
+    indirect_commands_buffer = *indirectBuff;
+    descriptor_set_02->update_storage_buffer(READ_WRITE, INDIRECT_COMMAND_BUFFER_INDEX, indirect_commands_buffer);
+
+    std::vector<uint32> indices{};
+    indices.reserve(last_indices_size);
+    std::vector<Vertex> vertices{};
+    vertices.reserve(last_vertices_size);
+    std::vector<uint32> primitives{};
+    primitives.reserve(last_primitives_size);
+    std::vector<float4x4> transforms{};
+    transforms.reserve(last_transforms_size);
+    for (auto& mc : mesh_component_list) {
+      indices.insert(std::end(indices), std::begin(mc.mesh_base->_indices), std::end(mc.mesh_base->_indices));
+      vertices.insert(std::end(vertices), std::begin(mc.mesh_base->_vertices), std::end(mc.mesh_base->_vertices));
+      primitives.insert(std::end(primitives), std::begin(mc.mesh_base->primitives), std::end(mc.mesh_base->primitives));
+      transforms.emplace_back(mc.transform);
+    }
+
+    last_indices_size = (uint32)indices.size();
+    last_vertices_size = (uint32)vertices.size();
+    last_primitives_size = (uint32)primitives.size();
+
+    auto [indicesBuff, indicesBuffFut] = create_cpu_buffer(allocator, std::span(indices));
+    index_buffer = *indicesBuff;
+    descriptor_set_02->update_storage_buffer(READ_ONLY, INDEX_BUFFER_INDEX, *indicesBuff);
+
+    auto [vertBuff, vertBuffFut] = create_cpu_buffer(allocator, std::span(vertices));
+    const auto& vertices_buffer = *vertBuff;
+    descriptor_set_02->update_storage_buffer(READ_ONLY, VERTEX_BUFFER_INDEX, vertices_buffer);
+
+    auto [primsBuff, primsBuffFut] = create_cpu_buffer(allocator, std::span(primitives));
+    const auto& primitives_buffer = *primsBuff;
+    descriptor_set_02->update_storage_buffer(READ_ONLY, PRIMITIVES_BUFFER_INDEX, primitives_buffer);
+
+    auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(transforms));
+    const auto& transforms_buffer = *transBuff;
+    descriptor_set_02->update_storage_buffer(READ_ONLY, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
+
+    constexpr auto max_meshlet_primitives = 64;
+    instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3 * sizeof(uint32));
+    descriptor_set_02->update_storage_buffer(READ_WRITE, INSTANCED_INDEX_BUFFER_INDEX, instanced_index_buffer);
+
+    descriptor_set_02->commit(ctx);
   }
-
-  if (mesh_instances.empty())
-    mesh_instances.emplace_back();
-
-  auto [instBuff, instanceBuffFut] = create_cpu_buffer(allocator, std::span(mesh_instances));
-  const auto& mesh_instances_buffer = *instBuff;
-
-  descriptor_set_00->update_storage_buffer(0, 0, scene_buffer);
-  descriptor_set_00->update_storage_buffer(1, LIGHTS_BUFFER_INDEX, lights_buffer);
-  descriptor_set_00->update_storage_buffer(1, MATERIALS_BUFFER_INDEX, mat_buffer);
-  descriptor_set_00->update_storage_buffer(1, MESH_INSTANCES_BUFFER_INDEX, mesh_instances_buffer);
-  descriptor_set_00->update_storage_buffer(1, ENTITIES_BUFFER_INDEX, shader_entities_buffer);
-
-  debug_aabb_buffer = *vuk::allocate_cpu_buffer(allocator, sizeof(vuk::DrawIndirectCommand) + sizeof(DebugAabb) * MAX_AABB_COUNT);
-  uint32 vert_count = 14;
-  std::memcpy(debug_aabb_buffer.mapped_ptr, &vert_count, sizeof(uint32));
-  descriptor_set_00->update_storage_buffer(2, DEBUG_AABB_INDEX, debug_aabb_buffer);
-
-  // scene textures
-  descriptor_set_00->update_sampled_image(3, ALBEDO_IMAGE_INDEX, *albedo_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, NORMAL_IMAGE_INDEX, *normal_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, NORMAL_VERTEX_IMAGE_INDEX, *normal_vertex_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, DEPTH_IMAGE_INDEX, *depth_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, SHADOW_ATLAS_INDEX, *shadow_map_atlas.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, VELOCITY_IMAGE_INDEX, *velocity_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, METALROUGHAO_IMAGE_INDEX, *metallic_roughness_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(3, EMISSION_IMAGE_INDEX, *emission_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-
-  // scene texture float
-  descriptor_set_00->update_sampled_image(4, HIZ_IMAGE_INDEX, *hiz_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-
-  // scene uint texture array
-  descriptor_set_00->update_sampled_image(5, GTAO_BUFFER_IMAGE_INDEX, *gtao_final_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-  descriptor_set_00->update_sampled_image(5, VIS_IMAGE_INDEX, *visibility_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-
-  // scene cubemap texture array
-  descriptor_set_00->update_sampled_image(6, SKY_ENVMAP_INDEX, *sky_envmap_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-
-  // scene Read/Write float4 textures
-  descriptor_set_00->update_storage_image(8, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view());
-  descriptor_set_00->update_storage_image(8, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view());
-
-  // scene Read/Write float textures
-  descriptor_set_00->update_storage_image(9, HIZ_IMAGE_INDEX, *hiz_texture.get_view());
-
-  descriptor_set_00->commit(ctx);
-
-  constexpr auto MESHLET_DATA_BUFFERS_INDEX = 0;
-  constexpr auto INDEX_BUFFER_INDEX = 1;
-  constexpr auto VERTEX_BUFFER_INDEX = 2;
-  constexpr auto PRIMITIVES_BUFFER_INDEX = 3;
-  constexpr auto TRANSFORMS_BUFFER_INDEX = 4;
-
-  constexpr auto VISIBLE_MESHLETS_BUFFER_INDEX = 0;
-  constexpr auto CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX = 1;
-  constexpr auto INDIRECT_COMMAND_BUFFER_INDEX = 2;
-  constexpr auto INSTANCED_INDEX_BUFFER_INDEX = 3;
-
-  constexpr auto READ_ONLY = 0;
-  constexpr auto READ_WRITE = 1;
-
-  auto [meshletBuff, meshletBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlets));
-  const auto& meshlet_data_buffer = *meshletBuff;
-  descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
-
-  visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * sizeof(uint32_t));
-  descriptor_set_02->update_storage_buffer(READ_WRITE, VISIBLE_MESHLETS_BUFFER_INDEX, visible_meshlets_buffer);
-
-  struct DispatchParams {
-    uint32 groupCountX;
-    uint32 groupCountY;
-    uint32 groupCountZ;
-  };
-
-  DispatchParams params{0, 1, 1};
-  auto [dispatchBuff, dispatchBuffFut] = create_cpu_buffer(allocator, std::span(&params, 1));
-  cull_triangles_dispatch_params_buffer = *dispatchBuff;
-  descriptor_set_02->update_storage_buffer(READ_WRITE, CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX, cull_triangles_dispatch_params_buffer);
-
-  constexpr auto draw_command = vuk::DrawIndexedIndirectCommand{
-    .indexCount = 0,
-    .instanceCount = 1,
-    .firstIndex = 0,
-    .vertexOffset = 0,
-    .firstInstance = 0,
-  };
-
-  auto [indirectBuff, indirectBuffFut] = create_cpu_buffer(allocator, std::span(&draw_command, 1));
-  indirect_commands_buffer = *indirectBuff;
-  descriptor_set_02->update_storage_buffer(READ_WRITE, INDIRECT_COMMAND_BUFFER_INDEX, indirect_commands_buffer);
-
-  std::vector<uint32> indices{};
-  for (auto& mc : mesh_component_list)
-    indices.insert(indices.end(), mc.mesh_base->_indices.begin(), mc.mesh_base->_indices.end());
-  auto [indicesBuff, indicesBuffFut] = create_cpu_buffer(allocator, std::span(indices));
-  index_buffer = *indicesBuff;
-  descriptor_set_02->update_storage_buffer(READ_ONLY, INDEX_BUFFER_INDEX, *indicesBuff);
-
-  std::vector<Vertex> vertices{};
-  for (auto& mc : mesh_component_list)
-    vertices.insert(vertices.end(), mc.mesh_base->_vertices.begin(), mc.mesh_base->_vertices.end());
-  auto [vertBuff, vertBuffFut] = create_cpu_buffer(allocator, std::span(vertices));
-  const auto& vertices_buffer = *vertBuff;
-  descriptor_set_02->update_storage_buffer(READ_ONLY, VERTEX_BUFFER_INDEX, vertices_buffer);
-
-  std::vector<uint32> primitives{};
-  for (auto& mc : mesh_component_list)
-    primitives.insert(primitives.end(), mc.mesh_base->primitives.begin(), mc.mesh_base->primitives.end());
-  auto [primsBuff, primsBuffFut] = create_cpu_buffer(allocator, std::span(primitives));
-  const auto& primitives_buffer = *primsBuff;
-  descriptor_set_02->update_storage_buffer(READ_ONLY, PRIMITIVES_BUFFER_INDEX, primitives_buffer);
-
-  auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.transforms));
-  const auto& transforms_buffer = *transBuff;
-  descriptor_set_02->update_storage_buffer(READ_ONLY, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
-
-  constexpr auto max_meshlet_primitives = 64;
-  instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3 * sizeof(uint32));
-  descriptor_set_02->update_storage_buffer(READ_WRITE, INSTANCED_INDEX_BUFFER_INDEX, instanced_index_buffer);
-
-  descriptor_set_02->commit(ctx);
 }
 
 void DefaultRenderPipeline::create_static_resources() {
@@ -1255,13 +1252,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);
 
-  auto normal_image = vuk::clear_image(vuk::declare_ia("normal_image", normal_texture.as_attachment()), vuk::Black<float>);
-
-  auto depth_image = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
-
-  auto velocity_image = vuk::clear_image(vuk::declare_ia("velocity_image", velocity_texture.as_attachment()), vuk::Black<float>);
-  auto [depth_output, normal_output, velocity_output] = depth_pre_pass(depth_image.mip(0), normal_image, velocity_image);
-
   auto gtao_output = vuk::clear_image(vuk::declare_ia("gtao_output", gtao_final_texture.as_attachment()), vuk::Black<uint32_t>);
   if (RendererCVar::cvar_gtao_enable.get())
     gtao_output = gtao_pass(frame_allocator, gtao_output, depth_output, normal_output);
@@ -1441,7 +1431,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
 
             shadow_queue.sort_opaque();
 
-            //render_meshes(shadow_queue, command_buffer, FILTER_TRANSPARENT, RENDER_FLAGS_SHADOWS_PASS, cascade_count);
+            // render_meshes(shadow_queue, command_buffer, FILTER_TRANSPARENT, RENDER_FLAGS_SHADOWS_PASS, cascade_count);
           }
 
           break;
@@ -1508,7 +1498,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
 
             shadow_queue.sort_opaque();
 
-            //render_meshes(shadow_queue, command_buffer, FILTER_TRANSPARENT, RENDER_FLAGS_SHADOWS_PASS, camera_count);
+            // render_meshes(shadow_queue, command_buffer, FILTER_TRANSPARENT, RENDER_FLAGS_SHADOWS_PASS, camera_count);
           }
           break;
         }
@@ -1826,34 +1816,30 @@ void DefaultRenderPipeline::generate_prefilter(vuk::Allocator& allocator) {
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_transmittance_pass() {
   OX_SCOPED_ZONE;
 
-  auto pass = vuk::make_pass("sky_transmittance_lut_pass", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) dst) {
+  return vuk::make_pass("sky_transmittance_lut_pass", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) dst) {
     const IVec2 lut_size = {256, 64};
     command_buffer.bind_persistent(0, *descriptor_set_00)
       .bind_compute_pipeline("sky_transmittance_pipeline")
       .dispatch((lut_size.x + 8 - 1) / 8, (lut_size.y + 8 - 1) / 8);
 
     return dst;
-  });
-
-  return pass(vuk::clear_image(vuk::declare_ia("sky_transmittance_lut", sky_transmittance_lut.as_attachment()), vuk::Black<float>));
+  })(vuk::clear_image(vuk::declare_ia("sky_transmittance_lut", sky_transmittance_lut.as_attachment()), vuk::Black<float>));
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_multiscatter_pass(vuk::Value<vuk::ImageAttachment>& transmittance_lut) {
   OX_SCOPED_ZONE;
 
-  auto pass = vuk::make_pass("sky_multiscatter_lut_pass",
-                             [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) dst, VUK_IA(vuk::eComputeSampled) transmittance_lut) {
+  return vuk::make_pass("sky_multiscatter_lut_pass",
+                        [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) dst, VUK_IA(vuk::eComputeSampled) transmittance_lut) {
     const IVec2 lut_size = {32, 32};
     command_buffer.bind_compute_pipeline("sky_multiscatter_pipeline").bind_persistent(0, *descriptor_set_00).dispatch(lut_size.x, lut_size.y);
 
     return dst;
-  });
-
-  return pass(vuk::clear_image(vuk::declare_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment()), vuk::Black<float>), transmittance_lut);
+  })(vuk::clear_image(vuk::declare_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment()), vuk::Black<float>), transmittance_lut);
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Value<vuk::ImageAttachment>& envmap_image) {
-  auto pass = vuk::make_pass("sky_envmap_pass", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorRW) envmap) {
+  [[maybe_unused]] auto map = vuk::make_pass("sky_envmap_pass", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorRW) envmap) {
     auto sh_cameras = std::vector<CameraSH>(6);
     create_cubemap_cameras(sh_cameras);
 
@@ -1874,9 +1860,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
     command_buffer.draw_indexed(m_cube->index_count, 6, 0, 0, 0);
 
     return envmap;
-  });
-
-  [[maybe_unused]] auto map = pass(envmap_image.mip(0));
+  })(envmap_image.mip(0));
 
   return envmap_spd.dispatch("envmap_spd", *get_frame_allocator(), envmap_image);
 }

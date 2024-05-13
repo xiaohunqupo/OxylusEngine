@@ -130,7 +130,7 @@ static std::vector<Vertex> ConvertVertexBufferFormat(const fastgltf::Asset& mode
     texcoords.resize(positions.size(), {});
   }
 
-  std::vector<float4> colors;
+  std::vector<float4> colors; // TODO: Unused for now...
   if (color_accessor_index.has_value()) {
     auto& color_accessor = model.accessors[color_accessor_index.value()];
     colors.resize(color_accessor.count);
@@ -145,8 +145,7 @@ static std::vector<Vertex> ConvertVertexBufferFormat(const fastgltf::Asset& mode
   vertices.resize(positions.size());
 
   for (size_t i = 0; i < positions.size(); i++) {
-    // vertices[i] = {positions[i], glm::packSnorm2x16(float32x3_to_oct(normals[i])), texcoords[i]};
-    vertices[i] = {positions[i], {}, normals[i], {}, texcoords[i], {}, colors[i]};
+    vertices[i] = {positions[i], glm::packSnorm2x16(math::float32x3_to_oct(normals[i])), texcoords[i]};
   }
 
   return vertices;

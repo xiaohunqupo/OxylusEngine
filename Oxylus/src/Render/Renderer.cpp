@@ -37,6 +37,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
   OX_SCOPED_ZONE;
 
   const auto rp = renderer_context.render_pipeline;
+  auto extent = rp->is_swapchain_attached() ? vkctx->swapchain->images[vkctx->current_frame].extent : rp->get_extent();
 
   // consume renderer related cvars
   if (RendererCVar::cvar_reload_render_pipeline.get()) {
@@ -44,12 +45,11 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
     RendererCVar::cvar_reload_render_pipeline.toggle();
   }
 
-  // TODO:
-  // const auto set_present_mode = RendererCVar::cvar_vsync.get() ? vuk::PresentModeKHR::eFifo : vuk::PresentModeKHR::eImmediate;
-  // if (vkctx->present_mode != set_present_mode) {
-  // vkctx->rebuild_swapchain(set_present_mode);
-  // return;
-  //}
+  if (vkctx->is_vsync() != (bool)RendererCVar::cvar_vsync.get()) {
+    vkctx->set_vsync((bool)RendererCVar::cvar_vsync.get());
+    vkctx->handle_resize(extent.width, extent.height);
+    return;
+  }
 
   auto& frame_resource = vkctx->superframe_resource->get_next_frame();
   vkctx->runtime->next_frame();
@@ -63,7 +63,6 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
 
   vuk::Value<vuk::ImageAttachment> cleared_image = vuk::clear_image(std::move(swapchain_image), vuk::Black<float>);
 
-  auto extent = rp->is_swapchain_attached() ? vkctx->swapchain->images[vkctx->current_frame].extent : rp->get_extent();
   renderer_context.viewport_size = extent;
   renderer_context.viewport_offset = rp->get_viewport_offset();
 

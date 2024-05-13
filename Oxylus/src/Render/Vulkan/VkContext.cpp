@@ -9,6 +9,7 @@
 #include "Utils/Profiler.hpp"
 
 #include "GLFW/glfw3.h"
+#include "Render/RendererConfig.hpp"
 
 namespace ox {
 VkContext* VkContext::s_instance = nullptr;
@@ -48,7 +49,7 @@ static vuk::Swapchain make_swapchain(vuk::Allocator allocator,
                                      vkb::Device vkbdevice,
                                      VkSurfaceKHR surface,
                                      std::optional<vuk::Swapchain> old_swapchain,
-                                     vuk::PresentModeKHR present_mode = vuk::PresentModeKHR::eFifo) {
+                                     vuk::PresentModeKHR present_mode) {
   vkb::SwapchainBuilder swb(vkbdevice);
   swb.set_desired_format(vuk::SurfaceFormatKHR{vuk::Format::eR8G8B8A8Unorm, vuk::ColorSpaceKHR::eSrgbNonlinear});
   swb.set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
@@ -119,6 +120,21 @@ inline VkSurfaceKHR create_surface_glfw(const VkInstance instance, GLFWwindow* w
   }
   return surface;
 }
+
+void VkContext::handle_resize(uint32 width, uint32 height) {
+  if (width == 0 && height == 0) {
+    suspend = true;
+  } else {
+    swapchain = make_swapchain(*superframe_allocator, vkb_device, swapchain->surface, std::move(swapchain), present_mode);
+  }
+}
+
+void VkContext::set_vsync(bool enable) {
+  const auto set_present_mode = enable ? vuk::PresentModeKHR::eFifo : vuk::PresentModeKHR::eImmediate;
+  present_mode = set_present_mode;
+}
+
+bool VkContext::is_vsync() const { return present_mode == vuk::PresentModeKHR::eFifo; }
 
 void VkContext::create_context(const AppSpec& spec) {
   OX_SCOPED_ZONE;
@@ -232,9 +248,11 @@ void VkContext::create_context(const AppSpec& spec) {
 
   runtime.emplace(vuk::RuntimeCreateParameters{instance, device, physical_device, std::move(executors), fps});
 
+  set_vsync((bool)RendererCVar::cvar_vsync.get());
+
   superframe_resource.emplace(*runtime, num_inflight_frames);
   superframe_allocator.emplace(*superframe_resource);
-  swapchain = make_swapchain(*superframe_allocator, vkb_device, surface, {});
+  swapchain = make_swapchain(*superframe_allocator, vkb_device, surface, {}, present_mode);
   present_ready = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
   render_complete = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
 
@@ -249,11 +267,7 @@ void VkContext::create_context(const AppSpec& spec) {
   Window::set_window_user_data(this);
   glfwSetWindowSizeCallback(Window::get_glfw_window(), [](GLFWwindow* window, const int width, const int height) {
     auto* ctx = reinterpret_cast<VkContext*>(glfwGetWindowUserPointer(window));
-    if (width == 0 && height == 0) {
-      ctx->suspend = true;
-    } else {
-      ctx->swapchain = make_swapchain(*ctx->superframe_allocator, ctx->vkb_device, ctx->swapchain->surface, std::move(ctx->swapchain));
-    }
+    ctx->handle_resize(width, height);
   });
 
   OX_LOG_INFO("Vulkan context initialized using device: {}", device_name);

@@ -14,6 +14,7 @@
 #include "Core/Types.hpp"
 
 #include "Utils/Log.hpp"
+#include "Utils/OxMath.hpp"
 
 #include "Utils/VukCommon.hpp"
 #include "Vulkan/VkContext.hpp"
@@ -107,76 +108,76 @@ Shared<Mesh> RendererCommon::generate_cube() {
   std::vector<Vertex> vertices(24);
 
   vertices[0].position = Vec3(0.5f, 0.5f, 0.5f);
-  vertices[0].normal = Vec3(0.0f, 0.0f, 1.0f);
+  vertices[0].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, 1.0f)));
 
   vertices[1].position = Vec3(-0.5f, 0.5f, 0.5f);
-  vertices[1].normal = Vec3(0.0f, 0.0f, 1.0f);
+  vertices[1].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, 1.0f)));
 
   vertices[2].position = Vec3(-0.5f, -0.5f, 0.5f);
-  vertices[2].normal = Vec3(0.0f, 0.0f, 1.0f);
+  vertices[2].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, 1.0f)));
 
   vertices[3].position = Vec3(0.5f, -0.5f, 0.5f);
-  vertices[3].normal = Vec3(0.0f, 0.0f, 1.0f);
+  vertices[3].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, 1.0f)));
 
   vertices[4].position = Vec3(0.5f, 0.5f, 0.5f);
-  vertices[4].normal = Vec3(1.0f, 0.0f, 0.0f);
+  vertices[4].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(1.0f, 0.0f, 0.0f)));
 
   vertices[5].position = Vec3(0.5f, -0.5f, 0.5f);
-  vertices[5].normal = Vec3(1.0f, 0.0f, 0.0f);
+  vertices[5].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(1.0f, 0.0f, 0.0f)));
 
   vertices[6].position = Vec3(0.5f, -0.5f, -0.5f);
-  vertices[6].normal = Vec3(1.0f, 0.0f, 0.0f);
+  vertices[6].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(1.0f, 0.0f, 0.0f)));
 
   vertices[7].position = Vec3(0.5f, 0.5f, -0.5f);
-  vertices[7].normal = Vec3(1.0f, 0.0f, 0.0f);
+  vertices[7].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(1.0f, 0.0f, 0.0f)));
 
   vertices[8].position = Vec3(0.5f, 0.5f, 0.5f);
-  vertices[8].normal = Vec3(0.0f, 1.0f, 0.0f);
+  vertices[8].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 1.0f, 0.0f)));
 
   vertices[9].position = Vec3(0.5f, 0.5f, -0.5f);
-  vertices[9].normal = Vec3(0.0f, 1.0f, 0.0f);
+  vertices[9].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 1.0f, 0.0f)));
 
   vertices[10].position = Vec3(-0.5f, 0.5f, -0.5f);
-  vertices[10].normal = Vec3(0.0f, 1.0f, 0.0f);
+  vertices[10].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 1.0f, 0.0f)));
 
   vertices[11].position = Vec3(-0.5f, 0.5f, 0.5f);
-  vertices[11].normal = Vec3(0.0f, 1.0f, 0.0f);
+  vertices[11].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 1.0f, 0.0f)));
 
   vertices[12].position = Vec3(-0.5f, 0.5f, 0.5f);
-  vertices[12].normal = Vec3(-1.0f, 0.0f, 0.0f);
+  vertices[12].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(-1.0f, 0.0f, 0.0f)));
 
   vertices[13].position = Vec3(-0.5f, 0.5f, -0.5f);
-  vertices[13].normal = Vec3(-1.0f, 0.0f, 0.0f);
+  vertices[13].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(-1.0f, 0.0f, 0.0f)));
 
   vertices[14].position = Vec3(-0.5f, -0.5f, -0.5f);
-  vertices[14].normal = Vec3(-1.0f, 0.0f, 0.0f);
+  vertices[14].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(-1.0f, 0.0f, 0.0f)));
 
   vertices[15].position = Vec3(-0.5f, -0.5f, 0.5f);
-  vertices[15].normal = Vec3(-1.0f, 0.0f, 0.0f);
+  vertices[15].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(-1.0f, 0.0f, 0.0f)));
 
   vertices[16].position = Vec3(-0.5f, -0.5f, -0.5f);
-  vertices[16].normal = Vec3(0.0f, -1.0f, 0.0f);
+  vertices[16].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, -1.0f, 0.0f)));
 
   vertices[17].position = Vec3(0.5f, -0.5f, -0.5f);
-  vertices[17].normal = Vec3(0.0f, -1.0f, 0.0f);
+  vertices[17].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, -1.0f, 0.0f)));
 
   vertices[18].position = Vec3(0.5f, -0.5f, 0.5f);
-  vertices[18].normal = Vec3(0.0f, -1.0f, 0.0f);
+  vertices[18].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, -1.0f, 0.0f)));
 
   vertices[19].position = Vec3(-0.5f, -0.5f, 0.5f);
-  vertices[19].normal = Vec3(0.0f, -1.0f, 0.0f);
+  vertices[19].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, -1.0f, 0.0f)));
 
   vertices[20].position = Vec3(0.5f, -0.5f, -0.5f);
-  vertices[20].normal = Vec3(0.0f, 0.0f, -1.0f);
+  vertices[20].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, -1.0f)));
 
   vertices[21].position = Vec3(-0.5f, -0.5f, -0.5f);
-  vertices[21].normal = Vec3(0.0f, 0.0f, -1.0f);
+  vertices[21].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, -1.0f)));
 
   vertices[22].position = Vec3(-0.5f, 0.5f, -0.5f);
-  vertices[22].normal = Vec3(0.0f, 0.0f, -1.0f);
+  vertices[22].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, -1.0f)));
 
   vertices[23].position = Vec3(0.5f, 0.5f, -0.5f);
-  vertices[23].normal = Vec3(0.0f, 0.0f, -1.0f);
+  vertices[23].normal = glm::packSnorm2x16(math::float32x3_to_oct(Vec3(0.0f, 0.0f, -1.0f)));
 
   for (int i = 0; i < 6; i++) {
     vertices[i * 4 + 0].uv = Vec2(0.0f, 0.0f);
@@ -215,14 +216,16 @@ Shared<Mesh> RendererCommon::generate_sphere() {
       float cosPhi = cos(phi);
 
       Vertex vs;
-      vs.normal[0] = cosPhi * sinTheta;                             // x
-      vs.normal[1] = cosTheta;                                      // y
-      vs.normal[2] = sinPhi * sinTheta;                             // z
+      float3 normal = {};
+      normal[0] = cosPhi * sinTheta;                                // x
+      normal[1] = cosTheta;                                         // y
+      normal[2] = sinPhi * sinTheta;                                // z
       vs.uv[0] = 1.0f - (float)longNumber / (float)longitude_bands; // u
       vs.uv[1] = 1.0f - (float)i / (float)latitude_bands;           // v
-      vs.position[0] = radius * vs.normal[0];
-      vs.position[1] = radius * vs.normal[1];
-      vs.position[2] = radius * vs.normal[2];
+      vs.position[0] = radius * normal[0];
+      vs.position[1] = radius * normal[1];
+      vs.position[2] = radius * normal[2];
+      vs.normal = glm::packSnorm2x16(math::float32x3_to_oct(normal));
 
       vertices.push_back(vs);
     }
@@ -253,9 +256,7 @@ vuk::Value<vuk::ImageAttachment> RendererCommon::apply_blur(const vuk::Value<vuk
   auto& allocator = *VkContext::get()->superframe_allocator;
   if (!allocator.get_context().is_pipeline_available("gaussian_blur_pipeline")) {
     vuk::PipelineBaseCreateInfo pci;
-    pci.add_hlsl(fs::read_shader_file("FullscreenTriangle.hlsl"),
-                 fs::get_shader_path("FullscreenTriangle.hlsl"),
-                 vuk::HlslShaderStage::eVertex);
+    pci.add_hlsl(fs::read_shader_file("FullscreenTriangle.hlsl"), fs::get_shader_path("FullscreenTriangle.hlsl"), vuk::HlslShaderStage::eVertex);
     pci.add_glsl(fs::read_shader_file("PostProcess/SinglePassGaussianBlur.frag"), "PostProcess/SinglePassGaussianBlur.frag");
     allocator.get_context().create_named_pipeline("gaussian_blur_pipeline", pci);
   }

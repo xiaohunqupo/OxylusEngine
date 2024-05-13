@@ -186,8 +186,8 @@ std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_lines(
 
   for (const auto& line : lines) {
     // store color in normals for simplicity
-    vertices.emplace_back(Vertex{.position = line.p1, .normal = line.col});
-    vertices.emplace_back(Vertex{.position = line.p2, .normal = line.col});
+    vertices.emplace_back(Vertex{.position = line.p1, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col))});
+    vertices.emplace_back(Vertex{.position = line.p2, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col))});
 
     indices += 2;
   }

@@ -114,6 +114,11 @@ entt::entity Scene::create_entity_with_uuid(UUID uuid, const std::string& name) 
 }
 
 Entity Scene::load_mesh(const Shared<Mesh>& mesh) {
+  const auto node_entity = create_entity(mesh->flattened.nodes.front()->name);
+  registry.emplace_or_replace<MeshComponent>(node_entity, mesh);
+
+  return node_entity;
+#if 0
   entt::entity root_entity = entt::null;
 
   for (const auto& node : mesh->nodes) {
@@ -130,6 +135,7 @@ Entity Scene::load_mesh(const Shared<Mesh>& mesh) {
   }
 
   return root_entity;
+#endif
 }
 
 void Scene::update_physics(const Timestep& delta_time) {

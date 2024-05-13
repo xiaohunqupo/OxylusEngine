@@ -21,9 +21,9 @@ VOut VSmain(uint vertex_index : SV_VertexID) {
 
   const uint primitive = uint(get_primitive(primitiveOffset + primitiveId));
   const uint index = get_index(indexOffset + primitive);
-  const Vertex vertex = get_vertex(vertexOffset + index);
-  const float3 position = vertex.position;
-  const float2 uv = vertex.uv;
+  Vertex vertex = get_vertex(vertexOffset + index);
+  const float3 position = vertex.position.unpack();
+  const float2 uv = vertex.uv.unpack();
   const float4x4 transform = get_instance(instanceId).transform;
 
   vout.meshletId = meshletId;

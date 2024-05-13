@@ -61,16 +61,15 @@ public:
     }
   };
 
-  // TODO: So the transforms are coming from the original mesh instead of coming from the entities...
   struct SceneFlattened {
     std::vector<Meshlet> meshlets;
-    std::vector<Mat4> transforms;
+    std::vector<Mat4> transforms; // TODO: UNUSED
     std::vector<const Node*> nodes;
     std::vector<Shared<Material>> materials;
 
     void merge(const SceneFlattened& flat) {
       meshlets.insert(meshlets.end(), flat.meshlets.begin(), flat.meshlets.end());
-      transforms.insert(transforms.end(), flat.transforms.begin(), flat.transforms.end());
+      //transforms.insert(transforms.end(), flat.transforms.begin(), flat.transforms.end());
       nodes.insert(nodes.end(), flat.nodes.begin(), flat.nodes.end());
       materials.insert(materials.end(), flat.materials.begin(), flat.materials.end());
     }

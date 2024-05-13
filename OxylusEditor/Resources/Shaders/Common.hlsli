@@ -14,7 +14,7 @@
 
 typedef uint64_t uint64;
 typedef uint32_t uint32;
-// typedef uint16_t uint16; - currently not needed - need to enable -enable-16bit-types to use it...
+// typedef uint16_t uint16; need to enable -enable-16bit-types to use it...
 // typedef uint8_t uint8; - not even supported in dxc
 
 struct PackedFloat2 {
@@ -61,15 +61,9 @@ struct PackedFloat4 {
 };
 
 struct Vertex {
-  float3 position : POSITION;
-  int _pad : PAD0;
-  float3 normal : NORMAL;
-  int _pad2 : PAD1;
-  float2 uv : TEXCOORD0;
-  float2 _pad3 : PAD2;
-  float4 color : TEXCOORD2;
-  float4 joint0 : TEXCOORD3;
-  float4 weight0 : TEXCOORD4;
+  PackedFloat3 position : POSITION;
+  uint32 normal : NORMAL; // Octahedral encoding: decode with unpack_snorm2_x16 and oct_to_vec3
+  PackedFloat2 uv : UV;
 };
 
 struct VertexOutput {
@@ -369,16 +363,25 @@ float3 create_cube(in uint vertexID) {
 
 float3 oct_to_vec3(float2 e) {
   float3 v = float3(e.xy, 1.0 - abs(e.x) - abs(e.y));
-  float2 signNotZero = float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
+  const float2 sign_not_zero = float2((v.x >= 0.0) ? +1.0 : -1.0, (v.y >= 0.0) ? +1.0 : -1.0);
   if (v.z < 0.0)
-    v.xy = (1.0 - abs(v.yx)) * signNotZero;
+    v.xy = (1.0 - abs(v.yx)) * sign_not_zero;
   return normalize(v);
 }
 
 float2 vec3_to_oct(float3 v) {
   float2 p = float2(v.x, v.y) * (1.0 / (abs(v.x) + abs(v.y) + abs(v.z)));
-  float2 signNotZero = float2((p.x >= 0.0) ? 1.0 : -1.0, (p.y >= 0.0) ? 1.0 : -1.0);
-  return (v.z <= 0.0) ? ((1.0 - abs(float2(p.y, p.x))) * signNotZero) : p;
+  const float2 sign_not_zero = float2((p.x >= 0.0) ? 1.0 : -1.0, (p.y >= 0.0) ? 1.0 : -1.0);
+  return (v.z <= 0.0) ? ((1.0 - abs(float2(p.y, p.x))) * sign_not_zero) : p;
+}
+
+float u16n_to_f32(const uint val) { return saturate(val / 65535.0f); }
+float2 unpack_unorm2_x16(const uint packed) { return float2(u16n_to_f32(packed & 0xFFFF), u16n_to_f32(packed >> 16)); }
+float2 unpack_snorm2_x16(const uint packed) {
+  int2 signextended;
+  signextended.x = (int)(packed << 16) >> 16;
+  signextended.y = (int)(packed & 0xFFFF0000) >> 16;
+  return max(float2(signextended) / 32767.0f, -1.0f);
 }
 
 #endif
