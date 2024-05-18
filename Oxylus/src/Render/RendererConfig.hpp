@@ -19,6 +19,7 @@ inline AutoCVar_Int cvar_draw_physics_shapes("rr.draw_physics_shapes", "draw phy
 inline AutoCVar_Int cvar_enable_debug_renderer("rr.debug_renderer", "draw debug shapes", 1);
 inline AutoCVar_Int cvar_draw_meshlet_aabbs("rr.draw_meshlet_aabbs", "draw meshlet aabbs", 0);
 inline AutoCVar_Int cvar_freeze_culling_frustum("rr.freeze_culling_frustum", "freeze culling frustum", 0);
+inline AutoCVar_Int cvar_draw_camera_frustum("rr.draw_camera_frustum", "draw camera frustum", 0);
 
 inline AutoCVar_Int cvar_reload_render_pipeline("rr.reload_render_pipeline", "reload current scene's render pipeline", 0);
 

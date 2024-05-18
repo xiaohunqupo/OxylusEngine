@@ -41,10 +41,6 @@ void SceneRenderer::update() const {
       mesh_component.transform = world_transform;
       mesh_component.aabb = mesh_component.get_flattened().nodes[mesh_component.node_index]->aabb.get_transformed(world_transform);
       m_render_pipeline->register_mesh_component(mesh_component);
-
-      if (RendererCVar::cvar_enable_debug_renderer.get() && RendererCVar::cvar_draw_bounding_boxes.get()) {
-        DebugRenderer::draw_aabb(mesh_component.aabb, Vec4(1, 1, 1, 0.5f));
-      }
     }
   }
 

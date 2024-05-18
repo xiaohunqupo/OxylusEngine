@@ -96,7 +96,7 @@ void RuntimeConsole::on_imgui_render() {
     // ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.100f, 0.100f, 0.100f, 1.000f));
 
     id = fmt::format(" {} {}\t\t###", StringUtils::from_char8_t(ICON_MDI_CONSOLE), panel_name);
-    if (ImGui::Begin(id.c_str(), &visible, windowFlags)) {
+    if (ImGui::Begin(id.c_str(), nullptr, windowFlags)) {
       if (ImGui::BeginMenuBar()) {
         if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_TRASH_CAN))) {
           clear_log();
@@ -131,8 +131,8 @@ void RuntimeConsole::on_imgui_render() {
           ImGui::SetScrollHereY(1.0f);
           request_scroll_to_bottom = false;
         }
-        ImGui::EndChild();
       }
+      ImGui::EndChild();
 
       ImGui::Separator();
       ImGui::PushItemWidth(width);

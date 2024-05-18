@@ -38,10 +38,12 @@ public:
 
 private:
   Camera* current_camera = nullptr;
+  Camera frozen_camera = {};
 
   bool initalized = false;
   bool first_pass = true;
   bool resized = false;
+  bool saved_camera = false;
 
   struct MeshInstance {
     Mat4 transform;
@@ -422,7 +424,7 @@ private:
 
   void clear();
   void bind_camera_buffer(vuk::CommandBuffer& command_buffer);
-  CameraData get_main_camera_data() const;
+  CameraData get_main_camera_data(bool use_frozen_camera = false);
   void create_dir_light_cameras(const LightComponent& light, Camera& camera, std::vector<CameraSH>& camera_data, uint32_t cascade_count);
   void create_cubemap_cameras(std::vector<CameraSH>& camera_data, Vec3 pos = {}, float near = 0.1f, float far = 90.0f);
   void update_frame_data(vuk::Allocator& allocator);

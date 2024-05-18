@@ -24,6 +24,12 @@ constexpr uint32_t previous_power2(uint32_t x) {
   return v;
 }
 
+inline glm::vec3 unproject_uv_zo(float depth, glm::vec2 uv, const glm::mat4& invXProj) {
+  glm::vec4 ndc = glm::vec4(uv * 2.0f - 1.0f, depth, 1.0f);
+  glm::vec4 world = invXProj * ndc;
+  return glm::vec3(world) / world.w;
+}
+
 bool decompose_transform(const glm::mat4& transform, Vec3& translation, Vec3& rotation, Vec3& scale);
 
 template <typename T>

@@ -236,11 +236,10 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
     TRY(allocator.get_context().create_named_pipeline("grid_pipeline", bindless_pci))
   });
 
-  task_scheduler->add_task([&allocator]() mutable {
-    vuk::PipelineBaseCreateInfo pci;
-    pci.add_glsl(SHADER_FILE("Debug/Unlit.vert"));
-    pci.add_glsl(SHADER_FILE("Debug/Unlit.frag"));
-    TRY(allocator.get_context().create_named_pipeline("unlit_pipeline", pci))
+  task_scheduler->add_task([=]() mutable {
+    bindless_pci.add_hlsl(SHADER_FILE("Debug/Unlit.hlsl"), SS::eVertex, "VSmain");
+    bindless_pci.add_hlsl(SHADER_FILE("Debug/Unlit.hlsl"), SS::ePixel, "PSmain");
+    TRY(allocator.get_context().create_named_pipeline("unlit_pipeline", bindless_pci))
   });
 
   // --- Atmosphere ---
@@ -325,35 +324,37 @@ void DefaultRenderPipeline::bind_camera_buffer(vuk::CommandBuffer& command_buffe
   *cb = camera_cb;
 }
 
-DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data() const {
+DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data(const bool use_frozen_camera) {
+  auto* cam = use_frozen_camera ? &frozen_camera : current_camera;
+
   CameraData camera_data{
-    .position = Vec4(current_camera->get_position(), 0.0f),
-    .projection = current_camera->get_projection_matrix(),
-    .inv_projection = current_camera->get_inv_projection_matrix(),
-    .view = current_camera->get_view_matrix(),
-    .inv_view = current_camera->get_inv_view_matrix(),
-    .projection_view = current_camera->get_projection_matrix() * current_camera->get_view_matrix(),
-    .inv_projection_view = current_camera->get_inverse_projection_view(),
-    .previous_projection = current_camera->get_projection_matrix(),
-    .previous_inv_projection = current_camera->get_inv_projection_matrix(),
-    .previous_view = current_camera->get_view_matrix(),
-    .previous_inv_view = current_camera->get_inv_view_matrix(),
-    .previous_projection_view = current_camera->get_projection_matrix() * current_camera->get_view_matrix(),
-    .previous_inv_projection_view = current_camera->get_inverse_projection_view(),
-    .near_clip = current_camera->get_near(),
-    .far_clip = current_camera->get_far(),
-    .fov = current_camera->get_fov(),
+    .position = Vec4(cam->get_position(), 0.0f),
+    .projection = cam->get_projection_matrix(),
+    .inv_projection = cam->get_inv_projection_matrix(),
+    .view = cam->get_view_matrix(),
+    .inv_view = cam->get_inv_view_matrix(),
+    .projection_view = cam->get_projection_matrix() * cam->get_view_matrix(),
+    .inv_projection_view = cam->get_inverse_projection_view(),
+    .previous_projection = cam->get_projection_matrix(),
+    .previous_inv_projection = cam->get_inv_projection_matrix(),
+    .previous_view = cam->get_view_matrix(),
+    .previous_inv_view = cam->get_inv_view_matrix(),
+    .previous_projection_view = cam->get_projection_matrix() * cam->get_view_matrix(),
+    .previous_inv_projection_view = cam->get_inverse_projection_view(),
+    .near_clip = cam->get_near(),
+    .far_clip = cam->get_far(),
+    .fov = cam->get_fov(),
     .output_index = 0,
   };
 
   if (RendererCVar::cvar_fsr_enable.get())
-    current_camera->set_jitter(fsr.get_jitter());
+    cam->set_jitter(fsr.get_jitter());
 
-  camera_data.temporalaa_jitter = current_camera->get_jitter();
-  camera_data.temporalaa_jitter_prev = current_camera->get_previous_jitter();
+  camera_data.temporalaa_jitter = cam->get_jitter();
+  camera_data.temporalaa_jitter_prev = cam->get_previous_jitter();
 
   for (uint32 i = 0; i < 6; i++) {
-    const auto* plane = current_camera->get_frustum().planes[i];
+    const auto* plane = cam->get_frustum().planes[i];
     camera_data.frustum_planes[i] = {plane->normal, plane->distance};
   }
 
@@ -976,6 +977,19 @@ void DefaultRenderPipeline::register_light(const LightComponent& light) {
 
 void DefaultRenderPipeline::register_camera(Camera* camera) {
   OX_SCOPED_ZONE;
+
+  if ((bool)RendererCVar::cvar_freeze_culling_frustum.get() && !saved_camera) {
+    saved_camera = true;
+    frozen_camera = *current_camera;
+  } else if (!(bool)RendererCVar::cvar_freeze_culling_frustum.get() && saved_camera) {
+    saved_camera = false;
+  }
+
+  if ((bool)RendererCVar::cvar_freeze_culling_frustum.get() && (bool)RendererCVar::cvar_draw_camera_frustum.get()) {
+    const auto proj = frozen_camera.get_projection_matrix() * frozen_camera.get_view_matrix();
+    DebugRenderer::draw_frustum(proj, float4(0, 1, 0, 1), 1.0f, 0.0f); // reversed-z
+  }
+
   current_camera = camera;
 }
 
@@ -1022,6 +1036,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   if (first_pass || resized) {
     run_static_passes(*vk_context->superframe_allocator);
     hiz_image = clear_image(hiz_image, vuk::Black<float>);
+    resized = false;
   }
 
   auto vis_meshlets_buf = vuk::declare_buf("visible_meshlets_buffer", visible_meshlets_buffer);
@@ -1039,7 +1054,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                      VUK_BA(vuk::eComputeRW) _triangles_dispatch_buffer,
                                                      VUK_BA(vuk::eComputeRW) _debug_buffer) {
     command_buffer.bind_compute_pipeline("cull_meshlets_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
-    camera_cb.camera_data[0] = get_main_camera_data();
+
+    camera_cb.camera_data[0] = get_main_camera_data((bool)RendererCVar::cvar_freeze_culling_frustum.get());
     bind_camera_buffer(command_buffer);
 
     command_buffer.dispatch(((uint32_t)scene_flattened.meshlets.size() + 128 - 1) / 128);
@@ -1054,7 +1070,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                                             VUK_BA(vuk::eComputeRW) _index_buffer,
                                                                             VUK_BA(vuk::eComputeRW) _indirect_buffer) {
     command_buffer.bind_compute_pipeline("cull_triangles_pipeline").bind_persistent(0, *descriptor_set_00).bind_persistent(2, *descriptor_set_02);
-    camera_cb.camera_data[0] = get_main_camera_data();
+
+    camera_cb.camera_data[0] = get_main_camera_data((bool)RendererCVar::cvar_freeze_culling_frustum.get());
     bind_camera_buffer(command_buffer);
 
     command_buffer.dispatch_indirect(_triangles_dispatch_buffer);
@@ -1244,6 +1261,73 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     return _output;
   })(depth_output, color_output, debug_buffer_output);
 
+  const auto& lines = DebugRenderer::get_instance()->get_lines(false);
+  auto [vertices, index_count] = DebugRenderer::get_vertices_from_lines(lines);
+
+  if (vertices.empty())
+    vertices.emplace_back(Vertex{});
+
+  auto [v_buff, v_buff_fut] = create_cpu_buffer(frame_allocator, std::span(vertices));
+  auto& v_buffer = *v_buff;
+
+  const auto& lines_dt = DebugRenderer::get_instance()->get_lines(true);
+  auto [vertices_dt, index_count_dt] = DebugRenderer::get_vertices_from_lines(lines_dt);
+
+  if (vertices_dt.empty())
+    vertices_dt.emplace_back(Vertex{});
+
+  auto [vd_buff, vd_buff_fut] = create_cpu_buffer(frame_allocator, std::span(vertices_dt));
+  auto& v_buffer_dt = *vd_buff;
+
+  auto debug_output2 = vuk::make_pass("debug_pass2",
+                                      [this, v_buffer, v_buffer_dt, index_count](vuk::CommandBuffer& command_buffer,
+                                                                                 VUK_IA(vuk::eDepthStencilRead) _depth,
+                                                                                 VUK_IA(vuk::eColorWrite) _output) {
+    // not depth tested
+    command_buffer.bind_graphics_pipeline("unlit_pipeline")
+      .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
+        .depthTestEnable = false,
+        .depthWriteEnable = false,
+        .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
+      })
+      .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
+      .broadcast_color_blend({})
+      .set_rasterization({.polygonMode = vuk::PolygonMode::eLine, .cullMode = vuk::CullModeFlagBits::eNone})
+      .set_primitive_topology(vuk::PrimitiveTopology::eLineList)
+      .set_viewport(0, vuk::Rect2D::framebuffer())
+      .set_scissor(0, vuk::Rect2D::framebuffer())
+      .bind_vertex_buffer(0, v_buffer, 0, vertex_pack)
+      .bind_index_buffer(index_buffer, vuk::IndexType::eUint32)
+      .bind_persistent(0, *descriptor_set_00);
+
+    camera_cb.camera_data[0] = get_main_camera_data(true);
+    bind_camera_buffer(command_buffer);
+
+    command_buffer.draw_indexed(index_count, 1, 0, 0, 0);
+
+    command_buffer.bind_graphics_pipeline("unlit_pipeline")
+      .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
+        .depthTestEnable = true,
+        .depthWriteEnable = false,
+        .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
+      })
+      .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
+      .broadcast_color_blend({})
+      .set_rasterization({.polygonMode = vuk::PolygonMode::eLine, .cullMode = vuk::CullModeFlagBits::eNone})
+      .set_primitive_topology(vuk::PrimitiveTopology::eLineList)
+      .set_viewport(0, vuk::Rect2D::framebuffer())
+      .set_scissor(0, vuk::Rect2D::framebuffer())
+      .bind_vertex_buffer(0, v_buffer_dt, 0, vertex_pack)
+      .bind_persistent(0, *descriptor_set_00);
+
+    camera_cb.camera_data[0] = get_main_camera_data(true);
+    bind_camera_buffer(command_buffer);
+
+    command_buffer.bind_index_buffer(index_buffer, vuk::IndexType::eUint32);
+
+    return _output;
+  })(depth_output, debug_output);
+
   auto bloom_output = vuk::clear_image(vuk::declare_ia("bloom_output", vuk::dummy_attachment), vuk::Black<float>);
 
   return vuk::make_pass("final_pass",
@@ -1262,7 +1346,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .bind_image(2, 1, bloom_img)
       .draw(3, 1, 0, 0);
     return target;
-  })(target, debug_output, bloom_output);
+  })(target, debug_output2, bloom_output);
 #if 0
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);
