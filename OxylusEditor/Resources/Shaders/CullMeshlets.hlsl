@@ -118,9 +118,9 @@ bool cull_quad_hiz(float2 minXY, float2 maxXY, float nearestZ) {
   Texture2D<float> hiz_texture = get_hiz_texture();
   float hizwidth, hizheight;
   hiz_texture.GetDimensions(hizwidth, hizheight);
-  const float2 hzbSize = float2(hizwidth, hizheight);
-  const float width = (boxUvs.z - boxUvs.x) * hzbSize.x;
-  const float height = (boxUvs.w - boxUvs.y) * hzbSize.y;
+
+  const float width = (boxUvs.z - boxUvs.x) * hizwidth;
+  const float height = (boxUvs.w - boxUvs.y) * hizheight;
 
   // Select next level so the box is always in [0.5, 1.0) of a texel of the current level.
   // If the box is larger than a single texel of the current level, then it could touch nine
@@ -195,7 +195,7 @@ bool cull_meshlet_frustum(const uint meshletId) {
     get_meshlet_uv_bounds(params, minXY, maxXY, nearestZ, intersects_near_plane);
     bool is_visible = intersects_near_plane;
 
-    const bool CULL_MESHLET_HIZ = false;
+    const bool CULL_MESHLET_HIZ = true;
     if (!is_visible) {
       if (!CULL_MESHLET_HIZ) {
         is_visible = true;

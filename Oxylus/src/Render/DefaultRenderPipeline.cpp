@@ -34,18 +34,6 @@
 #include "Utils/RectPacker.hpp"
 
 namespace ox {
-static vuk::SamplerCreateInfo hiz_sampler_ci = {
-  .magFilter = vuk::Filter::eNearest,
-  .minFilter = vuk::Filter::eNearest,
-  .mipmapMode = vuk::SamplerMipmapMode::eNearest,
-  .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
-  .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
-  .addressModeW = vuk::SamplerAddressMode::eClampToEdge,
-  .maxAnisotropy = 1.0f,
-  .minLod = -1000,
-  .maxLod = 1000,
-};
-
 VkDescriptorSetLayoutBinding binding(uint32_t binding, vuk::DescriptorType descriptor_type, uint32_t count = 1024) {
   return {
     .binding = binding,
@@ -300,6 +288,25 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   envmap_spd_sampler_ci.maxAnisotropy = 1.0f;
 
   envmap_spd.init(allocator, {.load = SPD::SPDLoad::LinearSampler, .view_type = vuk::ImageViewType::e2DArray, .sampler = envmap_spd_sampler_ci});
+
+  hiz_sampler_ci = {
+    .magFilter = vuk::Filter::eNearest,
+    .minFilter = vuk::Filter::eNearest,
+    .mipmapMode = vuk::SamplerMipmapMode::eNearest,
+    .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
+    .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
+    .addressModeW = vuk::SamplerAddressMode::eClampToEdge,
+    .minLod = 0.0f,
+    .maxLod = 16.0f,
+  };
+
+  create_info_reduction = {
+    .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO_EXT,
+    .pNext = nullptr,
+    .reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN,
+  };
+
+  hiz_sampler_ci.pNext = &create_info_reduction;
 
   hiz_spd.init(allocator, {.load = SPD::SPDLoad::LinearSampler, .view_type = vuk::ImageViewType::e2D, .sampler = hiz_sampler_ci});
 }
@@ -642,7 +649,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     descriptor_set_00->update_sampled_image(3, ALBEDO_IMAGE_INDEX, *albedo_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     descriptor_set_00->update_sampled_image(3, NORMAL_IMAGE_INDEX, *normal_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     descriptor_set_00->update_sampled_image(3, NORMAL_VERTEX_IMAGE_INDEX, *normal_vertex_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
-    descriptor_set_00->update_sampled_image(3, DEPTH_IMAGE_INDEX, *depth_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    descriptor_set_00->update_sampled_image(3, DEPTH_IMAGE_INDEX, *depth_texture->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     descriptor_set_00->update_sampled_image(3, SHADOW_ATLAS_INDEX, *shadow_map_atlas.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     descriptor_set_00->update_sampled_image(3, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
     descriptor_set_00->update_sampled_image(3, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
@@ -744,15 +751,15 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     descriptor_set_02->update_storage_buffer(READ_ONLY, INDEX_BUFFER_INDEX, *indicesBuff);
 
     auto [vertBuff, vertBuffFut] = create_cpu_buffer(allocator, std::span(vertices));
-    const auto& vertices_buffer = *vertBuff;
-    descriptor_set_02->update_storage_buffer(READ_ONLY, VERTEX_BUFFER_INDEX, vertices_buffer);
+    vertex_buffer = *vertBuff;
+    descriptor_set_02->update_storage_buffer(READ_ONLY, VERTEX_BUFFER_INDEX, vertex_buffer);
 
     auto [primsBuff, primsBuffFut] = create_cpu_buffer(allocator, std::span(primitives));
-    const auto& primitives_buffer = *primsBuff;
+    primitives_buffer = *primsBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, PRIMITIVES_BUFFER_INDEX, primitives_buffer);
 
     auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(transforms));
-    const auto& transforms_buffer = *transBuff;
+    transforms_buffer = *transBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
 
     constexpr auto max_meshlet_primitives = 64;
@@ -787,12 +794,19 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
   if (fsr.get_render_res() != ext)
     fsr.create_fs2_resources(ext, ext / 1.5f);
 
-  if (depth_texture.get_extent() != ext) { // since they all should be sized the same
+  if (color_texture.get_extent() != ext) { // since they all should be sized the same
     color_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
     albedo_texture.create_texture(ext, vuk::Format::eR8G8B8A8Srgb, Preset::eRTT2DUnmipped);
-    depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
+
+    depth_texture = create_unique<Texture>();
+    depth_texture->create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
+    depth_texture_prev = create_unique<Texture>();
+    depth_texture_prev->create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
+
+    const auto hiz_ext = vuk::Extent3D{math::previous_power2(ext.width), math::previous_power2(ext.height), 1u};
+    hiz_texture.create_texture(hiz_ext, vuk::Format::eR32Sfloat, Preset::eSTT2D);
+
     material_depth_texture.create_texture(ext, vuk::Format::eD32Sfloat, Preset::eRTT2DUnmipped);
-    hiz_texture.create_texture(ext, vuk::Format::eR32Sfloat, Preset::eSTT2D);
     normal_texture.create_texture(ext, vuk::Format::eR16G16B16A16Snorm, Preset::eRTT2DUnmipped);
     normal_vertex_texture.create_texture(ext, vuk::Format::eR16G16Snorm, Preset::eRTT2DUnmipped);
     velocity_texture.create_texture(ext, vuk::Format::eR16G16Sfloat, Preset::eRTT2DUnmipped);
@@ -909,7 +923,6 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
 void DefaultRenderPipeline::create_descriptor_sets(vuk::Allocator& allocator) {
   auto& ctx = allocator.get_context();
   descriptor_set_00 = ctx.create_persistent_descriptorset(allocator, *ctx.get_named_pipeline("shading_pipeline"), 0, 64);
-  ctx.set_name(descriptor_set_00->backing_set, "global_set_0");
 
   const vuk::Sampler linear_sampler_clamped = ctx.acquire_sampler(vuk::LinearSamplerClamped, ctx.get_frame_count());
   const vuk::Sampler linear_sampler_repeated = ctx.acquire_sampler(vuk::LinearSamplerRepeated, ctx.get_frame_count());
@@ -927,7 +940,6 @@ void DefaultRenderPipeline::create_descriptor_sets(vuk::Allocator& allocator) {
   descriptor_set_00->update_sampler(12, 0, cmp_depth_sampler);
 
   descriptor_set_02 = ctx.create_persistent_descriptorset(allocator, *ctx.get_named_pipeline("cull_meshlets_pipeline"), 2, 64);
-  ctx.set_name(descriptor_set_02->backing_set, "global_set_2");
 }
 
 void DefaultRenderPipeline::run_static_passes(vuk::Allocator& allocator) {
@@ -999,14 +1011,18 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   scene_data.sun_color = Vec4(sun_color, 1.0f);
 
   create_dynamic_textures(ext);
+
+  std::swap(depth_texture, depth_texture_prev);
+
   update_frame_data(frame_allocator);
 
-  auto hiz_image = vuk::clear_image(vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), vuk::Access::eNone), vuk::Black<float>);
-  // hiz_img = vuk::clear_image(hiz_img, vuk::Black<float>);
+  auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) {
+    return output;
+  })(vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), first_pass ? vuk::eNone : vuk::eFragmentSampled | vuk::eComputeSampled));
 
-  if (!first_pass) {
+  if (first_pass) {
     run_static_passes(*vk_context->superframe_allocator);
-    first_pass = true;
+    hiz_image = clear_image(hiz_image, vuk::Black<float>);
   }
 
   auto vis_meshlets_buf = vuk::declare_buf("visible_meshlets_buffer", visible_meshlets_buffer);
@@ -1047,7 +1063,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     return std::make_tuple(_index_buffer, _indirect_buffer);
   })(vis_meshlets_buff_output, triangles_dis_buffer_output, instanced_idx_buf, indirect_commands_buff);
 
-  auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture.as_attachment()), vuk::DepthZero);
+  auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture->as_attachment()), vuk::DepthZero);
   auto vis_image = vuk::clear_image(vuk::acquire_ia("visibility_image", visibility_texture.as_attachment(), vuk::eNone), vuk::Black<float>);
 
   auto [vis_image_output, depth_output] = vuk::make_pass("main_vis_buffer_pass",
@@ -1347,7 +1363,11 @@ void DefaultRenderPipeline::on_update(Scene* scene) {
   }
 }
 
-void DefaultRenderPipeline::on_submit() { clear(); }
+void DefaultRenderPipeline::on_submit() {
+  first_pass = false;
+
+  clear();
+}
 
 void DefaultRenderPipeline::update_skybox(const SkyboxLoadEvent& e) {
   OX_SCOPED_ZONE;
@@ -1912,7 +1932,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
     vertices.emplace_back(Vertex{});
 
   auto [v_buff, v_buff_fut] = create_cpu_buffer(frame_allocator, std::span(vertices));
-  auto& vertex_buffer = *v_buff;
+  auto& v_buffer = *v_buff;
 
   const auto& lines_dt = DebugRenderer::get_instance()->get_lines(true);
   auto [vertices_dt, index_count_dt] = DebugRenderer::get_vertices_from_lines(lines_dt);
@@ -1924,9 +1944,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
   auto& vertex_buffer_dt = *vd_buff;
 
   auto pass = vuk::make_pass("debug_pass",
-                             [this, index_count, index_count_dt, vertex_buffer, vertex_buffer_dt](vuk::CommandBuffer& command_buffer,
-                                                                                                  VUK_IA(vuk::eColorWrite) dst,
-                                                                                                  VUK_IA(vuk::eDepthStencilRead) depth) {
+                             [this, index_count, index_count_dt, v_buffer, vertex_buffer_dt](vuk::CommandBuffer& command_buffer,
+                                                                                             VUK_IA(vuk::eColorWrite) dst,
+                                                                                             VUK_IA(vuk::eDepthStencilRead) depth) {
     struct DebugPassData {
       Mat4 vp = {};
       Mat4 model = {};
@@ -1960,7 +1980,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
       .set_viewport(0, vuk::Rect2D::framebuffer())
       .set_scissor(0, vuk::Rect2D::framebuffer())
       .push_constants(vuk::ShaderStageFlagBits::eVertex, 0, 0)
-      .bind_vertex_buffer(0, vertex_buffer, 0, vertex_layout)
+      .bind_vertex_buffer(0, v_buffer, 0, vertex_layout)
       .bind_index_buffer(index_buffer, vuk::IndexType::eUint32)
       .draw_indexed(index_count, 1, 0, 0, 0);
 

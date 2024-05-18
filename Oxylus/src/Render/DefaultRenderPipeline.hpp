@@ -40,7 +40,7 @@ private:
   Camera* current_camera = nullptr;
 
   bool initalized = false;
-  bool first_pass = false;
+  bool first_pass = true;
 
   struct MeshInstance {
     Mat4 transform;
@@ -247,14 +247,20 @@ private:
 
   vuk::Buffer visible_meshlets_buffer;
   vuk::Buffer cull_triangles_dispatch_params_buffer;
+  vuk::Buffer vertex_buffer;
   vuk::Buffer index_buffer;
+  vuk::Buffer primitives_buffer;
+  vuk::Buffer transforms_buffer;
   vuk::Buffer instanced_index_buffer;
   vuk::Buffer indirect_commands_buffer;
   vuk::Buffer debug_aabb_buffer;
 
+  vuk::SamplerCreateInfo hiz_sampler_ci;
+  VkSamplerReductionModeCreateInfoEXT create_info_reduction;
   Texture color_texture;
   Texture albedo_texture;
-  Texture depth_texture;
+  Unique<Texture> depth_texture;
+  Unique<Texture> depth_texture_prev;
   Texture material_depth_texture;
   Texture hiz_texture;
   Texture normal_texture;

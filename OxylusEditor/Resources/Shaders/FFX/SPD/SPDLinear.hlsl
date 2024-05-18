@@ -159,7 +159,13 @@ void SpdStoreIntermediateH(AU1 x, AU1 y, AH4 value) {
   spdIntermediateRG[x][y] = value.xy;
   spdIntermediateBA[x][y] = value.zw;
 }
+
+#ifdef POINT_SAMPLER
+AH4 SpdReduce4H(AH4 v0, AH4 v1, AH4 v2, AH4 v3) { return min(min(min(v0, v1), v2), v3); }
+#else
 AH4 SpdReduce4H(AH4 v0, AH4 v1, AH4 v2, AH4 v3) { return (v0 + v1 + v2 + v3) * AH1(0.25); }
+#endif
+
 #endif
 
 #define SPD_LINEAR_SAMPLER

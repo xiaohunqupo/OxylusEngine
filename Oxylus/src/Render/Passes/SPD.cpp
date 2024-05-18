@@ -84,12 +84,21 @@ void SPD::init(vuk::Allocator& allocator, Config config) {
     pci.explicit_set_layouts.emplace_back(layout_create_info);
   }
 
-  pipeline_name = config.load == SPDLoad::LinearSampler ? "spd_pipeline_linear" : "spd_pipeline";
-  const auto shader_name = config.load == SPDLoad::LinearSampler ? "FFX/SPD/SPDLinear.hlsl" : "FFX/SPD/SPD.hlsl";
+  const auto shader_path = config.load == SPDLoad::LinearSampler ? "FFX/SPD/SPDLinear.hlsl" : "FFX/SPD/SPD.hlsl";
+  if (config.load == SPDLoad::LinearSampler) {
+    if (config.sampler.minFilter == vuk::Filter::eNearest) {
+      pci.define("POINT_SAMPLER", "");
+      pipeline_name = "spd_pipeline_linear_point";
+    } else {
+      pipeline_name = "spd_pipeline_linear";
+    }
+  } else {
+    pipeline_name = "spd_pipeline";
+  }
+  if (config.view_type == vuk::ImageViewType::e2DArray)
+    pci.define("TEXTURE_ARRAY", "");
   if (!allocator.get_context().is_pipeline_available(pipeline_name.c_str())) {
-    pci.add_hlsl(fs::read_shader_file(shader_name), fs::get_shader_path(shader_name), vuk::HlslShaderStage::eCompute);
-    if (config.view_type == vuk::ImageViewType::e2DArray)
-      pci.define("TEXTURE_ARRAY", "");
+    pci.add_hlsl(fs::read_shader_file(shader_path), fs::get_shader_path(shader_path), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline(pipeline_name.c_str(), pci))
   }
 
@@ -169,7 +178,6 @@ vuk::Value<vuk::ImageAttachment> SPD::dispatch(vuk::Name pass_name, vuk::Allocat
     descriptor_set->update_sampled_image(3, 0, base_view, vuk::ImageLayout::eReadOnlyOptimal);
 
     const auto sampler = allocator.get_context().acquire_sampler(_config.sampler, allocator.get_context().get_frame_count());
-
     descriptor_set->update_sampler(4, 0, sampler);
   }
 

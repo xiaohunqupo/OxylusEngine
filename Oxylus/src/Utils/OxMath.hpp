@@ -16,6 +16,14 @@ inline float2 float32x3_to_oct(float3 v) {
   return (v.z <= 0.0f) ? ((1.0f - glm::abs(float2{p.y, p.x})) * sign_not_zero(p)) : p;
 }
 
+constexpr uint32_t previous_power2(uint32_t x) {
+  uint32_t v = 1;
+  while ((v << 1) < x) {
+    v <<= 1;
+  }
+  return v;
+}
+
 bool decompose_transform(const glm::mat4& transform, Vec3& translation, Vec3& rotation, Vec3& scale);
 
 template <typename T>

@@ -200,6 +200,7 @@ void VkContext::create_context(const AppSpec& spec) {
   vk12features.bufferDeviceAddress = true;
   vk12features.shaderOutputLayer = true;
   vk12features.descriptorIndexing = true;
+  vk12features.samplerFilterMinmax = true;
   vk12features.shaderUniformBufferArrayNonUniformIndexing = true;
   vk12features.shaderSampledImageArrayNonUniformIndexing = true;
   vk12features.shaderStorageBufferArrayNonUniformIndexing = true;

@@ -200,7 +200,7 @@ void Window::set_fullscreen_borderless() {
 void Window::set_windowed() {
   auto* monitor = glfwGetPrimaryMonitor();
   const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-  const auto center = get_center_pos(1600, 900);
+  const auto center = get_center_pos(1600, 900); // TODO: why is this harcoded lol
   glfwSetWindowMonitor(s_window_handle, nullptr, center.x, center.y, 1600, 900, mode->refreshRate);
   s_window_data.is_fullscreen_borderless = false;
 }

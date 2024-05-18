@@ -11,11 +11,11 @@ struct Vertex {
 };
 
 inline auto vertex_pack = vuk::Packed{
-  vuk::Format::eR32G32B32A32Sfloat, // 12 postition
-  vuk::Format::eR32G32B32A32Sfloat, // 12 normal
-  vuk::Format::eR32G32B32A32Sfloat, // 8  uv
-  vuk::Format::eR32G32B32A32Sfloat, // 16 color
-  vuk::Format::eR32G32B32A32Sfloat, // 16 joint
-  vuk::Format::eR32G32B32A32Sfloat, // 16 weight
+  vuk::Format::eR32Sfloat, // 4 postition x
+  vuk::Format::eR32Sfloat, // 4 postition y
+  vuk::Format::eR32Sfloat, // 4 postition z
+  vuk::Format::eR32Uint, // 4 normal
+  vuk::Format::eR32Sfloat, // 4 uv x
+  vuk::Format::eR32Sfloat, // 4 uv y
 };
 }
