@@ -448,9 +448,6 @@ private:
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> bloom_pass(vuk::Value<vuk::ImageAttachment>& downsample_image,
                                                             vuk::Value<vuk::ImageAttachment>& upsample_image,
                                                             vuk::Value<vuk::ImageAttachment>& input);
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> debug_pass(vuk::Allocator& frame_allocator,
-                                                            vuk::Value<vuk::ImageAttachment>& input,
-                                                            vuk::Value<vuk::ImageAttachment>& depth) const;
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> apply_grid(vuk::Value<vuk::ImageAttachment>& target, vuk::Value<vuk::ImageAttachment>& depth);
 };
 } // namespace ox
