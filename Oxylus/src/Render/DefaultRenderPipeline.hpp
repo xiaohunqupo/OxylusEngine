@@ -41,6 +41,7 @@ private:
 
   bool initalized = false;
   bool first_pass = true;
+  bool resized = false;
 
   struct MeshInstance {
     Mat4 transform;

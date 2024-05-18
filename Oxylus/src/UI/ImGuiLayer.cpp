@@ -186,11 +186,13 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
     idx_dst += cmd_list->IdxBuffer.Size;
   }
 
-  auto imgui_pass = vuk::make_pass("imgui",
-                                   [this, verts = imvert.get(), inds = imind.get(), reset_render_state](vuk::CommandBuffer& command_buffer,
-                                                                                                        VUK_IA(vuk::eColorRW) color_rt,
-                                                                                                        VUK_ARG(vuk::ImageAttachment[],
-                                                                                                                vuk::Access::eFragmentSampled) sis) {
+  const auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(sampled_attachments));
+
+  return vuk::make_pass("imgui",
+                        [this, verts = imvert.get(), inds = imind.get(), reset_render_state](vuk::CommandBuffer& command_buffer,
+                                                                                             VUK_IA(vuk::eColorWrite) color_rt,
+                                                                                             VUK_ARG(vuk::ImageAttachment[],
+                                                                                                     vuk::Access::eFragmentSampled) sis) {
     command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
       .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
       .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
@@ -257,11 +259,7 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
       global_vtx_offset += cmd_list->VtxBuffer.Size;
     }
     return color_rt;
-  });
-
-  const auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(sampled_attachments));
-
-  return imgui_pass(target, sampled_images_array);
+  })(target, sampled_images_array);
 }
 
 ImGuiLayer::ImGuiImage* ImGuiLayer::add_image(const vuk::ImageView& view) { return &*sampled_images.emplace(true, view, 0); }

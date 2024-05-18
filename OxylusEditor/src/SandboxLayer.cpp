@@ -8,7 +8,7 @@
 namespace ox {
 void SandboxLayer::on_attach(EventDispatcher& dispatcher) {
   EditorTheme::init();
-  //Window::maximize();
+  // Window::maximize();
   Project::create_new();
 
   editor_config.load_config();
@@ -98,9 +98,9 @@ void SandboxLayer::on_update(const Timestep& delta_time) {
     camera.set_pitch(EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y);
 
     camera.update();
-
-    editor_scene->on_editor_update(delta_time, camera);
   }
+
+  editor_scene->on_editor_update(delta_time, camera);
 }
 
 void SandboxLayer::on_imgui_render() {
@@ -108,10 +108,6 @@ void SandboxLayer::on_imgui_render() {
     ImGui::ShowStyleEditor();
   if (EditorCVar::cvar_show_imgui_demo.get())
     ImGui::ShowDemoWindow();
-
-  if (Input::get_key_pressed(KeyCode::R)) {
-    RendererCVar::cvar_reload_render_pipeline.toggle();
-  }
 
   runtime_console.on_imgui_render();
 }

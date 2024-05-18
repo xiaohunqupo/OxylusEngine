@@ -813,12 +813,11 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
     visibility_texture.create_texture(ext, vuk::Format::eR32Uint, Preset::eRTT2DUnmipped);
     emission_texture.create_texture(ext, vuk::Format::eB10G11R11UfloatPack32, Preset::eRTT2DUnmipped);
     metallic_roughness_texture.create_texture(ext, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
-  }
-
-  if (gtao_final_texture.get_extent() != ext)
     gtao_final_texture.create_texture(ext, vuk::Format::eR8Uint, Preset::eSTT2DUnmipped);
-  if (ssr_texture.get_extent() != ext)
     ssr_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
+
+    resized = true;
+  }
 
   // Shadow atlas packing:
   {
@@ -1018,9 +1017,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) {
     return output;
-  })(vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), first_pass ? vuk::eNone : vuk::eFragmentSampled | vuk::eComputeSampled));
+  })(vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), first_pass || resized ? vuk::eNone : vuk::eFragmentSampled | vuk::eComputeSampled));
 
-  if (first_pass) {
+  if (first_pass || resized) {
     run_static_passes(*vk_context->superframe_allocator);
     hiz_image = clear_image(hiz_image, vuk::Black<float>);
   }

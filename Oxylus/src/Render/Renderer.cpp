@@ -79,9 +79,9 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
       system->imgui_update();
     imgui_layer->end();
 
-    result = imgui_layer->render_draw_data(frame_allocator, *renderer_context.compiler, result);
+    auto imgui_output = imgui_layer->render_draw_data(frame_allocator, *renderer_context.compiler, result);
 
-    auto entire_thing = vuk::enqueue_presentation(std::move(result));
+    auto entire_thing = vuk::enqueue_presentation(std::move(imgui_output));
     entire_thing.submit(frame_allocator, *renderer_context.compiler, {.callbacks = cbs});
   } else {
     auto att = vuk::ImageAttachment::from_preset(Preset::eRTT2DUnmipped,

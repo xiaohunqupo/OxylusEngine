@@ -127,7 +127,7 @@ void App::run() {
 }
 
 void App::update_layers(const Timestep& ts) {
-  OX_SCOPED_ZONE_N("LayersLoop");
+  OX_SCOPED_ZONE_N("Update Layers");
   for (Layer* layer : *layer_stack.get())
     layer->on_update(ts);
 }
@@ -162,11 +162,7 @@ std::string App::get_asset_directory_absolute() {
   return p.string();
 }
 
-std::string App::get_relative(const std::string& path) {
-  return fs::preferred_path(std::filesystem::relative(path, get_asset_directory()).string());
-}
+std::string App::get_relative(const std::string& path) { return fs::preferred_path(std::filesystem::relative(path, get_asset_directory()).string()); }
 
-std::string App::get_absolute(const std::string& path) {
-  return fs::append_paths(fs::preferred_path(get_asset_directory_absolute()), path);
-}
+std::string App::get_absolute(const std::string& path) { return fs::append_paths(fs::preferred_path(get_asset_directory_absolute()), path); }
 } // namespace ox
