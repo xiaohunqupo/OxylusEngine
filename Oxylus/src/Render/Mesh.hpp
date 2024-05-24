@@ -26,10 +26,14 @@ public:
     uint32_t primitive_offset = 0;
     uint32_t index_count = 0;
     uint32_t primitive_count = 0;
-    uint32_t material_id = 0;
-    uint32_t instance_id = 0;
     float aabbMin[3];
     float aabbMax[3];
+  };
+
+  struct MeshletInstance {
+    uint32_t meshletId;
+    uint32_t instanceId;
+    uint32_t materialId = 0;
   };
 
   struct Node {
@@ -38,58 +42,26 @@ public:
     Vec3 translation = {};
     Quat rotation = {};
     Vec3 scale = Vec3(1.0f);
-    Mat4 transform = {};
+    Mat4 local_transform = {};
+    Mat4 global_transform = {};
 
     AABB aabb;
 
     uint32_t index = 0;
     Node* parent = nullptr;
     std::vector<Node*> children = {};
-    std::vector<Meshlet> meshlets;
-    std::vector<Shared<Material>> materials;
+    std::vector<MeshletInstance> meshlet_indices;
 
-    Mat4 get_local_transform() const { return translate(Mat4(1.0f), translation) * Mat4(rotation) * glm::scale(Mat4(1.0f), scale) * transform; }
-
-    Mat4 get_world_transform() const {
-      Mat4 m = transform;
-      auto p = parent;
-      while (p) {
-        m = p->transform * m;
-        p = p->parent;
-      }
-      return m;
-    }
+    Mat4 get_local_transform() const { return translate(Mat4(1.0f), translation) * Mat4(rotation) * glm::scale(Mat4(1.0f), scale); }
   };
-
-  struct SceneFlattened {
-    std::vector<Meshlet> meshlets;
-    std::vector<Mat4> transforms; // TODO: UNUSED
-    std::vector<const Node*> nodes;
-    std::vector<Shared<Material>> materials;
-
-    void merge(const SceneFlattened& flat) {
-      meshlets.insert(meshlets.end(), flat.meshlets.begin(), flat.meshlets.end());
-      //transforms.insert(transforms.end(), flat.transforms.begin(), flat.transforms.end());
-      nodes.insert(nodes.end(), flat.nodes.begin(), flat.nodes.end());
-      materials.insert(materials.end(), flat.materials.begin(), flat.materials.end());
-    }
-
-    void clear() {
-      meshlets.clear();
-      transforms.clear();
-      nodes.clear();
-      materials.clear();
-    }
-  };
-
-  Mesh::SceneFlattened flattened;
 
   std::string path;
-  std::vector<Node*> rootNodes;
-  std::list<Node> nodes;
+  std::vector<Node*> root_nodes;
+  std::vector<Node> nodes;
+  std::vector<Meshlet> _meshlets;
   std::vector<Vertex> _vertices;
   std::vector<uint32> _indices;
-  std::vector<uint8_t> primitives;
+  std::vector<uint8_t> _primitives;
   std::vector<Shared<Material>> _materials;
 
   uint32 index_count = 0;
@@ -104,7 +76,7 @@ public:
 
   void load_from_file(const std::string& file_path, glm::mat4 rootTransform = glm::identity<glm::mat4>());
 
-  [[nodiscard]] SceneFlattened flatten() const;
+  void set_transforms() const;
 
   const Mesh* bind_vertex_buffer(vuk::CommandBuffer& command_buffer) const;
   const Mesh* bind_index_buffer(vuk::CommandBuffer& command_buffer) const;

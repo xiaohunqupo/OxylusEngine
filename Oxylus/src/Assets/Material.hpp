@@ -50,7 +50,7 @@ public:
   std::string name = "Material";
   std::string path{};
 
-  Material() = default;
+  Material();
   explicit Material(const std::string& material_name);
   ~Material();
 

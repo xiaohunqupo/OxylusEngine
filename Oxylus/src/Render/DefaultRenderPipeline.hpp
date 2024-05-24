@@ -1,6 +1,6 @@
 ﻿#pragma once
 
-#include <glm/ext/scalar_constants.hpp>
+#include <glm/ext/scalar_constants.hpp> // Required for packing
 #include <glm/fwd.hpp>
 #include <glm/gtc/packing.inl>
 #include <vuk/Value.hpp>
@@ -407,17 +407,99 @@ private:
     size_t size() const { return batches.size(); }
   };
 
-  Mesh::SceneFlattened scene_flattened;
+  struct SceneFlattened {
+    std::vector<Mesh::Meshlet> meshlets;
+    std::vector<Mesh::MeshletInstance> meshlet_instances;
+    std::vector<Mat4> transforms;
+    std::vector<Shared<Material>> materials;
+
+    std::vector<uint32> indices{};
+    std::vector<Vertex> vertices{};
+    std::vector<uint32> primitives{};
+
+    uint32 last_meshlet_size = 0;
+    uint32 last_meshlet_instances_size = 0;
+    uint32 last_indices_size = 0;
+    uint32 last_vertices_size = 0;
+    uint32 last_primitives_size = 0;
+    uint32 last_transforms_size = 0;
+
+    uint32 get_meshlet_instances_count() const { return (uint32)meshlet_instances.size(); }
+    uint32 get_material_count() const { return (uint32)materials.size(); }
+
+    void init() {
+      meshlets.reserve(last_meshlet_size);
+      meshlet_instances.reserve(last_meshlet_instances_size);
+
+      indices.reserve(last_indices_size);
+      vertices.reserve(last_vertices_size);
+      primitives.reserve(last_primitives_size);
+      transforms.reserve(last_transforms_size);
+    }
+
+    void clear() {
+      last_meshlet_size = (uint32)meshlets.size();
+      last_meshlet_instances_size = (uint32)meshlet_instances.size();
+
+      last_indices_size = (uint32)indices.size();
+      last_vertices_size = (uint32)vertices.size();
+      last_primitives_size = (uint32)primitives.size();
+
+      indices.clear();
+      vertices.clear();
+      primitives.clear();
+      transforms.clear();
+
+      meshlets.clear();
+      meshlet_instances.clear();
+      transforms.clear();
+      materials.clear();
+    }
+
+    void update(const std::vector<MeshComponent>& mc_list) {
+      OX_SCOPED_ZONE;
+
+      if (mc_list.empty()) {
+        meshlet_instances.emplace_back();
+        meshlets.emplace_back();
+        transforms.emplace_back();
+        indices.emplace_back();
+        vertices.emplace_back();
+        primitives.emplace_back();
+        materials.emplace_back(create_shared<Material>());
+
+        return;
+      }
+
+      for (auto& mc : mc_list) {
+        for (int node_index = 0; auto& node : mc.mesh_base->nodes) {
+          if (!node.meshlet_indices.empty()) {
+            const auto instance_id = (uint32)transforms.size();
+            const auto transform = node_index == 0 ? mc.transform : mc.child_transforms[node_index - 1];
+            transforms.emplace_back(transform);
+            for (auto& [meshletIndex, _, materialId] : node.meshlet_indices) {
+              // meshlet.instance_id = uint32(instance_id);
+              meshlet_instances.emplace_back(meshletIndex, instance_id, materialId);
+            }
+            node_index++;
+          }
+        }
+
+        meshlets.insert(std::end(meshlets), std::begin(mc.mesh_base->_meshlets), std::end(mc.mesh_base->_meshlets));
+        indices.insert(std::end(indices), std::begin(mc.mesh_base->_indices), std::end(mc.mesh_base->_indices));
+        vertices.insert(std::end(vertices), std::begin(mc.mesh_base->_vertices), std::end(mc.mesh_base->_vertices));
+        primitives.insert(std::end(primitives), std::begin(mc.mesh_base->_primitives), std::end(mc.mesh_base->_primitives));
+        materials.insert(std::end(materials), std::begin(mc.materials), std::end(mc.materials));
+      }
+    }
+  };
+
+  SceneFlattened scene_flattened;
   std::vector<MeshComponent> mesh_component_list;
   RenderQueue render_queue;
   Shared<Mesh> m_quad = nullptr;
   Shared<Mesh> m_cube = nullptr;
   Shared<Camera> default_camera;
-
-  uint32 last_indices_size = 0;
-  uint32 last_vertices_size = 0;
-  uint32 last_primitives_size = 0;
-  uint32 last_transforms_size = 0;
 
   std::vector<LightComponent> scene_lights = {};
   LightComponent* dir_light_data = nullptr;

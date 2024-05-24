@@ -100,10 +100,6 @@ struct PushConst {
   uint material_index;
 };
 
-struct MeshInstance {
-  float4x4 transform;
-};
-
 struct MeshInstancePointer {
   uint data;
 
@@ -263,22 +259,26 @@ struct SceneData {
 };
 
 struct Meshlet {
-  uint32 vertexOffset;
-  uint32 indexOffset;
-  uint32 primitiveOffset;
-  uint32 indexCount;
-  uint32 primitiveCount;
-  uint32 materialId;
-  uint32 instanceId;
-  PackedFloat3 aabbMin;
-  PackedFloat3 aabbMax;
+  uint32 vertex_offset;
+  uint32 index_offset;
+  uint32 primitive_offset;
+  uint32 index_count;
+  uint32 primitive_count;
+  PackedFloat3 aabb_min;
+  PackedFloat3 aabb_max;
+};
+
+struct MeshletInstance {
+  uint32 meshlet_id;
+  uint32 instance_id;
+  uint32 material_id;
 };
 
 struct DrawIndirectCommand {
-  uint32 vertexCount;
-  uint32 instanceCount;
-  uint32 firstVertex;
-  uint32 firstInstance;
+  uint32 vertex_count;
+  uint32 instance_count;
+  uint32 first_vertex;
+  uint32 first_instance;
 };
 
 #define MAX_AABB_COUNT 100000

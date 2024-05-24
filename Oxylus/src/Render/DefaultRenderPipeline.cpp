@@ -120,7 +120,7 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   // --- Culling ---
   vuk::DescriptorSetLayoutCreateInfo bindless_dslci_01 = {};
   bindless_dslci_01.bindings = {
-    binding(0, vuk::DescriptorType::eStorageBuffer, 5), // read
+    binding(0, vuk::DescriptorType::eStorageBuffer, 6), // read
     binding(1, vuk::DescriptorType::eStorageBuffer, 4), // rw
   };
   bindless_dslci_01.index = 2;
@@ -463,11 +463,15 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   OX_SCOPED_ZONE;
   auto& ctx = allocator.get_context();
 
+  scene_flattened.init();
+
+  scene_flattened.update(mesh_component_list);
+
   scene_data.num_lights = (uint32)scene_lights.size();
   scene_data.grid_max_distance = RendererCVar::cvar_draw_grid_distance.get();
   scene_data.screen_size = IVec2(Renderer::get_viewport_width(), Renderer::get_viewport_height());
   scene_data.screen_size_rcp = {1.0f / (float)std::max(1u, scene_data.screen_size.x), 1.0f / (float)std::max(1u, scene_data.screen_size.y)};
-  scene_data.meshlet_count = (uint32)scene_flattened.meshlets.size();
+  scene_data.meshlet_count = scene_flattened.get_meshlet_instances_count();
   scene_data.draw_meshlet_aabbs = RendererCVar::cvar_draw_meshlet_aabbs.get();
 
   scene_data.indices.albedo_image_index = ALBEDO_IMAGE_INDEX;
@@ -504,9 +508,9 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     const auto& scene_buffer = *scene_buff;
 
     std::vector<Material::Parameters> material_parameters = {};
-    material_parameters.reserve(scene_flattened.materials.size());
+    material_parameters.reserve(scene_flattened.get_material_count());
     for (auto& mat : scene_flattened.materials) {
-      mat->set_id((uint32)material_parameters.size() - 1u);
+      mat->set_id((uint32)material_parameters.size());
 
       const auto& albedo = mat->get_albedo_texture();
       const auto& normal = mat->get_normal_texture();
@@ -689,6 +693,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     constexpr auto VERTEX_BUFFER_INDEX = 2;
     constexpr auto PRIMITIVES_BUFFER_INDEX = 3;
     constexpr auto TRANSFORMS_BUFFER_INDEX = 4;
+    constexpr auto MESHLET_INSTANCE_BUFFERS_INDEX = 5;
 
     constexpr auto VISIBLE_MESHLETS_BUFFER_INDEX = 0;
     constexpr auto CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX = 1;
@@ -701,8 +706,12 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     auto [meshletBuff, meshletBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlets));
     const auto& meshlet_data_buffer = *meshletBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
+ 
+    auto [meshlet_instances_buff, meshlet_instances_buff_fut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlet_instances));
+    const auto& meshlet_instances_buffer = *meshlet_instances_buff;
+    descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_INSTANCE_BUFFERS_INDEX, meshlet_instances_buffer);
 
-    visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * sizeof(uint32_t));
+    visible_meshlets_buffer = *allocate_gpu_buffer(allocator, scene_flattened.get_meshlet_instances_count() * sizeof(uint32_t));
     descriptor_set_02->update_storage_buffer(READ_WRITE, VISIBLE_MESHLETS_BUFFER_INDEX, visible_meshlets_buffer);
 
     struct DispatchParams {
@@ -728,43 +737,24 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     indirect_commands_buffer = *indirectBuff;
     descriptor_set_02->update_storage_buffer(READ_WRITE, INDIRECT_COMMAND_BUFFER_INDEX, indirect_commands_buffer);
 
-    std::vector<uint32> indices{};
-    indices.reserve(last_indices_size);
-    std::vector<Vertex> vertices{};
-    vertices.reserve(last_vertices_size);
-    std::vector<uint32> primitives{};
-    primitives.reserve(last_primitives_size);
-    std::vector<float4x4> transforms{};
-    transforms.reserve(last_transforms_size);
-    for (auto& mc : mesh_component_list) {
-      indices.insert(std::end(indices), std::begin(mc.mesh_base->_indices), std::end(mc.mesh_base->_indices));
-      vertices.insert(std::end(vertices), std::begin(mc.mesh_base->_vertices), std::end(mc.mesh_base->_vertices));
-      primitives.insert(std::end(primitives), std::begin(mc.mesh_base->primitives), std::end(mc.mesh_base->primitives));
-      transforms.emplace_back(mc.transform);
-    }
-
-    last_indices_size = (uint32)indices.size();
-    last_vertices_size = (uint32)vertices.size();
-    last_primitives_size = (uint32)primitives.size();
-
-    auto [indicesBuff, indicesBuffFut] = create_cpu_buffer(allocator, std::span(indices));
+    auto [indicesBuff, indicesBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.indices)); // static
     index_buffer = *indicesBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, INDEX_BUFFER_INDEX, *indicesBuff);
 
-    auto [vertBuff, vertBuffFut] = create_cpu_buffer(allocator, std::span(vertices));
+    auto [vertBuff, vertBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.vertices)); // static
     vertex_buffer = *vertBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, VERTEX_BUFFER_INDEX, vertex_buffer);
 
-    auto [primsBuff, primsBuffFut] = create_cpu_buffer(allocator, std::span(primitives));
+    auto [primsBuff, primsBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.primitives)); // static
     primitives_buffer = *primsBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, PRIMITIVES_BUFFER_INDEX, primitives_buffer);
 
-    auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(transforms));
+    auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.transforms));
     transforms_buffer = *transBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
 
     constexpr auto max_meshlet_primitives = 64;
-    instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.meshlets.size() * max_meshlet_primitives * 3 * sizeof(uint32));
+    instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.get_meshlet_instances_count() * max_meshlet_primitives * 3 * sizeof(uint32));
     descriptor_set_02->update_storage_buffer(READ_WRITE, INSTANCED_INDEX_BUFFER_INDEX, instanced_index_buffer);
 
     descriptor_set_02->commit(ctx);
@@ -960,11 +950,6 @@ void DefaultRenderPipeline::register_mesh_component(const MeshComponent& render_
   if (!current_camera)
     return;
 
-  render_queue.add(render_object.mesh_id,
-                   (uint32_t)mesh_component_list.size(),
-                   0,
-                   distance(current_camera->get_position(), render_object.aabb.get_center()),
-                   0);
   mesh_component_list.emplace_back(render_object);
 }
 
@@ -1008,9 +993,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   }
 
   auto vk_context = VkContext::get();
-
-  for (auto& mc : mesh_component_list)
-    scene_flattened.merge(mc.get_flattened());
 
   Vec3 sun_direction = {0, 1, 0};
   Vec3 sun_color = {};
@@ -1058,7 +1040,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     camera_cb.camera_data[0] = get_main_camera_data((bool)RendererCVar::cvar_freeze_culling_frustum.get());
     bind_camera_buffer(command_buffer);
 
-    command_buffer.dispatch(((uint32_t)scene_flattened.meshlets.size() + 128 - 1) / 128);
+    command_buffer.dispatch((scene_flattened.get_meshlet_instances_count() + 128 - 1) / 128);
 
     return std::make_tuple(_vis_meshlets_buff, _triangles_dispatch_buffer, _debug_buffer);
   })(hiz_image, vis_meshlets_buf, cull_triangles_buf, debug_aabb_buff);

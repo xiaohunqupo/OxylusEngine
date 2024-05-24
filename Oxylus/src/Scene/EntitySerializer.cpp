@@ -33,7 +33,7 @@ namespace ox {
   { #field, get_toml_array(c.field) }
 
 void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Entity entity) {
-  entities->push_back(toml::table{{"uuid", std::to_string((uint64_t)EUtil::get_uuid(scene->registry, entity))}});
+  entities->push_back(toml::table{{"uuid", std::to_string((uint64_t)eutil::get_uuid(scene->registry, entity))}});
 
   if (scene->registry.all_of<TagComponent>(entity)) {
     const auto& tag = scene->registry.get<TagComponent>(entity);
@@ -76,7 +76,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
   if (scene->registry.all_of<MeshComponent>(entity)) {
     const auto& mrc = scene->registry.get<MeshComponent>(entity);
 
-    const auto table = toml::table{{"mesh_path", App::get_relative(mrc.mesh_base->path)}, TBL_FIELD(mrc, node_index), TBL_FIELD(mrc, cast_shadows)};
+    const auto table = toml::table{{"mesh_path", App::get_relative(mrc.mesh_base->path)}, TBL_FIELD(mrc, stationary), TBL_FIELD(mrc, cast_shadows)};
 
     entities->push_back(toml::table{{"mesh_component", table}});
   }
@@ -309,8 +309,8 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       const auto path = App::get_absolute(GET_STRING2(mesh_node, "mesh_path"));
       auto mesh = AssetManager::get_mesh_asset(path);
       auto& mc = reg.emplace<MeshComponent>(deserialized_entity, mesh);
-      GET_UINT32(mesh_node, mc, node_index);
       GET_BOOL(mesh_node, mc, cast_shadows);
+      GET_BOOL(mesh_node, mc, stationary);
     } else if (const auto light_node = ent.as_table()->get("light_component")) {
       auto& lc = reg.emplace<LightComponent>(deserialized_entity);
       lc.type = (LightComponent::LightType)GET_UINT322(light_node, "type");
@@ -415,7 +415,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       }
     }
   }
-  return EUtil::get_uuid(reg, deserialized_entity);
+  return eutil::get_uuid(reg, deserialized_entity);
 }
 
 void EntitySerializer::serialize_entity_as_prefab(const char* filepath, Entity entity) {

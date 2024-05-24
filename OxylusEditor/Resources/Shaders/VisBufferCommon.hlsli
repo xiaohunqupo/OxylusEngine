@@ -23,6 +23,7 @@ struct DispatchParams {
 #define VERTEX_BUFFER_INDEX 2
 #define PRIMITIVES_BUFFER_INDEX 3
 #define TRANSFORMS_BUFFER_INDEX 4
+#define MESHLET_INSTANCE_BUFFERS_INDEX 5
 
 #define VISIBLE_MESHLETS_BUFFER_INDEX 0
 #define CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX 1
@@ -30,9 +31,12 @@ struct DispatchParams {
 #define INSTANCED_INDEX_BUFFER_INDEX 3
 
 Meshlet get_meshlet(uint32 index) { return buffers[MESHLET_DATA_BUFFERS_INDEX].Load<Meshlet>(index * sizeof(Meshlet)); }
+MeshletInstance get_meshlet_instance(uint32 index) {
+  return buffers[MESHLET_INSTANCE_BUFFERS_INDEX].Load<MeshletInstance>(index * sizeof(MeshletInstance));
+}
 Vertex get_vertex(uint32 index) { return buffers[VERTEX_BUFFER_INDEX].Load<Vertex>(index * sizeof(Vertex)); }
 uint32 get_primitive(uint32 index) { return buffers[PRIMITIVES_BUFFER_INDEX].Load<uint32>(index * sizeof(uint32)); }
-MeshInstance get_instance(uint32 index) { return buffers[TRANSFORMS_BUFFER_INDEX].Load<MeshInstance>(index * sizeof(MeshInstance)); }
+float4x4 get_transform(uint32 index) { return buffers[TRANSFORMS_BUFFER_INDEX].Load<float4x4>(index * sizeof(float4x4)); }
 uint32 get_index(uint32 index) { return buffers[INDEX_BUFFER_INDEX].Load<uint32>(index * sizeof(uint32)); }
 
 void set_index(uint32 index, uint32 value) { buffers_rw[INSTANCED_INDEX_BUFFER_INDEX].Store<uint32>(index * sizeof(uint32), value); }

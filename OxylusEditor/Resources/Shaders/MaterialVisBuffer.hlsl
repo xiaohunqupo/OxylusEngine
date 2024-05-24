@@ -14,7 +14,7 @@ float PSmain(VSOutput input) : SV_DEPTH {
     discard;
   }
   const uint meshletId = (payload >> MESHLET_PRIMITIVE_BITS) & MESHLET_ID_MASK;
-  const uint materialId = get_meshlet(meshletId).materialId;
+  const uint materialId = get_meshlet_instance(meshletId).material_id;
 
   return asfloat(0x3f7fffffu - (materialId & MESHLET_MATERIAL_ID_MASK));
 }

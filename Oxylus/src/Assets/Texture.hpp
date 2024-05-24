@@ -42,7 +42,7 @@ public:
   const vuk::Unique<vuk::Image>& get_image() const { return _image; }
   const vuk::Unique<vuk::ImageView>& get_view() const { return _view; }
   const vuk::Extent3D& get_extent() const { return _attachment.extent; }
-  
+
   void set_name(std::string_view name, const std::source_location& loc = std::source_location::current());
 
   explicit operator uint64_t() { return _view->id; }

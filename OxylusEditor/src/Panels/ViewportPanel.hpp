@@ -32,11 +32,6 @@ public:
 private:
   void draw_performance_overlay();
   void draw_gizmos();
-  void mouse_picking_pass(vuk::Allocator& frame_allocator, vuk::Compiler& compiler, const vuk::Extent3D& ext);
-  vuk::Value<vuk::ImageAttachment> outline_pass(vuk::Allocator& frame_allocator,
-                                                const vuk::Extent3D& ext,
-                                                vuk::Value<vuk::ImageAttachment>& target) const;
-
   template <typename T>
   void show_component_gizmo(const float width,
                             const float height,
@@ -49,7 +44,7 @@ private:
       auto view = scene->registry.view<TransformComponent, T>();
 
       for (const auto&& [entity, transform, component] : view.each()) {
-        Vec3 pos = EUtil::get_world_transform(scene, entity)[3];
+        Vec3 pos = eutil::get_world_transform(scene, entity)[3];
 
         const auto inside = frustum.is_inside(pos);
 

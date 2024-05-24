@@ -1,12 +1,14 @@
 #include "Globals.hlsli"
 #include "VisBufferCommon.hlsli"
 
-void debug_draw_meshlet_aabb(const uint meshletId) {
-  const Meshlet meshlet = get_meshlet(meshletId);
-  const uint instance_id = meshlet.instanceId;
-  const float4x4 transform = get_instance(instance_id).transform;
-  const float3 aabb_min = meshlet.aabbMin.unpack();
-  const float3 aabb_max = meshlet.aabbMax.unpack();
+void debug_draw_meshlet_aabb(const uint meshletInstanceId) {
+  const MeshletInstance meshlet_instance = get_meshlet_instance(meshletInstanceId);
+  const uint32 meshlet_id = meshlet_instance.meshlet_id;
+  const Meshlet meshlet = get_meshlet(meshlet_id);
+  const float4x4 transform = get_transform(meshlet_instance.instance_id);
+
+  const float3 aabb_min = meshlet.aabb_min.unpack();
+  const float3 aabb_max = meshlet.aabb_max.unpack();
   const float3 aabb_size = aabb_max - aabb_min;
   const float3 aabb_corners[] = {aabb_min,
                                  aabb_min + float3(aabb_size.x, 0.0, 0.0),
@@ -34,7 +36,7 @@ void debug_draw_meshlet_aabb(const uint meshletId) {
   extent_packed.pack(extent);
 
   const float GOLDEN_CONJ = 0.6180339887498948482045868343656;
-  const float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshletId) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
+  const float4 color = float4(2.0 * hsv_to_rgb(float3(float(meshlet_id) * GOLDEN_CONJ, 0.875, 0.85)), 1.0);
   PackedFloat4 color_packed = (PackedFloat4)0;
   color_packed.pack(color);
 
@@ -46,15 +48,6 @@ void debug_draw_meshlet_aabb(const uint meshletId) {
   try_push_debug_aabb(aabb);
 }
 
-#if 0
-bool is_on_plane(in float3 center, in float3 extent, const float4 plane) {
-  // projection interval radius of b onto L(t) = b.c + t * p.n
-  const float r = extent.x * abs(plane.xyz.x) + extent.y * abs(plane.xyz.y) + extent.z * abs(plane.xyz.z);
-
-  return -r <= dot(plane.xyz, center) - plane.w;
-}
-#endif
-
 bool is_aabb_inside_plane(in float3 center, in float3 extent, in float4 plane) {
   const float3 normal = plane.xyz;
   const float radius = dot(extent, abs(normal));
@@ -62,17 +55,18 @@ bool is_aabb_inside_plane(in float3 center, in float3 extent, in float4 plane) {
 }
 
 struct GetMeshletUvBoundsParams {
-  uint meshlet_id;
+  uint meshlet_instance_id;
   float4x4 view_proj;
   bool clamp_ndc;
 };
 
 void get_meshlet_uv_bounds(GetMeshletUvBoundsParams params, out float2 minXY, out float2 maxXY, out float nearestZ, out int intersects_near_plane) {
-  const Meshlet meshlet = get_meshlet(params.meshlet_id);
-  const uint instanceId = meshlet.instanceId;
-  const float4x4 transform = get_instance(instanceId).transform;
-  const float3 aabb_min = meshlet.aabbMin.unpack();
-  const float3 aabb_max = meshlet.aabbMax.unpack();
+  const MeshletInstance meshlet_instance = get_meshlet_instance(params.meshlet_instance_id);
+  const Meshlet meshlet = get_meshlet(meshlet_instance.meshlet_id);
+  const float4x4 transform = get_transform(meshlet_instance.instance_id);
+
+  const float3 aabb_min = meshlet.aabb_min.unpack();
+  const float3 aabb_max = meshlet.aabb_max.unpack();
   const float3 aabb_size = aabb_max - aabb_min;
   const float3 aabb_corners[] = {aabb_min,
                                  aabb_min + float3(aabb_size.x, 0.0, 0.0),
@@ -140,20 +134,21 @@ bool cull_quad_hiz(float2 minXY, float2 maxXY, float nearestZ) {
   return true;
 }
 
-bool cull_meshlet_frustum(const uint meshletId) {
-  const Meshlet meshlet = get_meshlet(meshletId);
-  const uint instanceId = meshlet.instanceId;
-  const float4x4 transform = get_instance(instanceId).transform; // TODO: instanceId
-  const float3 aabbMin = meshlet.aabbMin.unpack();
-  const float3 aabbMax = meshlet.aabbMax.unpack();
-  const float3 aabbCenter = (aabbMin + aabbMax) / 2.0f;
-  const float3 aabbExtent = aabbMax - aabbCenter;
-  const float3 worldAabbCenter = float3(mul(transform, float4(aabbCenter, 1.0)).xyz);
+bool cull_meshlet_frustum(const uint meshlet_instance_id) {
+  const MeshletInstance meshlet_instance = get_meshlet_instance(meshlet_instance_id);
+  const Meshlet meshlet = get_meshlet(meshlet_instance.meshlet_id);
+  const float4x4 transform = get_transform(meshlet_instance.instance_id);
+
+  const float3 aabb_min = meshlet.aabb_min.unpack();
+  const float3 aabb_max = meshlet.aabb_max.unpack();
+  const float3 aabb_center = (aabb_min + aabb_max) / 2.0f;
+  const float3 aabb_extent = aabb_max - aabb_center;
+  const float3 world_aabb_center = float3(mul(transform, float4(aabb_center, 1.0)).xyz);
 
   const float4x4 transformT = transpose(transform);
-  const float3 right = transformT[0].xyz * aabbExtent.x;
-  const float3 up = transformT[1].xyz * aabbExtent.y;
-  const float3 forward = -transformT[2].xyz * aabbExtent.z;
+  const float3 right = transformT[0].xyz * aabb_extent.x;
+  const float3 up = transformT[1].xyz * aabb_extent.y;
+  const float3 forward = -transformT[2].xyz * aabb_extent.z;
 
   const float3 worldExtent = float3(abs(dot(float3(1.0, 0.0, 0.0), right)) + abs(dot(float3(1.0, 0.0, 0.0), up)) +
                                       abs(dot(float3(1.0, 0.0, 0.0), forward)),
@@ -166,7 +161,7 @@ bool cull_meshlet_frustum(const uint meshletId) {
 
   const CameraData cam = get_camera(0);
   for (uint i = 0; i < 6; ++i) {
-    if (!is_aabb_inside_plane(worldAabbCenter, worldExtent, cam.frustum_planes[i])) {
+    if (!is_aabb_inside_plane(world_aabb_center, worldExtent, cam.frustum_planes[i])) {
       return false;
     }
   }
@@ -176,15 +171,17 @@ bool cull_meshlet_frustum(const uint meshletId) {
 
 [numthreads(128, 1, 1)] void main(uint3 threadID
                                   : SV_DispatchThreadID) {
-  const uint meshletId = threadID.x;
+  const uint meshlet_instance_id = threadID.x;
+  const MeshletInstance meshlet_instance = get_meshlet_instance(meshlet_instance_id);
+  const uint meshlet_id = meshlet_instance.meshlet_id;
 
-  if (meshletId >= get_scene().meshlet_count) {
+  if (meshlet_id >= get_scene().meshlet_count) {
     return;
   }
 
-  if (cull_meshlet_frustum(meshletId)) {
+  if (cull_meshlet_frustum(meshlet_instance_id)) {
     GetMeshletUvBoundsParams params;
-    params.meshlet_id = meshletId;
+    params.meshlet_instance_id = meshlet_instance_id;
     params.view_proj = get_camera(0).projection_view;
     params.clamp_ndc = true;
 
@@ -208,10 +205,10 @@ bool cull_meshlet_frustum(const uint meshletId) {
     if (is_visible) {
       uint idx = 0;
       buffers_rw[CULL_TRIANGLES_DISPATCH_PARAMS_BUFFERS_INDEX].InterlockedAdd(0, 1, idx);
-      buffers_rw[VISIBLE_MESHLETS_BUFFER_INDEX].Store<uint32>(idx * sizeof(uint32), meshletId);
+      buffers_rw[VISIBLE_MESHLETS_BUFFER_INDEX].Store<uint32>(idx * sizeof(uint32), meshlet_id);
 
       if (get_scene().draw_meshlet_aabbs) {
-        debug_draw_meshlet_aabb(meshletId);
+        debug_draw_meshlet_aabb(meshlet_id);
         // DebugRect rect;
         // rect.minOffset = Vec2ToPacked(minXY);
         // rect.maxOffset = Vec2ToPacked(maxXY);

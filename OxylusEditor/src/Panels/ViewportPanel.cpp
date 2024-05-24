@@ -63,157 +63,6 @@ ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true)
   task_scheduler->wait_for_all();
 }
 
-vuk::Value<vuk::ImageAttachment> ViewportPanel::outline_pass(vuk::Allocator& frame_allocator,
-                                                             const vuk::Extent3D& ext,
-                                                             vuk::Value<vuk::ImageAttachment>& target) const {
-  struct VsUbo {
-    Mat4 projection_view;
-  } vs_ubo;
-
-  vs_ubo.projection_view = m_camera.get_projection_matrix() * m_camera.get_view_matrix();
-  auto [vs_buff, _] = create_buffer(frame_allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnGraphics, std::span(&vs_ubo, 1));
-  auto& vs_buffer = *vs_buff;
-
-  vuk::Value<vuk::ImageAttachment> output = target;
-
-  if (m_scene_hierarchy_panel) {
-    const auto entity = m_scene_hierarchy_panel->get_selected_entity();
-    const auto mesh_component = context->registry.try_get<MeshComponent>(entity);
-    if (entity != entt::null && mesh_component) {
-      const auto model_matrix = EUtil::get_world_transform(context.get(), entity);
-
-      auto pass = vuk::make_pass("outline_pass",
-                                 [mesh_component, vs_buffer, model_matrix](vuk::CommandBuffer& command_buffer,
-                                                                           VUK_IA(vuk::eColorRW) dst,
-                                                                           VUK_IA(vuk::eDepthStencilRW) depth) {
-        constexpr auto stencil_state = vuk::StencilOpState{
-          .failOp = vuk::StencilOp::eReplace,
-          .passOp = vuk::StencilOp::eReplace,
-          .depthFailOp = vuk::StencilOp::eReplace,
-          .compareOp = vuk::CompareOp::eAlways,
-          .compareMask = 0xFF,
-          .writeMask = 0xFF,
-          .reference = 1,
-        };
-
-        command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
-          .set_viewport(0, vuk::Rect2D::framebuffer())
-          .set_scissor(0, vuk::Rect2D::framebuffer())
-          .broadcast_color_blend(vuk::BlendPreset::eOff)
-          .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-          .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
-            .depthTestEnable = true,
-            .depthWriteEnable = true,
-            .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
-            .stencilTestEnable = true,
-            .front = stencil_state,
-            .back = stencil_state,
-          })
-          .bind_graphics_pipeline("stencil_pipeline")
-          .specialize_constants(0, 0)
-          .bind_buffer(0, 0, vs_buffer);
-
-        mesh_component->mesh_base->bind_index_buffer(command_buffer);
-        mesh_component->mesh_base->bind_vertex_buffer(command_buffer);
-
-        const auto flattened = mesh_component->get_flattened();
-        for (auto meshlet : flattened.meshlets) {
-          struct PushConstant {
-            Mat4 model_matrix;
-            Vec4 color;
-          } pc;
-
-          pc.model_matrix = model_matrix;
-          pc.color = Vec4(0.f);
-
-          command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
-
-          command_buffer.draw_indexed(meshlet.index_count, 1, meshlet.index_offset, 0, 0);
-        }
-
-        constexpr auto stencil_state2 = vuk::StencilOpState{.failOp = vuk::StencilOp::eKeep,
-                                                            .passOp = vuk::StencilOp::eReplace,
-                                                            .depthFailOp = vuk::StencilOp::eKeep,
-                                                            .compareOp = vuk::CompareOp::eNotEqual,
-                                                            .compareMask = 0xFF,
-                                                            .writeMask = 0xFF,
-                                                            .reference = 1};
-
-        command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
-          .set_viewport(0, vuk::Rect2D::framebuffer())
-          .set_scissor(0, vuk::Rect2D::framebuffer())
-          .broadcast_color_blend(vuk::BlendPreset::eOff)
-          .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-          .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{.depthTestEnable = false,
-                                                                      .depthWriteEnable = true,
-                                                                      .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
-                                                                      .stencilTestEnable = true,
-                                                                      .front = stencil_state2,
-                                                                      .back = stencil_state2})
-          .bind_graphics_pipeline("stencil_pipeline")
-          .bind_buffer(0, 0, vs_buffer);
-
-        for (auto meshlet : flattened.meshlets) {
-          struct PushConstant {
-            Mat4 model_matrix;
-            Vec4 color;
-          } pc;
-
-          pc.model_matrix = scale(model_matrix, Vec3(1.02f));
-          pc.color = Vec4(1.f, 0.45f, 0.f, 1.f);
-
-          command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
-
-          command_buffer.draw_indexed(meshlet.index_count, 1, meshlet.index_offset, 0, 0);
-        }
-
-        return dst;
-      });
-
-      auto attachment = vuk::ImageAttachment{
-        .extent = ext,
-        .format = vuk::Format::eR8G8B8A8Unorm,
-        .sample_count = vuk::SampleCountFlagBits::e1,
-        .level_count = 1,
-        .layer_count = 1,
-      };
-
-      auto outline_image = vuk::clear_image(vuk::declare_ia("outline_image", attachment), vuk::Black<float>);
-      attachment.format = vuk::Format::eD32SfloatS8Uint;
-      auto outline_depth = vuk::clear_image(vuk::declare_ia("outline_depth", attachment), vuk::DepthZero);
-
-      auto outline_output = pass(outline_image, outline_depth);
-
-      attachment.format = vuk::Format::eR8G8B8A8Unorm;
-      auto final_outline_image = vuk::clear_image(vuk::declare_ia("final_outlined_image", attachment), vuk::Black<float>);
-
-      auto apply_pass = vuk::make_pass("apply_outline",
-                                       [](vuk::CommandBuffer& command_buffer,
-                                          VUK_IA(vuk::eColorRW) target,
-                                          VUK_IA(vuk::eFragmentSampled) final_image,
-                                          VUK_IA(vuk::eFragmentSampled) outline_img) {
-        command_buffer.bind_graphics_pipeline("fullscreen_pipeline")
-          .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
-          .set_viewport(0, vuk::Rect2D::framebuffer())
-          .set_scissor(0, vuk::Rect2D::framebuffer())
-          .broadcast_color_blend(vuk::BlendPreset::eOff)
-          .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-          .bind_image(0, 0, final_image)
-          .bind_sampler(0, 0, vuk::LinearSamplerClamped)
-          .bind_image(0, 1, outline_img)
-          .bind_sampler(0, 1, vuk::LinearSamplerClamped)
-          .draw(3, 1, 0, 0);
-
-        return target;
-      });
-
-      output = apply_pass(final_outline_image, target, outline_output);
-    }
-  }
-
-  return output;
-}
-
 void ViewportPanel::on_imgui_render() {
   draw_performance_overlay();
 
@@ -283,15 +132,6 @@ void ViewportPanel::on_imgui_render() {
     vuk::Value<vuk::ImageAttachment>* final_image = rp->get_final_image();
 
     if (final_image) {
-      // auto* frame_allocator = rp->get_frame_allocator();
-      // auto* compiler = rp->get_compiler();
-      // auto outline = outline_pass(*frame_allocator, extent, *final_image);
-
-      // if (!context->is_running()) {
-      //   mouse_picking_pass(*frame_allocator, *compiler, extent);
-      //   final_image = &outline;
-      // }
-
       OxUI::image(*final_image, ImVec2{fixed_width, viewport_panel_size.y});
     } else {
       const auto text_width = ImGui::CalcTextSize("No render target!").x;
@@ -429,141 +269,6 @@ void ViewportPanel::on_imgui_render() {
   }
 }
 
-void ViewportPanel::mouse_picking_pass(vuk::Allocator& frame_allocator, vuk::Compiler& compiler, const vuk::Extent3D& ext) {
-  struct SceneMesh {
-    uint32_t entity_id = 0;
-    MeshComponent mesh_component = {};
-  };
-
-  std::vector<SceneMesh> scene_meshes = {};
-
-  // TODO: frustum cull
-  const auto mesh_view = context->registry.view<TransformComponent, MeshComponent, TagComponent>();
-  for (const auto&& [entity, transform, mesh_component, tag] : mesh_view.each()) {
-    if (tag.enabled) {
-      mesh_component.transform = EUtil::get_world_transform(context.get(), entity);
-      const auto id = (uint32_t)entity + 1u; // increment entity id by one so black color and the first entity doesn't get mixed
-      scene_meshes.emplace_back(id, mesh_component);
-    }
-  }
-
-  auto attachment = vuk::ImageAttachment{.extent = ext,
-                                         .format = vuk::Format::eR32Uint,
-                                         .sample_count = vuk::SampleCountFlagBits::e1,
-                                         .level_count = 1,
-                                         .layer_count = 1};
-
-  auto id_buffer_image = vuk::clear_image(vuk::declare_ia("id_buffer_image", attachment), vuk::Black<uint32_t>);
-  attachment.format = vuk::Format::eD32Sfloat;
-  auto id_buffer_depth = vuk::clear_image(vuk::declare_ia("id_buffer_depth", attachment), vuk::DepthZero);
-
-  auto id_buff_pass = vuk::make_pass("id_buffer_pass",
-                                     [ext, this, scene_meshes](vuk::CommandBuffer& command_buffer,
-                                                               VUK_IA(vuk::eColorRW) target,
-                                                               VUK_IA(vuk::eDepthStencilRW) depth) {
-    const auto rect = vuk::Viewport{0, (float)ext.height, (float)ext.width, -(float)ext.height, 0.0, 1.0};
-    command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
-      .set_viewport(0, rect)
-      .set_scissor(0, vuk::Rect2D::framebuffer())
-      .broadcast_color_blend(vuk::BlendPreset::eOff)
-      .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-      .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
-        .depthTestEnable = true,
-        .depthWriteEnable = true,
-        .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
-      })
-      .bind_graphics_pipeline("id_pipeline");
-
-    struct VsUbo {
-      Mat4 projection_view;
-    } vs_ubo;
-
-    vs_ubo.projection_view = m_camera.get_projection_matrix() * m_camera.get_view_matrix();
-
-    auto* buff = command_buffer.scratch_buffer<VsUbo>(0, 0);
-    *buff = vs_ubo;
-
-    for (auto& mesh : scene_meshes) {
-      mesh.mesh_component.mesh_base->bind_index_buffer(command_buffer);
-      mesh.mesh_component.mesh_base->bind_vertex_buffer(command_buffer);
-
-      const auto flattened = mesh.mesh_component.get_flattened();
-      for (auto meshlet : flattened.meshlets) {
-        struct PushConstant {
-          Mat4 model_matrix;
-          uint32_t entity_id;
-        } pc;
-
-        pc.model_matrix = mesh.mesh_component.transform;
-        pc.entity_id = mesh.entity_id;
-
-        command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
-        command_buffer.draw_indexed(meshlet.index_count, 1, meshlet.index_offset, 0, 0);
-      }
-    }
-
-    return target;
-  });
-
-  auto id_buff_image_output = id_buff_pass(id_buffer_image, id_buffer_depth);
-
-  if (id_buffers.empty()) {
-    id_buffers.reserve(VkContext::get()->num_inflight_frames);
-    for (uint32_t i = 0; i < VkContext::get()->num_inflight_frames; i++)
-      id_buffers.emplace_back(*allocate_buffer(*VkContext::get()->superframe_allocator,
-                                               {vuk::MemoryUsage::eGPUtoCPU, (uint64_t)(ext.width * ext.height * 4u), 1}));
-  }
-
-  if (VkContext::get()->num_frames < VkContext::get()->num_inflight_frames)
-    return;
-
-  auto [mx, my] = ImGui::GetMousePos();
-  mx -= viewport_offset.x;
-  my -= viewport_offset.y;
-  my = viewport_panel_size.y - my;
-
-  int32_t mouse_x = glm::max(0, (int32_t)mx);
-  int32_t mouse_y = glm::max(0, (int32_t)my);
-
-  auto id_copy_pass = vuk::make_pass("id_copy_pass",
-                                     [ext](vuk::CommandBuffer& command_buffer,
-                                           VUK_IA(vuk::eTransferRead) id_buffer_image,
-                                           VUK_BA(vuk::eTransferWrite) id_buffer_output) {
-    const auto params = vuk::BufferImageCopy{
-      .bufferOffset = 0,
-      .bufferRowLength = 0,
-      .bufferImageHeight = 0,
-      .imageSubresource = {.aspectMask = vuk::ImageAspectFlagBits::eColor},
-      .imageOffset = {.x = 0, .y = 0, .z = 0},
-      .imageExtent = ext,
-    };
-
-    command_buffer.copy_image_to_buffer(id_buffer_image, id_buffer_output, params);
-    return id_buffer_output;
-  });
-
-  auto id_buff_target = vuk::declare_buf("id_buffer_target", *id_buffers[VkContext::get()->current_frame]);
-  vuk::Value<vuk::Buffer> id_buff_output = id_copy_pass(id_buff_image_output, id_buff_target);
-
-  vuk::Buffer buffer = *id_buff_output.get(frame_allocator, compiler);
-
-  const auto buf_pos = (mouse_y * ext.width + mouse_x) * 4;
-
-  if (buf_pos + sizeof(uint32_t) <= buffer.size) {
-    uint32_t id = entt::null;
-    memcpy(&id, &buffer.mapped_ptr[buf_pos], sizeof(uint32_t));
-
-    hovered_entity = id == entt::null ? entt::null : entt::entity{id - 1u};
-
-    if (!ImGuizmo::IsUsing() && !ImGuizmo::IsOver()) {
-      if (hovered_entity != entt::null && ImGui::IsMouseClicked(ImGuiMouseButton_Left) && is_viewport_hovered)
-        m_scene_hierarchy_panel->set_selected_entity(hovered_entity);
-      else if (ImGui::IsMouseClicked(ImGuiMouseButton_Left) && is_viewport_hovered)
-        m_scene_hierarchy_panel->set_selected_entity(entt::null);
-    }
-  }
-}
-
 void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel) {
   m_scene_hierarchy_panel = &scene_hierarchy_panel;
   context = scene;
@@ -677,7 +382,7 @@ void ViewportPanel::draw_gizmos() {
 
     const Mat4& camera_view = m_camera.get_view_matrix();
 
-    Mat4 transform = EUtil::get_world_transform(context.get(), selected_entity);
+    Mat4 transform = eutil::get_world_transform(context.get(), selected_entity);
 
     // Snapping
     const bool snap = Input::get_key_held(KeyCode::LeftControl);
@@ -697,8 +402,8 @@ void ViewportPanel::draw_gizmos() {
                snap ? snap_values : nullptr);
 
     if (ImGuizmo::IsUsing()) {
-      const Entity parent = EUtil::get_parent(context.get(), selected_entity);
-      const Mat4& parent_world_transform = parent != entt::null ? EUtil::get_world_transform(context.get(), parent) : Mat4(1.0f);
+      const Entity parent = eutil::get_parent(context.get(), selected_entity);
+      const Mat4& parent_world_transform = parent != entt::null ? eutil::get_world_transform(context.get(), parent) : Mat4(1.0f);
       Vec3 translation, rotation, scale;
       if (math::decompose_transform(inverse(parent_world_transform) * transform, translation, rotation, scale)) {
         tc->position = translation;

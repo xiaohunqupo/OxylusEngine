@@ -1,27 +1,24 @@
 #include "Mesh.hpp"
 
-#include <execution>
-
-#include "vuk/Types.hpp"
-
+#include <fastgltf/core.hpp>
 #include <fastgltf/glm_element_traits.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
+#include <glm/gtc/type_ptr.hpp>
 #include <ktx.h>
-#include <stb_image.h>
-
 #include <meshoptimizer.h>
+#include <stb_image.h>
+#include <vuk/Types.hpp>
+#include <vuk/vsl/Core.hpp>
+
+#include <execution>
 #include <ranges>
 #include <stack>
-
-#include <glm/gtc/type_ptr.hpp>
-#include <vuk/vsl/Core.hpp>
 
 #include "Assets/AssetManager.hpp"
 #include "Core/FileSystem.hpp"
 
 #include "Scene/Components.hpp"
-#include "Scene/Entity.hpp"
 
 #include "Scene/Scene.hpp"
 
@@ -30,50 +27,34 @@
 #include "Utils/Timer.hpp"
 
 #include "Vulkan/VkContext.hpp"
-#include "fastgltf/core.hpp"
 
 namespace ox {
 Mesh::Mesh(const std::string_view path) { load_from_file(path.data()); }
 
-Mesh::SceneFlattened Mesh::flatten() const {
-  SceneFlattened sceneFlattened;
-
+void Mesh::set_transforms() const {
   struct StackElement {
-    const Node* node;
-    Mat4 parentGlobalTransform;
+    Node* node;
+    Mat4 parent_global_transform;
   };
-  std::stack<StackElement> nodeStack;
+  std::stack<StackElement> node_stack;
 
-  for (auto* rootNode : rootNodes) {
-    nodeStack.emplace(rootNode, rootNode->get_local_transform());
+  for (auto* rootNode : root_nodes) {
+    node_stack.emplace(rootNode, rootNode->get_local_transform());
   }
 
   // Traverse the scene
-  while (!nodeStack.empty()) {
-    auto [node, parentGlobalTransform] = nodeStack.top();
-    nodeStack.pop();
+  while (!node_stack.empty()) {
+    auto [node, parent_global_transform] = node_stack.top();
+    node_stack.pop();
 
-    sceneFlattened.nodes.emplace_back(node);
+    const auto global_transform = parent_global_transform * node->get_local_transform();
 
-    const auto globalTransform = parentGlobalTransform * node->get_local_transform();
+    node->global_transform = global_transform;
 
-    for (const auto* childNode : node->children) {
-      nodeStack.emplace(childNode, globalTransform);
-    }
-
-    if (!node->meshlets.empty()) {
-      const auto instanceId = sceneFlattened.transforms.size();
-      sceneFlattened.transforms.emplace_back(globalTransform);
-      for (auto meshlet : node->meshlets) {
-        meshlet.instance_id = static_cast<uint32_t>(instanceId);
-        sceneFlattened.meshlets.emplace_back(meshlet);
-      }
+    for (auto* child_node : node->children) {
+      node_stack.emplace(child_node, global_transform);
     }
   }
-
-  sceneFlattened.materials = _materials;
-
-  return sceneFlattened;
 }
 
 Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indices) {
@@ -102,27 +83,27 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indic
   index_count = (uint32)indices.size();
 }
 
-static std::vector<Vertex> ConvertVertexBufferFormat(const fastgltf::Asset& model,
-                                                     std::size_t positionAccessorIndex,
-                                                     std::size_t normalAccessorIndex,
-                                                     std::optional<std::size_t> texcoordAccessorIndex,
-                                                     std::optional<std::size_t> color_accessor_index) {
+static std::vector<Vertex> convert_vertex_buffer_format(const fastgltf::Asset& model,
+                                                        std::size_t position_accessor_index,
+                                                        std::size_t normal_accessor_index,
+                                                        std::optional<std::size_t> texcoord_accessor_index,
+                                                        std::optional<std::size_t> color_accessor_index) {
   OX_SCOPED_ZONE;
   std::vector<float3> positions;
-  auto& positionAccessor = model.accessors[positionAccessorIndex];
-  positions.resize(positionAccessor.count);
-  fastgltf::iterateAccessorWithIndex<float3>(model, positionAccessor, [&](float3 position, std::size_t idx) { positions[idx] = position; });
+  auto& position_accessor = model.accessors[position_accessor_index];
+  positions.resize(position_accessor.count);
+  fastgltf::iterateAccessorWithIndex<float3>(model, position_accessor, [&](float3 position, std::size_t idx) { positions[idx] = position; });
 
   std::vector<float3> normals;
-  auto& normalAccessor = model.accessors[normalAccessorIndex];
+  auto& normalAccessor = model.accessors[normal_accessor_index];
   normals.resize(normalAccessor.count);
   fastgltf::iterateAccessorWithIndex<float3>(model, normalAccessor, [&](float3 normal, std::size_t idx) { normals[idx] = normal; });
 
   std::vector<float2> texcoords;
 
   // Textureless meshes will use factors instead of textures
-  if (texcoordAccessorIndex.has_value()) {
-    auto& texcoordAccessor = model.accessors[texcoordAccessorIndex.value()];
+  if (texcoord_accessor_index.has_value()) {
+    auto& texcoordAccessor = model.accessors[texcoord_accessor_index.value()];
     texcoords.resize(texcoordAccessor.count);
     fastgltf::iterateAccessorWithIndex<float2>(model, texcoordAccessor, [&](float2 texcoord, std::size_t idx) { texcoords[idx] = texcoord; });
   } else {
@@ -151,7 +132,7 @@ static std::vector<Vertex> ConvertVertexBufferFormat(const fastgltf::Asset& mode
   return vertices;
 }
 
-static std::vector<uint32> ConvertIndexBufferFormat(const fastgltf::Asset& model, std::size_t indicesAccessorIndex) {
+static std::vector<uint32> convert_index_buffer_format(const fastgltf::Asset& model, std::size_t indicesAccessorIndex) {
   OX_SCOPED_ZONE;
   auto indices = std::vector<uint32>();
   auto& accessor = model.accessors[indicesAccessorIndex];
@@ -160,7 +141,7 @@ static std::vector<uint32> ConvertIndexBufferFormat(const fastgltf::Asset& model
   return indices;
 }
 
-glm::mat4 NodeToMat4(const fastgltf::Node& node) {
+glm::mat4 node_to_mat4(const fastgltf::Node& node) {
   glm::mat4 transform{1};
 
   if (auto* trs = std::get_if<fastgltf::TRS>(&node.transform)) {
@@ -172,7 +153,7 @@ glm::mat4 NodeToMat4(const fastgltf::Node& node) {
     const glm::mat4 rotationMat = glm::mat4_cast(rotation);
 
     // T * R * S
-    transform = glm::translate(Mat4(1.0f), translation) * rotationMat, glm::scale(Mat4(1.0f), scale);
+    transform = glm::translate(Mat4(1.0f), translation) * rotationMat * glm::scale(Mat4(1.0f), scale);
   } else if (auto* mat = std::get_if<fastgltf::Node::TransformMatrix>(&node.transform)) {
     transform = glm::make_mat4(mat->data());
   }
@@ -181,30 +162,23 @@ glm::mat4 NodeToMat4(const fastgltf::Node& node) {
   return transform;
 }
 
-constexpr auto maxMeshletIndices = 64u;
-constexpr auto maxMeshletPrimitives = 64u;
-constexpr auto meshletConeWeight = 0.0f;
+// TODO: move to cvars maybe
+constexpr auto MAX_MESHLET_INDICES = 64u;
+constexpr auto MAX_MESHLET_PRIMITIVES = 64u;
+constexpr auto MESHLET_CONE_WEIGHT = 0.0f;
 
 struct RawMesh {
   std::vector<Vertex> vertices;
   std::vector<uint32> indices;
-  AABB boundingBox;
+  AABB bounding_box;
 };
 
 struct NodeTempData {
   struct Indices {
-    size_t rawMeshIndex;
-    size_t materialIndex;
+    size_t raw_mesh_index;
+    size_t material_index;
   };
   std::vector<Indices> indices;
-};
-
-struct LoadModelResult {
-  std::list<Mesh::Node> nodes;
-  // This is a semi-hacky way to extend `nodes` without changing the node type, so we can still splice our nodes onto the main scene's
-  std::vector<NodeTempData> tempData;
-  std::vector<RawMesh> rawMeshes;
-  std::vector<Shared<Material>> materials;
 };
 
 void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform) {
@@ -215,10 +189,10 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   path = file_path;
 
   const auto extension = fs::get_file_extension(file_path);
-  const auto isText = extension == "gltf";
-  const auto isBinary = extension == "glb";
+  const auto is_text = extension == "gltf";
+  const auto is_binary = extension == "glb";
 
-  if (!isText && !isBinary) {
+  if (!is_text && !is_binary) {
     OX_LOG_ERROR("Only glTF files(.gltf/.glb) are supported!");
     return;
   }
@@ -234,7 +208,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
     data.loadFromFile(file_path);
 
     constexpr auto options = fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages | fastgltf::Options::LoadGLBBuffers;
-    if (isBinary) {
+    if (is_binary) {
       return parser.loadGltfBinary(&data, fs::get_directory(file_path), options);
     }
 
@@ -253,148 +227,129 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   auto images = load_images(asset);
   _materials = load_materials(asset, images);
 
-  LoadModelResult scene;
-
   struct AccessorIndices {
-    std::optional<std::size_t> positionsIndex;
-    std::optional<std::size_t> normalsIndex;
-    std::optional<std::size_t> texcoordsIndex;
-    std::optional<std::size_t> colorsIndex;
-    std::optional<std::size_t> indicesIndex;
+    std::optional<std::size_t> positions_index;
+    std::optional<std::size_t> normals_index;
+    std::optional<std::size_t> texcoords_index;
+    std::optional<std::size_t> colors_index;
+    std::optional<std::size_t> indices_index;
 
     auto operator<=>(const AccessorIndices&) const = default;
   };
 
-  auto uniqueAccessorCombinations = std::vector<std::pair<AccessorIndices, std::size_t>>();
+  std::vector<std::pair<AccessorIndices, std::size_t>> unique_accessor_combinations = {};
 
   // <node*, global transform>
   struct StackElement {
-    Node* sceneNode{};
-    const fastgltf::Node* gltfNode{};
-    size_t tempDataIndex;
+    Node* scene_node{};
+    const fastgltf::Node* gltf_node{};
+    size_t temp_data_index;
   };
-  std::stack<StackElement> nodeStack;
+  std::stack<StackElement> node_stack;
 
-  uint32 node_index = 0;
+  std::vector<NodeTempData> temp_data = {};
+
   for (const fastgltf::Node& node : asset.nodes) {
     const auto name = node.name.empty() ? std::string("Node") : std::string(node.name);
-    Node* sceneNode = &scene.nodes.emplace_back(name);
-    sceneNode->index = node_index;
-    nodeStack.emplace(sceneNode, &node, scene.tempData.size());
-    scene.tempData.emplace_back();
-
-    std::visit(fastgltf::visitor{[&](const fastgltf::Node::TransformMatrix& matrix) { memcpy(&sceneNode->transform, matrix.data(), sizeof(matrix)); },
-                                 [&](const fastgltf::TRS& transform) {
-      const glm::vec3 tl(transform.translation[0], transform.translation[1], transform.translation[2]);
-      const glm::quat rot(transform.rotation[3], transform.rotation[0], transform.rotation[1], transform.rotation[2]);
-      const glm::vec3 sc(transform.scale[0], transform.scale[1], transform.scale[2]);
-
-      sceneNode->translation = tl;
-      sceneNode->rotation = rot;
-      sceneNode->scale = sc;
-
-      const glm::mat4 tm = glm::translate(glm::mat4(1.f), tl);
-      const glm::mat4 rm = glm::toMat4(rot);
-      const glm::mat4 sm = glm::scale(glm::mat4(1.f), sc);
-
-      sceneNode->transform = tm * rm * sm;
-    }},
-               node.transform);
-    node_index++;
+    Node* scene_node = &nodes.emplace_back(name);
+    scene_node->index = (uint32)nodes.size() - 1u;
+    node_stack.emplace(scene_node, &node, temp_data.size());
+    temp_data.emplace_back();
   }
 
-  while (!nodeStack.empty()) {
-    decltype(nodeStack)::value_type top = nodeStack.top();
-    const auto& [node, gltfNode, tempDataIndex] = top;
-    nodeStack.pop();
+  while (!node_stack.empty()) {
+    decltype(node_stack)::value_type top = node_stack.top();
+    const auto& [node, gltf_node, tempDataIndex] = top;
+    node_stack.pop();
 
-    const glm::mat4 localTransform = NodeToMat4(*gltfNode);
+    const glm::mat4 local_transform = node_to_mat4(*gltf_node);
 
-    std::array<float, 16> localTransformArray{};
-    std::copy_n(&localTransform[0][0], 16, localTransformArray.data());
-    std::array<float, 3> scaleArray{};
-    std::array<float, 4> rotationArray{};
-    std::array<float, 3> translationArray{};
-    fastgltf::decomposeTransformMatrix(localTransformArray, scaleArray, rotationArray, translationArray);
+    std::array<float, 16> local_transform_array{};
+    std::copy_n(&local_transform[0][0], 16, local_transform_array.data());
+    std::array<float, 3> scale_array{};
+    std::array<float, 4> rotation_array{};
+    std::array<float, 3> translation_array{};
+    fastgltf::decomposeTransformMatrix(local_transform_array, scale_array, rotation_array, translation_array);
 
-    node->translation = glm::make_vec3(translationArray.data());
-    node->rotation = {rotationArray[3], rotationArray[0], rotationArray[1], rotationArray[2]};
-    node->scale = glm::make_vec3(scaleArray.data());
+    node->translation = glm::make_vec3(translation_array.data());
+    node->rotation = {rotation_array[3], rotation_array[0], rotation_array[1], rotation_array[2]};
+    node->scale = glm::make_vec3(scale_array.data());
 
-    for (auto childNodeIndex : gltfNode->children) {
-      const auto& assetNode = asset.nodes[childNodeIndex];
-      const auto name = assetNode.name.empty() ? std::string("Node") : std::string(assetNode.name);
-      Node* childSceneNode = &scene.nodes.emplace_back(name);
-      node->children.emplace_back(childSceneNode);
-      nodeStack.emplace(childSceneNode, &assetNode, scene.tempData.size());
-      scene.tempData.emplace_back();
+    for (auto child_node_index : gltf_node->children) {
+      const auto& asset_node = asset.nodes[child_node_index];
+      Node* child_scene_node = &nodes[child_node_index];
+      child_scene_node->parent = node;
+      node->children.emplace_back(child_scene_node);
+      node_stack.emplace(child_scene_node, &asset_node, temp_data.size());
+      temp_data.emplace_back();
     }
 
-    if (gltfNode->meshIndex.has_value()) {
+    if (gltf_node->meshIndex.has_value()) {
       // Load each primitive in the mesh
-      for (const fastgltf::Mesh& mesh = asset.meshes[gltfNode->meshIndex.value()]; const auto& primitive : mesh.primitives) {
-        AccessorIndices accessorIndices;
+      for (const fastgltf::Mesh& mesh = asset.meshes[gltf_node->meshIndex.value()]; const auto& primitive : mesh.primitives) {
+        AccessorIndices accessor_indices;
         if (auto it = primitive.findAttribute("POSITION"); it != primitive.attributes.end()) {
-          accessorIndices.positionsIndex = it->second;
+          accessor_indices.positions_index = it->second;
         } else {
           OX_ASSERT(false);
         }
 
         if (auto it = primitive.findAttribute("NORMAL"); it != primitive.attributes.end()) {
-          accessorIndices.normalsIndex = it->second;
+          accessor_indices.normals_index = it->second;
         } else {
           // TODO: calculate normal
           OX_ASSERT(false);
         }
 
         if (auto it = primitive.findAttribute("TEXCOORD_0"); it != primitive.attributes.end()) {
-          accessorIndices.texcoordsIndex = it->second;
+          accessor_indices.texcoords_index = it->second;
         } else {
           // Okay, texcoord can be safely missing
         }
 
         if (auto it = primitive.findAttribute("COLOR_0"); it != primitive.attributes.end()) {
-          accessorIndices.colorsIndex = it->second;
+          accessor_indices.colors_index = it->second;
         }
 
         OX_ASSERT(primitive.indicesAccessor.has_value() && "Non-indexed meshes are not supported");
-        accessorIndices.indicesIndex = *primitive.indicesAccessor;
+        accessor_indices.indices_index = *primitive.indicesAccessor;
 
-        size_t rawMeshIndex = uniqueAccessorCombinations.size();
+        size_t raw_mesh_index = unique_accessor_combinations.size();
 
         // Only emplace and increment counter if combo does not exist
-        if (auto it = std::ranges::find_if(uniqueAccessorCombinations, [&](const auto& p) { return p.first == accessorIndices; });
-            it == uniqueAccessorCombinations.end()) {
-          uniqueAccessorCombinations.emplace_back(accessorIndices, rawMeshIndex);
+        if (auto it = std::ranges::find_if(unique_accessor_combinations, [&](const auto& p) { return p.first == accessor_indices; });
+            it == unique_accessor_combinations.end()) {
+          unique_accessor_combinations.emplace_back(accessor_indices, raw_mesh_index);
         } else {
           // Combo already exists
-          rawMeshIndex = it->second;
+          raw_mesh_index = it->second;
         }
 
-        const auto materialId = primitive.materialIndex.value_or(0);
+        const auto material_id = primitive.materialIndex.value_or(0);
 
-        scene.tempData[tempDataIndex].indices.emplace_back(rawMeshIndex, materialId);
+        temp_data[tempDataIndex].indices.emplace_back(raw_mesh_index, material_id);
       }
     }
   }
 
-  scene.rawMeshes.resize(uniqueAccessorCombinations.size());
+  std::vector<RawMesh> raw_meshes = {};
+  raw_meshes.resize(unique_accessor_combinations.size());
 
   std::transform(std::execution::par,
-                 uniqueAccessorCombinations.begin(),
-                 uniqueAccessorCombinations.end(),
-                 scene.rawMeshes.begin(),
+                 unique_accessor_combinations.begin(),
+                 unique_accessor_combinations.end(),
+                 raw_meshes.begin(),
                  [&](const std::pair<AccessorIndices, std::size_t>& keyValue) -> RawMesh {
     OX_SCOPED_ZONE_N("Convert vertices and indices");
     const auto& [accessorIndices, _] = keyValue;
-    auto vertices = ConvertVertexBufferFormat(asset,
-                                              accessorIndices.positionsIndex.value(),
-                                              accessorIndices.normalsIndex.value(),
-                                              accessorIndices.texcoordsIndex,
-                                              accessorIndices.colorsIndex);
-    auto indices = ConvertIndexBufferFormat(asset, accessorIndices.indicesIndex.value());
+    auto vertices = convert_vertex_buffer_format(asset,
+                                                 accessorIndices.positions_index.value(),
+                                                 accessorIndices.normals_index.value(),
+                                                 accessorIndices.texcoords_index,
+                                                 accessorIndices.colors_index);
+    auto indices = convert_index_buffer_format(asset, accessorIndices.indices_index.value());
 
-    const auto& positionAccessor = asset.accessors[accessorIndices.positionsIndex.value()];
+    const auto& positionAccessor = asset.accessors[accessorIndices.positions_index.value()];
 
     glm::vec3 bboxMin{};
     if (auto* dv = std::get_if<std::pmr::vector<double>>(&positionAccessor.min)) {
@@ -415,85 +370,88 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
     return RawMesh{
       .vertices = std::move(vertices),
       .indices = std::move(indices),
-      .boundingBox = AABB{bboxMin, bboxMax},
+      .bounding_box = AABB{bboxMin, bboxMax},
     };
   });
 
   const auto baseVertexOffset = _vertices.size();
   const auto baseIndexOffset = _indices.size();
-  const auto basePrimitiveOffset = primitives.size();
+  const auto basePrimitiveOffset = _primitives.size();
 
-  uint32_t vertexOffset = (uint32_t)baseVertexOffset;
-  uint32_t indexOffset = (uint32_t)baseIndexOffset;
-  uint32_t primitiveOffset = (uint32_t)basePrimitiveOffset;
+  uint32_t vertex_offset = (uint32_t)baseVertexOffset;
+  uint32_t index_offset = (uint32_t)baseIndexOffset;
+  uint32_t primitive_offset = (uint32_t)basePrimitiveOffset;
 
   struct MeshletInfo {
     const RawMesh* rawMeshPtr{};
     std::span<const Vertex> vertices;
-    std::vector<uint32_t> meshletIndices;
-    std::vector<uint8_t> meshletPrimitives;
-    std::vector<meshopt_Meshlet> rawMeshlets;
+    std::vector<uint32_t> meshlet_indices;
+    std::vector<uint8_t> meshlet_primitives;
+    std::vector<meshopt_Meshlet> raw_meshlets;
   };
 
-  std::vector<MeshletInfo> meshletInfos(scene.rawMeshes.size());
+  std::vector<MeshletInfo> meshlet_infos(raw_meshes.size());
 
-  std::transform(std::execution::par, scene.rawMeshes.begin(), scene.rawMeshes.end(), meshletInfos.begin(), [](const RawMesh& mesh) -> MeshletInfo {
+  std::transform(std::execution::par, raw_meshes.begin(), raw_meshes.end(), meshlet_infos.begin(), [](const RawMesh& mesh) -> MeshletInfo {
     OX_SCOPED_ZONE_N("Create meshlets for mesh");
 
-    const auto maxMeshlets = meshopt_buildMeshletsBound(mesh.indices.size(), maxMeshletIndices, maxMeshletPrimitives);
+    const auto max_meshlets = meshopt_buildMeshletsBound(mesh.indices.size(), MAX_MESHLET_INDICES, MAX_MESHLET_PRIMITIVES);
 
     MeshletInfo meshletInfo;
-    auto& [rawMeshPtr, vertices, meshletIndices, meshletPrimitives, rawMeshlets] = meshletInfo;
+    auto& [raw_mesh_ptr, vertices, meshlet_indices, meshlet_primitives, raw_meshlets] = meshletInfo;
 
-    rawMeshPtr = &mesh;
+    raw_mesh_ptr = &mesh;
     vertices = mesh.vertices;
-    meshletIndices.resize(maxMeshlets * maxMeshletIndices);
-    meshletPrimitives.resize(maxMeshlets * maxMeshletPrimitives * 3);
-    rawMeshlets.resize(maxMeshlets);
+    meshlet_indices.resize(max_meshlets * MAX_MESHLET_INDICES);
+    meshlet_primitives.resize(max_meshlets * MAX_MESHLET_PRIMITIVES * 3);
+    raw_meshlets.resize(max_meshlets);
 
-    const auto meshletCount = [&] {
+    const auto meshlet_count = [&] {
       OX_SCOPED_ZONE_N("meshopt_buildMeshlets");
-      return meshopt_buildMeshlets(rawMeshlets.data(),
-                                   meshletIndices.data(),
-                                   meshletPrimitives.data(),
+      return meshopt_buildMeshlets(raw_meshlets.data(),
+                                   meshlet_indices.data(),
+                                   meshlet_primitives.data(),
                                    mesh.indices.data(),
                                    mesh.indices.size(),
                                    reinterpret_cast<const float*>(mesh.vertices.data()),
                                    mesh.vertices.size(),
                                    sizeof(Vertex),
-                                   maxMeshletIndices,
-                                   maxMeshletPrimitives,
-                                   meshletConeWeight);
+                                   MAX_MESHLET_INDICES,
+                                   MAX_MESHLET_PRIMITIVES,
+                                   MESHLET_CONE_WEIGHT);
     }();
 
-    const auto& lastMeshlet = rawMeshlets[meshletCount - 1];
-    meshletIndices.resize(lastMeshlet.vertex_offset + lastMeshlet.vertex_count);
-    meshletPrimitives.resize(lastMeshlet.triangle_offset + ((lastMeshlet.triangle_count * 3 + 3) & ~3));
-    rawMeshlets.resize(meshletCount);
+    const auto& last_meshlet = raw_meshlets[meshlet_count - 1];
+    meshlet_indices.resize(last_meshlet.vertex_offset + last_meshlet.vertex_count);
+    meshlet_primitives.resize(last_meshlet.triangle_offset + ((last_meshlet.triangle_count * 3 + 3) & ~3));
+    raw_meshlets.resize(meshlet_count);
 
     return meshletInfo;
   });
 
-  auto perMeshMeshlets = std::vector<std::vector<Mesh::Meshlet>>(meshletInfos.size());
+  auto per_mesh_meshlets = std::vector<std::vector<uint32_t>>(meshlet_infos.size());
 
   // For each mesh, create "meshlet templates" (meshlets without per-instance data) and copy vertices, indices, and primitives to mega buffers
-  for (size_t meshIndex = 0; meshIndex < meshletInfos.size(); meshIndex++) {
-    auto& [rawMesh, vert, meshletIndices, meshletPrimitives, rawMeshlets] = meshletInfos[meshIndex];
-    perMeshMeshlets[meshIndex].reserve(rawMeshlets.size());
+  for (size_t mesh_index = 0; mesh_index < meshlet_infos.size(); mesh_index++) {
+    auto& [rawMesh, vert, meshlet_indices, meshlet_primitives, rawMeshlets] = meshlet_infos[mesh_index];
+    per_mesh_meshlets[mesh_index].reserve(rawMeshlets.size());
 
     for (const auto& meshlet : rawMeshlets) {
       auto min = glm::vec3(std::numeric_limits<float>::max());
       auto max = glm::vec3(std::numeric_limits<float>::lowest());
       for (uint32_t i = 0; i < meshlet.triangle_count * 3; ++i) {
-        const auto& vertex = rawMesh->vertices[meshletIndices[meshlet.vertex_offset + meshletPrimitives[meshlet.triangle_offset + i]]];
+        const auto& vertex = rawMesh->vertices[meshlet_indices[meshlet.vertex_offset + meshlet_primitives[meshlet.triangle_offset + i]]];
         min = glm::min(min, vertex.position);
         max = glm::max(max, vertex.position);
       }
 
-      perMeshMeshlets[meshIndex].emplace_back(Mesh::Meshlet{
-        .vertex_offset = vertexOffset,
-        .index_offset = indexOffset + meshlet.vertex_offset,
-        .primitive_offset = primitiveOffset + meshlet.triangle_offset,
+      auto meshlet_id = _meshlets.size();
+      per_mesh_meshlets[mesh_index].emplace_back((uint32_t)meshlet_id);
+
+      _meshlets.emplace_back(Mesh::Meshlet{
+        .vertex_offset = vertex_offset,
+        .index_offset = index_offset + meshlet.vertex_offset,
+        .primitive_offset = primitive_offset + meshlet.triangle_offset,
         .index_count = meshlet.vertex_count,
         .primitive_count = meshlet.triangle_count,
         .aabbMin = {min.x, min.y, min.z},
@@ -501,36 +459,38 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
       });
     }
 
-    vertexOffset += (uint32_t)vert.size();
-    indexOffset += (uint32_t)meshletIndices.size();
-    primitiveOffset += (uint32_t)meshletPrimitives.size();
+    vertex_offset += (uint32_t)vert.size();
+    index_offset += (uint32_t)meshlet_indices.size();
+    primitive_offset += (uint32_t)meshlet_primitives.size();
 
     std::ranges::copy(vert, std::back_inserter(_vertices));
-    std::ranges::copy(meshletIndices, std::back_inserter(_indices));
-    std::ranges::copy(meshletPrimitives, std::back_inserter(primitives));
+    std::ranges::copy(meshlet_indices, std::back_inserter(_indices));
+    std::ranges::copy(meshlet_primitives, std::back_inserter(_primitives));
   }
 
-  for (size_t i = 0; auto& node : scene.nodes) {
+  for (size_t i = 0; auto& node : nodes) {
     if (!node.parent)
-      rootNodes.emplace_back(&node);
+      root_nodes.emplace_back(&node);
 
-    for (const auto& [rawMeshIndex, materialId] : scene.tempData[i++].indices) {
-      for (auto& meshlet : perMeshMeshlets[rawMeshIndex]) {
-        meshlet.material_id = (uint32)materialId;
-        node.meshlets.emplace_back(meshlet);
-        node.materials.emplace_back(_materials[meshlet.material_id]);
+    for (const auto& [rawMeshIndex, materialId] : temp_data[i++].indices) {
+      for (auto meshlet_index : per_mesh_meshlets[rawMeshIndex]) {
+        // Instance index is determined each frame
+        node.meshlet_indices.emplace_back(meshlet_index, 0, (uint32_t)materialId);
       }
     }
   }
 
-  nodes.splice(nodes.end(), scene.nodes);
+  if (root_nodes.empty()) {
+    root_nodes.emplace_back(&nodes.front());
+  }
 
-  flattened = flatten();
+  set_transforms();
 
   index_count = (uint32)_indices.size();
   vertex_count = (uint32)_vertices.size();
 
-  // create buffers
+// create buffers
+#if 0
   auto ctx = VkContext::get();
   auto compiler = vuk::Compiler{};
 
@@ -549,7 +509,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
   iBufferFut.wait(*ctx->superframe_allocator, compiler);
   index_buffer = std::move(iBuffer);
-
+#endif
   OX_LOG_INFO("Loaded mesh {0}:{1}", fs::get_name_with_extension(path), timer.get_elapsed_ms());
 }
 

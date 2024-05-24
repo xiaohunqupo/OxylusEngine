@@ -275,10 +275,11 @@ void InspectorPanel::draw_components(Entity entity) {
     if (!component.mesh_base)
       return;
     OxUI::begin_properties();
-    OxUI::text("Node index:", fmt::format("{}", component.node_index).c_str());
-    OxUI::text("Node material count:", fmt::format("{}", component.materials.size()).c_str());
+    OxUI::text("Totoal meshlet count:", fmt::format("{}", component.mesh_base->_meshlets.size()).c_str());
+    OxUI::text("Total material count:", fmt::format("{}", component.materials.size()).c_str());
     OxUI::text("Mesh asset id:", fmt::format("{}", component.mesh_id).c_str());
     OxUI::property("Cast shadows", &component.cast_shadows);
+    OxUI::property("Stationary", &component.stationary);
     OxUI::end_properties();
 
     ImGui::SeparatorText("Materials");
@@ -409,7 +410,7 @@ void InspectorPanel::draw_components(Entity entity) {
     OxUI::end_properties();
 
     if (component.source) {
-      const glm::mat4 inverted = glm::inverse(EUtil::get_world_transform(context, entity));
+      const glm::mat4 inverted = glm::inverse(eutil::get_world_transform(context, entity));
       const Vec3 forward = normalize(Vec3(inverted[2]));
       component.source->set_config(config);
       component.source->set_position(context->registry.get<TransformComponent>(entity).position);

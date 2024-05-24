@@ -4,7 +4,7 @@
 
 #include "RendererCommon.hpp"
 
-#include "Utils/Oxmath.hpp"
+#include "Utils/OxMath.hpp"
 #include "Utils/Profiler.hpp"
 
 #include "Vulkan/VkContext.hpp"

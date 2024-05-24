@@ -79,8 +79,8 @@ float3 interpolate(const PartialDerivatives derivatives, const float3 values) {
 }
 
 uint3 visbuffer_load_index_ids(const Meshlet meshlet, in uint primitiveId) {
-  const uint indexOffset = meshlet.indexOffset;
-  const uint primitiveOffset = meshlet.primitiveOffset;
+  const uint indexOffset = meshlet.index_offset;
+  const uint primitiveOffset = meshlet.primitive_offset;
   const uint primitiveIds[] = {uint(get_primitive(primitiveOffset + primitiveId * 3 + 0)),
                                uint(get_primitive(primitiveOffset + primitiveId * 3 + 1)),
                                uint(get_primitive(primitiveOffset + primitiveId * 3 + 2))};
@@ -181,20 +181,21 @@ POut PSmain(VOut input, float4 pixelPosition : SV_Position) {
 
   const int2 position = int2(pixelPosition.xy);
   const uint payload = vis_texture.Load(int3(position, 0)).x;
-  const uint meshletId = (payload >> MESHLET_PRIMITIVE_BITS) & MESHLET_ID_MASK;
+  const uint meshlet_id = (payload >> MESHLET_PRIMITIVE_BITS) & MESHLET_ID_MASK;
   const uint primitiveId = payload & MESHLET_PRIMITIVE_MASK;
-  const Meshlet meshlet = get_meshlet(meshletId);
-  const Material material = get_material(meshlet.materialId);
-  const float4x4 transform = get_instance(meshlet.instanceId).transform;
+  const MeshletInstance meshlet_instance = get_meshlet_instance(meshlet_id);
+  const Meshlet meshlet = get_meshlet(meshlet_instance.meshlet_id);
+  const Material material = get_material(meshlet_instance.material_id);
+  const float4x4 transform = get_transform(meshlet_instance.instance_id);
   // const float4x4 transformPrevious = get_instance(meshlet.instanceId).modelPrevious;
 
   uint3 index_ids = visbuffer_load_index_ids(meshlet, primitiveId);
   float3 raw_position[3];
-  visbuffer_load_position(index_ids, meshlet.vertexOffset, raw_position);
+  visbuffer_load_position(index_ids, meshlet.vertex_offset, raw_position);
   float2 raw_uv[3];
-  visbuffer_load_uv(index_ids, meshlet.vertexOffset, raw_uv);
+  visbuffer_load_uv(index_ids, meshlet.vertex_offset, raw_uv);
   float3 raw_normal[3];
-  visbuffer_load_normal(index_ids, meshlet.vertexOffset, raw_normal);
+  visbuffer_load_normal(index_ids, meshlet.vertex_offset, raw_normal);
   const float4 world_position[3] = {mul(transform, float4(raw_position[0], 1.0)),
                                     mul(transform, float4(raw_position[1], 1.0)),
                                     mul(transform, float4(raw_position[2], 1.0))};

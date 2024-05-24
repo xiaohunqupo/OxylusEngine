@@ -55,6 +55,8 @@ struct PrefabComponent {
 };
 
 struct TransformComponent {
+  static constexpr auto in_place_delete = true;
+
   Vec3 position = Vec3(0);
   Vec3 rotation = Vec3(0); // Stored in radians
   Vec3 scale = Vec3(1);
@@ -76,24 +78,28 @@ struct TransformComponent {
 
 // Rendering
 struct MeshComponent {
+  static constexpr auto in_place_delete = true; // pointer stability
+
   Shared<Mesh> mesh_base = nullptr;
-  uint32_t node_index = 0;
   bool cast_shadows = true;
+  bool stationary = false;
 
   // non-serialized data
   uint32_t mesh_id = Asset::INVALID_ID;
-  std::vector<Shared<Material>> materials = {}; // node materials
-  Mat4 transform = {};
+  std::vector<Shared<Material>> materials = {};
+  Mat4 transform = Mat4{1};
+  std::vector<entt::entity> child_entities = {}; // filled at load
+  std::vector<Mat4> child_transforms = {}; // filled at submit
   AABB aabb = {};
+  bool dirty = false;
 
   MeshComponent() = default;
 
-  MeshComponent(const Shared<Mesh>& mesh, const uint32_t node_idx = 0) : mesh_base(mesh), node_index(node_idx) {
-    materials = mesh->flattened.nodes[node_idx]->materials;
+  explicit MeshComponent(const Shared<Mesh>& mesh) : mesh_base(mesh) {
+    materials = mesh_base->_materials;
+    mesh_id = mesh->get_id();
+    dirty = true;
   }
-
-  const Mesh::SceneFlattened& get_flattened() const { return mesh_base->flattened; }
-  const Shared<Material>& get_material(uint32 idx) const { return materials[idx]; }
 };
 
 struct CameraComponent {

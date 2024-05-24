@@ -67,9 +67,9 @@ bool cull_triangle(Meshlet meshlet, uint localId) {
   const uint primitiveId = localId * 3;
 
   // TODO: SoA vertices
-  const uint vertexOffset = meshlet.vertexOffset;
-  const uint indexOffset = meshlet.indexOffset;
-  const uint primitiveOffset = meshlet.primitiveOffset;
+  const uint vertexOffset = meshlet.vertex_offset;
+  const uint indexOffset = meshlet.index_offset;
+  const uint primitiveOffset = meshlet.primitive_offset;
   const uint primitive0 = uint(get_primitive(primitiveOffset + primitiveId + 0));
   const uint primitive1 = uint(get_primitive(primitiveOffset + primitiveId + 1));
   const uint primitive2 = uint(get_primitive(primitiveOffset + primitiveId + 2));
@@ -142,22 +142,24 @@ bool cull_triangle(Meshlet meshlet, uint localId) {
 [numthreads(MAX_PRIMITIVES, 1, 1)] void main(uint3 groupID
                                              : SV_GroupID, uint3 invocationID
                                              : SV_GroupThreadID) {
-  const uint meshletId = get_visible_meshlet(groupID.x);
-  const Meshlet meshlet = get_meshlet(meshletId);
+  const uint meshlet_intsance_id = get_visible_meshlet(groupID.x);
+  const MeshletInstance meshlet_instance = get_meshlet_instance(meshlet_intsance_id);
+  const uint meshlet_id = meshlet_instance.meshlet_id;
+  const Meshlet meshlet = get_meshlet(meshlet_id);
   const uint localId = invocationID.x;
   const uint primitiveId = localId * 3;
-  const MeshInstance instance = get_instance(meshlet.instanceId);
 
   if (localId == 0) {
+    const float4x4 transform = get_transform(meshlet_instance.instance_id);
     sh_primitivesPassed = 0;
-    sh_mvp = mul(get_camera(0).projection_view, instance.transform);
+    sh_mvp = mul(get_camera(0).projection_view, transform);
   }
 
   GroupMemoryBarrierWithGroupSync();
 
   bool primitive_passed = false;
   uint active_primitive_id = 0;
-  if (localId < meshlet.primitiveCount) {
+  if (localId < meshlet.primitive_count) {
     primitive_passed = cull_triangle(meshlet, localId);
     if (primitive_passed) {
       InterlockedAdd(sh_primitivesPassed, 1, active_primitive_id);
@@ -174,8 +176,8 @@ bool cull_triangle(Meshlet meshlet, uint localId) {
 
   if (primitive_passed) {
     const uint indexOffset = sh_baseIndex + active_primitive_id * 3;
-    set_index(indexOffset + 0, (meshletId << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 0) & MESHLET_PRIMITIVE_MASK));
-    set_index(indexOffset + 1, (meshletId << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 1) & MESHLET_PRIMITIVE_MASK));
-    set_index(indexOffset + 2, (meshletId << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 2) & MESHLET_PRIMITIVE_MASK));
+    set_index(indexOffset + 0, (meshlet_id << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 0) & MESHLET_PRIMITIVE_MASK));
+    set_index(indexOffset + 1, (meshlet_id << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 1) & MESHLET_PRIMITIVE_MASK));
+    set_index(indexOffset + 2, (meshlet_id << MESHLET_PRIMITIVE_BITS) | ((primitiveId + 2) & MESHLET_PRIMITIVE_MASK));
   }
 }

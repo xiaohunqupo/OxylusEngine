@@ -8,6 +8,10 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
+Material::Material() {
+  create("placeholder");
+}
+
 Material::Material(const std::string& material_name) {
   create(material_name);
 }

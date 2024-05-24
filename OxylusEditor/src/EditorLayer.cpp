@@ -341,8 +341,7 @@ void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   scene->registry.get<TransformComponent>(sun).rotation.x = glm::radians(25.f);
 
   constexpr auto sponza_path = "C:/Users/Halim/Desktop/Projects/OxylusEngine/OxylusEditor/SandboxProject/Assets/Objects/sponza.glb";
-  const auto sponza = scene->create_entity("sponza");
-  scene->registry.emplace<MeshComponent>(sponza).mesh_base = AssetManager::get_mesh_asset(sponza_path);
+  scene->load_mesh(AssetManager::get_mesh_asset(sponza_path));
 }
 
 void EditorLayer::clear_selected_entity() { get_panel<SceneHierarchyPanel>()->clear_selection_context(); }

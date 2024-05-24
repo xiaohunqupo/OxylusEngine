@@ -101,6 +101,11 @@ std::pair<Unique<Buffer>, Value<Buffer>> create_cpu_buffer(Allocator& allocator,
   return create_buffer(allocator, MemoryUsage::eCPUtoGPU, DomainFlagBits::eTransferOnGraphics, data);
 }
 
+template <class T>
+std::pair<Unique<Buffer>, Value<Buffer>> create_gpu_buffer(Allocator& allocator, std::span<T> data) {
+  return create_buffer(allocator, MemoryUsage::eGPUonly, DomainFlagBits::eTransferOnGraphics, data);
+}
+
 inline vuk::Unique<Buffer> allocate_cpu_buffer(Allocator& allocator, uint64_t size, uint64_t alignment = 1) {
   return *vuk::allocate_buffer(allocator, {.mem_usage = MemoryUsage::eCPUtoGPU, .size = size, .alignment = alignment});
 }

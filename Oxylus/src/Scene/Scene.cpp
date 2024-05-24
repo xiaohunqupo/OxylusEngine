@@ -114,28 +114,34 @@ entt::entity Scene::create_entity_with_uuid(UUID uuid, const std::string& name) 
 }
 
 Entity Scene::load_mesh(const Shared<Mesh>& mesh) {
-  const auto node_entity = create_entity(mesh->flattened.nodes.front()->name);
-  registry.emplace_or_replace<MeshComponent>(node_entity, mesh);
-
-  return node_entity;
-#if 0
   entt::entity root_entity = entt::null;
 
-  for (const auto& node : mesh->nodes) {
-    const auto node_entity = create_entity(node.name);
-    if (!node.parent)
+  MeshComponent* parent = nullptr;
+  auto traverse = [this, mesh, &parent, &root_entity](const Mesh::Node* node, const entt::entity parent_entity, auto& traverse_func) -> void {
+    const Entity node_entity = create_entity(node->name);
+    if (parent_entity != entt::null)
+      eutil::set_parent(this, node_entity, parent_entity);
+
+    // TODO: we could actually use this to have material components for each child instead of having them all in the parent maybe?
+    auto& tc = registry.get<TransformComponent>(node_entity);
+    tc.set_from_matrix(node->get_local_transform());
+    if (!parent) {
+      parent = &registry.get_or_emplace<MeshComponent>(node_entity, mesh);
       root_entity = node_entity;
-    else
-      EUtil::set_parent(this, node_entity, root_entity);
-    if (!node.meshlets.empty()) {
-      auto& mc = registry.emplace_or_replace<MeshComponent>(node_entity, mesh, node.index);
-      mc.mesh_id = mesh->get_id();
-      registry.get<TransformComponent>(node_entity).set_from_matrix(node.get_local_transform());
+    } else {
+      parent->child_entities.emplace_back(node_entity);
     }
+
+    for (const auto& child : node->children) {
+      traverse_func(child, node_entity, traverse_func);
+    }
+  };
+
+  for (const auto& node : mesh->root_nodes) {
+    traverse(node, entt::null, traverse);
   }
 
   return root_entity;
-#endif
 }
 
 void Scene::update_physics(const Timestep& delta_time) {
@@ -235,7 +241,7 @@ void Scene::update_physics(const Timestep& delta_time) {
 
 void Scene::destroy_entity(const Entity entity) {
   OX_SCOPED_ZONE;
-  EUtil::deparent(this, entity);
+  eutil::deparent(this, entity);
   const auto children = registry.get<RelationshipComponent>(entity).children;
 
   for (size_t i = 0; i < children.size(); i++) {
@@ -244,7 +250,7 @@ void Scene::destroy_entity(const Entity entity) {
       destroy_entity(child_entity);
   }
 
-  entity_map.erase(EUtil::get_uuid(registry, entity));
+  entity_map.erase(eutil::get_uuid(registry, entity));
   registry.destroy(entity);
 }
 
@@ -286,7 +292,7 @@ void Scene::duplicate_children(const Entity entity) {
   auto& rc = registry.get<RelationshipComponent>(entity);
 
   for (auto& child : rc.children) {
-    const auto e = create_entity(EUtil::get_name(registry, get_entity_by_uuid(child)));
+    const auto e = create_entity(eutil::get_name(registry, get_entity_by_uuid(child)));
     copy_component_if_exists(AllComponents{}, e, get_entity_by_uuid(child), registry);
     child = registry.get<IDComponent>(e).uuid;
 
@@ -305,7 +311,7 @@ void Scene::duplicate_children(const Entity entity) {
 
 Entity Scene::duplicate_entity(Entity entity) {
   OX_SCOPED_ZONE;
-  const Entity new_entity = create_entity(EUtil::get_name(registry, entity));
+  const Entity new_entity = create_entity(eutil::get_name(registry, entity));
   copy_component_if_exists(AllComponents{}, new_entity, entity, registry);
 
   duplicate_children(new_entity);
@@ -442,11 +448,11 @@ Shared<Scene> Scene::copy(const Shared<Scene>& src_scene) {
   }
 
   for (const auto e : view) {
-    const Entity src_parent = EUtil::get_parent(src_scene.get(), e);
+    const Entity src_parent = eutil::get_parent(src_scene.get(), e);
     if (src_parent != entt::null) {
       const Entity dst = new_scene->get_entity_by_uuid(view.get<IDComponent>(e).uuid);
-      const auto parent_uuid = EUtil::get_uuid(src_scene_registry, src_parent);
-      EUtil::set_parent(new_scene.get(), dst, new_scene->get_entity_by_uuid(parent_uuid));
+      const auto parent_uuid = eutil::get_uuid(src_scene_registry, src_parent);
+      eutil::set_parent(new_scene.get(), dst, new_scene->get_entity_by_uuid(parent_uuid));
     }
   }
 
@@ -490,7 +496,7 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
   JPH::MutableCompoundShapeSettings compound_shape_settings;
   float max_scale_component = glm::max(glm::max(transform.scale.x, transform.scale.y), transform.scale.z);
 
-  const auto& entity_name = EUtil::get_name(registry, entity);
+  const auto& entity_name = eutil::get_name(registry, entity);
 
   if (registry.all_of<BoxColliderComponent>(entity)) {
     const auto& bc = registry.get<BoxColliderComponent>(entity);
@@ -562,7 +568,7 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
     const auto& indices = mesh_component.mesh_base->_indices;
 
     // scale vertices
-    const auto world_transform = EUtil::get_world_transform(this, entity);
+    const auto world_transform = eutil::get_world_transform(this, entity);
     for (auto& vert : vertices) {
       Vec4 scaled_pos = world_transform * Vec4(vert.position, 1.0);
       vert.position = Vec3(scaled_pos);
@@ -714,7 +720,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     for (auto&& [e, ac, tc] : listener_view.each()) {
       ac.listener = create_shared<AudioListener>();
       if (ac.active) {
-        const Mat4 inverted = inverse(EUtil::get_world_transform(this, e));
+        const Mat4 inverted = inverse(eutil::get_world_transform(this, e));
         const Vec3 forward = normalize(Vec3(inverted[2]));
         ac.listener->set_config(ac.config);
         ac.listener->set_position(tc.position);
@@ -726,7 +732,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     const auto source_view = registry.group<AudioSourceComponent>(entt::get<TransformComponent>);
     for (auto&& [e, ac, tc] : source_view.each()) {
       if (ac.source) {
-        const Mat4 inverted = inverse(EUtil::get_world_transform(this, e));
+        const Mat4 inverted = inverse(eutil::get_world_transform(this, e));
         const Vec3 forward = normalize(Vec3(inverted[2]));
         ac.source->set_config(ac.config);
         ac.source->set_position(tc.position);
