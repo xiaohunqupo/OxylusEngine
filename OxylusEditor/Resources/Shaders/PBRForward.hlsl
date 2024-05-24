@@ -104,7 +104,7 @@ struct Surface {
     BumpColor = 0;
   }
 
-  void Create(Material material, float4 baseColor, float2 scaledUV) {
+  void create(Material material, float4 baseColor, float2 scaledUV) {
     BaseColor = baseColor;
     Opacity = baseColor.a;
 
@@ -113,7 +113,7 @@ struct Surface {
 
     float4 surfaceMap = 1;
     if (material.physical_map_id != INVALID_ID) {
-      surfaceMap = GetMaterialPhysicalTexture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV);
+      surfaceMap = get_material_physical_texture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV);
     }
 
     surfaceMap.g *= material.roughness;
@@ -128,7 +128,7 @@ struct Surface {
     F0 *= lerp(reflectance.xxx, baseColor.rgb, metalness);
 
     if (material.ao_map_id != INVALID_ID)
-      Occlusion = GetMaterialAOTexture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV).r;
+      Occlusion = get_material_ao_texture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV).r;
     else
       Occlusion = 1.0;
   }
@@ -179,7 +179,7 @@ struct SurfaceToLight {
   float BdotH;
 #endif // ANISOTROPIC
 
-  void Create(Surface surface, float3 Lnormalized) {
+  void create(Surface surface, float3 Lnormalized) {
     L = Lnormalized;
     H = normalize(L + surface.V);
 
@@ -285,18 +285,17 @@ inline void ApplyLighting(Surface surface, Lighting lighting, inout float4 color
   color.rgb += surface.EmissiveColor;
 }
 
-void LightDirectional(Light light, Surface surface, inout Lighting lighting)
-{
-  float3 L = normalize(light.direction);
+void LightDirectional(Light light, Surface surface, inout Lighting lighting) {
+  float3 L = normalize(light.get_direction());
 
   SurfaceToLight surfaceToLight = (SurfaceToLight)0;
-  surfaceToLight.Create(surface, L);
+  surfaceToLight.create(surface, L);
 
   float3 shadow = 1;
 
-  for (uint cascade = 0; cascade < light.cascade_count; ++cascade) {
+  for (uint cascade = 0; cascade < light.get_shadow_cascade_count(); ++cascade) {
     // Project into shadow map space (no need to divide by .w because ortho projection!):
-    float3 shadow_pos = mul(GetEntity(light.matrix_index + cascade).transform, float4(surface.P, 1)).xyz;
+    float3 shadow_pos = mul(get_entity(light.matrix_index + cascade).transform, float4(surface.P, 1)).xyz;
     float3 shadow_uv = clipspace_to_uv(shadow_pos);
 
     // Determine if pixel is inside current cascade bounds and compute shadow if it is:
@@ -306,10 +305,10 @@ void LightDirectional(Light light, Surface surface, inout Lighting lighting)
       const float cascade_fade = max(cascade_edgefactor.x, max(cascade_edgefactor.y, cascade_edgefactor.z));
 
       // If we are on cascade edge threshold and not the last cascade, then fallback to a larger cascade:
-      if (cascade_fade > 0 && cascade < light.cascade_count - 1) {
+      if (cascade_fade > 0 && cascade < light.get_shadow_cascade_count() - 1) {
         // Project into next shadow cascade (no need to divide by .w because ortho projection!):
         cascade += 1;
-        shadow_pos = mul(GetEntity(light.matrix_index + cascade).transform, float4(surface.P, 1)).xyz;
+        shadow_pos = mul(get_entity(light.matrix_index + cascade).transform, float4(surface.P, 1)).xyz;
         shadow_uv = clipspace_to_uv(shadow_pos);
         const float3 shadow_fallback = shadow_2D(light, shadow_pos, shadow_uv.xy, cascade);
 
@@ -322,18 +321,18 @@ void LightDirectional(Light light, Surface surface, inout Lighting lighting)
   }
 
   if (any(shadow)) {
-    float3 light_color = light.color * shadow;
+    float3 light_color = light.get_color() * shadow;
 
     AtmosphereParameters atmosphere;
     InitAtmosphereParameters(atmosphere);
-    light_color *= GetAtmosphericLightTransmittance(atmosphere, surface.P.xyz, L, GetSkyTransmittanceLUTTexture());
+    light_color *= GetAtmosphericLightTransmittance(atmosphere, surface.P.xyz, L, get_sky_transmittance_lut_texture());
 
     lighting.direct.diffuse = mad(light_color, BRDF_GetDiffuse(surface, surfaceToLight), lighting.direct.diffuse);
     lighting.direct.specular = mad(light_color, BRDF_GetSpecular(surface, surfaceToLight), lighting.direct.specular);
   }
 }
 
-float AttenuationPointLight(in float dist, in float dist2, in float range, in float range2) {
+float attenuation_point_light(in float dist, in float dist2, in float range, in float range2) {
   // GLTF recommendation: https://github.com/KhronosGroup/glTF/tree/main/extensions/2.0/Khronos/KHR_lights_punctual#range-property
   // return saturate(1 - pow(dist / range, 4)) / dist2;
 
@@ -345,34 +344,77 @@ float AttenuationPointLight(in float dist, in float dist2, in float range, in fl
 
 void LightPoint(Light light, Surface surface, inout Lighting lighting) {
   float3 L = light.position - surface.P;
-  float dist = length(L);
+
+  if (light.get_length() > 0) {
+    // Diffuse representative point on line:
+    const float3 line_point = closest_point_on_segment(light.position - light.get_direction() * light.get_length() * 0.5,
+                                                       light.position + light.get_direction() * light.get_length() * 0.5,
+                                                       surface.P);
+    L = line_point - surface.P;
+  }
 
   const float dist2 = dot(L, L);
-  const float range = light.radius;
+  const float range = light.get_range();
   const float range2 = range * range;
 
   if (dist2 < range2) {
+    const float dist = sqrt(dist2);
+    L /= dist;
+
     SurfaceToLight surface_to_light = (SurfaceToLight)0;
-    surface_to_light.Create(surface, L);
+    surface_to_light.create(surface, L);
 
     if (any(surface_to_light.NdotL)) {
-      float3 light_color = light.color;
-      light_color *= AttenuationPointLight(dist, dist2, range, range2);
+      float3 shadow = 1;
 
-      lighting.direct.diffuse = mad(light_color, BRDF_GetDiffuse(surface, surface_to_light), lighting.direct.diffuse);
-      lighting.direct.specular = mad(light_color, BRDF_GetSpecular(surface, surface_to_light), lighting.direct.specular);
+      shadow *= shadow_cube(light, light.position - surface.P);
+
+      if (any(shadow)) {
+        float3 light_color = light.get_color() * shadow;
+        light_color *= attenuation_point_light(dist, dist2, range, range2);
+
+        lighting.direct.diffuse = mad(light_color, BRDF_GetDiffuse(surface, surface_to_light), lighting.direct.diffuse);
+
+        if (light.get_length() > 0) {
+          // Specular representative point on line:
+          float3 P0 = light.position - light.get_direction() * light.get_length() * 0.5;
+          float3 P1 = light.position + light.get_direction() * light.get_length() * 0.5;
+          float3 L0 = P0 - surface.P;
+          float3 L1 = P1 - surface.P;
+          float3 Ld = L1 - L0;
+          float RdotLd = dot(surface.R, Ld);
+          float t = dot(surface.R, L0) * RdotLd - dot(L0, Ld);
+          t /= dot(Ld, Ld) - RdotLd * RdotLd;
+          L = (L0 + saturate(t) * Ld);
+        } else {
+          L = light.position - surface.P;
+        }
+        if (light.get_radius() > 0) {
+          // Specular representative point on sphere:
+          const float3 center_to_ray = mad(dot(L, surface.R), surface.R, -L);
+          L = mad(center_to_ray, saturate(light.get_radius() / length(center_to_ray)), L);
+          // Energy conservation for radius:
+          light_color /= max(1, sphere_volume(light.get_radius()));
+        }
+        if (light.get_length() > 0 || light.get_radius() > 0) {
+          L = normalize(L);
+          surface_to_light.create(surface, L); // recompute all surface-light vectors
+        }
+
+        lighting.direct.specular = mad(light_color, BRDF_GetSpecular(surface, surface_to_light), lighting.direct.specular);
+      }
     }
   }
 }
 
-inline float AttenuationSpotLight(in float dist,
-                                  in float dist2,
-                                  in float range,
-                                  in float range2,
-                                  in float spot_factor,
-                                  in float angle_scale,
-                                  in float angle_offset) {
-  float attenuation = AttenuationPointLight(dist, dist2, range, range2);
+inline float attenuation_spot_light(in float dist,
+                                    in float dist2,
+                                    in float range,
+                                    in float range2,
+                                    in float spot_factor,
+                                    in float angle_scale,
+                                    in float angle_offset) {
+  float attenuation = attenuation_point_light(dist, dist2, range, range2);
   float angularAttenuation = saturate(mad(spot_factor, angle_scale, angle_offset));
   angularAttenuation *= angularAttenuation;
   attenuation *= angularAttenuation;
@@ -382,40 +424,59 @@ inline float AttenuationSpotLight(in float dist,
 inline void LightSpot(Light light, Surface surface, inout Lighting lighting) {
   float3 L = light.position - surface.P;
   const float dist2 = dot(L, L);
-  const float range = light.radius;
+  const float range = light.get_range();
   const float range2 = range * range;
 
   if (dist2 < range2) {
     const float dist = sqrt(dist2);
     L /= dist;
 
-    SurfaceToLight surface_to_light;
-    surface_to_light.Create(surface, L);
+    SurfaceToLight surface_to_light = (SurfaceToLight)0;
+    surface_to_light.create(surface, L);
 
-#if 0 // TODO: need more parameters (angles)
     if (any(surface_to_light.NdotL)) {
-      const float spot_factor = dot(L, light.RotationType.xyz);
-      const float spot_cutoff = light.GetConeAngleCos();
+      const float spot_factor = dot(L, light.get_direction());
+      const float spot_cutoff = light.get_cone_angle_cos();
 
       if (spot_factor > spot_cutoff) {
+        float3 shadow = 1;
+
+        float4 shadow_pos = mul(get_entity(light.matrix_index).transform, float4(surface.P, 1));
+        shadow_pos.xyz /= shadow_pos.w;
+        float2 shadow_uv = clipspace_to_uv(shadow_pos.xy);
+        if (is_saturated(shadow_uv)) {
+          shadow *= shadow_2D(light, shadow_pos.xyz, shadow_uv.xy, 0);
+        }
+
         if (any(shadow)) {
-          float3 light_color = light.ColorRadius.rgb;
-          light_color *= AttenuationSpotLight(dist, dist2, range, range2, spot_factor, light.GetAngleScale(), light.GetAngleOffset());
+          float3 light_color = light.get_color().rgb * shadow;
+          light_color *= attenuation_spot_light(dist, dist2, range, range2, spot_factor, light.get_angle_scale(), light.get_angle_offset());
 
           lighting.direct.diffuse = mad(light_color, BRDF_GetDiffuse(surface, surface_to_light), lighting.direct.diffuse);
+
+          if (light.get_radius() > 0) {
+            // Specular representative point on sphere:
+            L = light.position - surface.P;
+            float3 centerToRay = mad(dot(L, surface.R), surface.R, -L);
+            L = mad(centerToRay, saturate(light.get_radius() / length(centerToRay)), L);
+            L = normalize(L);
+            surface_to_light.create(surface, L); // recompute all surface-light vectors
+                                                 // Energy conservation for radius:
+            light_color /= max(1, sphere_volume(light.get_radius()));
+          }
+
           lighting.direct.specular = mad(light_color, BRDF_GetSpecular(surface, surface_to_light), lighting.direct.specular);
         }
       }
     }
-#endif
   }
 }
 
 inline void ForwardLighting(inout Surface surface, inout Lighting lighting) {
-  for (int i = 0; i < GetScene().num_lights; i++) {
-    Light light = GetLight(i);
+  for (int i = 0; i < get_scene().num_lights; i++) {
+    Light light = get_light(i);
 
-    switch (light.type) {
+    switch (light.get_type()) {
       case DIRECTIONAL_LIGHT: {
         LightDirectional(light, surface, lighting);
       } break;
@@ -452,16 +513,16 @@ float3 GetAmbient(float3 worldNormal) {
 }
 
 float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Target {
-  Material material = GetMaterial(push_const.material_index + input.draw_index);
+  Material material = get_material(push_const.material_index + input.draw_index);
   float2 scaledUV = input.uv;
   scaledUV *= material.uv_scale;
 
   float4 baseColor;
 
-  SamplerState materialSampler = Samplers[material.sampler];
+  SamplerState material_sampler = Samplers[material.sampler];
 
   if (material.albedo_map_id != INVALID_ID) {
-    baseColor = GetMaterialAlbedoTexture(material).Sample(materialSampler, scaledUV) * material.color;
+    baseColor = get_material_albedo_texture(material).Sample(material_sampler, scaledUV) * material.color;
   } else {
     baseColor = material.color;
   }
@@ -471,7 +532,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
 
   float3 emissive = float3(0.0, 0.0, 0.0);
   if (material.emissive_map_id != INVALID_ID) {
-    float3 value = GetMaterialEmissiveTexture(material).Sample(materialSampler, scaledUV).rgb;
+    float3 value = get_material_emissive_texture(material).Sample(material_sampler, scaledUV).rgb;
     emissive += value;
   } else {
     emissive += material.emissive.rgb * material.emissive.a;
@@ -486,10 +547,10 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
   surface.PixelPosition = pixelPosition.xy;
   surface.EmissiveColor = emissive;
   surface.ViewPos = input.view_pos;
-  surface.Create(material, baseColor, scaledUV);
+  surface.create(material, baseColor, scaledUV);
 
   if (material.normal_map_id != INVALID_ID) {
-    surface.BumpColor = float3(GetMaterialNormalTexture(material).Sample(materialSampler, scaledUV).rg, 1.0);
+    surface.BumpColor = float3(get_material_normal_texture(material).Sample(material_sampler, scaledUV).rg, 1.0);
     surface.BumpColor = surface.BumpColor * 2.f - 1.f;
   }
 
@@ -501,12 +562,12 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
     surface.N = normalize(lerp(surface.N, mul(surface.BumpColor, TBN), length(surface.BumpColor)));
   }
 
-  float2 screenCoords = pixelPosition.xy / float2(GetScene().screen_size.x, GetScene().screen_size.y);
+  float2 screenCoords = pixelPosition.xy / float2(get_scene().screen_size.x, get_scene().screen_size.y);
 
 #ifndef TRANSPARENT
   // Apply GTAO
-  if (GetScene().post_processing_data.enable_gtao == 1) {
-    uint value = GetGTAOTexture().Sample(NEAREST_REPEATED_SAMPLER, screenCoords).r;
+  if (get_scene().post_processing_data.enable_gtao == 1) {
+    uint value = get_gtao_texture().Sample(NEAREST_REPEATED_SAMPLER, screenCoords).r;
     float aoVisibility = value / 255.0;
     surface.Occlusion *= aoVisibility;
   }
@@ -519,9 +580,9 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
   if (material.AnistropyMapID != INVALID_ID) {
     float2 anisotropyTexture = GetMaterialAnistropyTexture(material).Sample(LINEAR_REPEATED_SAMPLER, scaledUV).rg * 2 - 1;
     surface.aniso.strength *= length(anisotropyTexture);
-    surface.aniso.direction =
-      mul(float2x2(surface.aniso.direction.x, surface.aniso.direction.y, -surface.aniso.direction.y, surface.aniso.direction.x),
-          normalize(anisotropyTexture));
+    surface.aniso
+      .direction = mul(float2x2(surface.aniso.direction.x, surface.aniso.direction.y, -surface.aniso.direction.y, surface.aniso.direction.x),
+                       normalize(anisotropyTexture));
   }
 
   surface.aniso.T = normalize(mul(TBN, float3(surface.aniso.direction, 0)));
@@ -565,7 +626,7 @@ float4 PSmain(VertexOutput input, float4 pixelPosition : SV_Position) : SV_Targe
 
   float3 ambient = GetAmbient(surface.N);
 
-  TextureCube cubemap = GetSkyEnvMapTexture();
+  TextureCube cubemap = get_sky_env_map_texture();
   uint2 dim;
   uint mips;
   cubemap.GetDimensions(0, dim.x, dim.y, mips);

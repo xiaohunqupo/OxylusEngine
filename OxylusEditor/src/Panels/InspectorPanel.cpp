@@ -11,15 +11,16 @@
 #include "Utils/ColorUtils.hpp"
 
 #include "Core/FileSystem.hpp"
+#include "EditorLayer.hpp"
+#include "EditorTheme.hpp"
 #include "Scene/Entity.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
-#include "EditorLayer.hpp"
 
-#include "Render/SceneRendererEvents.h"
+#include "Render/SceneRendererEvents.hpp"
 
-#include "Scene/SceneRenderer.h"
+#include "Scene/SceneRenderer.hpp"
 
 namespace ox {
 static bool s_rename_entity = false;
@@ -154,8 +155,10 @@ static void draw_particle_over_lifetime_module(const std::string_view module_nam
 }
 
 template <typename T>
-static void
-draw_particle_by_speed_module(const std::string_view module_name, BySpeedModule<T>& property_module, bool color = false, bool rotation = false) {
+static void draw_particle_by_speed_module(const std::string_view module_name,
+                                          BySpeedModule<T>& property_module,
+                                          bool color = false,
+                                          bool rotation = false) {
   static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
                                                    ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
 
@@ -183,7 +186,8 @@ draw_particle_by_speed_module(const std::string_view module_name, BySpeedModule<
   }
 }
 
-template <typename Component> void InspectorPanel::draw_add_component(entt::registry& reg, Entity entity, const char* name) {
+template <typename Component>
+void InspectorPanel::draw_add_component(entt::registry& reg, Entity entity, const char* name) {
   if (ImGui::MenuItem(name)) {
     if (!reg.all_of<Component>(entity))
       reg.emplace<Component>(entity);
@@ -270,13 +274,12 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<MeshComponent>(" Mesh Component", context->registry, entity, [](MeshComponent& component) {
     if (!component.mesh_base)
       return;
-    const char* file_name = component.mesh_base->name.empty() ? "Empty" : component.mesh_base->name.c_str();
     OxUI::begin_properties();
-    OxUI::text("Loaded mesh:", file_name);
-    OxUI::text("Node index:", fmt::format("{}", component.node_index).c_str());
-    OxUI::text("Node material count:", fmt::format("{}", component.materials.size()).c_str());
+    OxUI::text("Totoal meshlet count:", fmt::format("{}", component.mesh_base->_meshlets.size()).c_str());
+    OxUI::text("Total material count:", fmt::format("{}", component.materials.size()).c_str());
     OxUI::text("Mesh asset id:", fmt::format("{}", component.mesh_id).c_str());
     OxUI::property("Cast shadows", &component.cast_shadows);
+    OxUI::property("Stationary", &component.stationary);
     OxUI::end_properties();
 
     ImGui::SeparatorText("Materials");
@@ -293,7 +296,7 @@ void InspectorPanel::draw_components(Entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint32_t i = 0; i < (uint32_t)component.materials.size(); i++) {
+    for (uint32 i = 0; i < (uint32)component.materials.size(); i++) {
       auto& material = component.materials[i];
       if (name_filter.PassFilter(material->name.c_str())) {
         ImGui::PushID(i);
@@ -303,34 +306,6 @@ void InspectorPanel::draw_components(Entity entity) {
           ImGui::TreePop();
         }
         ImGui::PopID();
-      }
-    }
-  });
-
-  draw_component<AnimationComponent>(" Animation Component", context->registry, entity, [](AnimationComponent& component) {
-    constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
-
-    const float filter_cursor_pos_x = ImGui::GetCursorPosX();
-    ImGuiTextFilter name_filter;
-
-    name_filter.Draw("##animation_filter",
-                     ImGui::GetContentRegionAvail().x - (OxUI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
-
-    if (!name_filter.IsActive()) {
-      ImGui::SameLine();
-      ImGui::SetCursorPosX(filter_cursor_pos_x + ImGui::GetFontSize() * 0.5f);
-      ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
-    }
-
-    for (uint32_t index = 0; index < (uint32_t)component.animations.size(); index++) {
-      const auto& animation = component.animations[index];
-      if (name_filter.PassFilter(animation->name.c_str())) {
-        if (ImGui::TreeNodeEx(animation->name.c_str(), flags, "%s %s", StringUtils::from_char8_t(ICON_MDI_CIRCLE), animation->name.c_str())) {
-          if (ImGui::Button("Play", {ImGui::GetContentRegionAvail().x, ImGui::GetFrameHeight()})) {
-            component.current_animation_index = index;
-          }
-          ImGui::TreePop();
-        }
       }
     }
   });
@@ -367,8 +342,8 @@ void InspectorPanel::draw_components(Entity entity) {
 
   draw_component<AudioSourceComponent>(" Audio Source Component", context->registry, entity, [&entity, this](AudioSourceComponent& component) {
     auto& config = component.config;
-    const std::string filepath =
-      component.source ? component.source->get_path() : fmt::format("{} Drop an audio file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
+    const std::string filepath = component.source ? component.source->get_path()
+                                                  : fmt::format("{} Drop an audio file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
 
     auto load_file = [](const std::filesystem::path& path, AudioSourceComponent& comp) {
       if (const std::string ext = path.extension().string(); ext == ".mp3" || ext == ".wav" || ext == ".flac")
@@ -435,7 +410,7 @@ void InspectorPanel::draw_components(Entity entity) {
     OxUI::end_properties();
 
     if (component.source) {
-      const glm::mat4 inverted = glm::inverse(EUtil::get_world_transform(context, entity));
+      const glm::mat4 inverted = glm::inverse(eutil::get_world_transform(context, entity));
       const Vec3 forward = normalize(Vec3(inverted[2]));
       component.source->set_config(config);
       component.source->set_position(context->registry.get<TransformComponent>(entity).position);
@@ -460,7 +435,7 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<LightComponent>(" Light Component", context->registry, entity, [](LightComponent& component) {
     OxUI::begin_properties();
     const char* light_type_strings[] = {"Directional", "Point", "Spot"};
-    int light_type = static_cast<int>(component.type);
+    int light_type = component.type;
     if (OxUI::property("Light Type", &light_type, light_type_strings, 3))
       component.type = static_cast<LightComponent::LightType>(light_type);
 
@@ -469,40 +444,29 @@ void InspectorPanel::draw_components(Entity entity) {
     }
 
     if (component.color_temperature_mode) {
-      if (OxUI::property<uint32_t>("Temperature (K)", &component.temperature, 1000, 40000))
+      if (OxUI::property<uint32>("Temperature (K)", &component.temperature, 1000, 40000))
         ColorUtils::TempratureToColor(component.temperature, component.color);
     } else {
       OxUI::property_vector("Color", component.color, true);
     }
 
-    if (OxUI::property("Intensity", &component.intensity) && component.intensity < 0.0f) {
-      component.intensity = 0.0f;
+    OxUI::property("Intensity", &component.intensity, 0.0f, 100.0f);
+
+    if (component.type != LightComponent::Directional) {
+      OxUI::property("Range", &component.range, 0.0f, 100.0f);
+      OxUI::property("Radius", &component.radius, 0.0f, 100.0f);
+      OxUI::property("Length", &component.length, 0.0f, 100.0f);
     }
 
-    ImGui::Spacing();
-
-    if (component.type == LightComponent::LightType::Point) {
-      OxUI::property("Range", &component.range);
-    } else if (component.type == LightComponent::LightType::Spot) {
-      OxUI::property("Range", &component.range);
-      float degrees = glm::degrees(component.outer_cut_off_angle);
-      if (OxUI::property("Outer Cut-Off Angle", &degrees, 1.0f, 90.0f))
-        component.outer_cut_off_angle = glm::radians(degrees);
-      degrees = glm::degrees(component.cut_off_angle);
-      if (OxUI::property("Cut-Off Angle", &degrees, 1.0f, 90.0f))
-        component.cut_off_angle = glm::radians(degrees);
-
-      if (component.range < 0.1f)
-        component.range = 0.1f;
-      if (component.outer_cut_off_angle < component.cut_off_angle)
-        component.cut_off_angle = component.outer_cut_off_angle;
-      if (component.cut_off_angle > component.outer_cut_off_angle)
-        component.outer_cut_off_angle = component.cut_off_angle;
+    if (component.type == LightComponent::Spot) {
+      OxUI::property("Outer Cone Angle", &component.outer_cone_angle, 0.0f, 100.0f);
+      OxUI::property("Inner Cone Angle", &component.inner_cone_angle, 0.0f, 100.0f);
     }
 
-    const ankerl::unordered_dense::map<uint32_t, int32_t> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
+    OxUI::property("Cast Shadows", &component.cast_shadows);
 
-    const ankerl::unordered_dense::map<int32_t, uint32_t> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
+    const ankerl::unordered_dense::map<uint32, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
+    const ankerl::unordered_dense::map<int, uint32> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
 
     const char* res_strings[] = {"Auto", "512", "1024", "2048"};
     int idx = res_map.at(component.shadow_map_res);
@@ -510,8 +474,10 @@ void InspectorPanel::draw_components(Entity entity) {
       component.shadow_map_res = id_map.at(idx);
     }
 
-    for (uint32_t i = 0; i < (uint32_t)component.cascade_distances.size(); ++i)
-      OxUI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
+    if (component.type == LightComponent::Directional) {
+      for (uint32 i = 0; i < (uint32)component.cascade_distances.size(); ++i)
+        OxUI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
+    }
 
     OxUI::end_properties();
   });
@@ -663,9 +629,9 @@ void InspectorPanel::draw_components(Entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint32_t i = 0; i < (uint32_t)component.lua_systems.size(); i++) {
+    for (uint32 i = 0; i < (uint32)component.lua_systems.size(); i++) {
       const auto& system = component.lua_systems[i];
-      auto name = FileSystem::get_file_name(system->get_path());
+      auto name = fs::get_file_name(system->get_path());
       if (name_filter.PassFilter(name.c_str())) {
         ImGui::PushID(i);
         constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
@@ -686,7 +652,7 @@ void InspectorPanel::draw_components(Entity entity) {
     auto load_script = [](const std::string& path, LuaScriptComponent& comp) {
       if (path.empty())
         return;
-      const auto ext = FileSystem::get_file_extension(path);
+      const auto ext = fs::get_file_extension(path);
       if (ext == "lua") {
         comp.lua_systems.emplace_back(create_shared<LuaSystem>(path));
       }

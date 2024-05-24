@@ -2,6 +2,7 @@
 
 #include <ankerl/unordered_dense.h>
 
+#include "SceneEvents.hpp"
 #include "Components.hpp"
 #include "EntitySerializer.hpp"
 
@@ -9,7 +10,7 @@
 #include "Core/Systems/System.hpp"
 #include "Core/UUID.hpp"
 #include "Physics/PhysicsInterfaces.hpp"
-#include "Render/Mesh.h"
+#include "Render/Mesh.hpp"
 
 namespace ox {
 class RenderPipeline;
@@ -22,6 +23,7 @@ public:
   // TODO: We are keeping this only for serializing relationship of entities.
   // Check how we can do that with entt id's instead.
   ankerl::unordered_dense::map<UUID, Entity> entity_map;
+  EventDispatcher dispatcher;
 
   Scene();
   Scene(std::string name);
@@ -33,7 +35,6 @@ public:
   Entity create_entity(const std::string& name = "New Entity");
   Entity create_entity_with_uuid(UUID uuid, const std::string& name = std::string());
 
-  void iterate_mesh_node(const Shared<Mesh>& mesh, std::vector<Entity>& node_entities, Entity parent_entity, const Mesh::Node* node);
   Entity load_mesh(const Shared<Mesh>& mesh);
 
   template <typename T, typename... Args>
@@ -62,8 +63,10 @@ public:
 
   // Physics interfaces
   void on_contact_added(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings);
-  void
-  on_contact_persisted(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings);
+  void on_contact_persisted(const JPH::Body& body1,
+                            const JPH::Body& body2,
+                            const JPH::ContactManifold& manifold,
+                            const JPH::ContactSettings& settings);
 
   Entity get_entity_by_uuid(UUID uuid);
 
@@ -71,6 +74,9 @@ public:
   Shared<SceneRenderer> get_renderer() { return scene_renderer; }
 
   entt::registry& get_registry() { return registry; }
+
+  // Events
+  void trigger_future_mesh_load_event(FutureMeshLoadEvent future_mesh_load_event);
 
 private:
   bool running = false;
@@ -96,6 +102,9 @@ private:
   void update_physics(const Timestep& delta_time);
   void create_rigidbody(Entity ent, const TransformComponent& transform, RigidbodyComponent& component);
   void create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const;
+
+  // Events
+  void handle_future_mesh_load_event(const FutureMeshLoadEvent& event);
 
   friend class SceneSerializer;
   friend class SceneHPanel;

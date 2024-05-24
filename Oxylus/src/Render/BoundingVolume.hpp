@@ -1,15 +1,16 @@
 ﻿#pragma once
+#include <glm/gtx/norm.hpp>
+
 #include "Core/Types.hpp"
 
+namespace ox {
+class RayCast;
+}
 namespace ox {
 struct Plane;
 struct Frustum;
 
-enum Intersection {
-  Outside    = 0,
-  Intersects = 1,
-  Inside     = 2
-};
+enum Intersection { Outside = 0, Intersects = 1, Inside = 2 };
 
 struct AABB {
   Vec3 min = {};
@@ -34,8 +35,27 @@ struct AABB {
 
   bool is_on_or_forward_plane(const Plane& plane) const;
   bool is_on_frustum(const Frustum& frustum) const;
-  Intersection is_point_inside(const Vec3& point) const;
-  Intersection is_aabb_inside(const AABB& box) const;
-  bool is_aabb_inside_fast(const AABB& box) const;
+  bool intersects(const Vec3& point) const;
+  Intersection intersects(const AABB& box) const;
+  bool intersects_fast(const AABB& box) const;
+  bool intersects(const RayCast& ray) const;
 };
-}
+
+struct Sphere {
+  Vec3 center = {};
+  float radius = {};
+
+  Sphere() = default;
+  ~Sphere() = default;
+  Sphere(const Sphere& other) = default;
+  Sphere(const Vec3 center, const float radius) : center(center), radius(radius) {}
+
+  bool intersects(const AABB& b) const;
+  bool intersects(const Sphere& b) const;
+  bool intersects(const Sphere& b, float& dist) const;
+  bool intersects(const Sphere& b, float& dist, Vec3& direction) const;
+  bool intersects(const RayCast& ray) const;
+  bool intersects(const RayCast& ray, float& dist) const;
+  bool intersects(const RayCast& ray, float& dist, Vec3& direction) const;
+};
+} // namespace ox

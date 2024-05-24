@@ -7,11 +7,11 @@
 
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
 
-#include "Render/RendererCommon.h"
-
 #include "Scene/EntitySerializer.hpp"
+#include "Scene/SceneEvents.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/ImGuiScoped.hpp"
 #include "Utils/StringUtils.hpp"
@@ -85,7 +85,7 @@ ImRect SceneHierarchyPanel::draw_entity_node(Entity entity, uint32_t depth, bool
   if (prefab_color_applied)
     ImGui::PushStyleColor(ImGuiCol_Text, header_selected_color);
 
-  const bool opened = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uint64_t>(EUtil::get_uuid(context->registry, entity))),
+  const bool opened = ImGui::TreeNodeEx(reinterpret_cast<void*>(static_cast<uint64_t>(eutil::get_uuid(context->registry, entity))),
                                         flags,
                                         "%s %s",
                                         StringUtils::from_char8_t(ICON_MDI_CUBE_OUTLINE),
@@ -265,6 +265,8 @@ void SceneHierarchyPanel::drag_drop_target() const {
       if (path.extension() == ".gltf" || path.extension() == ".glb") {
         const auto mesh = AssetManager::get_mesh_asset(path.string());
         context->load_mesh(mesh);
+        //const auto mesh_task = AssetManager::get_mesh_asset_future(path.string());
+        //context->trigger_future_mesh_load_event(FutureMeshLoadEvent{fs::get_name_with_extension(path.string()), mesh_task});
       }
       if (path.extension() == ".oxprefab") {
         EntitySerializer::deserialize_entity_as_prefab(path.string().c_str(), context.get());
@@ -377,7 +379,7 @@ void SceneHierarchyPanel::draw_context_menu() {
   }
 
   if (has_context && to_select != entt::null)
-    EUtil::set_parent(context.get(), to_select, selected_entities.front());
+    eutil::set_parent(context.get(), to_select, selected_entities.front());
 
   if (to_select != entt::null)
     selected_entities.emplace_back(to_select);
@@ -468,7 +470,7 @@ void SceneHierarchyPanel::on_imgui_render() {
       ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
       const auto view = context->registry.view<IDComponent>();
       for (const auto e : view) {
-        if (e != entt::null && EUtil::get_parent(context.get(), e) == entt::null)
+        if (e != entt::null && eutil::get_parent(context.get(), e) == entt::null)
           draw_entity_node(e);
       }
       ImGui::PopStyleVar();
@@ -495,7 +497,7 @@ void SceneHierarchyPanel::on_imgui_render() {
       clear_selection_context();
 
     if (dragged_entity != entt::null && dragged_entity_target != entt::null) {
-      EUtil::set_parent(context.get(), dragged_entity, dragged_entity_target);
+      eutil::set_parent(context.get(), dragged_entity, dragged_entity_target);
       dragged_entity = entt::null;
       dragged_entity_target = entt::null;
     }

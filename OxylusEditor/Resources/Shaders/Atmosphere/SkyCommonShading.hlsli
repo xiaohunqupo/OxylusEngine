@@ -59,8 +59,8 @@ float3 AccurateAtmosphericScattering(float2 pixelPosition,
       multiScatteringApprox,
       volumetricCloudShadow,
       opaqueShadow,
-      GetSkyTransmittanceLUTTexture(),
-      GetSkyMultiScatterLUTTexture()
+      get_sky_transmittance_lut_texture(),
+      get_sky_multi_scatter_lut_texture()
     );
 
     luminance = ss.L;
@@ -70,7 +70,7 @@ float3 AccurateAtmosphericScattering(float2 pixelPosition,
 
   if (enableSun) {
     const float3 sunIlluminance = sunColor;
-    totalColor = luminance + GetSunLuminance(worldPosition, worldDirection, sunDirection, sunIlluminance, atmosphere, GetSkyTransmittanceLUTTexture());
+    totalColor = luminance + GetSunLuminance(worldPosition, worldDirection, sunDirection, sunIlluminance, atmosphere, get_sky_transmittance_lut_texture());
   }
   else {
     totalColor = luminance; // We cant really seperate mie from luminance due to precomputation, todo?
@@ -113,8 +113,8 @@ float3 GetDynamicSkyColor(in float2 pixel, in float3 V, bool sunEnabled = true, 
     pixel,
     get_camera().position, // Ray origin
     V, // Ray direction
-    GetScene().sun_direction, // Position of the sun
-    GetScene().sun_color, // Sun Color
+    get_scene().sun_direction.unpack(), // Position of the sun
+    get_scene().sun_color.unpack(), // Sun Color
     sunEnabled, // Use sun and total
     darkEnabled, // Enable dark mode for light shafts etc.
     stationary, // Fixed position for ambient and environment capture.

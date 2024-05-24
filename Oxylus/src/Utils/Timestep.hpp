@@ -15,7 +15,7 @@ public:
   double get_seconds() const { return m_timestep * 0.001; }
   double get_elapsed_seconds() const { return m_elapsed * 0.001; }
 
-  operator float() const { return (float)m_timestep; }
+  explicit operator float() const { return (float)m_timestep; }
 
 private:
   double m_timestep; // MilliSeconds

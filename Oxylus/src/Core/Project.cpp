@@ -17,14 +17,14 @@
 
 namespace ox {
 std::string Project::get_asset_directory() {
-  return FileSystem::append_paths(get_project_directory(), active_project->project_config.asset_directory);
+  return fs::append_paths(get_project_directory(), active_project->project_config.asset_directory);
 }
 
 void Project::load_module() {
   if (get_config().module_name.empty())
     return;
 
-  const auto module_path = FileSystem::append_paths(get_project_directory(), project_config.module_name);
+  const auto module_path = fs::append_paths(get_project_directory(), project_config.module_name);
   ModuleUtil::load_module(project_config.module_name, module_path);
 }
 
@@ -51,11 +51,11 @@ Shared<Project> Project::new_project(const std::string& project_dir, const std::
 
   std::filesystem::create_directory(project_dir);
 
-  const auto asset_folder_dir = FileSystem::append_paths(project_dir, project_asset_dir);
+  const auto asset_folder_dir = fs::append_paths(project_dir, project_asset_dir);
   std::filesystem::create_directory(asset_folder_dir);
 
   const ProjectSerializer serializer(project);
-  serializer.serialize(FileSystem::append_paths(project_dir, project_name + ".oxproj"));
+  serializer.serialize(fs::append_paths(project_dir, project_name + ".oxproj"));
 
   set_active(project);
 

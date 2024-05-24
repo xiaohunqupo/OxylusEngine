@@ -10,9 +10,9 @@ Archive::Archive() { create_empty(); }
 
 Archive::Archive(const std::string& file_name, bool read_mode) : read_mode(read_mode), file_name(file_name) {
   if (!file_name.empty()) {
-    directory = FileSystem::get_directory(file_name);
+    directory = fs::get_directory(file_name);
     if (read_mode) {
-      if (const auto content = FileSystem::read_file_binary(file_name); !content.empty()) {
+      if (const auto content = fs::read_file_binary(file_name); !content.empty()) {
         data_ptr = content.data();
         (*this) >> version;
       }
@@ -52,15 +52,15 @@ void Archive::set_read_mode_and_reset_pos(bool isReadMode) {
 
 void Archive::close() {
   if (!read_mode && !file_name.empty()) {
-    FileSystem::write_file_binary(file_name, _data);
+    fs::write_file_binary(file_name, _data);
   }
   _data.clear();
 }
 
-bool Archive::save_file(const std::string_view file_path) const { return FileSystem::write_file_binary(file_path, _data); }
+bool Archive::save_file(const std::string_view file_path) const { return fs::write_file_binary(file_path, _data); }
 
 bool Archive::save_header_file(const std::string_view file_path, const std::string_view data_name) const {
-  return FileSystem::binary_to_header(file_path, data_name, _data);
+  return fs::binary_to_header(file_path, data_name, _data);
 }
 
 const std::string& Archive::get_source_directory() const { return directory; }

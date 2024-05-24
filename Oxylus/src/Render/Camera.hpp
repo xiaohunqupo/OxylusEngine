@@ -5,7 +5,7 @@
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_transform.hpp>
 
-#include "Frustum.h"
+#include "Frustum.hpp"
 
 #include "Physics/RayCast.hpp"
 

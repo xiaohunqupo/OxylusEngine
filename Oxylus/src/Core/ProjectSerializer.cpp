@@ -20,7 +20,7 @@ bool ProjectSerializer::serialize(const std::string& file_path) const {
     },
   }};
 
-  FileSystem::write_file(file_path, root, "# Oxylus project file"); // TODO: check for result
+  fs::write_file(file_path, root, "# Oxylus project file"); // TODO: check for result
 
   project->set_project_file_path(file_path);
 
@@ -29,7 +29,7 @@ bool ProjectSerializer::serialize(const std::string& file_path) const {
 
 bool ProjectSerializer::deserialize(const std::string& file_path) const {
   auto& [name, start_scene, asset_directory, module_name] = project->get_config();
-  const auto content = FileSystem::read_file(file_path);
+  const auto content = fs::read_file(file_path);
   if (content.empty()) {
     OX_ASSERT(!content.empty(), "Couldn't load project file: {0}", file_path);
     return false;

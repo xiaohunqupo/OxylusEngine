@@ -44,7 +44,7 @@ void LuaBindings::bind_mesh_component(const Shared<sol::state>& state) {
   material.set_function("new", [](const std::string& name) -> Shared<Material> { return create_shared<Material>(name); });
 
 #define MC MeshComponent
-  REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, node_index), FIELD(MC, cast_shadows), FIELD(MC, materials), FIELD(MC, aabb));
+  REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, stationary), FIELD(MC, cast_shadows), FIELD(MC, materials), FIELD(MC, aabb));
 }
 
 void LuaBindings::bind_camera_component(const Shared<sol::state>& state) {

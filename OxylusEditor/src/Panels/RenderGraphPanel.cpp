@@ -1,21 +1,15 @@
 ﻿#include "RenderGraphPanel.hpp"
 
-#include <RenderGraphUtil.hpp>
 
 #include <icons/IconsMaterialDesignIcons.h>
-
-#include <vuk/RenderGraph.hpp>
-#include <vuk/RenderGraphReflection.hpp>
-#include <vuk/SampledImage.hpp>
-#include <vuk/Partials.hpp>
 
 #include "imgui.h"
 
 #include "Render/Utils/VukCommon.hpp"
-#include "Render/RenderPipeline.h"
+#include "Render/RenderPipeline.hpp"
 
 #include "Scene/Scene.hpp"
-#include "Scene/SceneRenderer.h"
+#include "Scene/SceneRenderer.hpp"
 
 #include "UI/OxUI.hpp"
 
@@ -28,12 +22,8 @@ void RenderGraphPanel::on_imgui_render() {
   if (!context)
     return;
 
-  const auto rp = context->get_renderer()->get_render_pipeline();
-  const auto rg = rp->get_frame_render_graph();
-  const auto compiler = rp->get_compiler();
-  const auto chain_links = compiler->get_use_chains();
-
   if (on_begin()) {
+    #if 0
     const float filter_cursor_pos_x = ImGui::GetCursorPosX();
     ImGuiTextFilter name_filter;
 
@@ -54,7 +44,7 @@ void RenderGraphPanel::on_imgui_render() {
         auto extent = attch.extent.extent;
 
         if (attch.extent.sizing == vuk::Sizing::eRelative)
-          extent = rp->get_dimension().extent;
+          extent = rp->get_extent().extent;
 
         constexpr auto max_height = 300.0f;
         const auto aspect = (float)extent.width / (float)extent.height;
@@ -67,7 +57,7 @@ void RenderGraphPanel::on_imgui_render() {
         ImGui::TreePop();
       }
     }
-
+#endif
     on_end();
   }
 }

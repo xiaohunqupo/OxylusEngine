@@ -7,7 +7,7 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/ViewportPanel.hpp"
 
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 #include "Utils/EditorConfig.hpp"
 
 #include "UI/RuntimeConsole.hpp"
@@ -35,16 +35,20 @@ public:
   ankerl::unordered_dense::map<size_t, Unique<EditorPanel>> editor_panels;
   std::vector<Unique<ViewportPanel>> viewport_panels;
 
-  template <typename T> void add_panel() { editor_panels.emplace(typeid(T).hash_code(), create_unique<T>()); }
+  template <typename T>
+  void add_panel() {
+    editor_panels.emplace(typeid(T).hash_code(), create_unique<T>());
+  }
 
-  template <typename T> T* get_panel() {
+  template <typename T>
+  T* get_panel() {
     const auto hash_code = typeid(T).hash_code();
     OX_ASSERT(editor_panels.contains(hash_code));
     return dynamic_cast<T*>(editor_panels[hash_code].get());
   }
 
   // Logo
-  Shared<TextureAsset> engine_banner = nullptr;
+  Shared<Texture> engine_banner = nullptr;
 
   // Layout
   ImGuiID dockspace_id;
@@ -116,5 +120,10 @@ private:
   Shared<Scene> editor_scene;
   Shared<Scene> active_scene;
   static EditorLayer* instance;
+
+  // UI
+  std::vector<FutureMeshLoadEvent> mesh_load_indicators;
+  void handle_future_mesh_load_event(const FutureMeshLoadEvent& event);
+  void render_load_indicators();
 };
 } // namespace ox

@@ -4,15 +4,15 @@
 #include <fstream>
 
 #include "Scene.hpp"
-#include "SceneRenderer.h"
+#include "SceneRenderer.hpp"
 
 #include "Assets/AssetManager.hpp"
 
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 
-#include "Utils/Archive.hpp"
 #include "Entity.hpp"
+#include "Utils/Archive.hpp"
 
 #include "Utils/Log.hpp"
 
@@ -33,7 +33,7 @@ namespace ox {
   { #field, get_toml_array(c.field) }
 
 void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Entity entity) {
-  entities->push_back(toml::table{{"uuid", std::to_string((uint64_t)EUtil::get_uuid(scene->registry, entity))}});
+  entities->push_back(toml::table{{"uuid", std::to_string((uint64_t)eutil::get_uuid(scene->registry, entity))}});
 
   if (scene->registry.all_of<TagComponent>(entity)) {
     const auto& tag = scene->registry.get<TagComponent>(entity);
@@ -76,7 +76,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
   if (scene->registry.all_of<MeshComponent>(entity)) {
     const auto& mrc = scene->registry.get<MeshComponent>(entity);
 
-    const auto table = toml::table{{"mesh_path", App::get_relative(mrc.mesh_base->path)}, TBL_FIELD(mrc, node_index), TBL_FIELD(mrc, cast_shadows)};
+    const auto table = toml::table{{"mesh_path", App::get_relative(mrc.mesh_base->path)}, TBL_FIELD(mrc, stationary), TBL_FIELD(mrc, cast_shadows)};
 
     entities->push_back(toml::table{{"mesh_component", table}});
   }
@@ -91,8 +91,10 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
       TBL_FIELD_ARR(light, color),
       TBL_FIELD(light, intensity),
       TBL_FIELD(light, range),
-      TBL_FIELD(light, cut_off_angle),
-      TBL_FIELD(light, outer_cut_off_angle),
+      TBL_FIELD(light, radius),
+      TBL_FIELD(light, length),
+      TBL_FIELD(light, outer_cone_angle),
+      TBL_FIELD(light, inner_cone_angle),
       TBL_FIELD(light, cast_shadows),
       TBL_FIELD(light, shadow_map_res),
     };
@@ -307,8 +309,8 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       const auto path = App::get_absolute(GET_STRING2(mesh_node, "mesh_path"));
       auto mesh = AssetManager::get_mesh_asset(path);
       auto& mc = reg.emplace<MeshComponent>(deserialized_entity, mesh);
-      GET_UINT32(mesh_node, mc, node_index);
       GET_BOOL(mesh_node, mc, cast_shadows);
+      GET_BOOL(mesh_node, mc, stationary);
     } else if (const auto light_node = ent.as_table()->get("light_component")) {
       auto& lc = reg.emplace<LightComponent>(deserialized_entity);
       lc.type = (LightComponent::LightType)GET_UINT322(light_node, "type");
@@ -317,8 +319,10 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       lc.color = get_vec3_toml_array(GET_ARRAY(light_node, "color"));
       GET_FLOAT(light_node, lc, intensity);
       GET_FLOAT(light_node, lc, range);
-      GET_FLOAT(light_node, lc, cut_off_angle);
-      GET_FLOAT(light_node, lc, outer_cut_off_angle);
+      GET_FLOAT(light_node, lc, radius);
+      GET_FLOAT(light_node, lc, length);
+      GET_FLOAT(light_node, lc, outer_cone_angle);
+      GET_FLOAT(light_node, lc, inner_cone_angle);
       GET_BOOL(light_node, lc, cast_shadows);
       GET_UINT32(light_node, lc, shadow_map_res);
     } else if (const auto pp_node = ent.as_table()->get("post_process_probe")) {
@@ -411,7 +415,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       }
     }
   }
-  return EUtil::get_uuid(reg, deserialized_entity);
+  return eutil::get_uuid(reg, deserialized_entity);
 }
 
 void EntitySerializer::serialize_entity_as_prefab(const char* filepath, Entity entity) {
@@ -507,7 +511,7 @@ Entity EntitySerializer::deserialize_entity_as_prefab(const char* filepath, Scen
   }
 
 #endif
-  OX_LOG_ERROR("There are not entities in the prefab to deserialize! {0}", FileSystem::get_file_name(filepath));
+  OX_LOG_ERROR("There are not entities in the prefab to deserialize! {0}", fs::get_file_name(filepath));
   return {};
 }
 } // namespace ox

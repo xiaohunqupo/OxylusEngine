@@ -14,9 +14,9 @@ float3 UnprojectPoint(float x, float y, float z, float4x4 inv_projection_view_ma
 
 VOutput main(Vertex inVertex) {
   VOutput output;
-  output.UV = inVertex.uv;
+  output.UV = inVertex.uv.unpack();
 
-  float3 position = inVertex.position;
+  float3 position = inVertex.position.unpack();
   output.NearPoint = UnprojectPoint(position.x, position.y, 0.0, get_camera().inv_projection_view);
   output.FarPoint = UnprojectPoint(position.x, position.y, 1.0, get_camera().inv_projection_view).xyz;
   output.Position = float4(position.xyz, 1.0);
@@ -90,7 +90,7 @@ PSOut PSmain(VOutput input, float4 pixelPosition : SV_Position) {
     angle = 1.0 - abs(angle);
     angle *= angle;
     angleFade = 1.0 - angle * angle;
-    angleFade *= 1.0 - smoothstep(0.0, GetScene().grid_max_distance, dist - GetScene().grid_max_distance);
+    angleFade *= 1.0 - smoothstep(0.0, get_scene().grid_max_distance, dist - get_scene().grid_max_distance);
   } else {
     dist = pixelPosition.z * 2.0 - 1.0;
     /* Avoid fading in +Z direction in camera view (see T70193). */

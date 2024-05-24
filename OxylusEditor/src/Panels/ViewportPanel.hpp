@@ -1,6 +1,7 @@
 #pragma once
 
-#include "EditorTheme.hpp"
+#include <vuk/Value.hpp>
+
 #include "EditorPanel.hpp"
 
 #include "Render/Camera.hpp"
@@ -9,8 +10,6 @@
 
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
-
-#include "Utils/StringUtils.hpp"
 
 namespace ox {
 class ViewportPanel : public EditorPanel {
@@ -33,9 +32,6 @@ public:
 private:
   void draw_performance_overlay();
   void draw_gizmos();
-  void mouse_picking_pass(const Shared<RenderPipeline>& rp, const vuk::Dimension3D& dim, float fixed_width);
-  bool outline_pass(const Shared<RenderPipeline>& rp, const vuk::Dimension3D& dim) const;
-
   template <typename T>
   void show_component_gizmo(const float width,
                             const float height,
@@ -48,7 +44,7 @@ private:
       auto view = scene->registry.view<TransformComponent, T>();
 
       for (const auto&& [entity, transform, component] : view.each()) {
-        Vec3 pos = EUtil::get_world_transform(scene, entity)[3];
+        Vec3 pos = eutil::get_world_transform(scene, entity)[3];
 
         const auto inside = frustum.is_inside(pos);
 
@@ -60,7 +56,7 @@ private:
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
-        if (OxUI::image_button("##", gizmo_image_map[typeid(T).hash_code()]->get_texture(), {40.f, 40.f})) {
+        if (OxUI::image_button("##", *gizmo_image_map[typeid(T).hash_code()]->get_view(), {40.f, 40.f})) {
           m_scene_hierarchy_panel->set_selected_entity(entity);
         }
 
@@ -86,11 +82,11 @@ private:
   int m_gizmo_type = -1;
   int m_gizmo_mode = 0;
 
-  ankerl::unordered_dense::map<size_t, Shared<TextureAsset>> gizmo_image_map;
+  ankerl::unordered_dense::map<size_t, Shared<Texture>> gizmo_image_map;
 
   std::vector<vuk::Unique<vuk::Buffer>> id_buffers = {};
 
-  //Camera
+  // Camera
   bool m_lock_aspect_ratio = true;
   float m_translation_dampening = 0.6f;
   float m_rotation_dampening = 0.3f;
@@ -100,4 +96,4 @@ private:
   Vec3 m_translation_velocity = Vec3(0);
   Vec2 m_rotation_velocity = Vec2(0);
 };
-}
+} // namespace ox

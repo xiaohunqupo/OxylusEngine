@@ -1,7 +1,7 @@
 #include "EditorConfig.hpp"
 #include <fstream>
 
-#include <Render/RendererConfig.h>
+#include <Render/RendererConfig.hpp>
 
 #include "Core/FileSystem.hpp"
 #include "Core/Project.hpp"
@@ -22,7 +22,7 @@ EditorConfig::EditorConfig() {
 
 void EditorConfig::load_config() {
   OX_SCOPED_ZONE;
-  const auto& content = FileSystem::read_file(EDITOR_CONFIG_FILE_NAME);
+  const auto& content = fs::read_file(EDITOR_CONFIG_FILE_NAME);
   if (content.empty())
     return;
 

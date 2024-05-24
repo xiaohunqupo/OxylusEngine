@@ -9,14 +9,14 @@
 #include "EditorLayer.hpp"
 
 #include "UI/OxUI.hpp"
+#include "Utils/EditorConfig.hpp"
 #include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
-#include "Utils/EditorConfig.hpp"
 
 namespace ox {
-ProjectPanel::ProjectPanel() : EditorPanel("Projects", ICON_MDI_ACCOUNT_BADGE, true) { }
+ProjectPanel::ProjectPanel() : EditorPanel("Projects", ICON_MDI_ACCOUNT_BADGE, true) {}
 
-void ProjectPanel::on_update() { }
+void ProjectPanel::on_update() {}
 
 void ProjectPanel::load_project_for_editor(const std::string& filepath) {
   if (Project::load(filepath)) {
@@ -38,8 +38,8 @@ void ProjectPanel::new_project(const std::string& project_dir, const std::string
 void ProjectPanel::on_imgui_render() {
   if (Visible && !ImGui::IsPopupOpen("ProjectSelector"))
     ImGui::OpenPopup("ProjectSelector");
-  constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings
-                         | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking;
+  constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration |
+                         ImGuiWindowFlags_NoDocking;
   static bool draw_new_project_panel = false;
 
   OxUI::center_next_window();
@@ -47,11 +47,11 @@ void ProjectPanel::on_imgui_render() {
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
 
-    const auto banner_size = EditorLayer::get()->engine_banner->get_texture().extent;
+    const auto banner_size = EditorLayer::get()->engine_banner->get_extent();
 
     const auto scale = Window::get_content_scale();
 
-    OxUI::image(EditorLayer::get()->engine_banner->get_texture(), {(float)banner_size.width * scale.x, (float)banner_size.height * scale.y});
+    OxUI::image(*EditorLayer::get()->engine_banner->get_view(), {(float)banner_size.width * scale.x, (float)banner_size.height * scale.y});
     OxUI::spacing(2);
     ImGui::SeparatorText("Projects");
     OxUI::spacing(2);
@@ -68,7 +68,7 @@ void ProjectPanel::on_imgui_render() {
         ImGui::SameLine();
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FOLDER), {ImGui::GetContentRegionAvail().x, 0})) {
           project_dir = App::get_system<FileDialogs>()->open_dir();
-          project_dir = FileSystem::append_paths(project_dir, project_name);
+          project_dir = fs::append_paths(project_dir, project_name);
         }
         OxUI::end_property_grid();
       }
@@ -87,11 +87,10 @@ void ProjectPanel::on_imgui_render() {
       if (ImGui::Button("Cancel", ImVec2(120, 0))) {
         draw_new_project_panel = false;
       }
-    }
-    else {
+    } else {
       const auto projects = EditorConfig::get()->get_recent_projects();
       for (auto& project : projects) {
-        auto project_name = FileSystem::get_file_name(project);
+        auto project_name = fs::get_file_name(project);
         if (ImGui::Button(project_name.c_str(), {x, y})) {
           load_project_for_editor(project);
         }
@@ -108,9 +107,14 @@ void ProjectPanel::on_imgui_render() {
           load_project_for_editor(filepath);
         }
       }
+      OxUI::align_right(ImVec2(120, 0).x);
+      if (ImGui::Button("Skip", ImVec2(120, 0))) {
+        Visible = false;
+        ImGui::CloseCurrentPopup();
+      }
     }
     OxUI::spacing(4);
     ImGui::EndPopup();
   }
 }
-}
+} // namespace ox

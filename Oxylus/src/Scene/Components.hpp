@@ -8,9 +8,9 @@
 #include "Audio/AudioSource.hpp"
 
 #include "Render/Camera.hpp"
+#include "Render/Mesh.hpp"
+#include "Render/ParticleSystem.hpp"
 #include "Render/Utils/RectPacker.hpp"
-#include "Render/Mesh.h"
-#include "Render/ParticleSystem.h"
 
 #include "Scripting/LuaSystem.hpp"
 
@@ -19,7 +19,7 @@ class Character;
 }
 
 namespace ox {
-class TextureAsset;
+class Texture;
 class Material;
 
 struct IDComponent {
@@ -55,6 +55,8 @@ struct PrefabComponent {
 };
 
 struct TransformComponent {
+  static constexpr auto in_place_delete = true;
+
   Vec3 position = Vec3(0);
   Vec3 rotation = Vec3(0); // Stored in radians
   Vec3 scale = Vec3(1);
@@ -76,34 +78,32 @@ struct TransformComponent {
 
 // Rendering
 struct MeshComponent {
+  static constexpr auto in_place_delete = true; // pointer stability
+
   Shared<Mesh> mesh_base = nullptr;
-  uint32_t node_index = 0;
   bool cast_shadows = true;
+  bool stationary = false;
 
   // non-serialized data
   uint32_t mesh_id = Asset::INVALID_ID;
-  std::vector<Shared<Material>> materials = {}; // node materials
-  Mat4 transform = {};
+  std::vector<Shared<Material>> materials = {};
+  Mat4 transform = Mat4{1};
+  std::vector<entt::entity> child_entities = {}; // filled at load
+  std::vector<Mat4> child_transforms = {}; // filled at submit
   AABB aabb = {};
+  bool dirty = false;
 
   MeshComponent() = default;
 
-  MeshComponent(const Shared<Mesh>& mesh, const uint32_t node_idx = 0) : mesh_base(mesh), node_index(node_idx) {
-    materials = mesh->get_materials(node_index);
+  explicit MeshComponent(const Shared<Mesh>& mesh) : mesh_base(mesh) {
+    materials = mesh_base->_materials;
+    mesh_id = mesh->get_id();
+    dirty = true;
   }
-
-  constexpr Mesh::Node* get_linear_node() const { return mesh_base->linear_nodes[node_index]; }
 };
 
 struct CameraComponent {
   Camera camera;
-};
-
-struct AnimationComponent {
-  float animation_timer = 0.0;
-  float animation_speed = 1.0f;
-  uint32_t current_animation_index = 0;
-  std::vector<Shared<Mesh::Animation>> animations;
 };
 
 struct ParticleSystemComponent {
@@ -122,8 +122,10 @@ struct LightComponent {
   float intensity = 1.0f;
 
   float range = 1.0f;
-  float cut_off_angle = glm::radians(12.5f);
-  float outer_cut_off_angle = glm::radians(17.5f);
+  float radius = 0.025f;
+  float length = 0;
+  float outer_cone_angle = glm::pi<float>() / 4.0f;
+  float inner_cone_angle = 0;
 
   bool cast_shadows = true;
   uint32_t shadow_map_res = 0;
@@ -291,7 +293,12 @@ struct LuaScriptComponent {
   std::vector<Shared<LuaSystem>> lua_systems = {};
 };
 
-template <typename... Component> struct ComponentGroup {};
+struct CPPScriptComponent {
+  Shared<System> system = nullptr;
+};
+
+template <typename... Component>
+struct ComponentGroup {};
 
 using AllComponents = ComponentGroup<TransformComponent,
                                      RelationshipComponent,

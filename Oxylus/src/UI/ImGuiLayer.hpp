@@ -1,22 +1,25 @@
 #pragma once
 
 #include <plf_colony.h>
-#include <vuk/Image.hpp>
-#include <vuk/SampledImage.hpp>
+#include <vuk/Value.hpp>
 
-#include "Core/Base.hpp"
+#include <imgui.h>
+
+#include "Assets/Texture.hpp"
 #include "Core/Layer.hpp"
-#include "imgui.h"
 
 namespace ox {
-class Texture;
-
 class ImGuiLayer : public Layer {
 public:
+  struct ImGuiImage {
+    bool global;
+    vuk::ImageView view;
+    uint32_t attachment_index;
+  };
+
   struct ImGuiData {
-    vuk::Texture font_texture;
-    vuk::SamplerCreateInfo font_sci;
-    std::unique_ptr<vuk::SampledImage> font_si;
+    Shared<Texture> font_texture = nullptr;
+    ImGuiImage font_image = {};
   };
 
   static ImFont* bold_font;
@@ -43,22 +46,25 @@ public:
   void begin();
   void end();
 
-  vuk::Future render_draw_data(vuk::Allocator& allocator, vuk::Future target, ImDrawData* im_draw_data) const;
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> render_draw_data(vuk::Allocator& allocator,
+                                                                  vuk::Compiler& compiler,
+                                                                  vuk::Value<vuk::ImageAttachment> target) const;
 
-  vuk::SampledImage* add_sampled_image(const vuk::SampledImage& sampled_image);
+  ImGuiImage* add_image(const vuk::ImageView& view);
+  ImGuiImage* add_attachment(const vuk::Value<vuk::ImageAttachment>& attach);
 
-  ImGuiIO* get_imgui_io() const { return imgui_io; }
   static void apply_theme(bool dark = true);
   static void set_style();
 
-  plf::colony<vuk::SampledImage> sampled_images;
+  plf::colony<ImGuiImage> sampled_images;
+  std::vector<vuk::Value<vuk::ImageAttachment>> sampled_attachments;
+
 private:
   ImGuiData imgui_data;
-  ImGuiIO* imgui_io = nullptr;
+  ImDrawData* draw_data = nullptr;
 
   void init_for_vulkan();
   void add_icon_font(float font_size);
-  ImGuiData imgui_impl_vuk_init(vuk::Allocator& allocator) const;
-
+  void imgui_impl_vuk_init(vuk::Allocator& allocator);
 };
-}
+} // namespace ox

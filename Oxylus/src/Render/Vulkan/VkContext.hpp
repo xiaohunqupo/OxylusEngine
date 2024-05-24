@@ -5,12 +5,10 @@
 #include <optional>
 
 #include <VkBootstrap.h>
-#include <vuk/Allocator.hpp>
-#include <vuk/AllocatorHelpers.hpp>
-#include <vuk/Context.hpp>
-#include <vuk/Types.hpp>
-#include <vuk/resources/DeviceFrameResource.hpp>
+#include <vuk/runtime/vk/DeviceFrameResource.hpp>
+#include <vuk/runtime/vk/VkRuntime.hpp>
 
+#include "Core/Types.hpp"
 
 namespace vkb {
 struct Device;
@@ -29,12 +27,12 @@ public:
   VkQueue graphics_queue = nullptr;
   uint32_t graphics_queue_family_index = 0;
   VkQueue transfer_queue = nullptr;
-  std::optional<vuk::Context> context;
+  std::optional<vuk::Runtime> runtime;
   std::optional<vuk::DeviceSuperFrameResource> superframe_resource;
   std::optional<vuk::Allocator> superframe_allocator;
   bool suspend = false;
   vuk::PresentModeKHR present_mode = vuk::PresentModeKHR::eFifo;
-  vuk::SwapchainRef swapchain = nullptr;
+  std::optional<vuk::Swapchain> swapchain;
   VkSurfaceKHR surface;
   vkb::Instance vkb_instance;
   vkb::Device vkb_device;
@@ -53,17 +51,13 @@ public:
   static VkContext* get() { return s_instance; }
 
   void create_context(const AppSpec& spec);
-
-  void rebuild_swapchain(vuk::PresentModeKHR new_present_mode = vuk::PresentModeKHR::eFifo);
-
-  vuk::Allocator begin();
-  void end(const vuk::Future& src, vuk::Allocator frame_allocator);
+  void handle_resize(uint32 width, uint32 height);
+  void set_vsync(bool enable);
+  bool is_vsync() const;
 
   uint32_t get_max_viewport_count() const { return vkbphysical_device.properties.limits.maxViewports; }
 
 private:
-  vuk::SingleSwapchainRenderBundle m_bundle = {};
-
   static VkContext* s_instance;
 };
 }

@@ -1,8 +1,8 @@
 ﻿#include "DebugRenderer.hpp"
 
-#include <vuk/Partials.hpp>
+#include <vuk/vsl/Core.hpp>
 
-#include "RendererCommon.h"
+#include "RendererCommon.hpp"
 
 #include "Utils/OxMath.hpp"
 #include "Utils/Profiler.hpp"
@@ -29,7 +29,10 @@ void DebugRenderer::init() {
   instance->debug_renderer_context.cube = RendererCommon::generate_cube();
   instance->debug_renderer_context.sphere = RendererCommon::generate_sphere();
 
-  auto [i_buff, i_buff_fut] = create_buffer(*VkContext::get()->superframe_allocator, vuk::MemoryUsage::eCPUtoGPU, vuk::DomainFlagBits::eTransferOnGraphics, std::span(indices));
+  auto [i_buff, i_buff_fut] = create_buffer(*VkContext::get()->superframe_allocator,
+                                            vuk::MemoryUsage::eCPUtoGPU,
+                                            vuk::DomainFlagBits::eTransferOnGraphics,
+                                            std::span(indices));
 
   auto compiler = vuk::Compiler{};
   i_buff_fut.wait(*VkContext::get()->superframe_allocator, compiler);
@@ -95,9 +98,14 @@ void DebugRenderer::draw_sphere(const Vec3& pos, const Vec3& scale, const Vec4& 
     instance->draw_list.debug_shapes.emplace_back(ShapeInfo{transform, color, instance->debug_renderer_context.sphere});
 }
 
-void DebugRenderer::draw_capsule(const Vec3& pos, const Vec3& scale, const Vec4& color, const Vec3& rotation, bool ndt) { }
+void DebugRenderer::draw_capsule(const Vec3& pos, const Vec3& scale, const Vec4& color, const Vec3& rotation, bool ndt) {}
 
-void DebugRenderer::draw_mesh(const Shared<Mesh>& mesh, const Vec3& pos, const Vec3& scale, const Vec4& color, const Vec3& rotation, bool depth_tested) {
+void DebugRenderer::draw_mesh(const Shared<Mesh>& mesh,
+                              const Vec3& pos,
+                              const Vec3& scale,
+                              const Vec4& color,
+                              const Vec3& rotation,
+                              bool depth_tested) {
   const auto transform = translate(Mat4(1.0f), pos) * toMat4(glm::quat(rotation)) * glm::scale(Mat4(1.0f), scale);
   if (depth_tested)
     instance->draw_list_depth_tested.debug_shapes.emplace_back(ShapeInfo{transform, color, mesh});
@@ -140,8 +148,7 @@ void DebugRenderer::draw_aabb(const AABB& aabb, const Vec4& color, bool corners_
     draw_line(ull, ulu, width, color, depth_tested);
     draw_line(lul, luu, width, color, depth_tested);
     draw_line(uul, uuu, width, color, depth_tested);
-  }
-  else {
+  } else {
     draw_line(luu, luu + (uuu - luu) * 0.25f, width, color, depth_tested);
     draw_line(luu + (uuu - luu) * 0.75f, uuu, width, color, depth_tested);
 
@@ -180,18 +187,49 @@ void DebugRenderer::draw_aabb(const AABB& aabb, const Vec4& color, bool corners_
   }
 }
 
+void DebugRenderer::draw_frustum(const Mat4& frustum, const Vec4& color, float near, float far) {
+  // Get frustum corners in world space
+  auto tln = math::unproject_uv_zo(near, {0, 1}, frustum);
+  auto trn = math::unproject_uv_zo(near, {1, 1}, frustum);
+  auto bln = math::unproject_uv_zo(near, {0, 0}, frustum);
+  auto brn = math::unproject_uv_zo(near, {1, 0}, frustum);
+
+  // Far corners are lerped slightly to near in case it is an infinite projection
+  auto tlf = math::unproject_uv_zo(glm::mix(far, near, 1e-5), {0, 1}, frustum);
+  auto trf = math::unproject_uv_zo(glm::mix(far, near, 1e-5), {1, 1}, frustum);
+  auto blf = math::unproject_uv_zo(glm::mix(far, near, 1e-5), {0, 0}, frustum);
+  auto brf = math::unproject_uv_zo(glm::mix(far, near, 1e-5), {1, 0}, frustum);
+
+  // Connect-the-dots
+  // Near and far "squares"
+  draw_line(tln, trn, 1.0f, color, true);
+  draw_line(bln, brn, 1.0f, color, true);
+  draw_line(tln, bln, 1.0f, color, true);
+  draw_line(trn, brn, 1.0f, color, true);
+  draw_line(tlf, trf, 1.0f, color, true);
+  draw_line(blf, brf, 1.0f, color, true);
+  draw_line(tlf, blf, 1.0f, color, true);
+  draw_line(trf, brf, 1.0f, color, true);
+
+  // Lines connecting near and far planes
+  draw_line(tln, tlf, 1.0f, color, true);
+  draw_line(trn, trf, 1.0f, color, true);
+  draw_line(bln, blf, 1.0f, color, true);
+  draw_line(brn, brf, 1.0f, color, true);
+}
+
 std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_lines(const std::vector<LineInfo>& lines) {
   std::vector<Vertex> vertices = {};
   uint32_t indices = 0;
 
   for (const auto& line : lines) {
     // store color in normals for simplicity
-    vertices.emplace_back(Vertex{.position = line.p1, .normal = line.col});
-    vertices.emplace_back(Vertex{.position = line.p2, .normal = line.col});
+    vertices.emplace_back(Vertex{.position = line.p1, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col))});
+    vertices.emplace_back(Vertex{.position = line.p2, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col))});
 
     indices += 2;
   }
 
   return {vertices, indices};
 }
-}
+} // namespace ox

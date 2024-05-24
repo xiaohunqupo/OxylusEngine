@@ -9,15 +9,31 @@
 #include "Profiler.hpp"
 
 namespace ox::math {
+inline float2 sign_not_zero(float2 v) { return {(v.x >= 0.0f) ? +1.0f : -1.0f, (v.y >= 0.0f) ? +1.0f : -1.0f}; }
+
+inline float2 float32x3_to_oct(float3 v) {
+  const float2 p = float2{v.x, v.y} * (1.0f / (abs(v.x) + abs(v.y) + abs(v.z)));
+  return (v.z <= 0.0f) ? ((1.0f - glm::abs(float2{p.y, p.x})) * sign_not_zero(p)) : p;
+}
+
+constexpr uint32_t previous_power2(uint32_t x) {
+  uint32_t v = 1;
+  while ((v << 1) < x) {
+    v <<= 1;
+  }
+  return v;
+}
+
+inline glm::vec3 unproject_uv_zo(float depth, glm::vec2 uv, const glm::mat4& invXProj) {
+  glm::vec4 ndc = glm::vec4(uv * 2.0f - 1.0f, depth, 1.0f);
+  glm::vec4 world = invXProj * ndc;
+  return glm::vec3(world) / world.w;
+}
+
 bool decompose_transform(const glm::mat4& transform, Vec3& translation, Vec3& rotation, Vec3& scale);
 
 template <typename T>
-static T smooth_damp(const T& current,
-                     const T& target,
-                     T& current_velocity,
-                     float smooth_time,
-                     const float max_speed,
-                     float delta_time) {
+static T smooth_damp(const T& current, const T& target, T& current_velocity, float smooth_time, const float max_speed, float delta_time) {
   OX_SCOPED_ZONE;
   // Based on Game Programming Gems 4 Chapter 1.10
   smooth_time = glm::max(0.0001F, smooth_time);
@@ -65,4 +81,4 @@ Vec2 world_to_screen(const Vec3& world_pos, const glm::mat4& mvp, float width, f
 Vec4 transform(const Vec4& vec, const Mat4& view);
 Vec4 transform_normal(const Vec4& vec, const Mat4& mat);
 Vec4 transform_coord(const Vec4& vec, const Mat4& view);
-}
+} // namespace ox::math

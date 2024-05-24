@@ -1,9 +1,9 @@
 #include "Scene.hpp"
 
-#include "Utils/Profiler.hpp"
-#include "Utils/Timestep.hpp"
 #include "Entity.hpp"
 #include "Render/Camera.hpp"
+#include "Utils/Profiler.hpp"
+#include "Utils/Timestep.hpp"
 
 #include <glm/glm.hpp>
 
@@ -13,7 +13,7 @@
 
 #include <sol/state.hpp>
 
-#include "SceneRenderer.h"
+#include "SceneRenderer.hpp"
 
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
@@ -34,22 +34,16 @@
 #include "Physics/Physics.hpp"
 #include "Physics/PhysicsMaterial.hpp"
 
-#include "Render/RenderPipeline.h"
+#include "Render/RenderPipeline.hpp"
 
 #include "Scripting/LuaManager.hpp"
 
 namespace ox {
-Scene::Scene() {
-  init();
-}
+Scene::Scene() { init(); }
 
-Scene::Scene(std::string name) : scene_name(std::move(name)) {
-  init();
-}
+Scene::Scene(std::string name) : scene_name(std::move(name)) { init(); }
 
-Scene::Scene(const Shared<RenderPipeline>& render_pipeline) {
-  init(render_pipeline);
-}
+Scene::Scene(const Shared<RenderPipeline>& render_pipeline) { init(render_pipeline); }
 
 Scene::~Scene() {
   App::get_system<LuaManager>()->get_state()->collect_gc();
@@ -91,12 +85,14 @@ void Scene::init(const Shared<RenderPipeline>& render_pipeline) {
   registry.on_construct<CylinderColliderComponent>().connect<&Scene::collider_component_ctor>(this);
   registry.on_construct<MeshColliderComponent>().connect<&Scene::collider_component_ctor>(this);
   registry.on_construct<CharacterControllerComponent>().connect<&Scene::character_controller_component_ctor>(this);
-  
+
+  dispatcher.sink<FutureMeshLoadEvent>().connect<&Scene::handle_future_mesh_load_event>(*this);
+
   // Renderer
   scene_renderer = create_shared<SceneRenderer>(this);
 
   scene_renderer->set_render_pipeline(render_pipeline);
-  scene_renderer->init();
+  scene_renderer->init(dispatcher);
 
   // Systems
   for (const auto& system : systems) {
@@ -104,9 +100,7 @@ void Scene::init(const Shared<RenderPipeline>& render_pipeline) {
   }
 }
 
-Entity Scene::create_entity(const std::string& name) {
-  return create_entity_with_uuid(UUID(), name);
-}
+Entity Scene::create_entity(const std::string& name) { return create_entity_with_uuid(UUID(), name); }
 
 entt::entity Scene::create_entity_with_uuid(UUID uuid, const std::string& name) {
   OX_SCOPED_ZONE;
@@ -119,39 +113,35 @@ entt::entity Scene::create_entity_with_uuid(UUID uuid, const std::string& name) 
   return ent;
 }
 
-void Scene::iterate_mesh_node(const Shared<Mesh>& mesh, std::vector<Entity>& node_entities, const Entity parent_entity, const Mesh::Node* node) {
-  const auto node_entity = create_entity(node->name); //base_entity != entt::null ? base_entity : create_entity(node->name);
-
-  node_entities.emplace_back(node_entity);
-
-  if (node->mesh_data) {
-    auto& mc = registry.emplace_or_replace<MeshComponent>(node_entity, mesh, node->index);
-    mc.mesh_id = mesh->get_id();
-    registry.get<TransformComponent>(node_entity).set_from_matrix(node->get_matrix());
-  }
-
-  if (parent_entity != entt::null)
-    EUtil::set_parent(this, node_entity, parent_entity);
-
-  for (const auto& child : node->children)
-    iterate_mesh_node(mesh, node_entities, node_entity, child);
-}
-
 Entity Scene::load_mesh(const Shared<Mesh>& mesh) {
-  std::vector<Entity> node_entities = {};
+  entt::entity root_entity = entt::null;
 
-  for (const auto* node : mesh->nodes) {
-    iterate_mesh_node(mesh, node_entities, entt::null, node);
+  MeshComponent* parent = nullptr;
+  auto traverse = [this, mesh, &parent, &root_entity](const Mesh::Node* node, const entt::entity parent_entity, auto& traverse_func) -> void {
+    const Entity node_entity = create_entity(node->name);
+    if (parent_entity != entt::null)
+      eutil::set_parent(this, node_entity, parent_entity);
+
+    // TODO: we could actually use this to have material components for each child instead of having them all in the parent maybe?
+    auto& tc = registry.get<TransformComponent>(node_entity);
+    tc.set_from_matrix(node->get_local_transform());
+    if (!parent) {
+      parent = &registry.get_or_emplace<MeshComponent>(node_entity, mesh);
+      root_entity = node_entity;
+    } else {
+      parent->child_entities.emplace_back(node_entity);
+    }
+
+    for (const auto& child : node->children) {
+      traverse_func(child, node_entity, traverse_func);
+    }
+  };
+
+  for (const auto& node : mesh->root_nodes) {
+    traverse(node, entt::null, traverse);
   }
 
-  Entity parent = entt::null;
-  if (node_entities.size() > 1) {
-    parent = create_entity(FileSystem::get_file_name(mesh->path));
-    for (const auto ent : node_entities)
-      EUtil::set_parent(this, ent, parent);
-  }
-
-  return parent == entt::null ? node_entities.front() : parent;
+  return root_entity;
 }
 
 void Scene::update_physics(const Timestep& delta_time) {
@@ -203,8 +193,7 @@ void Scene::update_physics(const Timestep& delta_time) {
 
       tc.position = glm::lerp(rb.previous_translation, rb.translation, interpolation_factor);
       tc.rotation = glm::eulerAngles(glm::slerp(rb.previous_rotation, rb.rotation, interpolation_factor));
-    }
-    else {
+    } else {
       const JPH::Vec3 position = body->GetPosition();
       JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
 
@@ -235,8 +224,7 @@ void Scene::update_physics(const Timestep& delta_time) {
 
         tc.position = glm::lerp(ch.previous_translation, ch.translation, interpolation_factor);
         tc.rotation = glm::eulerAngles(glm::slerp(ch.previous_rotation, ch.rotation, interpolation_factor));
-      }
-      else {
+      } else {
         const JPH::Vec3 position = ch.character->GetPosition();
         JPH::Vec3 rotation = ch.character->GetRotation().GetEulerAngles();
 
@@ -253,7 +241,7 @@ void Scene::update_physics(const Timestep& delta_time) {
 
 void Scene::destroy_entity(const Entity entity) {
   OX_SCOPED_ZONE;
-  EUtil::deparent(this, entity);
+  eutil::deparent(this, entity);
   const auto children = registry.get<RelationshipComponent>(entity).children;
 
   for (size_t i = 0; i < children.size(); i++) {
@@ -262,14 +250,12 @@ void Scene::destroy_entity(const Entity entity) {
       destroy_entity(child_entity);
   }
 
-  entity_map.erase(EUtil::get_uuid(registry, entity));
+  entity_map.erase(eutil::get_uuid(registry, entity));
   registry.destroy(entity);
 }
 
 template <typename... Component>
-static void copy_component(entt::registry& dst,
-                           entt::registry& src,
-                           const ankerl::unordered_dense::map<UUID, entt::entity>& entt_map) {
+static void copy_component(entt::registry& dst, entt::registry& src, const ankerl::unordered_dense::map<UUID, entt::entity>& entt_map) {
   ([&] {
     auto view = src.view<Component>();
     for (auto src_entity : view) {
@@ -298,10 +284,7 @@ static void copy_component_if_exists(Entity dst, Entity src, entt::registry& reg
 }
 
 template <typename... Component>
-static void copy_component_if_exists(ComponentGroup<Component...>,
-                                     Entity dst,
-                                     Entity src,
-                                     entt::registry& registry) {
+static void copy_component_if_exists(ComponentGroup<Component...>, Entity dst, Entity src, entt::registry& registry) {
   copy_component_if_exists<Component...>(dst, src, registry);
 }
 
@@ -309,7 +292,7 @@ void Scene::duplicate_children(const Entity entity) {
   auto& rc = registry.get<RelationshipComponent>(entity);
 
   for (auto& child : rc.children) {
-    const auto e = create_entity(EUtil::get_name(registry, get_entity_by_uuid(child)));
+    const auto e = create_entity(eutil::get_name(registry, get_entity_by_uuid(child)));
     copy_component_if_exists(AllComponents{}, e, get_entity_by_uuid(child), registry);
     child = registry.get<IDComponent>(e).uuid;
 
@@ -322,13 +305,13 @@ void Scene::duplicate_children(const Entity entity) {
       rcc.parent = registry.get<IDComponent>(p).uuid;
     }
 #endif
-    //duplicate_children(e);
+    // duplicate_children(e);
   }
 }
 
 Entity Scene::duplicate_entity(Entity entity) {
   OX_SCOPED_ZONE;
-  const Entity new_entity = create_entity(EUtil::get_name(registry, entity));
+  const Entity new_entity = create_entity(eutil::get_name(registry, entity));
   copy_component_if_exists(AllComponents{}, new_entity, entity, registry);
 
   duplicate_children(new_entity);
@@ -446,6 +429,8 @@ Entity Scene::get_entity_by_uuid(UUID uuid) {
   return entt::null;
 }
 
+void Scene::trigger_future_mesh_load_event(FutureMeshLoadEvent future_mesh_load_event) { dispatcher.trigger(std::move(future_mesh_load_event)); }
+
 Shared<Scene> Scene::copy(const Shared<Scene>& src_scene) {
   OX_SCOPED_ZONE;
   Shared<Scene> new_scene = create_shared<Scene>();
@@ -463,11 +448,11 @@ Shared<Scene> Scene::copy(const Shared<Scene>& src_scene) {
   }
 
   for (const auto e : view) {
-    const Entity src_parent = EUtil::get_parent(src_scene.get(), e);
+    const Entity src_parent = eutil::get_parent(src_scene.get(), e);
     if (src_parent != entt::null) {
       const Entity dst = new_scene->get_entity_by_uuid(view.get<IDComponent>(e).uuid);
-      const auto parent_uuid = EUtil::get_uuid(src_scene_registry, src_parent);
-      EUtil::set_parent(new_scene.get(), dst, new_scene->get_entity_by_uuid(parent_uuid));
+      const auto parent_uuid = eutil::get_uuid(src_scene_registry, src_parent);
+      eutil::set_parent(new_scene.get(), dst, new_scene->get_entity_by_uuid(parent_uuid));
     }
   }
 
@@ -477,13 +462,19 @@ Shared<Scene> Scene::copy(const Shared<Scene>& src_scene) {
   return new_scene;
 }
 
-void Scene::on_contact_added(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings) {
+void Scene::on_contact_added(const JPH::Body& body1,
+                             const JPH::Body& body2,
+                             const JPH::ContactManifold& manifold,
+                             const JPH::ContactSettings& settings) {
   OX_SCOPED_ZONE;
   for (const auto& system : systems)
     system->on_contact_added(this, body1, body2, manifold, settings);
 }
 
-void Scene::on_contact_persisted(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings) {
+void Scene::on_contact_persisted(const JPH::Body& body1,
+                                 const JPH::Body& body2,
+                                 const JPH::ContactManifold& manifold,
+                                 const JPH::ContactSettings& settings) {
   OX_SCOPED_ZONE;
   for (const auto& system : systems)
     system->on_contact_persisted(this, body1, body2, manifold, settings);
@@ -505,7 +496,7 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
   JPH::MutableCompoundShapeSettings compound_shape_settings;
   float max_scale_component = glm::max(glm::max(transform.scale.x, transform.scale.y), transform.scale.z);
 
-  const auto& entity_name = EUtil::get_name(registry, entity);
+  const auto& entity_name = eutil::get_name(registry, entity);
 
   if (registry.all_of<BoxColliderComponent>(entity)) {
     const auto& bc = registry.get<BoxColliderComponent>(entity);
@@ -546,7 +537,10 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
 
     float top_radius = 2.0f * tcc.top_radius * max_scale_component;
     float bottom_radius = 2.0f * tcc.bottom_radius * max_scale_component;
-    JPH::TaperedCapsuleShapeSettings shape_settings(glm::max(0.01f, tcc.height) * 0.5f, glm::max(0.01f, top_radius), glm::max(0.01f, bottom_radius), mat);
+    JPH::TaperedCapsuleShapeSettings shape_settings(glm::max(0.01f, tcc.height) * 0.5f,
+                                                    glm::max(0.01f, top_radius),
+                                                    glm::max(0.01f, bottom_radius),
+                                                    mat);
     shape_settings.SetDensity(glm::max(0.001f, tcc.density));
 
     compound_shape_settings.AddShape({tcc.offset.x, tcc.offset.y, tcc.offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
@@ -570,11 +564,11 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
     // TODO: We should only get the vertices and indices for this particular MeshComponent using MeshComponent::node_index
 
     const auto& mesh_component = registry.get<MeshComponent>(entity);
-    auto vertices = mesh_component.mesh_base->vertices;
-    const auto& indices = mesh_component.mesh_base->indices;
+    auto vertices = mesh_component.mesh_base->_vertices;
+    const auto& indices = mesh_component.mesh_base->_indices;
 
     // scale vertices
-    const auto world_transform = EUtil::get_world_transform(this, entity);
+    const auto world_transform = eutil::get_world_transform(this, entity);
     for (auto& vert : vertices) {
       Vec4 scaled_pos = world_transform * Vec4(vert.position, 1.0);
       vert.position = Vec3(scaled_pos);
@@ -617,7 +611,11 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
   if (collision_mask_it != Physics::layer_collision_mask.end())
     layer_index = collision_mask_it->second.index;
 
-  JPH::BodyCreationSettings body_settings(compound_shape_settings.Create().Get(), {transform.position.x, transform.position.y, transform.position.z}, {rotation.x, rotation.y, rotation.z, rotation.w}, static_cast<JPH::EMotionType>(component.type), layer_index);
+  JPH::BodyCreationSettings body_settings(compound_shape_settings.Create().Get(),
+                                          {transform.position.x, transform.position.y, transform.position.z},
+                                          {rotation.x, rotation.y, rotation.z, rotation.w},
+                                          static_cast<JPH::EMotionType>(component.type),
+                                          layer_index);
 
   JPH::MassProperties mass_properties;
   mass_properties.mMass = glm::max(0.01f, component.mass);
@@ -633,7 +631,8 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
 
   JPH::Body* body = body_interface.CreateBody(body_settings);
 
-  JPH::EActivation activation = component.awake && component.type != RigidbodyComponent::BodyType::Static ? JPH::EActivation::Activate : JPH::EActivation::DontActivate;
+  JPH::EActivation activation = component.awake && component.type != RigidbodyComponent::BodyType::Static ? JPH::EActivation::Activate
+                                                                                                          : JPH::EActivation::DontActivate;
   body_interface.AddBody(body->GetID(), activation);
 
   component.runtime_body = body;
@@ -644,20 +643,32 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
   if (!running)
     return;
   const auto position = JPH::Vec3(transform.position.x, transform.position.y, transform.position.z);
-  const auto capsule_shape = JPH::RotatedTranslatedShapeSettings(
-    JPH::Vec3(0, 0.5f * component.character_height_standing + component.character_radius_standing, 0),
-    JPH::Quat::sIdentity(),
-    new JPH::CapsuleShape(0.5f * component.character_height_standing, component.character_radius_standing)).Create().Get();
+  const auto capsule_shape = JPH::RotatedTranslatedShapeSettings(JPH::Vec3(0,
+                                                                           0.5f * component.character_height_standing +
+                                                                             component.character_radius_standing,
+                                                                           0),
+                                                                 JPH::Quat::sIdentity(),
+                                                                 new JPH::CapsuleShape(0.5f * component.character_height_standing,
+                                                                                       component.character_radius_standing))
+                               .Create()
+                               .Get();
 
   // Create character
   const Shared<JPH::CharacterSettings> settings = create_shared<JPH::CharacterSettings>();
   settings->mMaxSlopeAngle = JPH::DegreesToRadians(45.0f);
   settings->mLayer = PhysicsLayers::MOVING;
   settings->mShape = capsule_shape;
-  settings->mFriction = 0.0f;                                                                          // For now this is not set. 
-  settings->mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(), -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
+  settings->mFriction = 0.0f;                                                     // For now this is not set.
+  settings->mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(),
+                                           -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
   component.character = create_shared<JPH::Character>(settings.get(), position, JPH::Quat::sIdentity(), 0, Physics::get_physics_system());
   component.character->AddToPhysicsSystem(JPH::EActivation::Activate);
+}
+
+void Scene::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) {
+  const auto task_scheduler = App::get_system<TaskScheduler>();
+  event.task->on_complete([this](const Shared<Mesh>& mesh) { this->load_mesh(mesh); });
+  task_scheduler->schedule_task(event.task);
 }
 
 void Scene::on_runtime_update(const Timestep& delta_time) {
@@ -709,7 +720,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     for (auto&& [e, ac, tc] : listener_view.each()) {
       ac.listener = create_shared<AudioListener>();
       if (ac.active) {
-        const Mat4 inverted = inverse(EUtil::get_world_transform(this, e));
+        const Mat4 inverted = inverse(eutil::get_world_transform(this, e));
         const Vec3 forward = normalize(Vec3(inverted[2]));
         ac.listener->set_config(ac.config);
         ac.listener->set_position(tc.position);
@@ -721,7 +732,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     const auto source_view = registry.group<AudioSourceComponent>(entt::get<TransformComponent>);
     for (auto&& [e, ac, tc] : source_view.each()) {
       if (ac.source) {
-        const Mat4 inverted = inverse(EUtil::get_world_transform(this, e));
+        const Mat4 inverted = inverse(eutil::get_world_transform(this, e));
         const Vec3 forward = normalize(Vec3(inverted[2]));
         ac.source->set_config(ac.config);
         ac.source->set_position(tc.position);
@@ -754,4 +765,4 @@ void Scene::on_editor_update(const Timestep& delta_time, Camera& camera) {
   scene_renderer->get_render_pipeline()->register_camera(&camera);
   scene_renderer->update();
 }
-}
+} // namespace ox

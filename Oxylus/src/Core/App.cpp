@@ -13,7 +13,7 @@
 
 #include "Render/Renderer.hpp"
 #include "Render/Vulkan/VkContext.hpp"
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 
 #include "Scripting/LuaManager.hpp"
 
@@ -45,13 +45,6 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
     app_spec.working_directory = std::filesystem::current_path().string();
   else
     std::filesystem::current_path(app_spec.working_directory);
-
-  for (int i = 0; i < app_spec.command_line_args.count; i++) {
-    auto c = app_spec.command_line_args.args[i];
-    if (!std::string(c).empty()) {
-      command_line_args.emplace_back(c);
-    }
-  }
 
   if (!asset_directory_exists()) {
     OX_LOG_FATAL("Resources path doesn't exists. Make sure the working directory is correct! Editor should be launched in Oxylus/OxylusEditor.");
@@ -134,7 +127,7 @@ void App::run() {
 }
 
 void App::update_layers(const Timestep& ts) {
-  OX_SCOPED_ZONE_N("LayersLoop");
+  OX_SCOPED_ZONE_N("Update Layers");
   for (Layer* layer : *layer_stack.get())
     layer->on_update(ts);
 }
@@ -158,7 +151,7 @@ std::string App::get_asset_directory() {
   return instance->app_spec.assets_path;
 }
 
-std::string App::get_asset_directory(const std::string_view asset_path) { return FileSystem::append_paths(get_asset_directory(), asset_path); }
+std::string App::get_asset_directory(const std::string_view asset_path) { return fs::append_paths(get_asset_directory(), asset_path); }
 
 std::string App::get_asset_directory_absolute() {
   if (Project::get_active()) {
@@ -169,11 +162,7 @@ std::string App::get_asset_directory_absolute() {
   return p.string();
 }
 
-std::string App::get_relative(const std::string& path) {
-  return FileSystem::preferred_path(std::filesystem::relative(path, get_asset_directory()).string());
-}
+std::string App::get_relative(const std::string& path) { return fs::preferred_path(std::filesystem::relative(path, get_asset_directory()).string()); }
 
-std::string App::get_absolute(const std::string& path) {
-  return FileSystem::append_paths(FileSystem::preferred_path(get_asset_directory_absolute()), path);
-}
+std::string App::get_absolute(const std::string& path) { return fs::append_paths(fs::preferred_path(get_asset_directory_absolute()), path); }
 } // namespace ox

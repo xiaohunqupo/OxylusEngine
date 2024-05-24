@@ -17,7 +17,7 @@
 #include "App.hpp"
 
 namespace ox {
-std::pair<std::string, std::string> FileSystem::split_path(std::string_view full_path) {
+std::pair<std::string, std::string> fs::split_path(std::string_view full_path) {
   const size_t found = full_path.find_last_of("/\\");
   return {
     std::string(full_path.substr(0, found + 1)), // directory
@@ -25,20 +25,20 @@ std::pair<std::string, std::string> FileSystem::split_path(std::string_view full
   };
 }
 
-std::string FileSystem::get_file_extension(const std::string_view filepath) {
+std::string fs::get_file_extension(const std::string_view filepath) {
   const auto lastDot = filepath.find_last_of('.');
   return std::string(filepath.substr(lastDot + 1, filepath.size() - lastDot));
 }
 
-std::string FileSystem::get_file_name(const std::string_view filepath) {
+std::string fs::get_file_name(const std::string_view filepath) {
   auto [dir, file] = split_path(filepath);
   const auto lastDot = file.rfind('.');
   return std::string(file.substr(0, lastDot));
 }
 
-std::string FileSystem::get_name_with_extension(const std::string_view filepath) { return split_path(filepath).second; }
+std::string fs::get_name_with_extension(const std::string_view filepath) { return split_path(filepath).second; }
 
-std::string FileSystem::get_directory(std::string_view path) {
+std::string fs::get_directory(std::string_view path) {
   if (path.empty()) {
     return std::string(path);
   }
@@ -46,7 +46,7 @@ std::string FileSystem::get_directory(std::string_view path) {
   return split_path(path).first;
 }
 
-std::string FileSystem::append_paths(const std::string_view path, const std::string_view second_path) {
+std::string fs::append_paths(const std::string_view path, const std::string_view second_path) {
   if (path.empty() || second_path.empty())
     return std::string(path);
 
@@ -55,13 +55,13 @@ std::string FileSystem::append_paths(const std::string_view path, const std::str
   return preferred_path(new_path);
 }
 
-std::string FileSystem::preferred_path(const std::string_view path) {
+std::string fs::preferred_path(const std::string_view path) {
   std::string new_path(path);
   StringUtils::replace_string(new_path, "\\", "/");
   return new_path;
 }
 
-void FileSystem::open_folder_select_file(std::string_view path) {
+void fs::open_folder_select_file(std::string_view path) {
 #ifdef OX_PLATFORM_WINDOWS
   std::string p_str(path);
   StringUtils::replace_string(p_str, "/", "\\");
@@ -75,7 +75,7 @@ void FileSystem::open_folder_select_file(std::string_view path) {
 #endif
 }
 
-void FileSystem::open_file_externally(std::string_view path) {
+void fs::open_file_externally(std::string_view path) {
 #ifdef OX_PLATFORM_WINDOWS
   const _bstr_t widePath(path.data());
   ShellExecute(nullptr, LPCSTR(L"open"), widePath, nullptr, nullptr, SW_RESTORE);
@@ -84,7 +84,7 @@ void FileSystem::open_file_externally(std::string_view path) {
 #endif
 }
 
-std::string FileSystem::read_file(std::string_view file_path) {
+std::string fs::read_file(std::string_view file_path) {
   OX_SCOPED_ZONE;
   std::ostringstream buf;
   const std::ifstream input(file_path.data());
@@ -92,8 +92,8 @@ std::string FileSystem::read_file(std::string_view file_path) {
   return buf.str();
 }
 
-std::vector<uint8_t> FileSystem::read_file_binary(const std::string_view file_path) {
-  std::ifstream file(file_path.data(), std::ios::binary | std::ios::ate);
+std::vector<uint8_t> fs::read_file_binary(const std::string_view file_path) {
+  std::ifstream file(file_path.data(), std::ios::binary);
 
   std::vector<uint8_t> data = {};
   if (file.is_open()) {
@@ -107,7 +107,7 @@ std::vector<uint8_t> FileSystem::read_file_binary(const std::string_view file_pa
   return data;
 }
 
-std::string FileSystem::read_shader_file(const std::string& shader_file_name) {
+std::string fs::read_shader_file(const std::string& shader_file_name) {
   OX_SCOPED_ZONE;
   const auto path = get_shader_path(shader_file_name);
   auto value = read_file(path);
@@ -115,14 +115,14 @@ std::string FileSystem::read_shader_file(const std::string& shader_file_name) {
   return value;
 }
 
-std::string FileSystem::get_shader_path(const std::string& shader_file_name) {
+std::string fs::get_shader_path(const std::string& shader_file_name) {
   OX_SCOPED_ZONE;
   const auto path_str = std::filesystem::path(App::get()->get_specification().assets_path) / "Shaders";
   const auto path = std::filesystem::path(path_str) / shader_file_name;
   return path.string();
 }
 
-bool FileSystem::write_file_binary(std::string_view file_path, const std::vector<uint8_t>& data) {
+bool fs::write_file_binary(std::string_view file_path, const std::vector<uint8_t>& data) {
   std::ofstream file(file_path.data(), std::ios::binary | std::ios::trunc);
   if (file.is_open()) {
     file.write((const char*)data.data(), (std::streamsize)data.size());
@@ -132,7 +132,7 @@ bool FileSystem::write_file_binary(std::string_view file_path, const std::vector
   return false;
 }
 
-bool FileSystem::binary_to_header(std::string_view file_path, std::string_view data_name, const std::vector<uint8_t>& data) {
+bool fs::binary_to_header(std::string_view file_path, std::string_view data_name, const std::vector<uint8_t>& data) {
   std::string ss;
   ss += "const uint8_t ";
   ss += data_name;

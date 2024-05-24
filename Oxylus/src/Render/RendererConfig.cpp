@@ -1,4 +1,4 @@
-#include "RendererConfig.h"
+#include "RendererConfig.hpp"
 
 #include <fstream>
 #include <sstream>
@@ -78,12 +78,12 @@ void RendererConfig::save_config(const char* path) const {
     },
   };
 
-  FileSystem::write_file(path, root, "# Oxylus renderer config file"); // TODO: check result
+  fs::write_file(path, root, "# Oxylus renderer config file"); // TODO: check result
 }
 
 bool RendererConfig::load_config(const char* path) {
   OX_SCOPED_ZONE;
-  const auto& content = FileSystem::read_file(path);
+  const auto& content = fs::read_file(path);
   if (content.empty())
     return false;
 

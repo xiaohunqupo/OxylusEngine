@@ -8,11 +8,10 @@
 #include <fmt/format.h>
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
-#include <vuk/SampledImage.hpp>
 
 #include "ImGuiLayer.hpp"
 
-#include "Assets/TextureAsset.hpp"
+#include "Assets/Texture.hpp"
 #include "Core/App.hpp"
 
 namespace ox {
@@ -40,9 +39,7 @@ bool OxUI::begin_properties(const ImGuiTableFlags flags, bool fixed_width, float
   return false;
 }
 
-void OxUI::end_properties() {
-  ImGui::EndTable();
-}
+void OxUI::end_properties() { ImGui::EndTable(); }
 
 void OxUI::text(const char* text1, const char* text2, const char* tooltip) {
   begin_property_grid(text1, tooltip);
@@ -102,7 +99,7 @@ void OxUI::tooltip(const char* text) {
   ImGui::PopStyleVar();
 }
 
-bool OxUI::property(const char* label, Shared<TextureAsset>& texture, const char* tooltip) {
+bool OxUI::property(const char* label, Shared<Texture>& texture, const char* tooltip) {
   begin_property_grid(label, tooltip);
   bool changed = false;
 
@@ -111,16 +108,13 @@ bool OxUI::property(const char* label, Shared<TextureAsset>& texture, const char
   const ImVec2 x_button_size = {button_size / 4.0f, button_size};
   const float tooltip_size = frame_height * 11.0f;
 
-  ImGui::SetCursorPos({
-    ImGui::GetContentRegionMax().x - button_size - x_button_size.x,
-    ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y
-  });
+  ImGui::SetCursorPos({ImGui::GetContentRegionMax().x - button_size - x_button_size.x, ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y});
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
   ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.25f, 0.25f, 0.25f, 1.0f});
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.35f, 0.35f, 0.35f, 1.0f});
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.25f, 0.25f, 0.25f, 1.0f});
 
-  auto texture_load_func = [](Shared<TextureAsset>& texture, bool& changed) {
+  auto texture_load_func = [](Shared<Texture>& texture, bool& changed) {
     const auto& path = App::get_system<FileDialogs>()->open_file({{"Texture file", "png,jpg"}});
     if (!path.empty()) {
       texture = AssetManager::get_texture_asset({path});
@@ -129,24 +123,17 @@ bool OxUI::property(const char* label, Shared<TextureAsset>& texture, const char
   };
 
   if (texture) {
-    vuk::SamplerCreateInfo sci;
-    sci.minFilter = sci.magFilter = vuk::Filter::eLinear;
-    sci.mipmapMode = vuk::SamplerMipmapMode::eLinear;
-    sci.addressModeU = sci.addressModeV = sci.addressModeW = vuk::SamplerAddressMode::eRepeat;
-    const vuk::SampledImage sampled_image(vuk::SampledImage::Global{.iv = *texture->get_texture().view, .sci = sci, .image_layout = vuk::ImageLayout::eShaderReadOnlyOptimal});
-
-    if (ImGui::ImageButton(App::get()->get_imgui_layer()->add_sampled_image(sampled_image), {button_size, button_size}, {1, 1}, {0, 0}, 0)) {
+    if (ImGui::ImageButton(App::get()->get_imgui_layer()->add_image(*texture->get_view()), {button_size, button_size}, {1, 1}, {0, 0}, 0)) {
       texture_load_func(texture, changed);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
       ImGui::BeginTooltip();
       ImGui::TextUnformatted(texture->get_path().c_str());
       ImGui::Spacing();
-      ImGui::Image(App::get()->get_imgui_layer()->add_sampled_image(sampled_image), {tooltip_size, tooltip_size}, {1, 1}, {0, 0});
+      ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture->get_view()), {tooltip_size, tooltip_size}, {1, 1}, {0, 0});
       ImGui::EndTooltip();
     }
-  }
-  else {
+  } else {
     ImGui::PushFont(ImGuiLayer::bold_font);
     if (ImGui::Button("NO\nTEXTURE", {button_size, button_size})) {
       texture_load_func(texture, changed);
@@ -178,32 +165,36 @@ bool OxUI::property(const char* label, Shared<TextureAsset>& texture, const char
   return changed;
 }
 
-void OxUI::image(const vuk::Texture& texture, const ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col) {
-  vuk::SamplerCreateInfo sci;
-  sci.minFilter = sci.magFilter = vuk::Filter::eLinear;
-  sci.mipmapMode = vuk::SamplerMipmapMode::eLinear;
-  sci.addressModeU = sci.addressModeV = sci.addressModeW = vuk::SamplerAddressMode::eRepeat;
-  const vuk::SampledImage sampled_image(vuk::SampledImage::Global{.iv = *texture.view, .sci = sci, .image_layout = vuk::ImageLayout::eShaderReadOnlyOptimal});
-
-  ImGui::Image(App::get()->get_imgui_layer()->add_sampled_image(sampled_image), size, uv0, uv1, tint_col, border_col);
+void OxUI::image(const Texture& texture, ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col) {
+  ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture.get_view()), size, uv0, uv1, tint_col, border_col);
 }
 
-void OxUI::image(const vuk::SampledImage& texture, const ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col) {
-  ImGui::Image(App::get()->get_imgui_layer()->add_sampled_image(texture), size, uv0, uv1, tint_col, border_col);
+void OxUI::image(const vuk::Value<vuk::ImageAttachment>& attch,
+                 ImVec2 size,
+                 const ImVec2& uv0,
+                 const ImVec2& uv1,
+                 const ImVec4& tint_col,
+                 const ImVec4& border_col) {
+  ImGui::Image(App::get()->get_imgui_layer()->add_attachment(attch), size, uv0, uv1, tint_col, border_col);
 }
 
-bool OxUI::image_button(const char* id, const vuk::Texture& texture, const ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& bg_col) {
-  vuk::SamplerCreateInfo sci;
-  sci.minFilter = sci.magFilter = vuk::Filter::eLinear;
-  sci.mipmapMode = vuk::SamplerMipmapMode::eLinear;
-  sci.addressModeU = sci.addressModeV = sci.addressModeW = vuk::SamplerAddressMode::eRepeat;
-  const vuk::SampledImage sampled_image(vuk::SampledImage::Global{.iv = *texture.view, .sci = sci, .image_layout = vuk::ImageLayout::eShaderReadOnlyOptimal});
-
-  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_sampled_image(sampled_image), size, uv0, uv1, bg_col, tint_col);
+void OxUI::image(const vuk::ImageView& view,
+                 const ImVec2 size,
+                 const ImVec2& uv0,
+                 const ImVec2& uv1,
+                 const ImVec4& tint_col,
+                 const ImVec4& border_col) {
+  ImGui::Image(App::get()->get_imgui_layer()->add_image(view), size, uv0, uv1, tint_col, border_col);
 }
 
-bool OxUI::image_button(const char* id, const vuk::SampledImage& texture, const ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& bg_col) {
-  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_sampled_image(texture), size, uv0, uv1, bg_col, tint_col);
+bool OxUI::image_button(const char* id,
+                        const vuk::ImageView& view,
+                        const ImVec2 size,
+                        const ImVec2& uv0,
+                        const ImVec2& uv1,
+                        const ImVec4& tint_col,
+                        const ImVec4& bg_col) {
+  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(view), size, uv0, uv1, bg_col, tint_col);
 }
 
 bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* tooltip, const float reset_value) {
@@ -299,7 +290,12 @@ bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* t
   return changed;
 }
 
-bool OxUI::toggle_button(const char* label, const bool state, const ImVec2 size, const float alpha, const float pressed_alpha, const ImGuiButtonFlags button_flags) {
+bool OxUI::toggle_button(const char* label,
+                         const bool state,
+                         const ImVec2 size,
+                         const float alpha,
+                         const float pressed_alpha,
+                         const ImGuiButtonFlags button_flags) {
   if (state) {
     ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
 
@@ -307,8 +303,7 @@ bool OxUI::toggle_button(const char* label, const bool state, const ImVec2 size,
     ImGui::PushStyleColor(ImGuiCol_Button, color);
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
-  }
-  else {
+  } else {
     ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Button];
     ImVec4 hovered_color = ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered];
     color.w = alpha;
@@ -362,7 +357,14 @@ bool OxUI::icon_button(const char8_t* icon, const char* label, const ImVec4 icon
   return clicked;
 }
 
-void OxUI::clipped_text(const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_end, const ImVec2* text_size_if_known, const ImVec2& align, const ImRect* clip_rect, const float wrap_width) {
+void OxUI::clipped_text(const ImVec2& pos_min,
+                        const ImVec2& pos_max,
+                        const char* text,
+                        const char* text_end,
+                        const ImVec2* text_size_if_known,
+                        const ImVec2& align,
+                        const ImRect* clip_rect,
+                        const float wrap_width) {
   // Hide anything after a '##' string
   const char* text_display_end = ImGui::FindRenderedTextEnd(text, text_end);
   const int text_len = static_cast<int>(text_display_end - text);
@@ -376,7 +378,15 @@ void OxUI::clipped_text(const ImVec2& pos_min, const ImVec2& pos_max, const char
     ImGui::LogRenderedText(&pos_min, text, text_display_end);
 }
 
-void OxUI::clipped_text(ImDrawList* draw_list, const ImVec2& pos_min, const ImVec2& pos_max, const char* text, const char* text_display_end, const ImVec2* text_size_if_known, const ImVec2& align, const ImRect* clip_rect, const float wrap_width) {
+void OxUI::clipped_text(ImDrawList* draw_list,
+                        const ImVec2& pos_min,
+                        const ImVec2& pos_max,
+                        const char* text,
+                        const char* text_display_end,
+                        const ImVec2* text_size_if_known,
+                        const ImVec2& align,
+                        const ImRect* clip_rect,
+                        const float wrap_width) {
   // Perform CPU side clipping for single clipped element to avoid using scissor state
   ImVec2 pos = pos_min;
   const ImVec2 text_size = text_size_if_known ? *text_size_if_known : ImGui::CalcTextSize(text, text_display_end, false, wrap_width);
@@ -400,10 +410,13 @@ void OxUI::spacing(const uint32_t count) {
   for (uint32_t i = 0; i < count; i++)
     ImGui::Spacing();
 }
-
-std::string OxUI::get_path_from_imgui_payload(const ImGuiPayload* payload) {
-  return std::string(static_cast<const char*>(payload->Data));
+void OxUI::align_right(float item_width) {
+  const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - item_width - ImGui::GetScrollX();
+  if (posX > ImGui::GetCursorPosX())
+    ImGui::SetCursorPosX(posX);
 }
+
+std::string OxUI::get_path_from_imgui_payload(const ImGuiPayload* payload) { return std::string(static_cast<const char*>(payload->Data)); }
 
 void OxUI::draw_gradient_shadow_bottom(const float scale) {
   const auto draw_list = ImGui::GetWindowDrawList();
@@ -412,7 +425,8 @@ void OxUI::draw_gradient_shadow_bottom(const float scale) {
   const auto window_width = ImGui::GetWindowWidth();
 
   const ImRect bb(0, scale, pos.x + window_width, window_height + pos.y);
-  draw_list->AddRectFilledMultiColor(bb.Min, bb.Max, IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 255), IM_COL32(20, 20, 20, 255));
+  draw_list
+    ->AddRectFilledMultiColor(bb.Min, bb.Max, IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 0), IM_COL32(20, 20, 20, 255), IM_COL32(20, 20, 20, 255));
 }
 
 void OxUI::push_id() {
@@ -436,8 +450,7 @@ void OxUI::begin_property_grid(const char* label, const char* tooltip, const boo
 
   ImGui::PushID(label);
   if (align_text_right) {
-    const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x
-                      - ImGui::GetScrollX();
+    const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x - ImGui::GetScrollX();
     if (posX > ImGui::GetCursorPosX())
       ImGui::SetCursorPosX(posX);
   }
@@ -472,9 +485,8 @@ void OxUI::center_next_window() {
 
 void OxUI::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size, const ImVec2 padding, bool* visible) {
   static int corner = 1;
-  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
-                                  ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
-                                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize |
+                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
   if (corner != -1) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImVec2 window_pos, window_pos_pivot;
@@ -509,4 +521,12 @@ void OxUI::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size,
   ImGui::End();
   ImGui::PopStyleVar();
 }
+
+void OxUI::push_style_compact() {
+  const ImGuiStyle& style = ImGui::GetStyle();
+  ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, ImVec2(style.FramePadding.x, (float)(int)(style.FramePadding.y * 0.60f)));
+  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(style.ItemSpacing.x, (float)(int)(style.ItemSpacing.y * 0.60f)));
 }
+
+void OxUI::pop_style_compact() { ImGui::PopStyleVar(2); }
+} // namespace ox

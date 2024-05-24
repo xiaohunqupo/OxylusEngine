@@ -1,5 +1,5 @@
 #include "Input.hpp"
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 #include "Types.hpp"
 #include "stb_image.h"
 

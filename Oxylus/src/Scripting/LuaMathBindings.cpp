@@ -13,19 +13,19 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox::LuaBindings {
-#define SET_MATH_FUNCTIONS(var, type, number)                                                                            \
+#define SET_MATH_FUNCTIONS(var, type, number)                                                                    \
   (var).set_function(sol::meta_function::division, [](const type& a, const type& b) { return a / b; });          \
   (var).set_function(sol::meta_function::equal_to, [](const type& a, const type& b) { return a == b; });         \
-  (var).set_function(sol::meta_function::unary_minus, [](const type& v) -> type { return -v; }); \
-  (var).set_function(sol::meta_function::multiplication, sol::overload([](const type& a, const type& b) { return a * b; }, \
-                                                                       [](const type& a, const number b) { return a * b; }, \
-                                                                       [](const number a, const type& b) { return a * b; })); \
-  (var).set_function(sol::meta_function::subtraction, sol::overload([](const type& a, const type& b) { return a - b; }, \
-                                                                    [](const type& a, const number b) { return a - b; }, \
-                                                                    [](const number a, const type& b) { return a - b; })); \
-  (var).set_function(sol::meta_function::addition, sol::overload([](const type& a, const type& b) { return a + b; }, \
-                                                                 [](const type& a, const number b) { return a + b; }, \
-                                                                 [](const number a, const type& b) { return a + b; }));
+  (var).set_function(sol::meta_function::unary_minus, [](const type& v) -> type { return -v; });                 \
+  (var).set_function(sol::meta_function::multiplication, sol::overload([](const type& a, const type& b) {        \
+    return a * b;                                                                                                \
+  }, [](const type& a, const number b) { return a * b; }, [](const number a, const type& b) { return a * b; })); \
+  (var).set_function(sol::meta_function::subtraction, sol::overload([](const type& a, const type& b) {           \
+    return a - b;                                                                                                \
+  }, [](const type& a, const number b) { return a - b; }, [](const number a, const type& b) { return a - b; })); \
+  (var).set_function(sol::meta_function::addition, sol::overload([](const type& a, const type& b) {              \
+    return a + b;                                                                                                \
+  }, [](const type& a, const number b) { return a + b; }, [](const number a, const type& b) { return a + b; }));
 
 void bind_math(const Shared<sol::state>& state) {
   OX_SCOPED_ZONE;
@@ -76,7 +76,8 @@ void bind_math(const Shared<sol::state>& state) {
   SET_TYPE_FIELD(ivec4, IVec4, w);
   SET_MATH_FUNCTIONS(ivec4, IVec4, int)
 
-  auto uvec4 = state->new_usertype<UVec4>("UVec4", sol::constructors<sol::types<>, sol::types<uint32_t, uint32_t, uint32_t, uint32_t>, UVec4(uint32_t)>());
+  auto uvec4 = state->new_usertype<UVec4>("UVec4",
+                                          sol::constructors<sol::types<>, sol::types<uint32_t, uint32_t, uint32_t, uint32_t>, UVec4(uint32_t)>());
   SET_TYPE_FIELD(uvec4, UVec4, x);
   SET_TYPE_FIELD(uvec4, UVec4, y);
   SET_TYPE_FIELD(uvec4, UVec4, z);
@@ -88,22 +89,13 @@ void bind_math(const Shared<sol::state>& state) {
                             sol::meta_function::multiplication,
                             [](const Mat3& a, const Mat3& b) { return a * b; });
 
-  state->new_usertype<Mat4>("Mat4",
-                            sol::constructors<Mat4(float), Mat4()>(),
-                            sol::meta_function::multiplication,
-                            [](const Mat4& a, const Mat4& b) { return a * b; },
-                            sol::meta_function::addition,
-                            [](const Mat4& a, const Mat4& b) { return a + b; },
-                            sol::meta_function::subtraction,
-                            [](const Mat4& a, const Mat4& b) { return a - b; });
+  state->new_usertype<Mat4>("Mat4", sol::constructors<Mat4(float), Mat4()>(), sol::meta_function::multiplication, [](const Mat4& a, const Mat4& b) {
+    return a * b;
+  }, sol::meta_function::addition, [](const Mat4& a, const Mat4& b) {
+    return a + b;
+  }, sol::meta_function::subtraction, [](const Mat4& a, const Mat4& b) { return a - b; });
 
-  state->new_enum<Intersection>(
-    "Intersection",
-    {
-      {"Outside", Outside},
-      {"Intersects", Intersects},
-      {"Inside", Inside}
-    });
+  state->new_enum<Intersection>("Intersection", {{"Outside", Outside}, {"Intersects", Intersects}, {"Inside", Inside}});
 
   auto aabb = state->new_usertype<AABB>("AABB", sol::constructors<AABB(), AABB(AABB), AABB(Vec3, Vec3)>());
   SET_TYPE_FIELD(aabb, AABB, min);
@@ -117,39 +109,31 @@ void bind_math(const Shared<sol::state>& state) {
   SET_TYPE_FUNCTION(aabb, AABB, get_transformed);
   SET_TYPE_FUNCTION(aabb, AABB, merge);
   // TODO: Bind frustum and Plane
-  //SET_TYPE_FUNCTION(aabb, AABB, is_on_frustum);
-  //SET_TYPE_FUNCTION(aabb, AABB, is_on_or_forward_plane);
-  SET_TYPE_FUNCTION(aabb, AABB, is_aabb_inside);
-  SET_TYPE_FUNCTION(aabb, AABB, is_aabb_inside_fast);
-  SET_TYPE_FUNCTION(aabb, AABB, is_point_inside);
+  // SET_TYPE_FUNCTION(aabb, AABB, is_on_frustum);
+  // SET_TYPE_FUNCTION(aabb, AABB, is_on_or_forward_plane);
+  aabb.set_function("intersects", sol::overload([](const AABB& self, const Vec3& point) {
+    return self.intersects(point);
+  }, [](const AABB& self, const AABB& box) { return self.intersects(box); }));
 
   // --- glm functions ---
   auto glm_table = state->create_table("glm");
   glm_table.set_function("translate", [](const Mat4& mat, const Vec3& vec) { return glm::translate(mat, vec); });
 
-  glm_table.set_function("floor",
-                         sol::overload([](const float v) { return glm::floor(v); },
-                                       [](const Vec2& vec) { return glm::floor(vec); },
-                                       [](const Vec3& vec) { return glm::floor(vec); },
-                                       [](const Vec4& vec) { return glm::floor(vec); }));
-  glm_table.set_function("ceil",
-                         sol::overload([](const float v) { return glm::ceil(v); },
-                                       [](const Vec2& vec) { return glm::ceil(vec); },
-                                       [](const Vec3& vec) { return glm::ceil(vec); },
-                                       [](const Vec4& vec) { return glm::ceil(vec); }));
-  glm_table.set_function("round",
-                         sol::overload([](const float v) { return glm::round(v); },
-                                       [](const Vec2& vec) { return glm::round(vec); },
-                                       [](const Vec3& vec) { return glm::round(vec); },
-                                       [](const Vec4& vec) { return glm::round(vec); }));
-  glm_table.set_function("length",
-                         sol::overload([](const Vec2& vec) { return glm::length(vec); },
-                                       [](const Vec3& vec) { return glm::length(vec); },
-                                       [](const Vec4& vec) { return glm::length(vec); }));
-  glm_table.set_function("normalize",
-                         sol::overload([](const Vec2& vec) { return glm::normalize(vec); },
-                                       [](const Vec3& vec) { return glm::normalize(vec); },
-                                       [](const Vec4& vec) { return glm::normalize(vec); }));
+  glm_table.set_function("floor", sol::overload([](const float v) { return glm::floor(v); }, [](const Vec2& vec) {
+    return glm::floor(vec);
+  }, [](const Vec3& vec) { return glm::floor(vec); }, [](const Vec4& vec) { return glm::floor(vec); }));
+  glm_table.set_function("ceil", sol::overload([](const float v) { return glm::ceil(v); }, [](const Vec2& vec) {
+    return glm::ceil(vec);
+  }, [](const Vec3& vec) { return glm::ceil(vec); }, [](const Vec4& vec) { return glm::ceil(vec); }));
+  glm_table.set_function("round", sol::overload([](const float v) { return glm::round(v); }, [](const Vec2& vec) {
+    return glm::round(vec);
+  }, [](const Vec3& vec) { return glm::round(vec); }, [](const Vec4& vec) { return glm::round(vec); }));
+  glm_table.set_function("length", sol::overload([](const Vec2& vec) { return glm::length(vec); }, [](const Vec3& vec) {
+    return glm::length(vec);
+  }, [](const Vec4& vec) { return glm::length(vec); }));
+  glm_table.set_function("normalize", sol::overload([](const Vec2& vec) { return glm::normalize(vec); }, [](const Vec3& vec) {
+    return glm::normalize(vec);
+  }, [](const Vec4& vec) { return glm::normalize(vec); }));
   glm_table.set_function("distance", [](const Vec3& a, const Vec3& b) { return glm::distance(a, b); });
 }
-}
+} // namespace ox::LuaBindings

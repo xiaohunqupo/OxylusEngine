@@ -1,4 +1,4 @@
-﻿#include "SceneRenderer.h"
+﻿#include "SceneRenderer.hpp"
 
 #include <execution>
 #include <future>
@@ -7,24 +7,24 @@
 
 #include "Core/App.hpp"
 
-#include "Physics/JoltHelpers.hpp"
 #include "Jolt/Physics/Body/Body.h"
+#include "Physics/JoltHelpers.hpp"
 
 #include "Entity.hpp"
 
 #include "Render/DebugRenderer.hpp"
-#include "Render/DefaultRenderPipeline.h"
+#include "Render/DefaultRenderPipeline.hpp"
 #include "Render/Renderer.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
-void SceneRenderer::init() {
+void SceneRenderer::init(EventDispatcher& dispatcher) {
   OX_SCOPED_ZONE;
-  if (!m_render_pipeline)
-    m_render_pipeline = create_shared<DefaultRenderPipeline>("DefaultRenderPipeline");
-  Renderer::renderer_context.render_pipeline = m_render_pipeline;
-  m_render_pipeline->init(*VkContext::get()->superframe_allocator);
-  m_render_pipeline->on_dispatcher_events(dispatcher);
+  if (!_render_pipeline)
+    _render_pipeline = create_shared<DefaultRenderPipeline>("DefaultRenderPipeline");
+  Renderer::renderer_context.render_pipeline = _render_pipeline;
+  _render_pipeline->init(*VkContext::get()->superframe_allocator);
+  _render_pipeline->on_dispatcher_events(dispatcher);
 }
 
 void SceneRenderer::update() const {
@@ -33,25 +33,29 @@ void SceneRenderer::update() const {
   // Mesh System
   {
     OX_SCOPED_ZONE_N("Mesh System");
-    const auto mesh_view = m_scene->registry.view<TransformComponent, MeshComponent, TagComponent>();
+    const auto mesh_view = _scene->registry.view<TransformComponent, MeshComponent, TagComponent>();
     for (const auto&& [entity, transform, mesh_component, tag] : mesh_view.each()) {
       if (!tag.enabled)
         continue;
-      const auto world_transform = EUtil::get_world_transform(m_scene, entity);
-      mesh_component.transform = world_transform;
-      mesh_component.aabb = mesh_component.mesh_base->linear_nodes[mesh_component.node_index]->aabb.get_transformed(world_transform);
-      m_render_pipeline->register_mesh_component(mesh_component);
 
-      if (RendererCVar::cvar_enable_debug_renderer.get() && RendererCVar::cvar_draw_bounding_boxes.get()) {
-        DebugRenderer::draw_aabb(mesh_component.aabb, Vec4(1, 1, 1, 0.5f));
+      if (!mesh_component.stationary || mesh_component.dirty) {
+        const auto world_transform = eutil::get_world_transform(_scene, entity);
+        mesh_component.transform = world_transform;
+        for (auto& e : mesh_component.child_entities) {
+          mesh_component.child_transforms.emplace_back(eutil::get_world_transform(_scene, e));
+        }
+
+        mesh_component.dirty = false;
       }
+
+      _render_pipeline->register_mesh_component(mesh_component);
     }
   }
 
   {
     OX_SCOPED_ZONE_N("Draw physics shapes");
     if (RendererCVar::cvar_enable_debug_renderer.get() && RendererCVar::cvar_draw_physics_shapes.get()) {
-      const auto mesh_collider_view = m_scene->registry.view<TransformComponent, RigidbodyComponent, TagComponent>();
+      const auto mesh_collider_view = _scene->registry.view<TransformComponent, RigidbodyComponent, TagComponent>();
       for (const auto&& [entity, transform, rb, tag] : mesh_collider_view.each()) {
         if (!tag.enabled)
           continue;
@@ -66,41 +70,26 @@ void SceneRenderer::update() const {
     }
   }
 
-  // Animation system
-  {
-    OX_SCOPED_ZONE_N("Animated Mesh System");
-    const auto animation_view = m_scene->registry.view<TransformComponent, MeshComponent, AnimationComponent, TagComponent>();
-    for (const auto&& [entity, transform, mesh_renderer, animation, tag] : animation_view.each()) {
-      if (!animation.animations.empty()) {
-        animation.animation_timer += App::get_timestep() * animation.animation_speed;
-        if (animation.animation_timer > mesh_renderer.mesh_base->animations[animation.current_animation_index]->end) {
-          animation.animation_timer -= mesh_renderer.mesh_base->animations[animation.current_animation_index]->end;
-        }
-        mesh_renderer.mesh_base->update_animation(animation.current_animation_index, animation.animation_timer);
-      }
-    }
-  }
-
   // Lighting
   {
     OX_SCOPED_ZONE_N("Lighting System");
-    const auto lighting_view = m_scene->registry.view<TransformComponent, LightComponent>();
+    const auto lighting_view = _scene->registry.view<TransformComponent, LightComponent>();
     for (auto&& [e, tc, lc] : lighting_view.each()) {
-      if (!m_scene->registry.get<TagComponent>(e).enabled)
+      if (!_scene->registry.get<TagComponent>(e).enabled)
         continue;
       lc.position = tc.position;
       lc.rotation = tc.rotation;
       lc.direction = normalize(math::transform_normal(Vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
 
-      m_render_pipeline->register_light(lc);
+      _render_pipeline->register_light(lc);
     }
   }
 
   // TODO: (very outdated, currently not working)
   // Particle system
-  const auto particle_system_view = m_scene->registry.view<TransformComponent, ParticleSystemComponent>();
+  const auto particle_system_view = _scene->registry.view<TransformComponent, ParticleSystemComponent>();
   for (auto&& [e, tc, psc] : particle_system_view.each()) {
-    psc.system->on_update(App::get_timestep(), tc.position);
+    psc.system->on_update((float)App::get_timestep(), tc.position);
     psc.system->on_render();
   }
 }

@@ -35,7 +35,7 @@ void SceneSerializer::serialize(const std::string& filePath) const {
 }
 
 bool SceneSerializer::deserialize(const std::string& filePath) const {
-  const auto content = FileSystem::read_file(filePath);
+  const auto content = fs::read_file(filePath);
   if (content.empty()) {
     OX_ASSERT(!content.empty(), fmt::format("Couldn't read scene file: {0}", filePath).c_str());
   }
@@ -56,7 +56,7 @@ bool SceneSerializer::deserialize(const std::string& filePath) const {
     EntitySerializer::deserialize_entity(entity_arr, m_scene.get(), true);
   }
 
-  OX_LOG_INFO("Scene loaded : {0}", FileSystem::get_file_name(m_scene->scene_name));
+  OX_LOG_INFO("Scene loaded : {0}", fs::get_file_name(m_scene->scene_name));
   return true;
 }
 }

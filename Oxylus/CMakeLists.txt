@@ -40,17 +40,21 @@ source_group("src/Utils" FILES ${Utils})
 set(SOURCE_FILES ${src} ${Core} ${Assets} ${Audio} ${Event} ${Physics} ${Modules}
                   ${RENDERER_FILES} ${Scene} ${Thread} ${UI} ${Utils} ${Scripting})
 
-set(vendor__ImGuizmo "vendor/ImGuizmo/ImGuizmo.cpp" "vendor/ImGuizmo/ImGuizmo.h")
-source_group("vendor/ImGuizmo" FILES ${vendor__ImGuizmo})
+set(vendor_ImGuizmo "vendor/ImGuizmo/ImGuizmo.cpp" "vendor/ImGuizmo/ImGuizmo.h")
+source_group("vendor/ImGuizmo" FILES ${vendor_ImGuizmo})
 
-set(vendor__miniaudio "vendor/miniaudio/miniaudio.h")
-source_group("vendor/miniaudio" FILES ${vendor__miniaudio})
+set(vendor_miniaudio "vendor/miniaudio/miniaudio.h")
+source_group("vendor/miniaudio" FILES ${vendor_miniaudio})
+
+set(vendor_stb "vendor/stb/stb_image.h" "vendor/stb/stb_image.cpp")
+source_group("vendor/stb" FILES ${vendor_stb})
 
 set(ALL_FILES
   ${SOURCE_FILES}
-  ${vendor__ImGuizmo}
-  ${vendor__miniaudio}
-  )
+  ${vendor_ImGuizmo}
+  ${vendor_miniaudio}
+  ${vendor_stb}
+)
 
 # Target
 add_library(${PROJECT_NAME} STATIC ${ALL_FILES})
@@ -101,7 +105,7 @@ endif()
 
 # Compile and link options
 if (MSVC)
-  target_compile_options(${PROJECT_NAME} PRIVATE /std:c++20 /permissive- /W3) 
+  target_compile_options(${PROJECT_NAME} PRIVATE /std:c++20 /permissive- /W3 /EHsc) 
 endif ()
 
 if (MSVC AND NOT CMAKE_CXX_COMPILER_ID STREQUAL "Clang")
@@ -168,6 +172,8 @@ CPMAddPackage(
   GITHUB_REPOSITORY skypjack/entt
   DOWNLOAD_ONLY YES
   GIT_SHALLOW ON
+  OPTIONS
+	"ENTT_INCLUDE_NATVIS ON"
 )
 if (EnTT_ADDED)
     add_library(EnTT INTERFACE)
@@ -175,21 +181,23 @@ if (EnTT_ADDED)
     target_link_libraries(${PROJECT_NAME} PUBLIC EnTT)
 endif()
 
-# tinygltf
+# fastgltf
 CPMAddPackage(
-    NAME tinygltf
-    GIT_TAG release
-    GITHUB_REPOSITORY syoyo/tinygltf
+    NAME fastgltf
+    VERSION 0.7.1
+    GITHUB_REPOSITORY spnda/fastgltf
     GIT_SHALLOW ON
     OPTIONS
-        "TINYGLTF_NO_INCLUDE_JSON ON"
-        "TINYGLTF_USE_RAPIDJSON ON"
-        "TINYGLTF_USE_CPP14 ON"
-        "TINYGLTF_BUILD_LOADER_EXAMPLE OFF"
-        "TINYGLTF_HEADER_ONLY ON"
+        "FASTGLTF_COMPILE_AS_CPP20 ON"
+        "FASTGLTF_USE_CUSTOM_SMALLVECTOR ON"
 )
-set_target_properties(tinygltf PROPERTIES FOLDER "Vendor")
-target_link_libraries(${PROJECT_NAME} PUBLIC tinygltf)
+set_target_properties(fastgltf PROPERTIES FOLDER "Vendor")
+target_link_libraries(${PROJECT_NAME} PUBLIC fastgltf)
+
+# meshoptimizer
+CPMAddPackage("gh:zeux/meshoptimizer#v0.20")
+target_link_libraries(${PROJECT_NAME} PUBLIC meshoptimizer)
+set_target_properties(meshoptimizer PROPERTIES FOLDER "Vendor")
 
 # FMT
 CPMAddPackage("gh:fmtlib/fmt#10.1.1")
@@ -211,7 +219,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC loguru)
 set_target_properties(loguru PROPERTIES FOLDER "Vendor")
 
 # vk-bootstrap
-CPMAddPackage("gh:charles-lunarg/vk-bootstrap#8e61b2d81c3f5f84339735085ff5651f71bbe1e7")
+CPMAddPackage("gh:charles-lunarg/vk-bootstrap#a5950c070082e851e621206fca7b3b0b008dcb28")
 target_link_libraries(${PROJECT_NAME} PUBLIC vk-bootstrap)
 set_target_properties(vk-bootstrap PROPERTIES FOLDER "Vendor")
 
@@ -219,7 +227,7 @@ set_target_properties(vk-bootstrap PROPERTIES FOLDER "Vendor")
 CPMAddPackage(
     NAME vuk
     GITHUB_REPOSITORY martty/vuk
-    GIT_TAG master
+    GIT_TAG new-FE
     GIT_SHALLOW ON
     OPTIONS
         "VUK_LINK_TO_LOADER OFF"
@@ -229,6 +237,7 @@ CPMAddPackage(
 target_compile_definitions(vuk PUBLIC VUK_MAX_VIEWPORTS=16 VUK_MAX_SCISSORS=16)
 target_link_libraries(${PROJECT_NAME} PUBLIC vuk)
 target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/src)
+target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/include)
 set_target_properties(vuk PROPERTIES FOLDER "Vendor")
 set_target_properties(spirv-cross-core PROPERTIES FOLDER "Vendor")
 set_target_properties(spirv-cross-glsl PROPERTIES FOLDER "Vendor")
@@ -246,9 +255,9 @@ CPMAddPackage(
     GIT_TAG 3.3.8
     GIT_SHALLOW ON
     OPTIONS
-        "GLFW_BUILD_TESTS OFF"
-        "GLFW_BUILD_EXAMPLES OFF"
-        "GLFW_BULID_DOCS OFF"
+    "GLFW_BUILD_TESTS OFF"
+    "GLFW_BUILD_EXAMPLES OFF"
+    "GLFW_BULID_DOCS OFF"
 	"GLFW_INSTALL OFF"
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
@@ -273,7 +282,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${rapidjson_SOURCE_DIR}/includ
 CPMAddPackage(
     NAME JoltPhysics
     GITHUB_REPOSITORY jrouwe/JoltPhysics
-    VERSION 4.0.2 
+    VERSION 5.0.0 
     SOURCE_SUBDIR Build
     GIT_SHALLOW ON
     OPTIONS
@@ -292,7 +301,7 @@ CPMAddPackage(
     VERSION 0.10
     GIT_SHALLOW ON
     OPTIONS
-        "TRACY_ENABLE OFF"
+        "TRACY_ENABLE ON"
         "TRACY_STATIC ON"
         "TRACY_VK_USE_SYMBOL_TABLE ON"
         "TRACY_NO_FRAME_IMAGE ON"
@@ -352,3 +361,32 @@ set_target_properties(unordered_dense PROPERTIES FOLDER "Vendor")
 # dylib
 CPMAddPackage("gh:martin-olivier/dylib#main")
 target_include_directories(${PROJECT_NAME} PUBLIC ${dylib_SOURCE_DIR}/include)
+
+# ktx
+CPMAddPackage(
+    NAME ktx
+    GITHUB_REPOSITORY KhronosGroup/KTX-Software
+    GIT_TAG main
+    GIT_SHALLOW ON
+    GIT_MODULES ""
+    OPTIONS
+        "KTX_FEATURE_STATIC_LIBRARY ON"
+        "KTX_FEATURE_LOADTEST_APPS OFF"
+        "KTX_FEATURE_DOC OFF"
+        "KTX_FEATURE_TESTS OFF"
+        "KTX_FEATURE_GL_UPLOAD OFF"
+        "KTX_FEATURE_TOOLS_CTS OFF"
+        "KTX_FEATURE_TOOLS OFF"
+)
+target_include_directories(${PROJECT_NAME} PUBLIC ${ktx_SOURCE_DIR}/include)
+target_link_libraries(${PROJECT_NAME} PUBLIC ktx)
+set_target_properties(ktx PROPERTIES FOLDER "Vendor")
+set_target_properties(astcenc-avx2-static PROPERTIES FOLDER "Vendor")
+set_target_properties(ktx_read PROPERTIES FOLDER "Vendor")
+set_target_properties(ktx_version PROPERTIES FOLDER "Vendor")
+set_target_properties(obj_basisu_cbind PROPERTIES FOLDER "Vendor")
+set_target_properties(objUtil PROPERTIES FOLDER "Vendor")
+
+# imspinner
+CPMAddPackage("gh:dalerank/imspinner#254b46994a76222a6da06111978a1674865a050d")
+target_include_directories(${PROJECT_NAME} PUBLIC ${imspinner_SOURCE_DIR})

@@ -9,8 +9,8 @@ struct VOutput {
 VOutput VSmain(Vertex inVertex, uint vid : SV_VERTEXID, uint instanceID : SV_INSTANCEID) {
   VOutput output;
   output.RTIndex = instanceID;
-  output.pos = mul(get_camera(output.RTIndex).projection_view, float4(inVertex.position, 1.0));
-  output.nor = inVertex.position;
+  output.pos = mul(get_camera(output.RTIndex).projection_view, float4(inVertex.position.unpack(), 1.0));
+  output.nor = inVertex.position.unpack();
   return output;
 }
 

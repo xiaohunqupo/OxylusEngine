@@ -1,7 +1,7 @@
 ﻿#pragma once
 
 #include "Core/Types.hpp"
-#include "Mesh.h"
+#include "Mesh.hpp"
 
 namespace ox {
 struct LineVertexData {
@@ -60,6 +60,7 @@ public:
   static void draw_mesh(const Shared<Mesh>& mesh, const Vec3& pos, const Vec3& scale, const Vec4& color = Vec4(1.0f, 1.0f, 1.0f, 1.0f), const Vec3& rotation = Vec3(0), bool depth_tested = false);
   static void draw_mesh(const Shared<Mesh>& mesh, const Mat4& model_matrix, const Vec4& color = Vec4(1.0f, 1.0f, 1.0f, 1.0f), bool depth_tested = false);
   static void draw_aabb(const AABB& aabb, const Vec4& color = Vec4(1.0f), bool corners_only = false, float width = 1.0f, bool depth_tested = false);
+  static void draw_frustum(const Mat4& frustum, const Vec4& color, float near, float far);
 
   static DebugRenderer* get_instance() { return instance; }
   const std::vector<LineInfo>& get_lines(bool depth_tested = true) const { return !depth_tested ? draw_list.debug_lines : draw_list_depth_tested.debug_lines; }

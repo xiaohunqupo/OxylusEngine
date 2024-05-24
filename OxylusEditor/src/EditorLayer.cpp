@@ -4,6 +4,7 @@
 #include <icons/IconsMaterialDesignIcons.h>
 
 #include <imgui_internal.h>
+#include <imspinner.h>
 
 #include "EditorTheme.hpp"
 
@@ -20,28 +21,25 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Renderer.hpp"
-#include "Render/Window.h"
+#include "Render/Window.hpp"
 
-#include "Scene/SceneRenderer.h"
+#include "Scene/SceneRenderer.hpp"
 
 #include "UI/OxUI.hpp"
+#include "Utils/EditorConfig.hpp"
 #include "Utils/FileDialogs.hpp"
 #include "Utils/ImGuiScoped.hpp"
-#include "Utils/EditorConfig.hpp"
 
 #include "Scene/SceneSerializer.hpp"
 
 #include "Thread/ThreadManager.hpp"
 
 #include "Utils/CVars.hpp"
-#include "Utils/StringUtils.hpp"
 #include "Utils/EmbeddedBanner.hpp"
+#include "Utils/StringUtils.hpp"
 
 namespace ox {
 EditorLayer* EditorLayer::instance = nullptr;
-
-AutoCVar_Int cvar_show_style_editor("ui.imgui_style_editor", "show imgui style editor", 0, CVarFlags::EditCheckbox);
-AutoCVar_Int cvar_show_imgui_demo("ui.imgui_demo", "show imgui demo window", 0, CVarFlags::EditCheckbox);
 
 static ViewportPanel* fullscreen_viewport_panel = nullptr;
 
@@ -57,8 +55,8 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
 
   editor_config.load_config();
 
-  engine_banner = create_shared<TextureAsset>();
-  engine_banner->create_texture(EngineBannerWidth, EngineBannerHeight, EngineBanner);
+  engine_banner = create_shared<Texture>();
+  engine_banner->create_texture({EngineBannerWidth, EngineBannerHeight, 1}, EngineBanner, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 
   Input::set_cursor_state(Input::CursorState::Normal);
 
@@ -123,12 +121,14 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 }
 
 void EditorLayer::on_imgui_render() {
-  if (cvar_show_style_editor.get())
+  if (EditorCVar::cvar_show_style_editor.get())
     ImGui::ShowStyleEditor();
-  if (cvar_show_imgui_demo.get())
+  if (EditorCVar::cvar_show_imgui_demo.get())
     ImGui::ShowDemoWindow();
 
   editor_shortcuts();
+
+  render_load_indicators();
 
   constexpr ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
 
@@ -156,8 +156,8 @@ void EditorLayer::on_imgui_render() {
 
     const float frame_height = ImGui::GetFrameHeight();
 
-    constexpr ImGuiWindowFlags menu_flags =
-      ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoNavFocus;
+    constexpr ImGuiWindowFlags menu_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar |
+                                            ImGuiWindowFlags_NoNavFocus;
 
     ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {frame_padding.x, 4.0f});
@@ -225,11 +225,9 @@ void EditorLayer::on_imgui_render() {
           }
           ImGui::EndMenu();
         }
-        static bool render_asset_manager = false;
 
         if (ImGui::BeginMenu("Assets")) {
           if (ImGui::MenuItem("Asset Manager")) {
-            render_asset_manager = true;
           }
           OxUI::tooltip("WIP");
           ImGui::EndMenu();
@@ -241,44 +239,6 @@ void EditorLayer::on_imgui_render() {
           ImGui::EndMenu();
         }
         ImGui::SameLine();
-
-        // TODO:
-#if 0
-        if (renderAssetManager) {
-          if (ImGui::Begin("Asset Manager")) {
-            const auto& assets = AssetManager::GetAssetLibrary();
-            if (!assets.MeshAssets.empty()) {
-              ImGui::Text("Mesh assets");
-              OxUI::BeginProperties();
-              for (const auto& [handle, asset] : assets.MeshAssets) {
-                auto handleStr = fmt::format("{}", (uint64_t)handle);
-                OxUI::Text(handleStr.c_str(), asset.Path.c_str());
-              }
-              OxUI::EndProperties();
-            }
-            if (!assets.ImageAssets.empty()) {
-              ImGui::Text("Image assets");
-              OxUI::BeginProperties();
-              for (const auto& asset : assets.ImageAssets) {
-                OxUI::Text("Texture:", asset->GetPath().c_str());
-              }
-              OxUI::EndProperties();
-            }
-            if (!assets.MaterialAssets.empty()) {
-              ImGui::Text("Material assets");
-              OxUI::BeginProperties();
-              for (const auto& [handle, asset] : assets.MaterialAssets) {
-                auto handleStr = fmt::format("{}", (uint64_t)handle);
-                OxUI::Text(handleStr.c_str(), asset.Path.c_str());
-              }
-              OxUI::EndProperties();
-            }
-            if (ImGui::Button("Package assets")) {
-              AssetManager::PackageAssets();
-            }
-          }
-        }
-#endif
         {
           // Project name text
           ImGui::SetCursorPos(ImVec2((float)Window::get_width() - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
@@ -380,11 +340,8 @@ void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   scene->registry.get<LightComponent>(sun).intensity = 10.0f;
   scene->registry.get<TransformComponent>(sun).rotation.x = glm::radians(25.f);
 
-  const auto plane = scene->load_mesh(AssetManager::get_mesh_asset("Resources/Objects/plane.glb"));
-  scene->registry.get<TransformComponent>(plane).scale *= 4.f;
-
-  const auto cube = scene->load_mesh(AssetManager::get_mesh_asset("Resources/Objects/cube.glb"));
-  scene->registry.get<TransformComponent>(cube).position.y = 0.5f;
+  constexpr auto sponza_path = "C:/Users/Halim/Desktop/Projects/OxylusEngine/OxylusEditor/SandboxProject/Assets/Objects/sponza.glb";
+  scene->load_mesh(AssetManager::get_mesh_asset(sponza_path));
 }
 
 void EditorLayer::clear_selected_entity() { get_panel<SceneHierarchyPanel>()->clear_selection_context(); }
@@ -420,7 +377,7 @@ void EditorLayer::on_scene_stop() {
   active_scene = nullptr;
   set_editor_context(editor_scene);
   // initalize the renderer again manually since this scene was already alive...
-  editor_scene->get_renderer()->init();
+  editor_scene->get_renderer()->init(editor_scene->dispatcher);
 }
 
 void EditorLayer::on_scene_simulate() {
@@ -447,6 +404,48 @@ void EditorLayer::draw_panels() {
   runtime_console.on_imgui_render();
 }
 
+void EditorLayer::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) { mesh_load_indicators.emplace_back(event); }
+
+void EditorLayer::render_load_indicators() {
+  OX_SCOPED_ZONE;
+  if (mesh_load_indicators.empty())
+    return;
+
+  constexpr auto win_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
+                             ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize |
+                             ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
+                             ImGuiWindowFlags_NoBackground;
+
+  const auto pos = ImVec2{ImGui::GetMainViewport()->Size.x - 200.0f, ImGui::GetMainViewport()->Size.y - 100.0f};
+  ImGui::SetNextWindowPos(pos, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+  if (ImGui::Begin("indicator_window", nullptr, win_flags)) {
+    if (ImGui::BeginTable("indicator_table", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
+      for (auto& load_indicator : mesh_load_indicators) {
+        ImGui::TableNextRow();
+
+        const ImU32 row_bg_color = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 0.5f, 0.10f));
+        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, row_bg_color);
+
+        for (int column = 0; column < 1; column++) {
+          ImGui::TableSetColumnIndex(column);
+          ImSpinner::SpinnerFadeDots("##", 16.0f, 6.0f, ImVec4(1, 1, 1, 1), 8.0f, 8);
+          ImGui::SameLine();
+          auto fmt = fmt::format(" Loading asset: {}", load_indicator.name);
+          ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
+          ImGui::PushFont(ImGuiLayer::bold_font);
+          ImGui::Text(fmt.c_str());
+          ImGui::PopFont();
+        }
+      }
+      ImGui::EndTable();
+    }
+
+    ImGui::End();
+  }
+
+  std::erase_if(mesh_load_indicators, [](const FutureMeshLoadEvent& e) { return e.task->GetIsComplete(); });
+}
+
 Shared<Scene> EditorLayer::get_active_scene() { return active_scene; }
 
 void EditorLayer::set_editor_context(const Shared<Scene>& scene) {
@@ -456,6 +455,8 @@ void EditorLayer::set_editor_context(const Shared<Scene>& scene) {
   for (const auto& panel : viewport_panels) {
     panel->set_context(scene, *shpanel);
   }
+
+  scene->dispatcher.sink<FutureMeshLoadEvent>().connect<&EditorLayer::handle_future_mesh_load_event>(*this);
 }
 
 void EditorLayer::set_scene_state(const SceneState state) { scene_state = state; }
