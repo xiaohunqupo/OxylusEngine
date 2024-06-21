@@ -184,7 +184,7 @@ endif()
 # fastgltf
 CPMAddPackage(
     NAME fastgltf
-    VERSION 0.7.1
+    VERSION 0.7.2
     GITHUB_REPOSITORY spnda/fastgltf
     GIT_SHALLOW ON
     OPTIONS
@@ -326,9 +326,8 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${lua_SOURCE_DIR}/lua-5.4.6/in
 
 CPMAddPackage(
     NAME sol2
-    GITHUB_REPOSITORY ThePhD/sol2
-    VERSION 3.3.0
-    GIT_SHALLOW ON
+    GITHUB_REPOSITORY Hatrickek/sol2
+    GIT_TAG develop
     OPTIONS
         "SOL2_BUILD_LUA OFF"
         "SOL2_TESTS OFF"

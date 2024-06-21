@@ -2,11 +2,8 @@
 
 #include <fmt/format.h>
 #include <utility>
-#include <vector>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
-
-#include "Utils/Log.hpp"
 
 namespace vuk {
 vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment> image, uint32_t mip_count) {

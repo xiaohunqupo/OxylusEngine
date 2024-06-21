@@ -1959,8 +1959,8 @@ inline bool IsKeyPressed(int user_key_index) { return ImGui::IsKeyPressed((ImGui
 inline bool IsKeyPressed(int user_key_index, bool repeat) { return ImGui::IsKeyPressed((ImGuiKey)user_key_index, repeat); }
 inline bool IsKeyReleased(int user_key_index) { return ImGui::IsKeyReleased((ImGuiKey)user_key_index); }
 inline int GetKeyPressedAmount(int key_index, float repeat_delay, float rate) { return ImGui::GetKeyPressedAmount((ImGuiKey)key_index, repeat_delay, rate); }
-inline void CaptureKeyboardFromApp() { ImGui::CaptureKeyboardFromApp(); }
-inline void CaptureKeyboardFromApp(bool want_capture_keyboard_value) { ImGui::CaptureKeyboardFromApp(want_capture_keyboard_value); }
+inline void CaptureKeyboardFromApp() { ImGui::SetNextFrameWantCaptureKeyboard(true); }
+inline void CaptureKeyboardFromApp(bool want_capture_keyboard_value) { ImGui::SetNextFrameWantCaptureKeyboard(want_capture_keyboard_value); }
 
 // Inputs Utilities: Mouse
 inline bool IsMouseDown(int button) { return ImGui::IsMouseDown(static_cast<ImGuiMouseButton>(button)); }
@@ -2004,8 +2004,8 @@ inline void ResetMouseDragDelta() { ImGui::ResetMouseDragDelta(); }
 inline void ResetMouseDragDelta(int button) { ImGui::ResetMouseDragDelta(static_cast<ImGuiMouseButton>(button)); }
 inline int GetMouseCursor() { return ImGui::GetMouseCursor(); }
 inline void SetMouseCursor(int cursor_type) { ImGui::SetMouseCursor(static_cast<ImGuiMouseCursor>(cursor_type)); }
-inline void CaptureMouseFromApp() { ImGui::CaptureMouseFromApp(); }
-inline void CaptureMouseFromApp(bool want_capture_mouse_value) { ImGui::CaptureMouseFromApp(want_capture_mouse_value); }
+inline void CaptureMouseFromApp() { ImGui::SetNextFrameWantCaptureMouse(true); }
+inline void CaptureMouseFromApp(bool want_capture_mouse_value) { ImGui::SetNextFrameWantCaptureMouse(want_capture_mouse_value); }
 
 // Clipboard Utilities
 inline std::string GetClipboardText() { return std::string(ImGui::GetClipboardText()); }

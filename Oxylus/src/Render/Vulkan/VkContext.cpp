@@ -155,7 +155,7 @@ void VkContext::create_context(const AppSpec& spec) {
 
   auto inst_ret = builder.build();
   if (!inst_ret) {
-    OX_LOG_ERROR("Couldn't initialise instance");
+    OX_LOG_ERROR("Couldn't initialize the instance! Make sure your GPU drivers are up to date and it supports Vulkan 1.3");
   }
 
   vkb_instance = inst_ret.value();

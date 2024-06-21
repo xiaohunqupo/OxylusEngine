@@ -22,7 +22,7 @@ public:
   SPD() = default;
   ~SPD() = default;
 
-  void init(vuk::Allocator& allocator, Config config = {});
+  void init(vuk::Allocator& allocator, Config config);
 
   vuk::Value<vuk::ImageAttachment> dispatch(vuk::Name pass_name, vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> image);
 

@@ -109,8 +109,8 @@ struct Surface {
     F0 = specularMap.rgb * specularMap.a;
 
     // metallic roughness workflow
-    Roughness = surfaceMap.g;
     Metallic = surfaceMap.r;
+    Roughness = surfaceMap.g;
     Occlusion = surfaceMap.b;
 
     const float reflectance = 0.0f; // TODO:?
@@ -253,7 +253,7 @@ struct Lighting {
   LightingPart direct;
   LightingPart indirect;
 
-  void Create(in float3 diffuseDirect, in float3 specularDirect, in float3 diffuseIndirect, in float3 specularIndirect) {
+  void create(in float3 diffuseDirect, in float3 specularDirect, in float3 diffuseIndirect, in float3 specularIndirect) {
     direct.diffuse = diffuseDirect;
     direct.specular = specularDirect;
     indirect.diffuse = diffuseIndirect;
@@ -306,7 +306,7 @@ void light_directional(Light light, Surface surface, inout Lighting lighting) {
   }
 
   if (any(shadow)) {
-    float3 light_color = light.get_color() * shadow;
+    float3 light_color = light.get_color().rgb * shadow;
 
     AtmosphereParameters atmosphere;
     InitAtmosphereParameters(atmosphere);
@@ -535,7 +535,7 @@ float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
   if (get_scene().post_processing_data.enable_gtao == 1) {
     uint value = get_gtao_texture().Sample(NEAREST_REPEATED_SAMPLER, screenCoords).r;
     float aoVisibility = value / 255.0;
-    surface.Occlusion *= aoVisibility;
+    //surface.Occlusion *= aoVisibility;
   }
 #endif
 
@@ -601,7 +601,7 @@ float4 PSmain(VOut input, float4 pixelPosition : SV_Position) : SV_Target {
   float3 envColor = cubemap.SampleLevel(LINEAR_CLAMPED_SAMPLER, surface.R, mip).rgb * surface.F;
 
   Lighting lighting = (Lighting)0;
-  lighting.Create(0, 0, ambient, max(0, envColor));
+  lighting.create(0, 0, ambient, max(0, envColor));
 
   float4 color = surface.BaseColor;
 
