@@ -1311,6 +1311,29 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   })(depth_output, debug_output);
 
   auto bloom_output = vuk::clear_image(vuk::declare_ia("bloom_output", vuk::dummy_attachment), vuk::Black<float>);
+  if (RendererCVar::cvar_bloom_enable.get()) {
+    constexpr uint32_t bloom_mip_count = 8;
+
+    auto bloom_ia = vuk::ImageAttachment{
+      .format = vuk::Format::eR32G32B32A32Sfloat,
+      .sample_count = vuk::SampleCountFlagBits::e1,
+      .level_count = bloom_mip_count,
+      .layer_count = 1,
+    };
+    auto bloom_down_image = vuk::clear_image(vuk::declare_ia("bloom_down_image", bloom_ia), vuk::Black<float>);
+    bloom_down_image.same_extent_as(target);
+
+    auto bloom_up_ia = vuk::ImageAttachment{
+      .format = vuk::Format::eR32G32B32A32Sfloat,
+      .sample_count = vuk::SampleCountFlagBits::e1,
+      .level_count = bloom_mip_count - 1,
+      .layer_count = 1,
+    };
+    auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_up_ia), vuk::Black<float>);
+    bloom_up_image.same_extent_as(target);
+
+    bloom_output = bloom_pass(bloom_down_image, bloom_up_image, color_output);
+  }
 
   return vuk::make_pass("final_pass",
                         [this](vuk::CommandBuffer& command_buffer,
@@ -1365,33 +1388,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                  1.0f,
                                  vk_context->current_frame);
   #endif
-
-  auto bloom_output = vuk::declare_ia("bloom_output", vuk::dummy_attachment);
-  auto transition = vuk::make_pass("converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
-  bloom_output = transition(bloom_output);
-  if (RendererCVar::cvar_bloom_enable.get()) {
-    constexpr uint32_t bloom_mip_count = 8;
-
-    auto bloom_ia = vuk::ImageAttachment{
-      .format = vuk::Format::eR32G32B32A32Sfloat,
-      .sample_count = vuk::SampleCountFlagBits::e1,
-      .level_count = bloom_mip_count,
-      .layer_count = 1,
-    };
-    auto bloom_down_image = vuk::clear_image(vuk::declare_ia("bloom_down_image", bloom_ia), vuk::Black<float>);
-    bloom_down_image.same_extent_as(target);
-
-    auto bloom_up_ia = vuk::ImageAttachment{
-      .format = vuk::Format::eR32G32B32A32Sfloat,
-      .sample_count = vuk::SampleCountFlagBits::e1,
-      .level_count = bloom_mip_count - 1,
-      .layer_count = 1,
-    };
-    auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_up_ia), vuk::Black<float>);
-    bloom_up_image.same_extent_as(target);
-
-    bloom_output = bloom_pass(bloom_down_image, bloom_up_image, forward_output);
-  }
 
   auto fxaa_ia = vuk::ImageAttachment::from_preset(Preset::eGeneric2D, vuk::Format::eR32G32B32A32Sfloat, {}, vuk::Samples::e1);
   auto fxaa_image = vuk::clear_image(vuk::declare_ia("fxaa_image", fxaa_ia), vuk::Black<float>);
