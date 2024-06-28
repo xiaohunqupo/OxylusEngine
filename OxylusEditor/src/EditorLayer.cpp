@@ -36,6 +36,7 @@
 
 #include "Utils/CVars.hpp"
 #include "Utils/EmbeddedBanner.hpp"
+#include "Utils/Log.hpp"
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
@@ -80,6 +81,14 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   editor_scene = create_shared<Scene>();
   load_default_scene(editor_scene);
   set_editor_context(editor_scene);
+
+  if (auto project_arg = App::get()->get_command_line_args().get_index("project=")) {
+    if (auto next_arg = App::get()->get_command_line_args().get(project_arg.value() + 1)) {
+      get_panel<ProjectPanel>()->load_project_for_editor(next_arg->arg_str);
+    } else {
+      OX_LOG_ERROR("Project argument missing a path!");
+    }
+  }
 }
 
 void EditorLayer::on_detach() { editor_config.save_config(); }
@@ -339,9 +348,6 @@ void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   scene->registry.emplace<LightComponent>(sun).type = LightComponent::LightType::Directional;
   scene->registry.get<LightComponent>(sun).intensity = 10.0f;
   scene->registry.get<TransformComponent>(sun).rotation.x = glm::radians(25.f);
-
-  constexpr auto sponza_path = "C:/Users/Halim/Desktop/Projects/OxylusEngine/OxylusEditor/SandboxProject/Assets/Objects/sponza.glb";
-  scene->load_mesh(AssetManager::get_mesh_asset(sponza_path));
 }
 
 void EditorLayer::clear_selected_entity() { get_panel<SceneHierarchyPanel>()->clear_selection_context(); }

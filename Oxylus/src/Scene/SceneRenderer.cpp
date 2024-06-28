@@ -1,8 +1,5 @@
 ﻿#include "SceneRenderer.hpp"
 
-#include <execution>
-#include <future>
-
 #include "Scene.hpp"
 
 #include "Core/App.hpp"
@@ -16,6 +13,8 @@
 #include "Render/DefaultRenderPipeline.hpp"
 #include "Render/Renderer.hpp"
 #include "Render/Vulkan/VkContext.hpp"
+#include "Scene/Components.hpp"
+#include "Utils/Profiler.hpp"
 
 namespace ox {
 void SceneRenderer::init(EventDispatcher& dispatcher) {
@@ -48,7 +47,22 @@ void SceneRenderer::update() const {
         mesh_component.dirty = false;
       }
 
-      _render_pipeline->register_mesh_component(mesh_component);
+      _render_pipeline->submit_mesh_component(mesh_component);
+    }
+  }
+
+  // Sprite System
+  {
+    OX_SCOPED_ZONE_N("Sprite System");
+    const auto sprite_view = _scene->registry.view<TransformComponent, SpriteComponent, TagComponent>();
+    for (const auto&& [entity, transform, sprite, tag] : sprite_view.each()) {
+      if (!tag.enabled)
+        continue;
+
+      const auto world_transform = eutil::get_world_transform(_scene, entity);
+      sprite.transform = world_transform;
+
+      _render_pipeline->submit_sprite(sprite);
     }
   }
 
@@ -81,7 +95,7 @@ void SceneRenderer::update() const {
       lc.rotation = tc.rotation;
       lc.direction = normalize(math::transform_normal(Vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
 
-      _render_pipeline->register_light(lc);
+      _render_pipeline->submit_light(lc);
     }
   }
 

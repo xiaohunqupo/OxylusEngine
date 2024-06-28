@@ -20,8 +20,6 @@
 
 #include "Scene/Components.hpp"
 
-#include "Scene/Scene.hpp"
-
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/Timer.hpp"
@@ -664,19 +662,19 @@ std::vector<Shared<Texture>> Mesh::load_images(const fastgltf::Asset& asset) {
   return loaded_images;
 }
 
-std::vector<Shared<Material>> Mesh::load_materials(const fastgltf::Asset& asset, const std::vector<Shared<Texture>>& images) {
+std::vector<Shared<PBRMaterial>> Mesh::load_materials(const fastgltf::Asset& asset, const std::vector<Shared<Texture>>& images) {
   OX_SCOPED_ZONE;
 
-  std::vector<Shared<Material>> materials = {};
+  std::vector<Shared<PBRMaterial>> materials = {};
   materials.reserve(asset.materials.size());
 
   if (asset.materials.empty()) {
-    const auto& ma = materials.emplace_back(AssetManager::get_material_asset("placeholder"));
+    const auto& ma = materials.emplace_back(create_shared<PBRMaterial>());
     ma->create();
   }
 
   for (auto& material : asset.materials) {
-    const Shared<Material>& ma = materials.emplace_back(AssetManager::get_material_asset(material.name.c_str()));
+    const Shared<PBRMaterial>& ma = materials.emplace_back(create_shared<PBRMaterial>(material.name.c_str()));
     ma->create();
 
     if (material.pbrData.baseColorTexture.has_value()) {
@@ -687,15 +685,15 @@ std::vector<Shared<Material>> Mesh::load_materials(const fastgltf::Asset& asset,
 
       // extract sampler
       if (!asset.samplers.empty()) {
-        const auto extract_sampler = [](const fastgltf::Sampler& sampler) -> Material::Sampler {
+        const auto extract_sampler = [](const fastgltf::Sampler& sampler) -> PBRMaterial::Sampler {
           switch (sampler.magFilter.value_or(fastgltf::Filter::Linear)) {
             case fastgltf::Filter::Nearest:
             case fastgltf::Filter::NearestMipMapNearest:
-            case fastgltf::Filter::NearestMipMapLinear : return Material::Sampler::Nearest;
+            case fastgltf::Filter::NearestMipMapLinear : return PBRMaterial::Sampler::Nearest;
             case fastgltf::Filter::Linear              :
             case fastgltf::Filter::LinearMipMapNearest :
             case fastgltf::Filter::LinearMipMapLinear  :
-            default                                    : return Material::Sampler::Anisotropy;
+            default                                    : return PBRMaterial::Sampler::Anisotropy;
           }
         };
 
@@ -740,7 +738,7 @@ std::vector<Shared<Material>> Mesh::load_materials(const fastgltf::Asset& asset,
       ->set_emissive(float4(glm::make_vec3(material.emissiveFactor.data()), material.emissiveStrength))
       ->set_reflectance(0.04f)
       ->set_double_sided(material.doubleSided)
-      ->set_alpha_mode((Material::AlphaMode)(uint32)material.alphaMode)
+      ->set_alpha_mode((PBRMaterial::AlphaMode)(uint32)material.alphaMode)
       ->set_alpha_cutoff(material.alphaCutoff);
   }
 

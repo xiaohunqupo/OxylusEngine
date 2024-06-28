@@ -78,11 +78,19 @@ Texture2D<float4> get_material_physical_texture(Material material) { return Mate
 Texture2D<float4> get_material_ao_texture(Material material) { return MaterialTextureMaps[material.ao_map_id]; }
 Texture2D<float4> get_material_emissive_texture(Material material) { return MaterialTextureMaps[material.emissive_map_id]; }
 
+Texture2D<float4> get_sprite_material_albedo_texture(SpriteMaterial material) { return MaterialTextureMaps[material.albedo_map_id]; }
+
 ShaderEntity get_entity(uint32 index) { return Buffers[get_scene().indices_.entites_buffer_index].Load<ShaderEntity>(index * sizeof(ShaderEntity)); }
+float4x4 get_transform(uint32 index) { return Buffers[get_scene().indices_.transforms_buffer_index].Load<float4x4>(index * sizeof(float4x4)); }
 
 Material get_material(uint32 material_index) {
   return Buffers[get_scene().indices_.materials_buffer_index].Load<Material>(material_index * sizeof(Material));
 }
+
+SpriteMaterial get_sprite_material(uint32 material_index) {
+  return Buffers[get_scene().indices_.sprite_materials_buffer_index].Load<SpriteMaterial>(material_index * sizeof(SpriteMaterial));
+}
+
 Light get_light(uint32 lightIndex) { return Buffers[get_scene().indices_.lights_buffer_index].Load<Light>(lightIndex * sizeof(Light)); }
 
 DebugAabb get_debug_aabb(uint32 index) { return BuffersRW[0].Load<DebugAabb>(sizeof(DrawIndirectCommand) + sizeof(DebugAabb) * index); }

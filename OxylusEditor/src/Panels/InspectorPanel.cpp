@@ -18,8 +18,6 @@
 #include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
 
-#include "Render/SceneRendererEvents.hpp"
-
 #include "Scene/SceneRenderer.hpp"
 
 namespace ox {
@@ -88,9 +86,22 @@ void draw_component(const char* name, entt::registry& reg, Entity entity, UIFunc
   }
 }
 
-void InspectorPanel::draw_material_properties(Shared<Material>& material) {
+void InspectorPanel::draw_sprite_material_properties(Shared<SpriteMaterial> &material) { 
   if (ImGui::Button("Reset")) {
-    material = create_shared<Material>();
+    material = create_shared<SpriteMaterial>();
+    material->create();
+  }
+  OxUI::begin_properties(OxUI::default_properties_flags, true, 0.5f);
+  if (OxUI::property("Albedo", material->get_albedo_texture()))
+    material->set_albedo_texture(material->get_albedo_texture());
+  OxUI::property_vector("Color", material->parameters.color, true, true);
+
+  OxUI::end_properties();
+}
+
+void InspectorPanel::draw_pbr_material_properties(Shared<PBRMaterial>& material) {
+  if (ImGui::Button("Reset")) {
+    material = create_shared<PBRMaterial>();
     material->create();
   }
   OxUI::begin_properties(OxUI::default_properties_flags, true, 0.5f);
@@ -233,6 +244,7 @@ void InspectorPanel::draw_components(Entity entity) {
     draw_add_component<MeshColliderComponent>(context->registry, entity, "Mesh Collider");
     draw_add_component<CharacterControllerComponent>(context->registry, entity, "Character Controller");
     draw_add_component<LuaScriptComponent>(context->registry, entity, "Lua Script Component");
+    draw_add_component<SpriteComponent>(context->registry, entity, "Sprite Component");
 
     ImGui::EndPopup();
   }
@@ -302,12 +314,20 @@ void InspectorPanel::draw_components(Entity entity) {
         ImGui::PushID(i);
         constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
         if (ImGui::TreeNodeEx(material->name.c_str(), flags, "%s", material->name.c_str())) {
-          draw_material_properties(material);
+          draw_pbr_material_properties(material);
           ImGui::TreePop();
         }
         ImGui::PopID();
       }
     }
+  });
+
+  draw_component<SpriteComponent>(" Sprite Component", context->registry, entity, [this](SpriteComponent& component) {
+    OxUI::begin_properties();
+    OxUI::property("Layer", &component.layer);
+    OxUI::end_properties();
+
+    draw_sprite_material_properties(component.material);
   });
 
   draw_component<PostProcessProbe>(" PostProcess Probe Component", context->registry, entity, [this](PostProcessProbe& component) {

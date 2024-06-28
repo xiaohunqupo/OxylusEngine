@@ -7,6 +7,7 @@
 #include "Audio/AudioListener.hpp"
 #include "Audio/AudioSource.hpp"
 
+#include "Assets/SpriteMaterial.hpp"
 #include "Render/Camera.hpp"
 #include "Render/Mesh.hpp"
 #include "Render/ParticleSystem.hpp"
@@ -20,7 +21,6 @@ class Character;
 
 namespace ox {
 class Texture;
-class Material;
 
 struct IDComponent {
   UUID uuid;
@@ -86,7 +86,7 @@ struct MeshComponent {
 
   // non-serialized data
   uint32_t mesh_id = Asset::INVALID_ID;
-  std::vector<Shared<Material>> materials = {};
+  std::vector<Shared<PBRMaterial>> materials = {};
   Mat4 transform = Mat4{1};
   std::vector<entt::entity> child_entities = {}; // filled at load
   std::vector<Mat4> child_transforms = {}; // filled at submit
@@ -99,6 +99,19 @@ struct MeshComponent {
     materials = mesh_base->_materials;
     mesh_id = mesh->get_id();
     dirty = true;
+  }
+};
+
+struct SpriteComponent { 
+  Shared<SpriteMaterial> material = nullptr;
+  uint32 layer = 0;
+
+  // non-serialized data
+  Mat4 transform = Mat4{1};
+
+  SpriteComponent() { 
+    material = create_shared<SpriteMaterial>();
+    material->create();
   }
 };
 
@@ -309,6 +322,7 @@ using AllComponents = ComponentGroup<TransformComponent,
                                      LightComponent,
                                      MeshComponent,
                                      ParticleSystemComponent,
+                                     SpriteComponent,
 
                                      //  Physics
                                      RigidbodyComponent,

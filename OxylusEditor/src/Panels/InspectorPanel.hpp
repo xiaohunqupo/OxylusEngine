@@ -1,6 +1,7 @@
 #pragma once
 
-#include "Assets/Material.hpp"
+#include "Assets/PBRMaterial.hpp"
+#include "Assets/SpriteMaterial.hpp"
 #include "Scene/Entity.hpp"
 #include "EditorPanel.hpp"
 
@@ -11,7 +12,8 @@ public:
 
   void on_imgui_render() override;
 
-  static void draw_material_properties(Shared<Material>& material);
+  static void draw_pbr_material_properties(Shared<PBRMaterial>& material);
+  static void draw_sprite_material_properties(Shared<SpriteMaterial>& material);
 
 private:
   void draw_components(Entity entity);

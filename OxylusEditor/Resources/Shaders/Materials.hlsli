@@ -1,6 +1,11 @@
-﻿#define ALPHA_MODE_OPAQUE 0
+﻿#ifndef MATERIALS_HLSLI
+#define MATERIALS_HLSLI
+
+#define ALPHA_MODE_OPAQUE 0
 #define ALPHA_MODE_BLEND 1
 #define ALPHA_MODE_MASK 2
+
+#include "Common.hlsli"
 
 struct Material {
   float4 color;
@@ -27,5 +32,15 @@ struct Material {
   uint32_t _pad;
 };
 
+struct SpriteMaterial {
+  PackedFloat4 color;
+  PackedFloat2 uv_size;
+  PackedFloat2 uv_offset;
+  uint32 albedo_map_id;
 
+  float4 get_color() { return color.unpack(); }
+  float2 get_uv_size() { return uv_size.unpack(); }
+  float2 get_uv_offset() { return uv_offset.unpack(); }
+};
 
+#endif

@@ -10,6 +10,7 @@
 #include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
 
+#include "Scene/Components.hpp"
 #include "Scene/EntitySerializer.hpp"
 #include "Scene/SceneEvents.hpp"
 #include "UI/OxUI.hpp"
@@ -301,7 +302,13 @@ void SceneHierarchyPanel::draw_context_menu() {
       if (ImGui::MenuItem("Sphere")) {
         context->load_mesh(AssetManager::get_mesh_asset("Resources/Objects/sphere.glb"));
       }
+
       ImGui::EndMenu();
+    }
+
+    if (ImGui::MenuItem("Sprite")) { 
+      to_select = context->create_entity("Sprite");
+      context->registry.emplace<SpriteComponent>(to_select);
     }
 
     if (ImGui::MenuItem("Camera")) {

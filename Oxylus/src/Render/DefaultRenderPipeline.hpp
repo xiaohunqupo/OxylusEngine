@@ -11,6 +11,7 @@
 
 #include "Passes/GTAO.hpp"
 #include "Passes/SPD.hpp"
+#include "Scene/Components.hpp"
 
 namespace ox {
 struct SkyboxLoadEvent;
@@ -32,9 +33,10 @@ public:
   void on_submit() override;
 
   void on_dispatcher_events(EventDispatcher& dispatcher) override;
-  void register_mesh_component(const MeshComponent& render_object) override;
-  void register_light(const LightComponent& light) override;
-  void register_camera(Camera* camera) override;
+  void submit_mesh_component(const MeshComponent& render_object) override;
+  void submit_light(const LightComponent& light) override;
+  void submit_camera(Camera* camera) override;
+  void submit_sprite(const SpriteComponent& sprite) override;
 
 private:
   Camera* current_camera = nullptr;
@@ -88,6 +90,8 @@ private:
   static constexpr auto MESH_INSTANCES_BUFFER_INDEX = 2;
   static constexpr auto ENTITIES_BUFFER_INDEX = 3;
   static constexpr auto GTAO_BUFFER_IMAGE_INDEX = 4;
+  static constexpr auto TRANSFORMS_BUFFER_INDEX = 5;
+  static constexpr auto SPRITE_MATERIALS_BUFFER_INDEX = 6;
 
   // rw buffers indices
   static constexpr auto DEBUG_AABB_INDEX = 0;
@@ -212,6 +216,8 @@ private:
       int vis_image_index;
       int emission_image_index;
       int metallic_roughness_ao_image_index;
+      int transforms_buffer_index;
+      int sprite_materials_buffer_index;
     } indices;
 
     struct PostProcessingData {
@@ -230,12 +236,6 @@ private:
       Vec2 sharpen = {};                                   // x: enable, y: amount
     } post_processing_data;
   } scene_data;
-
-  struct ShaderPC {
-    uint64_t vertex_buffer_ptr;
-    uint32_t mesh_index;
-    uint32_t material_index;
-  };
 
 #define MAX_AABB_COUNT 100000
 
@@ -257,6 +257,8 @@ private:
   vuk::Buffer instanced_index_buffer;
   vuk::Buffer indirect_commands_buffer;
   vuk::Buffer debug_aabb_buffer;
+
+  vuk::Buffer vertex_buffer_2d;
 
   vuk::SamplerCreateInfo hiz_sampler_ci;
   VkSamplerReductionModeCreateInfoEXT create_info_reduction;
@@ -293,125 +295,87 @@ private:
   vuk::ImageAttachment irradiance_texture;
   vuk::ImageAttachment prefiltered_texture;
 
-  enum Filter {
-    // Include nothing:
-    FILTER_NONE = 0,
-
-    // Object filtering types:
-    FILTER_OPAQUE = 1 << 0,
-    FILTER_TRANSPARENT = 1 << 1,
-    FILTER_CLIP = 1 << 2,
-    FILTER_WATER = 1 << 3,
-    FILTER_NAVIGATION_MESH = 1 << 4,
-    FILTER_OBJECT_ALL = FILTER_OPAQUE | FILTER_TRANSPARENT | FILTER_CLIP | FILTER_WATER | FILTER_NAVIGATION_MESH,
-
-    // Include everything:
-    FILTER_ALL = ~0,
+  struct DrawBatch2D {
+    vuk::Name pipeline_name = {};
+    uint32 offset = 0;
+    uint32 count = 0;
   };
 
-  struct RenderBatch {
-    uint32_t mesh_index;
-    uint32_t component_index;
-    uint32_t instance_index;
-    uint16_t distance;
-    uint16_t camera_mask;
-    uint32_t sort_bits; // an additional bitmask for sorting only, it should be used to reduce pipeline changes
+  struct SpriteGPUData {
+    float4 position = {};
+    float2 size = {};
+    uint32 material_id = 0;
+    uint32 flags = 0;
+  };
 
-    void create(const uint32_t mesh_idx,
-                const uint32_t component_idx,
-                const uint32_t instance_idx,
-                const float distance,
-                const uint32_t sort_bits,
-                const uint16_t camera_mask = 0xFFFF) {
-      this->mesh_index = mesh_idx;
-      this->component_index = component_idx;
-      this->instance_index = instance_idx;
-      this->distance = uint16_t(glm::floatBitsToUint(distance));
-      this->sort_bits = sort_bits;
-      this->camera_mask = camera_mask;
+  struct RenderQueue2D {
+    std::vector<DrawBatch2D> batches = {};
+    std::vector<SpriteGPUData> sprite_data = {};
+    std::vector<Shared<SpriteMaterial>> materials = {};
+
+    vuk::Name current_pipeline_name = {};
+
+    uint32 num_sprites = 0;
+    uint32 previous_offset = 0;
+
+    uint32 last_batches_size = 0;
+    uint32 last_sprite_data_size = 0;
+    uint32 last_materials_size = 0;
+
+    void init() {
+      batches.reserve(last_batches_size);
+      sprite_data.reserve(last_sprite_data_size);
+      materials.reserve(last_materials_size);
     }
 
-    float get_distance() const { return glm::uintBitsToFloat(distance); }
-    constexpr uint32_t get_mesh_index() const { return mesh_index; }
-    constexpr uint32_t get_instance_index() const { return instance_index; }
+    // TODO: this will take a list of materials
+    void update() {
+      const vuk::Name pipeline_name = "2d_forward_pipeline"; // FIXME: hardcoded until we have a modular material shader system
+      if (current_pipeline_name != pipeline_name) {
+        batches.emplace_back(DrawBatch2D{.pipeline_name = pipeline_name, .offset = previous_offset, .count = num_sprites - previous_offset});
+        current_pipeline_name = pipeline_name;
+      }
 
-    // opaque sorting
-    // Priority is set to mesh index to have more instancing
-    // distance is second priority (front to back Z-buffering)
-    constexpr bool operator<(const RenderBatch& other) const {
-      union SortKey {
-        struct {
-          // The order of members is important here, it means the sort priority (low to high)!
-          uint64_t distance : 16;
-          uint64_t mesh_index : 16;
-          uint64_t sort_bits : 32;
-        } bits;
-
-        uint64_t value;
-      };
-      static_assert(sizeof(SortKey) == sizeof(uint64_t));
-      const SortKey a = {.bits = {.distance = distance, .mesh_index = mesh_index, .sort_bits = sort_bits}};
-      const SortKey b = {.bits = {.distance = other.distance, .mesh_index = other.mesh_index, .sort_bits = other.sort_bits}};
-      return a.value < b.value;
+      previous_offset = num_sprites;
     }
 
-    // transparent sorting
-    // Priority is distance for correct alpha blending (back to front rendering)
-    // mesh index is second priority for instancing
-    constexpr bool operator>(const RenderBatch& other) const {
-      union SortKey {
-        struct {
-          // The order of members is important here, it means the sort priority (low to high)!
-          uint64_t mesh_index : 16;
-          uint64_t sort_bits : 32;
-          uint64_t distance : 16;
-        } bits;
+    void add(const SpriteComponent& sprite) {
+      sprite.material->set_id((uint32)materials.size());
+      materials.emplace_back(sprite.material);
 
-        uint64_t value;
-      };
-      static_assert(sizeof(SortKey) == sizeof(uint64_t));
-      const SortKey a = {.bits = {.mesh_index = mesh_index, .sort_bits = sort_bits, .distance = distance}};
-      const SortKey b = {.bits = {.mesh_index = other.mesh_index, .sort_bits = other.sort_bits, .distance = other.distance}};
-      return a.value > b.value;
+      const float2 size{glm::length(glm::vec3(sprite.transform[0])), glm::length(glm::vec3(sprite.transform[1]))};
+
+      sprite_data.emplace_back(SpriteGPUData{
+        .position = float4(float3(sprite.transform[3]), 0.0f),
+        .size = size,
+        .material_id = sprite.material->get_id(),
+        .flags = 0,
+      });
+
+      num_sprites += 1;
+    }
+
+    void clear() {
+      num_sprites = 0;
+      previous_offset = 0;
+      last_batches_size = (uint32)batches.size();
+      last_sprite_data_size = (uint32)sprite_data.size();
+      last_materials_size = (uint32)materials.size();
+      current_pipeline_name = {};
+
+      batches.clear();
+      sprite_data.clear();
+      materials.clear();
     }
   };
 
-  struct RenderQueue {
-    std::vector<RenderBatch> batches = {};
-
-    void clear() { batches.clear(); }
-
-    void add(const uint32_t mesh_index,
-             const uint32_t component_index,
-             const uint32_t instance_index,
-             const float distance,
-             const uint32_t sort_bits,
-             const uint16_t camera_mask = 0xFFFF) {
-      batches.emplace_back().create(mesh_index, component_index, instance_index, distance, sort_bits, camera_mask);
-    }
-
-    RenderBatch& add(const RenderBatch& render_batch) { return batches.emplace_back(render_batch); }
-
-    void sort_transparent() {
-      OX_SCOPED_ZONE;
-      std::sort(batches.begin(), batches.end(), std::greater<RenderBatch>());
-    }
-
-    void sort_opaque() {
-      OX_SCOPED_ZONE;
-      std::sort(batches.begin(), batches.end(), std::less<RenderBatch>());
-    }
-
-    bool empty() const { return batches.empty(); }
-
-    size_t size() const { return batches.size(); }
-  };
+  RenderQueue2D render_queue_2d;
 
   struct SceneFlattened {
     std::vector<Mesh::Meshlet> meshlets;
     std::vector<Mesh::MeshletInstance> meshlet_instances;
     std::vector<Mat4> transforms;
-    std::vector<Shared<Material>> materials;
+    std::vector<Shared<PBRMaterial>> materials;
 
     std::vector<uint32> indices{};
     std::vector<Vertex> vertices{};
@@ -456,17 +420,17 @@ private:
       materials.clear();
     }
 
-    void update(const std::vector<MeshComponent>& mc_list) {
+    void update(const std::vector<MeshComponent>& mc_list, const std::vector<SpriteComponent>& sp_list) {
       OX_SCOPED_ZONE;
 
       if (mc_list.empty()) {
         meshlet_instances.emplace_back();
         meshlets.emplace_back();
-        transforms.emplace_back();
         indices.emplace_back();
         vertices.emplace_back();
         primitives.emplace_back();
-        materials.emplace_back(create_shared<Material>());
+        transforms.emplace_back();
+        materials.emplace_back(create_shared<PBRMaterial>());
 
         return;
       }
@@ -496,7 +460,7 @@ private:
 
   SceneFlattened scene_flattened;
   std::vector<MeshComponent> mesh_component_list;
-  RenderQueue render_queue;
+  std::vector<SpriteComponent> sprite_component_list;
   Shared<Mesh> m_quad = nullptr;
   Shared<Mesh> m_cube = nullptr;
   Shared<Camera> default_camera;

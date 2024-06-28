@@ -10,6 +10,7 @@
 #include <vuk/vsl/Core.hpp>
 
 #include "DebugRenderer.hpp"
+#include "MeshVertex.hpp"
 #include "RendererCommon.hpp"
 #include "SceneRendererEvents.hpp"
 
@@ -271,6 +272,12 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
     TRY(allocator.get_context().create_named_pipeline("sky_envmap_pipeline", bindless_pci))
   });
 
+  task_scheduler->add_task([=]() mutable {
+    bindless_pci.add_hlsl(SHADER_FILE("2DForward.hlsl"), SS::eVertex, "VSmain");
+    bindless_pci.add_hlsl(SHADER_FILE("2DForward.hlsl"), SS::ePixel, "PSmain");
+    TRY(allocator.get_context().create_named_pipeline("2d_forward_pipeline", bindless_pci))
+  });
+
   task_scheduler->wait_for_all();
 
   fsr.load_pipelines(allocator, bindless_pci);
@@ -311,12 +318,13 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
 }
 
 void DefaultRenderPipeline::clear() {
-  render_queue.clear();
   mesh_component_list.clear();
+  sprite_component_list.clear();
   scene_lights.clear();
   light_datas.clear();
   dir_light_data = nullptr;
   scene_flattened.clear();
+  render_queue_2d.clear();
 }
 
 void DefaultRenderPipeline::bind_camera_buffer(vuk::CommandBuffer& command_buffer) {
@@ -464,8 +472,10 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   auto& ctx = allocator.get_context();
 
   scene_flattened.init();
+  scene_flattened.update(mesh_component_list, sprite_component_list);
 
-  scene_flattened.update(mesh_component_list);
+  render_queue_2d.init();
+  render_queue_2d.update();
 
   scene_data.num_lights = (uint32)scene_lights.size();
   scene_data.grid_max_distance = RendererCVar::cvar_draw_grid_distance.get();
@@ -493,6 +503,8 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   scene_data.indices.materials_buffer_index = MATERIALS_BUFFER_INDEX;
   scene_data.indices.mesh_instance_buffer_index = MESH_INSTANCES_BUFFER_INDEX;
   scene_data.indices.entites_buffer_index = ENTITIES_BUFFER_INDEX;
+  scene_data.indices.transforms_buffer_index = TRANSFORMS_BUFFER_INDEX;
+  scene_data.indices.sprite_materials_buffer_index = SPRITE_MATERIALS_BUFFER_INDEX;
 
   scene_data.post_processing_data.tonemapper = RendererCVar::cvar_tonemapper.get();
   scene_data.post_processing_data.exposure = RendererCVar::cvar_exposure.get();
@@ -502,12 +514,18 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   scene_data.post_processing_data.enable_gtao = RendererCVar::cvar_gtao_enable.get();
 
   {
+    OX_SCOPED_ZONE_N("Update 2d vertex data");
+    vertex_buffer_2d = *vuk::allocate_cpu_buffer(allocator, sizeof(SpriteGPUData) * 3000);
+    std::memcpy(vertex_buffer_2d.mapped_ptr, render_queue_2d.sprite_data.data(), sizeof(SpriteGPUData) * render_queue_2d.sprite_data.size());
+  }
+
+  {
     OX_SCOPED_ZONE_N("Update 1st set data");
 
     auto [scene_buff, scene_buff_fut] = create_cpu_buffer(allocator, std::span(&scene_data, 1));
     const auto& scene_buffer = *scene_buff;
 
-    std::vector<Material::Parameters> material_parameters = {};
+    std::vector<PBRMaterial::Parameters> material_parameters = {};
     material_parameters.reserve(scene_flattened.get_material_count());
     for (auto& mat : scene_flattened.materials) {
       mat->set_id((uint32)material_parameters.size());
@@ -537,6 +555,23 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
     auto [matBuff, matBufferFut] = create_cpu_buffer(allocator, std::span(material_parameters));
     auto& mat_buffer = *matBuff;
+
+    std::vector<SpriteMaterial::Parameters> sprite_material_parameters = {};
+    sprite_material_parameters.reserve(render_queue_2d.materials.size());
+    for (auto& mat : render_queue_2d.materials) {
+      const auto& albedo = mat->get_albedo_texture();
+
+      if (albedo && albedo->is_valid_id())
+        descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+
+      sprite_material_parameters.emplace_back(mat->parameters);
+    }
+
+    if (sprite_material_parameters.empty())
+      sprite_material_parameters.emplace_back();
+
+    auto [sprite_mat_buff, sprite_mat_buff_fut] = create_cpu_buffer(allocator, std::span(sprite_material_parameters));
+    auto& sprite_mat_buffer = *sprite_mat_buff;
 
     light_datas.reserve(scene_lights.size());
 
@@ -644,6 +679,11 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     descriptor_set_00->update_storage_buffer(1, LIGHTS_BUFFER_INDEX, lights_buffer);
     descriptor_set_00->update_storage_buffer(1, MATERIALS_BUFFER_INDEX, mat_buffer);
     descriptor_set_00->update_storage_buffer(1, ENTITIES_BUFFER_INDEX, shader_entities_buffer);
+    descriptor_set_00->update_storage_buffer(1, SPRITE_MATERIALS_BUFFER_INDEX, sprite_mat_buffer);
+
+    auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.transforms));
+    transforms_buffer = *transBuff;
+    descriptor_set_00->update_storage_buffer(1, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
 
     debug_aabb_buffer = *vuk::allocate_cpu_buffer(allocator, sizeof(vuk::DrawIndirectCommand) + sizeof(DebugAabb) * MAX_AABB_COUNT);
     uint32 vert_count = 14;
@@ -684,7 +724,6 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
     descriptor_set_00->commit(ctx);
   }
-
   {
     OX_SCOPED_ZONE_N("Update 2nd set data");
 
@@ -692,7 +731,6 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     constexpr auto INDEX_BUFFER_INDEX = 1;
     constexpr auto VERTEX_BUFFER_INDEX = 2;
     constexpr auto PRIMITIVES_BUFFER_INDEX = 3;
-    constexpr auto TRANSFORMS_BUFFER_INDEX = 4;
     constexpr auto MESHLET_INSTANCE_BUFFERS_INDEX = 5;
 
     constexpr auto VISIBLE_MESHLETS_BUFFER_INDEX = 0;
@@ -706,7 +744,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     auto [meshletBuff, meshletBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlets));
     const auto& meshlet_data_buffer = *meshletBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_DATA_BUFFERS_INDEX, meshlet_data_buffer);
- 
+
     auto [meshlet_instances_buff, meshlet_instances_buff_fut] = create_cpu_buffer(allocator, std::span(scene_flattened.meshlet_instances));
     const auto& meshlet_instances_buffer = *meshlet_instances_buff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, MESHLET_INSTANCE_BUFFERS_INDEX, meshlet_instances_buffer);
@@ -749,12 +787,9 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     primitives_buffer = *primsBuff;
     descriptor_set_02->update_storage_buffer(READ_ONLY, PRIMITIVES_BUFFER_INDEX, primitives_buffer);
 
-    auto [transBuff, transfBuffFut] = create_cpu_buffer(allocator, std::span(scene_flattened.transforms));
-    transforms_buffer = *transBuff;
-    descriptor_set_02->update_storage_buffer(READ_ONLY, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
-
     constexpr auto max_meshlet_primitives = 64;
-    instanced_index_buffer = *allocate_gpu_buffer(allocator, scene_flattened.get_meshlet_instances_count() * max_meshlet_primitives * 3 * sizeof(uint32));
+    instanced_index_buffer = *allocate_gpu_buffer(allocator,
+                                                  scene_flattened.get_meshlet_instances_count() * max_meshlet_primitives * 3 * sizeof(uint32));
     descriptor_set_02->update_storage_buffer(READ_WRITE, INSTANCED_INDEX_BUFFER_INDEX, instanced_index_buffer);
 
     descriptor_set_02->commit(ctx);
@@ -944,7 +979,7 @@ void DefaultRenderPipeline::on_dispatcher_events(EventDispatcher& dispatcher) {
   dispatcher.sink<SkyboxLoadEvent>().connect<&DefaultRenderPipeline::update_skybox>(*this);
 }
 
-void DefaultRenderPipeline::register_mesh_component(const MeshComponent& render_object) {
+void DefaultRenderPipeline::submit_mesh_component(const MeshComponent& render_object) {
   OX_SCOPED_ZONE;
 
   if (!current_camera)
@@ -953,14 +988,20 @@ void DefaultRenderPipeline::register_mesh_component(const MeshComponent& render_
   mesh_component_list.emplace_back(render_object);
 }
 
-void DefaultRenderPipeline::register_light(const LightComponent& light) {
+void DefaultRenderPipeline::submit_light(const LightComponent& light) {
   OX_SCOPED_ZONE;
   auto& lc = scene_lights.emplace_back(light);
   if (light.type == LightComponent::LightType::Directional)
     dir_light_data = &lc;
 }
 
-void DefaultRenderPipeline::register_camera(Camera* camera) {
+void DefaultRenderPipeline::submit_sprite(const SpriteComponent& sprite) {
+  OX_SCOPED_ZONE;
+  sprite_component_list.emplace_back(sprite);
+  render_queue_2d.add(sprite);
+}
+
+void DefaultRenderPipeline::submit_camera(Camera* camera) {
   OX_SCOPED_ZONE;
 
   if ((bool)RendererCVar::cvar_freeze_culling_frustum.get() && !saved_camera) {
@@ -1299,13 +1340,14 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .set_primitive_topology(vuk::PrimitiveTopology::eLineList)
       .set_viewport(0, vuk::Rect2D::framebuffer())
       .set_scissor(0, vuk::Rect2D::framebuffer())
+      .bind_index_buffer(index_buffer, vuk::IndexType::eUint32)
       .bind_vertex_buffer(0, v_buffer_dt, 0, vertex_pack)
       .bind_persistent(0, *descriptor_set_00);
 
     camera_cb.camera_data[0] = get_main_camera_data(true);
     bind_camera_buffer(command_buffer);
 
-    command_buffer.bind_index_buffer(index_buffer, vuk::IndexType::eUint32);
+    command_buffer.draw_indexed(index_count, 1, 0, 0, 0);
 
     return _output;
   })(depth_output, debug_output);
@@ -1335,6 +1377,44 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     bloom_output = bloom_pass(bloom_down_image, bloom_up_image, color_output);
   }
 
+  auto forward2d_output = vuk::make_pass("2d_forward_pass",
+                                         [this](vuk::CommandBuffer& command_buffer,
+                                                VUK_IA(vuk::eColorWrite) target,
+                                                VUK_IA(vuk::eDepthStencilRW) depth) {
+    auto vertex_pack_2d = vuk::Packed{
+      vuk::Format::eR32G32B32A32Sfloat, // 16 postition
+      vuk::Format::eR32G32Sfloat,       // 8 size
+      vuk::Format::eR32Uint,            // 4 material_id
+      vuk::Format::eR32Uint,            // 4 flags
+    };
+
+    for (auto& batch : render_queue_2d.batches) {
+      if (batch.count < 1)
+        continue;
+
+      command_buffer.bind_graphics_pipeline(batch.pipeline_name)
+        .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
+          .depthTestEnable = true,
+          .depthWriteEnable = true,
+          .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
+        })
+        .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
+        .set_viewport(0, vuk::Rect2D::framebuffer())
+        .set_scissor(0, vuk::Rect2D::framebuffer())
+        .broadcast_color_blend(vuk::BlendPreset::eOff)
+        .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+        .bind_vertex_buffer(0, vertex_buffer_2d, 0, vertex_pack_2d, VK_VERTEX_INPUT_RATE_INSTANCE)
+        .bind_persistent(0, *descriptor_set_00);
+
+      camera_cb.camera_data[0] = get_main_camera_data((bool)RendererCVar::cvar_freeze_culling_frustum.get());
+      bind_camera_buffer(command_buffer);
+
+      command_buffer.draw(6, batch.count, 0, batch.offset);
+    }
+
+    return target;
+  })(debug_output2, depth_output);
+
   return vuk::make_pass("final_pass",
                         [this](vuk::CommandBuffer& command_buffer,
                                VUK_IA(vuk::eColorRW) target,
@@ -1351,7 +1431,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .bind_image(2, 1, bloom_img)
       .draw(3, 1, 0, 0);
     return target;
-  })(target, debug_output2, bloom_output);
+  })(target, forward2d_output, bloom_output);
 #if 0
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);
@@ -1453,6 +1533,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
         .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
       });
 
+#if 0
     const auto max_viewport_count = VkContext::get()->get_max_viewport_count();
     for (auto& light : scene_lights) {
       if (!light.cast_shadows)
@@ -1465,7 +1546,6 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
           auto cameras = std::vector<CameraData>(cascade_count);
           auto sh_cameras = std::vector<CameraSH>(cascade_count);
           create_dir_light_cameras(light, *current_camera, sh_cameras, cascade_count);
-
           RenderQueue shadow_queue = {};
           uint32_t batch_index = 0;
           for (auto& batch : render_queue.batches) {
@@ -1588,6 +1668,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
         }
       }
     }
+#endif
 
     return map;
   });

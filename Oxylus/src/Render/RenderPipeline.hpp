@@ -32,9 +32,10 @@ public:
 
   virtual void on_update(Scene* scene) {}
   virtual void on_submit() {}
-  virtual void register_mesh_component(const MeshComponent& render_object) {}
-  virtual void register_light(const LightComponent& light) {}
-  virtual void register_camera(Camera* camera) {}
+  virtual void submit_mesh_component(const MeshComponent& render_object) {}
+  virtual void submit_light(const LightComponent& light) {}
+  virtual void submit_camera(Camera* camera) {}
+  virtual void submit_sprite(const SpriteComponent& sprite) {}
 
   virtual void detach_swapchain(vuk::Extent3D ext, Vec2 offset = {});
   virtual bool is_swapchain_attached() { return attach_swapchain; }

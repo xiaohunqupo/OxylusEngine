@@ -38,7 +38,7 @@ static VkBool32 debug_callback(const VkDebugUtilsMessageSeverityFlagBitsEXT mess
     OX_LOG_INFO("{}", debug_message.str());
   } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_WARNING_BIT_EXT) {
     OX_LOG_WARN(debug_message.str().c_str());
-    OX_DEBUGBREAK();
+    //OX_DEBUGBREAK();
   } else if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_ERROR_BIT_EXT) {
     OX_LOG_FATAL("{}", debug_message.str());
   }

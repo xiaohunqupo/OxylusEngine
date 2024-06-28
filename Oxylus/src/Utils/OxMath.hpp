@@ -9,6 +9,18 @@
 #include "Profiler.hpp"
 
 namespace ox::math {
+inline uint32 pack_u16(uint16_t high, uint16 low) {
+  return ((uint32)high << 16) | low; 
+} 
+
+inline uint16 unpack_u32_high(uint32 packed) { 
+  return (packed >> 16) & 0xFFFF;
+}
+
+inline uint16 unpack_u32_low(uint32 packed) { 
+  return packed & 0xFFFF;
+}
+
 inline float2 sign_not_zero(float2 v) { return {(v.x >= 0.0f) ? +1.0f : -1.0f, (v.y >= 0.0f) ? +1.0f : -1.0f}; }
 
 inline float2 float32x3_to_oct(float3 v) {

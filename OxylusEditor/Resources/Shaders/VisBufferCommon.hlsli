@@ -36,7 +36,6 @@ MeshletInstance get_meshlet_instance(uint32 index) {
 }
 Vertex get_vertex(uint32 index) { return buffers[VERTEX_BUFFER_INDEX].Load<Vertex>(index * sizeof(Vertex)); }
 uint32 get_primitive(uint32 index) { return buffers[PRIMITIVES_BUFFER_INDEX].Load<uint32>(index * sizeof(uint32)); }
-float4x4 get_transform(uint32 index) { return buffers[TRANSFORMS_BUFFER_INDEX].Load<float4x4>(index * sizeof(float4x4)); }
 uint32 get_index(uint32 index) { return buffers[INDEX_BUFFER_INDEX].Load<uint32>(index * sizeof(uint32)); }
 
 void set_index(uint32 index, uint32 value) { buffers_rw[INSTANCED_INDEX_BUFFER_INDEX].Store<uint32>(index * sizeof(uint32), value); }

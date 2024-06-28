@@ -681,7 +681,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     for (const auto entity : camera_view) {
       auto [transform, camera] = camera_view.get<TransformComponent, CameraComponent>(entity);
       camera.camera.update(transform.position, transform.rotation);
-      scene_renderer->get_render_pipeline()->register_camera(&camera.camera);
+      scene_renderer->get_render_pipeline()->submit_camera(&camera.camera);
     }
   }
 
@@ -762,7 +762,7 @@ void Scene::on_imgui_render(const Timestep& delta_time) {
 
 void Scene::on_editor_update(const Timestep& delta_time, Camera& camera) {
   OX_SCOPED_ZONE;
-  scene_renderer->get_render_pipeline()->register_camera(&camera);
+  scene_renderer->get_render_pipeline()->submit_camera(&camera);
   scene_renderer->update();
 }
 } // namespace ox

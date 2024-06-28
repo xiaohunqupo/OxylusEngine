@@ -238,6 +238,8 @@ struct SceneData {
     int vis_image_index;
     int emission_image_index;
     int metallic_roughness_ao_image_index;
+    int transforms_buffer_index;
+    int sprite_materials_buffer_index;
   } indices_;
 
   // TODO: use flags
@@ -383,5 +385,9 @@ float2 unpack_snorm2_x16(const uint packed) {
   signextended.y = (int)(packed & 0xFFFF0000) >> 16;
   return max(float2(signextended) / 32767.0f, -1.0f);
 }
+
+inline uint unpack_u32_high(uint packed) { return (packed >> 16) & 0xFFFF; }
+
+inline uint unpack_u32_low(uint packed) { return packed & 0xFFFF; }
 
 #endif

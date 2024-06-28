@@ -1,9 +1,12 @@
 #pragma once
+#include <exception>
+#include <optional>
 #include <string>
 
 #include <ankerl/unordered_dense.h>
 
 #include "Base.hpp"
+#include "Core/Types.hpp"
 #include "ESystem.hpp"
 
 #include "Utils/Log.hpp"
@@ -18,23 +21,43 @@ class ImGuiLayer;
 class ThreadManager;
 
 struct AppCommandLineArgs {
-  std::vector<std::string> args = {};
+  struct Arg {
+    std::string arg_str;
+    uint32 arg_index;
+  };
+
+  std::vector<Arg> args = {};
 
   AppCommandLineArgs() = default;
   AppCommandLineArgs(const int argc, char** argv) {
     for (int i = 0; i < argc; i++)
-      args.emplace_back(argv[i]);
+      args.emplace_back(Arg{.arg_str = argv[i], .arg_index = (uint32)i});
   }
-
-  const std::string& operator[](const int index) const { return args.at(index); }
 
   bool contains(const std::string_view arg) const {
     for (const auto& a : args) {
-      if (a == arg) {
+      if (a.arg_str == arg) {
         return true;
       }
     }
     return false;
+  }
+
+  std::optional<Arg> get(const uint32 index) const {
+    try {
+      return args.at(index);
+    } catch (std::exception& exception) {
+      return std::nullopt;
+    }
+  }
+
+  std::optional<uint32> get_index(const std::string_view arg) const {
+    for (const auto& a : args) {
+      if (a.arg_str == arg) {
+        return a.arg_index;
+      }
+    }
+    return std::nullopt;
   }
 };
 

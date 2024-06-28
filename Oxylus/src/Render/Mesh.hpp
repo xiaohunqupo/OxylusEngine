@@ -5,7 +5,7 @@
 #include <string>
 #include <vector>
 
-#include "Assets/Material.hpp"
+#include "Assets/PBRMaterial.hpp"
 
 #include <vuk/Buffer.hpp>
 
@@ -62,7 +62,7 @@ public:
   std::vector<Vertex> _vertices;
   std::vector<uint32> _indices;
   std::vector<uint8_t> _primitives;
-  std::vector<Shared<Material>> _materials;
+  std::vector<Shared<PBRMaterial>> _materials;
 
   uint32 index_count = 0;
   uint32 vertex_count = 0;
@@ -83,6 +83,6 @@ public:
 
 private:
   [[nodiscard]] std::vector<Shared<Texture>> load_images(const fastgltf::Asset& asset);
-  [[nodiscard]] std::vector<Shared<Material>> load_materials(const fastgltf::Asset& asset, const std::vector<Shared<Texture>>& images);
+  [[nodiscard]] std::vector<Shared<PBRMaterial>> load_materials(const fastgltf::Asset& asset, const std::vector<Shared<Texture>>& images);
 };
 } // namespace ox

@@ -2,11 +2,9 @@
 
 #include <sol/state.hpp>
 
-#include "Assets/AssetManager.hpp"
-
-#include "LuaHelpers.hpp"
-
 #include "Scene/Components.hpp"
+#include "Assets/PBRMaterial.hpp"
+#include "LuaHelpers.hpp"
 
 namespace ox {
 void LuaBindings::bind_components(const Shared<sol::state>& state) {
@@ -22,26 +20,25 @@ void LuaBindings::bind_light_component(const Shared<sol::state>& state) {
 }
 
 void LuaBindings::bind_mesh_component(const Shared<sol::state>& state) {
-  auto material = state->new_usertype<Material>("Material");
-  SET_TYPE_FUNCTION(material, Material, get_name);
-  SET_TYPE_FUNCTION(material, Material, set_color);
-  SET_TYPE_FUNCTION(material, Material, set_emissive);
-  SET_TYPE_FUNCTION(material, Material, set_roughness);
-  SET_TYPE_FUNCTION(material, Material, set_metallic);
-  SET_TYPE_FUNCTION(material, Material, set_reflectance);
-  const std::initializer_list<std::pair<sol::string_view, Material::AlphaMode>> alpha_mode = {
-    {"Opaque", Material::AlphaMode::Opaque},
-    {"Blend", Material::AlphaMode::Blend},
-    {"Mask", Material::AlphaMode::Mask}
+  auto material = state->new_usertype<PBRMaterial>("PBRMaterial");
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_color);
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_emissive);
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_roughness);
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_metallic);
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_reflectance);
+  const std::initializer_list<std::pair<sol::string_view, PBRMaterial::AlphaMode>> alpha_mode = {
+    {"Opaque", PBRMaterial::AlphaMode::Opaque},
+    {"Blend", PBRMaterial::AlphaMode::Blend},
+    {"Mask", PBRMaterial::AlphaMode::Mask},
   };
-  state->new_enum<Material::AlphaMode, true>("AlphaMode", alpha_mode);
-  SET_TYPE_FUNCTION(material, Material, set_alpha_mode);
-  SET_TYPE_FUNCTION(material, Material, set_alpha_cutoff);
-  SET_TYPE_FUNCTION(material, Material, set_double_sided);
-  SET_TYPE_FUNCTION(material, Material, is_opaque);
-  SET_TYPE_FUNCTION(material, Material, alpha_mode_to_string);
+  state->new_enum<PBRMaterial::AlphaMode, true>("AlphaMode", alpha_mode);
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_alpha_mode);
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_alpha_cutoff);
+  SET_TYPE_FUNCTION(material, PBRMaterial, set_double_sided);
+  SET_TYPE_FUNCTION(material, PBRMaterial, is_opaque);
+  SET_TYPE_FUNCTION(material, PBRMaterial, alpha_mode_to_string);
 
-  material.set_function("new", [](const std::string& name) -> Shared<Material> { return create_shared<Material>(name); });
+  material.set_function("new", [](const std::string& name) -> Shared<PBRMaterial> { return create_shared<PBRMaterial>(name); });
 
 #define MC MeshComponent
   REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, stationary), FIELD(MC, cast_shadows), FIELD(MC, materials), FIELD(MC, aabb));
@@ -66,4 +63,4 @@ void LuaBindings::bind_camera_component(const Shared<sol::state>& state) {
 
   REGISTER_COMPONENT(state, CameraComponent, FIELD(CameraComponent, camera));
 }
-}
+} // namespace ox
