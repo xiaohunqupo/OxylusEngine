@@ -202,16 +202,10 @@ bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* t
 
   begin_property_grid(label, tooltip);
 
-  const ImGuiIO& io = ImGui::GetIO();
-  const auto bold_font = io.Fonts->Fonts[1];
-
-  ImGui::PushMultiItemsWidths(3, 100.0f);
+  ImGui::PushMultiItemsWidths(3, ImGui::GetWindowWidth() - 150.0f);
 
   const float frame_height = ImGui::GetFrameHeight();
-  const ImVec2 button_size = {frame_height + 3.0f, frame_height};
-
-  const ImVec2 inner_item_spacing = ImGui::GetStyle().ItemInnerSpacing;
-  ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, inner_item_spacing);
+  const ImVec2 button_size = {2.f, frame_height};
 
   // X
   {
@@ -220,11 +214,9 @@ bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* t
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.9f, 0.2f, 0.2f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
-    ImGui::PushFont(bold_font);
-    if (ImGui::Button("X", button_size)) {
+    if (ImGui::Button("##", button_size)) {
       values.x = reset_value;
     }
-    ImGui::PopFont();
     ImGui::PopStyleColor(4);
 
     ImGui::SameLine();
@@ -244,11 +236,9 @@ bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* t
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.3f, 0.8f, 0.3f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
-    ImGui::PushFont(bold_font);
-    if (ImGui::Button("Y", button_size)) {
+    if (ImGui::Button("##", button_size)) {
       values.y = reset_value;
     }
-    ImGui::PopFont();
     ImGui::PopStyleColor(4);
 
     ImGui::SameLine();
@@ -268,11 +258,9 @@ bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* t
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.1f, 0.25f, 0.8f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.2f, 0.35f, 0.9f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.1f, 0.25f, 0.8f, 1.0f});
-    ImGui::PushFont(bold_font);
-    if (ImGui::Button("Z", button_size)) {
+    if (ImGui::Button("##", button_size)) {
       values.z = reset_value;
     }
-    ImGui::PopFont();
     ImGui::PopStyleColor(4);
 
     ImGui::SameLine();
@@ -282,8 +270,6 @@ bool OxUI::draw_vec3_control(const char* label, glm::vec3& values, const char* t
     ImGui::PopItemWidth();
     ImGui::PopStyleVar();
   }
-
-  ImGui::PopStyleVar();
 
   end_property_grid();
 

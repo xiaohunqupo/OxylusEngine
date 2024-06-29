@@ -274,7 +274,7 @@ void InspectorPanel::draw_components(Entity entity) {
   }
 
   draw_component<TransformComponent>(" Transform Component", context->registry, entity, [](TransformComponent& component) {
-    OxUI::begin_properties(ImGuiTableFlags_SizingFixedFit, false);
+    OxUI::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV, false);
     OxUI::draw_vec3_control("Translation", component.position);
     Vec3 rotation = glm::degrees(component.rotation);
     OxUI::draw_vec3_control("Rotation", rotation);
