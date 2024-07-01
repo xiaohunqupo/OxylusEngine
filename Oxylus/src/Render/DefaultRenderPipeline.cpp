@@ -1259,6 +1259,44 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
      vuk::acquire_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment(), vuk::eFragmentSampled),
      sky_envmap_output);
 
+  auto color_output_w2d = vuk::make_pass("2d_forward_pass",
+                                         [this](vuk::CommandBuffer& command_buffer,
+                                                VUK_IA(vuk::eColorWrite) target,
+                                                VUK_IA(vuk::eDepthStencilRW) depth) {
+    auto vertex_pack_2d = vuk::Packed{
+      vuk::Format::eR32G32B32A32Sfloat, // 16 postition
+      vuk::Format::eR32G32Sfloat,       // 8 size
+      vuk::Format::eR32Uint,            // 4 material_id
+      vuk::Format::eR32Uint,            // 4 flags
+    };
+
+    for (auto& batch : render_queue_2d.batches) {
+      if (batch.count < 1)
+        continue;
+
+      command_buffer.bind_graphics_pipeline(batch.pipeline_name)
+        .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
+          .depthTestEnable = true,
+          .depthWriteEnable = true,
+          .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
+        })
+        .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
+        .set_viewport(0, vuk::Rect2D::framebuffer())
+        .set_scissor(0, vuk::Rect2D::framebuffer())
+        .broadcast_color_blend(vuk::BlendPreset::eAlphaBlend)
+        .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+        .bind_vertex_buffer(0, vertex_buffer_2d, 0, vertex_pack_2d, vuk::VertexInputRate::eInstance)
+        .bind_persistent(0, *descriptor_set_00);
+
+      camera_cb.camera_data[0] = get_main_camera_data((bool)RendererCVar::cvar_freeze_culling_frustum.get());
+      bind_camera_buffer(command_buffer);
+
+      command_buffer.draw(6, batch.count, 0, batch.offset);
+    }
+
+    return target;
+  })(color_output, depth_output);
+
   auto debug_output = vuk::make_pass("debug_pass",
                                      [this](vuk::CommandBuffer& command_buffer,
                                             VUK_IA(vuk::eDepthStencilRead) _depth,
@@ -1282,7 +1320,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     command_buffer.draw_indirect(1, indirect_draw_buffer);
 
     return _output;
-  })(depth_output, color_output, debug_buffer_output);
+  })(depth_output, color_output_w2d, debug_buffer_output);
 
   const auto& lines = DebugRenderer::get_instance()->get_lines(false);
   auto [vertices, index_count] = DebugRenderer::get_vertices_from_lines(lines);
@@ -1374,46 +1412,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_up_ia), vuk::Black<float>);
     bloom_up_image.same_extent_as(target);
 
-    bloom_output = bloom_pass(bloom_down_image, bloom_up_image, color_output);
+    bloom_output = bloom_pass(bloom_down_image, bloom_up_image, color_output_w2d);
   }
-
-  auto forward2d_output = vuk::make_pass("2d_forward_pass",
-                                         [this](vuk::CommandBuffer& command_buffer,
-                                                VUK_IA(vuk::eColorWrite) target,
-                                                VUK_IA(vuk::eDepthStencilRW) depth) {
-    auto vertex_pack_2d = vuk::Packed{
-      vuk::Format::eR32G32B32A32Sfloat, // 16 postition
-      vuk::Format::eR32G32Sfloat,       // 8 size
-      vuk::Format::eR32Uint,            // 4 material_id
-      vuk::Format::eR32Uint,            // 4 flags
-    };
-
-    for (auto& batch : render_queue_2d.batches) {
-      if (batch.count < 1)
-        continue;
-
-      command_buffer.bind_graphics_pipeline(batch.pipeline_name)
-        .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
-          .depthTestEnable = true,
-          .depthWriteEnable = true,
-          .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
-        })
-        .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
-        .set_viewport(0, vuk::Rect2D::framebuffer())
-        .set_scissor(0, vuk::Rect2D::framebuffer())
-        .broadcast_color_blend(vuk::BlendPreset::eOff)
-        .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-        .bind_vertex_buffer(0, vertex_buffer_2d, 0, vertex_pack_2d, VK_VERTEX_INPUT_RATE_INSTANCE)
-        .bind_persistent(0, *descriptor_set_00);
-
-      camera_cb.camera_data[0] = get_main_camera_data((bool)RendererCVar::cvar_freeze_culling_frustum.get());
-      bind_camera_buffer(command_buffer);
-
-      command_buffer.draw(6, batch.count, 0, batch.offset);
-    }
-
-    return target;
-  })(debug_output2, depth_output);
 
   return vuk::make_pass("final_pass",
                         [this](vuk::CommandBuffer& command_buffer,
@@ -1431,7 +1431,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .bind_image(2, 1, bloom_img)
       .draw(3, 1, 0, 0);
     return target;
-  })(target, forward2d_output, bloom_output);
+  })(target, color_output_w2d, bloom_output);
 #if 0
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);
