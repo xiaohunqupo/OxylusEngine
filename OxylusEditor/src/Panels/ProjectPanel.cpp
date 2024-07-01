@@ -42,7 +42,7 @@ void ProjectPanel::on_imgui_render() {
                          ImGuiWindowFlags_NoDocking;
   static bool draw_new_project_panel = false;
 
-  OxUI::center_next_window();
+  ui::center_next_window();
   if (ImGui::BeginPopupModal("ProjectSelector", nullptr, flags)) {
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
@@ -51,18 +51,18 @@ void ProjectPanel::on_imgui_render() {
 
     const auto scale = Window::get_content_scale();
 
-    OxUI::image(*EditorLayer::get()->engine_banner->get_view(), {(float)banner_size.width * scale.x, (float)banner_size.height * scale.y});
-    OxUI::spacing(2);
+    ui::image(*EditorLayer::get()->engine_banner->get_view(), {(float)banner_size.width * scale.x, (float)banner_size.height * scale.y});
+    ui::spacing(2);
     ImGui::SeparatorText("Projects");
-    OxUI::spacing(2);
+    ui::spacing(2);
 
     if (draw_new_project_panel) {
       static std::string project_dir = {};
       static std::string project_name = "New Project";
       static std::string project_asset_dir = "Assets";
-      OxUI::begin_properties();
+      ui::begin_properties();
       {
-        OxUI::begin_property_grid("Directory", nullptr, false);
+        ui::begin_property_grid("Directory", nullptr, false);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.8f);
         ImGui::InputText("##Directory", &project_dir, flags);
         ImGui::SameLine();
@@ -70,11 +70,11 @@ void ProjectPanel::on_imgui_render() {
           project_dir = App::get_system<FileDialogs>()->open_dir();
           project_dir = fs::append_paths(project_dir, project_name);
         }
-        OxUI::end_property_grid();
+        ui::end_property_grid();
       }
-      OxUI::property("Name", &project_name);
-      OxUI::property("Asset Directory", &project_asset_dir);
-      OxUI::end_properties();
+      ui::property("Name", &project_name);
+      ui::property("Asset Directory", &project_asset_dir);
+      ui::end_properties();
       ImGui::Separator();
       ImGui::SetNextItemWidth(-1);
       if (ImGui::Button("Create", ImVec2(120, 0))) {
@@ -107,13 +107,13 @@ void ProjectPanel::on_imgui_render() {
           load_project_for_editor(filepath);
         }
       }
-      OxUI::align_right(ImVec2(120, 0).x);
+      ui::align_right(ImVec2(120, 0).x);
       if (ImGui::Button("Skip", ImVec2(120, 0))) {
         Visible = false;
         ImGui::CloseCurrentPopup();
       }
     }
-    OxUI::spacing(4);
+    ui::spacing(4);
     ImGui::EndPopup();
   }
 }

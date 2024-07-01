@@ -94,13 +94,13 @@ void ViewportPanel::on_imgui_render() {
 
     ImGui::SetNextWindowSize({300.f, 0.f});
     if (ImGui::BeginPopup("ViewportSettings")) {
-      OxUI::begin_properties();
-      OxUI::property("VSync", (bool*)RendererCVar::cvar_vsync.get_ptr());
-      OxUI::property<float>("Camera sensitivity", EditorCVar::cvar_camera_sens.get_ptr(), 0.1f, 20.0f);
-      OxUI::property<float>("Movement speed", EditorCVar::cvar_camera_speed.get_ptr(), 5, 100.0f);
-      OxUI::property("Smooth camera", (bool*)EditorCVar::cvar_camera_smooth.get_ptr());
-      OxUI::property<float>("Grid distance", RendererCVar::cvar_draw_grid_distance.get_ptr(), 10.f, 100.0f);
-      OxUI::end_properties();
+      ui::begin_properties();
+      ui::property("VSync", (bool*)RendererCVar::cvar_vsync.get_ptr());
+      ui::property<float>("Camera sensitivity", EditorCVar::cvar_camera_sens.get_ptr(), 0.1f, 20.0f);
+      ui::property<float>("Movement speed", EditorCVar::cvar_camera_speed.get_ptr(), 5, 100.0f);
+      ui::property("Smooth camera", (bool*)EditorCVar::cvar_camera_smooth.get_ptr());
+      ui::property<float>("Grid distance", RendererCVar::cvar_draw_grid_distance.get_ptr(), 10.f, 100.0f);
+      ui::end_properties();
       ImGui::EndPopup();
     }
 
@@ -132,7 +132,7 @@ void ViewportPanel::on_imgui_render() {
     vuk::Value<vuk::ImageAttachment>* final_image = rp->get_final_image();
 
     if (final_image) {
-      OxUI::image(*final_image, ImVec2{fixed_width, viewport_panel_size.y});
+      ui::image(*final_image, ImVec2{fixed_width, viewport_panel_size.y});
     } else {
       const auto text_width = ImGui::CalcTextSize("No render target!").x;
       ImGui::SetCursorPosX((m_viewport_size.x - text_width) * 0.5f);
@@ -194,24 +194,24 @@ void ViewportPanel::on_imgui_render() {
         last_mouse_position = mouse_pos;
 
         constexpr float alpha = 0.6f;
-        if (OxUI::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW), m_gizmo_type == ImGuizmo::TRANSLATE, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW), m_gizmo_type == ImGuizmo::TRANSLATE, button_size, alpha, alpha))
           m_gizmo_type = ImGuizmo::TRANSLATE;
-        if (OxUI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D), m_gizmo_type == ImGuizmo::ROTATE, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D), m_gizmo_type == ImGuizmo::ROTATE, button_size, alpha, alpha))
           m_gizmo_type = ImGuizmo::ROTATE;
-        if (OxUI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND), m_gizmo_type == ImGuizmo::SCALE, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND), m_gizmo_type == ImGuizmo::SCALE, button_size, alpha, alpha))
           m_gizmo_type = ImGuizmo::SCALE;
-        if (OxUI::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE), m_gizmo_type == ImGuizmo::BOUNDS, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE), m_gizmo_type == ImGuizmo::BOUNDS, button_size, alpha, alpha))
           m_gizmo_type = ImGuizmo::BOUNDS;
-        if (OxUI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL), m_gizmo_type == ImGuizmo::UNIVERSAL, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL), m_gizmo_type == ImGuizmo::UNIVERSAL, button_size, alpha, alpha))
           m_gizmo_type = ImGuizmo::UNIVERSAL;
-        if (OxUI::toggle_button(m_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
+        if (ui::toggle_button(m_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
                                                                 : StringUtils::from_char8_t(ICON_MDI_EARTH_OFF),
                                 m_gizmo_mode == ImGuizmo::WORLD,
                                 button_size,
                                 alpha,
                                 alpha))
           m_gizmo_mode = m_gizmo_mode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
-        if (OxUI::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID), RendererCVar::cvar_draw_grid.get(), button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID), RendererCVar::cvar_draw_grid.get(), button_size, alpha, alpha))
           RendererCVar::cvar_draw_grid.toggle();
 
         ImGui::PopStyleVar(2);
@@ -241,7 +241,7 @@ void ViewportPanel::on_imgui_render() {
         const ImVec2 button_size2 = {frame_height * 1.5f, frame_height};
         const bool highlight = EditorLayer::get()->scene_state == EditorLayer::SceneState::Play;
         const char8_t* icon = EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY : ICON_MDI_STOP;
-        if (OxUI::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size2)) {
+        if (ui::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size2)) {
           if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit)
             EditorLayer::get()->on_scene_play();
           else if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Play)
@@ -360,7 +360,7 @@ void ViewportPanel::on_update() {
 void ViewportPanel::draw_performance_overlay() {
   if (!performance_overlay_visible)
     return;
-  OxUI::draw_framerate_overlay(ImVec2(viewport_position.x, viewport_position.y),
+  ui::draw_framerate_overlay(ImVec2(viewport_position.x, viewport_position.y),
                                ImVec2(viewport_panel_size.x, viewport_panel_size.y),
                                {15, 55},
                                &performance_overlay_visible);

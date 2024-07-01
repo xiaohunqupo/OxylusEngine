@@ -5,12 +5,11 @@
 #include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
-TracyProfiler::~TracyProfiler() { destroy_context(); }
-
 void TracyProfiler::init_tracy_for_vulkan(VkContext* context) {
-#ifndef GPU_PROFILER_ENABLED
+#if !(GPU_PROFILER_ENABLED)
   return;
 #endif
+#ifdef TRACY_ENABLE
   VkCommandPoolCreateInfo cpci{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT};
   cpci.queueFamilyIndex = context->graphics_queue_family_index;
   context->superframe_allocator->allocate_command_pools(std::span{&*tracy_cpool, 1}, std::span{&cpci, 1});
@@ -31,12 +30,14 @@ void TracyProfiler::init_tracy_for_vulkan(VkContext* context) {
                                                 context->vkb_instance.fp_vkGetInstanceProcAddr,
                                                 context->vkb_instance.fp_vkGetDeviceProcAddr);
   OX_LOG_INFO("Tracy GPU profiler initialized.");
+#endif
 }
 vuk::ProfilingCallbacks TracyProfiler::setup_vuk_callback() {
-#ifndef GPU_PROFILER_ENABLED
+#if !(GPU_PROFILER_ENABLED)
   return vuk::ProfilingCallbacks{};
 #endif
-  vuk::ProfilingCallbacks cbs;
+  vuk::ProfilingCallbacks cbs = {};
+#ifdef TRACY_ENABLE
   cbs.user_data = this;
   cbs.on_begin_command_buffer = [](void* user_data, vuk::ExecutorTag tag, VkCommandBuffer cbuf) {
     const auto* tracy_profiler = reinterpret_cast<TracyProfiler*>(user_data);
@@ -64,7 +65,7 @@ vuk::ProfilingCallbacks TracyProfiler::setup_vuk_callback() {
     const auto tracy_scope = reinterpret_cast<tracy::VkCtxScope*>(pass_data);
     tracy_scope->~VkCtxScope();
   };
-
+#endif
   return cbs;
 }
 

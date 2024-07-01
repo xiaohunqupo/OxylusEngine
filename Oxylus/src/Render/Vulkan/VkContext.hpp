@@ -9,6 +9,7 @@
 #include <vuk/runtime/vk/VkRuntime.hpp>
 
 #include "Core/Types.hpp"
+#include "Utils/Profiler.hpp"
 
 namespace vkb {
 struct Device;
@@ -16,7 +17,6 @@ struct Instance;
 }
 
 namespace ox {
-class TracyProfiler;
 struct AppSpec;
 
 class VkContext {

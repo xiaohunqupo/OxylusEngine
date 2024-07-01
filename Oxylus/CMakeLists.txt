@@ -301,11 +301,11 @@ CPMAddPackage(
     VERSION 0.10
     GIT_SHALLOW ON
     OPTIONS
-        "TRACY_ENABLE ON"
+        "TRACY_ENABLE OFF"
         "TRACY_STATIC ON"
         "TRACY_VK_USE_SYMBOL_TABLE ON"
         "TRACY_NO_FRAME_IMAGE ON"
-        "TRACY_ON_DEMAND OFF"
+        "TRACY_ON_DEMAND ON"
 )
 target_link_libraries(${PROJECT_NAME} PUBLIC Tracy::TracyClient)
 set_target_properties(TracyClient PROPERTIES FOLDER "Vendor")

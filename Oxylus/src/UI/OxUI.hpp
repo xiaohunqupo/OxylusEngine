@@ -18,17 +18,33 @@ struct Texture;
 namespace ox {
 class Texture;
 
-class OxUI {
+class ui {
 public:
   static char id_buffer[16];
 
   static void push_id();
   static void pop_id();
 
-  static constexpr ImGuiTableFlags default_properties_flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchProp;
-  static bool begin_properties(ImGuiTableFlags flags = default_properties_flags, bool fixed_width = true, float width = 0.4f);
-
+  static constexpr ImGuiTableFlags default_properties_flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingStretchSame;
+  static bool begin_properties(ImGuiTableFlags flags = default_properties_flags, bool fixed_width = false, float width = 0.4f);
   static void end_properties();
+
+  static void begin_property_grid(const char* label, const char* tooltip, bool align_text_right = false);
+  static void end_property_grid();
+
+  static void push_frame_style(bool on = true);
+  static void pop_frame_style();
+
+  static bool button(const char* label, const ImVec2& size = ImVec2(0, 0));
+
+  static bool checkbox(const char* label, bool* v);
+
+  static bool input_text(const char* label,
+                         char* buf,
+                         size_t buf_size,
+                         ImGuiInputTextFlags flags = 0,
+                         ImGuiInputTextCallback callback = NULL,
+                         void* user_data = NULL);
 
   // Text
   static void text(const char* text1, const char* text2, const char* tooltip = nullptr);
@@ -137,7 +153,7 @@ public:
                     const ImVec4& tint_col = ImVec4(1, 1, 1, 1),
                     const ImVec4& border_col = ImVec4(0, 0, 0, 0));
 
-  // static images
+  // images
   static void image(const Texture& texture,
                     ImVec2 size,
                     const ImVec2& uv0 = ImVec2(0, 0),
@@ -162,6 +178,8 @@ public:
 
   // Vec3 with reset button
   static bool draw_vec3_control(const char* label, glm::vec3& values, const char* tooltip = nullptr, float reset_value = 0.0f);
+
+  static bool draw_vec2_control(const char* label, glm::vec2& values, const char* tooltip = nullptr, const float reset_value = 0.0f);
 
   static bool toggle_button(const char* label,
                             bool state,
@@ -200,14 +218,8 @@ public:
   // bigger scale = smaller gradient
   static void draw_gradient_shadow_bottom(float scale = 600.f);
 
-  static void begin_property_grid(const char* label, const char* tooltip, bool align_text_right = true);
-  static void end_property_grid();
-
   static void center_next_window();
 
   static void draw_framerate_overlay(ImVec2 work_pos = {}, ImVec2 work_size = {}, ImVec2 padding = {}, bool* visible = nullptr);
-
-  static void push_style_compact();
-  static void pop_style_compact();
-};
+}; // namespace ui
 } // namespace ox

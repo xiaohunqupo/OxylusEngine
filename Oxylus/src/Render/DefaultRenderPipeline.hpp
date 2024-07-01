@@ -416,7 +416,6 @@ private:
 
       meshlets.clear();
       meshlet_instances.clear();
-      transforms.clear();
       materials.clear();
     }
 

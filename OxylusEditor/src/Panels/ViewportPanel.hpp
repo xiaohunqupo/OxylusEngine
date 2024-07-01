@@ -56,7 +56,7 @@ private:
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
-        if (OxUI::image_button("##", *gizmo_image_map[typeid(T).hash_code()]->get_view(), {40.f, 40.f})) {
+        if (ui::image_button("##", *gizmo_image_map[typeid(T).hash_code()]->get_view(), {40.f, 40.f})) {
           m_scene_hierarchy_panel->set_selected_entity(entity);
         }
 
@@ -64,7 +64,7 @@ private:
 
         auto name_s = std::string(entt::type_id<T>().name());
 
-        OxUI::tooltip(name_s.c_str());
+        ui::tooltip(name_s.c_str());
       }
     }
   }

@@ -8,6 +8,7 @@
 
 #include <Assets/AssetManager.hpp>
 
+#include "Scene/Components.hpp"
 #include "Utils/ColorUtils.hpp"
 
 #include "Core/FileSystem.hpp"
@@ -63,7 +64,7 @@ void draw_component(const char* name, entt::registry& reg, Entity entity, UIFunc
 
       const float frame_height = ImGui::GetFrameHeight();
       ImGui::SameLine(ImGui::GetContentRegionMax().x - frame_height * 1.2f);
-      if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_SETTINGS), ImVec2{frame_height * 1.2f, frame_height}))
+      if (ui::button(StringUtils::from_char8_t(ICON_MDI_SETTINGS), ImVec2{frame_height * 1.2f, frame_height}))
         ImGui::OpenPopup("ComponentSettings");
 
       if (ImGui::BeginPopup("ComponentSettings")) {
@@ -77,7 +78,7 @@ void draw_component(const char* name, entt::registry& reg, Entity entity, UIFunc
     }
 
     if (open) {
-      ui_function(*component);
+      ui_function(*component, entity);
       ImGui::TreePop();
     }
 
@@ -86,52 +87,53 @@ void draw_component(const char* name, entt::registry& reg, Entity entity, UIFunc
   }
 }
 
-void InspectorPanel::draw_sprite_material_properties(Shared<SpriteMaterial> &material) { 
-  if (ImGui::Button("Reset")) {
+void InspectorPanel::draw_sprite_material_properties(Shared<SpriteMaterial>& material) {
+  if (ui::button("Reset")) {
     material = create_shared<SpriteMaterial>();
     material->create();
   }
-  OxUI::begin_properties(OxUI::default_properties_flags, true, 0.5f);
-  if (OxUI::property("Albedo", material->get_albedo_texture()))
+  ImGui::Spacing();
+  ui::begin_properties(ui::default_properties_flags);
+  if (ui::property("Albedo", material->get_albedo_texture()))
     material->set_albedo_texture(material->get_albedo_texture());
-  OxUI::property_vector("Color", material->parameters.color, true, true);
+  ui::property_vector("Color", material->parameters.color, true, true);
 
-  OxUI::end_properties();
+  ui::end_properties();
 }
 
 void InspectorPanel::draw_pbr_material_properties(Shared<PBRMaterial>& material) {
-  if (ImGui::Button("Reset")) {
+  if (ui::button("Reset")) {
     material = create_shared<PBRMaterial>();
     material->create();
   }
-  OxUI::begin_properties(OxUI::default_properties_flags, true, 0.5f);
+  ui::begin_properties(ui::default_properties_flags);
   const char* alpha_modes[] = {"Opaque", "Blend", "Mask"};
-  OxUI::property("Alpha mode", (int*)&material->parameters.alpha_mode, alpha_modes, 3);
+  ui::property("Alpha mode", (int*)&material->parameters.alpha_mode, alpha_modes, 3);
   const char* samplers[] = {"Bilinear", "Trilinear", "Anisotropy"};
-  OxUI::property("Sampler", (int*)&material->parameters.sampling_mode, samplers, 3);
-  OxUI::property("UV Scale", &material->parameters.uv_scale, 0.0f);
+  ui::property("Sampler", (int*)&material->parameters.sampling_mode, samplers, 3);
+  ui::property("UV Scale", &material->parameters.uv_scale, 0.0f);
 
-  if (OxUI::property("Albedo", material->get_albedo_texture()))
+  if (ui::property("Albedo", material->get_albedo_texture()))
     material->set_albedo_texture(material->get_albedo_texture());
-  OxUI::property_vector("Color", material->parameters.color, true, true);
+  ui::property_vector("Color", material->parameters.color, true, true);
 
-  OxUI::property("Reflectance", &material->parameters.reflectance, 0.0f, 1.0f);
-  if (OxUI::property("Normal", material->get_normal_texture()))
+  ui::property("Reflectance", &material->parameters.reflectance, 0.0f, 1.0f);
+  if (ui::property("Normal", material->get_normal_texture()))
     material->set_normal_texture(material->get_normal_texture());
 
-  if (OxUI::property("PhysicalMap", material->get_physical_texture()))
+  if (ui::property("PhysicalMap", material->get_physical_texture()))
     material->set_physical_texture(material->get_physical_texture());
-  OxUI::property("Roughness", &material->parameters.roughness, 0.0f, 1.0f);
-  OxUI::property("Metallic", &material->parameters.metallic, 0.0f, 1.0f);
+  ui::property("Roughness", &material->parameters.roughness, 0.0f, 1.0f);
+  ui::property("Metallic", &material->parameters.metallic, 0.0f, 1.0f);
 
-  if (OxUI::property("AO", material->get_ao_texture()))
+  if (ui::property("AO", material->get_ao_texture()))
     material->set_ao_texture(material->get_ao_texture());
 
-  if (OxUI::property("Emissive", material->get_emissive_texture()))
+  if (ui::property("Emissive", material->get_emissive_texture()))
     material->set_emissive_texture(material->get_emissive_texture());
-  OxUI::property_vector("Emissive Color", material->parameters.emissive, true, true);
+  ui::property_vector("Emissive Color", material->parameters.emissive, true, true);
 
-  OxUI::end_properties();
+  ui::end_properties();
 }
 
 template <typename T>
@@ -143,23 +145,23 @@ static void draw_particle_over_lifetime_module(const std::string_view module_nam
                                                    ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
 
   if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
-    OxUI::begin_properties();
-    OxUI::property("Enabled", &property_module.enabled);
+    ui::begin_properties();
+    ui::property("Enabled", &property_module.enabled);
 
     if (rotation) {
       T degrees = glm::degrees(property_module.start);
-      if (OxUI::property_vector("Start", degrees))
+      if (ui::property_vector("Start", degrees))
         property_module.start = glm::radians(degrees);
 
       degrees = glm::degrees(property_module.end);
-      if (OxUI::property_vector("End", degrees))
+      if (ui::property_vector("End", degrees))
         property_module.end = glm::radians(degrees);
     } else {
-      OxUI::property_vector("Start", property_module.start, color);
-      OxUI::property_vector("End", property_module.end, color);
+      ui::property_vector("Start", property_module.start, color);
+      ui::property_vector("End", property_module.end, color);
     }
 
-    OxUI::end_properties();
+    ui::end_properties();
 
     ImGui::TreePop();
   }
@@ -174,25 +176,25 @@ static void draw_particle_by_speed_module(const std::string_view module_name,
                                                    ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
 
   if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
-    OxUI::begin_properties();
-    OxUI::property("Enabled", &property_module.enabled);
+    ui::begin_properties();
+    ui::property("Enabled", &property_module.enabled);
 
     if (rotation) {
       T degrees = glm::degrees(property_module.start);
-      if (OxUI::property_vector("Start", degrees))
+      if (ui::property_vector("Start", degrees))
         property_module.start = glm::radians(degrees);
 
       degrees = glm::degrees(property_module.end);
-      if (OxUI::property_vector("End", degrees))
+      if (ui::property_vector("End", degrees))
         property_module.end = glm::radians(degrees);
     } else {
-      OxUI::property_vector("Start", property_module.start, color);
-      OxUI::property_vector("End", property_module.end, color);
+      ui::property_vector("Start", property_module.start, color);
+      ui::property_vector("End", property_module.end, color);
     }
 
-    OxUI::property("Min Speed", &property_module.min_speed);
-    OxUI::property("Max Speed", &property_module.max_speed);
-    OxUI::end_properties();
+    ui::property("Min Speed", &property_module.min_speed);
+    ui::property("Max Speed", &property_module.max_speed);
+    ui::end_properties();
     ImGui::TreePop();
   }
 }
@@ -210,21 +212,21 @@ void InspectorPanel::draw_add_component(entt::registry& reg, Entity entity, cons
 
 void InspectorPanel::draw_components(Entity entity) {
   TagComponent* tag_component = context->registry.try_get<TagComponent>(entity);
-  ImGui::PushItemWidth(ImGui::GetContentRegionAvail().x * 0.7f);
+  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.75f);
   if (tag_component) {
     auto& tag = tag_component->tag;
     char buffer[256] = {};
     tag.copy(buffer, sizeof buffer);
     if (s_rename_entity)
       ImGui::SetKeyboardFocusHere();
-    if (ImGui::InputText("##Tag", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
+    if (ui::input_text("##Tag", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
       tag = std::string(buffer);
     }
   }
   ImGui::PopItemWidth();
   ImGui::SameLine();
 
-  if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLUS))) {
+  if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLUS))) {
     ImGui::OpenPopup("Add Component");
   }
   if (ImGui::BeginPopup("Add Component")) {
@@ -245,19 +247,23 @@ void InspectorPanel::draw_components(Entity entity) {
     draw_add_component<CharacterControllerComponent>(context->registry, entity, "Character Controller");
     draw_add_component<LuaScriptComponent>(context->registry, entity, "Lua Script Component");
     draw_add_component<SpriteComponent>(context->registry, entity, "Sprite Component");
+    draw_add_component<SpriteAnimationComponent>(context->registry, entity, "Sprite Animation Component");
 
     ImGui::EndPopup();
   }
 
   ImGui::SameLine();
 
-  ImGui::Checkbox(StringUtils::from_char8_t(ICON_MDI_BUG), &debug_mode);
+  ui::checkbox(StringUtils::from_char8_t(ICON_MDI_BUG), &debug_mode);
 
   const auto uuidstr = fmt::format("UUID: {}", (uint64_t)context->registry.get<IDComponent>(entity).uuid);
   ImGui::Text(uuidstr.c_str());
 
   if (debug_mode) {
-    draw_component<RelationshipComponent>("Relationship Component", context->registry, entity, [](const RelationshipComponent& component) {
+    draw_component<RelationshipComponent>("Relationship Component",
+                                          context->registry,
+                                          entity,
+                                          [](const RelationshipComponent& component, entt::entity e) {
       const auto p_fmt = fmt::format("Parent: {}", (uint64_t)component.parent);
       ImGui::Text(p_fmt.c_str());
       ImGui::Text("Childrens:");
@@ -273,26 +279,26 @@ void InspectorPanel::draw_components(Entity entity) {
     });
   }
 
-  draw_component<TransformComponent>(" Transform Component", context->registry, entity, [](TransformComponent& component) {
-    OxUI::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV, false);
-    OxUI::draw_vec3_control("Translation", component.position);
+  draw_component<TransformComponent>(" Transform Component", context->registry, entity, [](TransformComponent& component, entt::entity e) {
+    ui::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV);
+    ui::draw_vec3_control("Translation", component.position);
     Vec3 rotation = glm::degrees(component.rotation);
-    OxUI::draw_vec3_control("Rotation", rotation);
+    ui::draw_vec3_control("Rotation", rotation);
     component.rotation = glm::radians(rotation);
-    OxUI::draw_vec3_control("Scale", component.scale, nullptr, 1.0f);
-    OxUI::end_properties();
+    ui::draw_vec3_control("Scale", component.scale, nullptr, 1.0f);
+    ui::end_properties();
   });
 
-  draw_component<MeshComponent>(" Mesh Component", context->registry, entity, [](MeshComponent& component) {
+  draw_component<MeshComponent>(" Mesh Component", context->registry, entity, [](MeshComponent& component, entt::entity e) {
     if (!component.mesh_base)
       return;
-    OxUI::begin_properties();
-    OxUI::text("Totoal meshlet count:", fmt::format("{}", component.mesh_base->_meshlets.size()).c_str());
-    OxUI::text("Total material count:", fmt::format("{}", component.materials.size()).c_str());
-    OxUI::text("Mesh asset id:", fmt::format("{}", component.mesh_id).c_str());
-    OxUI::property("Cast shadows", &component.cast_shadows);
-    OxUI::property("Stationary", &component.stationary);
-    OxUI::end_properties();
+    ui::begin_properties();
+    ui::text("Totoal meshlet count:", fmt::format("{}", component.mesh_base->_meshlets.size()).c_str());
+    ui::text("Total material count:", fmt::format("{}", component.materials.size()).c_str());
+    ui::text("Mesh asset id:", fmt::format("{}", component.mesh_id).c_str());
+    ui::property("Cast shadows", &component.cast_shadows);
+    ui::property("Stationary", &component.stationary);
+    ui::end_properties();
 
     ImGui::SeparatorText("Materials");
 
@@ -300,7 +306,7 @@ void InspectorPanel::draw_components(Entity entity) {
     ImGuiTextFilter name_filter;
 
     name_filter.Draw("##material_filter",
-                     ImGui::GetContentRegionAvail().x - (OxUI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
+                     ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
 
     if (!name_filter.IsActive()) {
       ImGui::SameLine();
@@ -322,45 +328,70 @@ void InspectorPanel::draw_components(Entity entity) {
     }
   });
 
-  draw_component<SpriteComponent>(" Sprite Component", context->registry, entity, [this](SpriteComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property("Layer", &component.layer);
-    OxUI::end_properties();
+  draw_component<SpriteComponent>(" Sprite Component", context->registry, entity, [this](SpriteComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property("Layer", &component.layer);
+    ui::end_properties();
 
+    ImGui::SeparatorText("Material");
     draw_sprite_material_properties(component.material);
   });
 
-  draw_component<PostProcessProbe>(" PostProcess Probe Component", context->registry, entity, [this](PostProcessProbe& component) {
+  draw_component<SpriteAnimationComponent>(" Sprite Animation Component",
+                                           context->registry,
+                                           entity,
+                                           [this](SpriteAnimationComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property("Number of frames", &component.num_frames);
+    ui::property("Loop", &component.loop);
+    ui::property("Inverted", &component.inverted);
+    ui::property("Frames per second", &component.fps);
+    ui::property("Columns", &component.columns);
+    ui::draw_vec2_control("Frame size", component.frame_size);
+    const float x = ImGui::GetContentRegionAvail().x;
+    const float y = ImGui::GetFrameHeight();
+    ImGui::Spacing();
+    if (ui::button("Auto", {x, y})) {
+      if (auto* sc = context->registry.try_get<SpriteComponent>(e))
+        component.set_frame_size(sc->material->get_albedo_texture().get());
+    }
+    ui::end_properties();
+  });
+
+  draw_component<PostProcessProbe>(" PostProcess Probe Component", context->registry, entity, [this](PostProcessProbe& component, entt::entity e) {
     ImGui::Text("Vignette");
-    OxUI::begin_properties();
-    OxUI::property("Enable", &component.vignette_enabled);
-    OxUI::property("Intensity", &component.vignette_intensity);
-    OxUI::end_properties();
+    ui::begin_properties();
+    ui::property("Enable", &component.vignette_enabled);
+    ui::property("Intensity", &component.vignette_intensity);
+    ui::end_properties();
     ImGui::Separator();
 
     ImGui::Text("FilmGrain");
-    OxUI::begin_properties();
-    OxUI::property("Enable", &component.film_grain_enabled);
-    OxUI::property("Intensity", &component.film_grain_intensity);
-    OxUI::end_properties();
+    ui::begin_properties();
+    ui::property("Enable", &component.film_grain_enabled);
+    ui::property("Intensity", &component.film_grain_intensity);
+    ui::end_properties();
     ImGui::Separator();
 
     ImGui::Text("ChromaticAberration");
-    OxUI::begin_properties();
-    OxUI::property("Enable", &component.chromatic_aberration_enabled);
-    OxUI::property("Intensity", &component.chromatic_aberration_intensity);
-    OxUI::end_properties();
+    ui::begin_properties();
+    ui::property("Enable", &component.chromatic_aberration_enabled);
+    ui::property("Intensity", &component.chromatic_aberration_intensity);
+    ui::end_properties();
     ImGui::Separator();
 
     ImGui::Text("Sharpen");
-    OxUI::begin_properties();
-    OxUI::property("Enable", &component.sharpen_enabled);
-    OxUI::property("Intensity", &component.sharpen_intensity);
-    OxUI::end_properties();
+    ui::begin_properties();
+    ui::property("Enable", &component.sharpen_enabled);
+    ui::property("Intensity", &component.sharpen_intensity);
+    ui::end_properties();
     ImGui::Separator();
   });
 
-  draw_component<AudioSourceComponent>(" Audio Source Component", context->registry, entity, [&entity, this](AudioSourceComponent& component) {
+  draw_component<AudioSourceComponent>(" Audio Source Component",
+                                       context->registry,
+                                       entity,
+                                       [&entity, this](AudioSourceComponent& component, entt::entity e) {
     auto& config = component.config;
     const std::string filepath = component.source ? component.source->get_path()
                                                   : fmt::format("{} Drop an audio file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
@@ -372,62 +403,62 @@ void InspectorPanel::draw_components(Entity entity) {
 
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
-    if (ImGui::Button(filepath.c_str(), {x, y})) {
+    if (ui::button(filepath.c_str(), {x, y})) {
       const std::string file_path = App::get_system<FileDialogs>()->open_file({{"Audio file", "mp3, wav, flac"}});
       load_file(file_path, component);
     }
     if (ImGui::BeginDragDropTarget()) {
       if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-        const std::filesystem::path path = OxUI::get_path_from_imgui_payload(payload);
+        const std::filesystem::path path = ui::get_path_from_imgui_payload(payload);
         load_file(path, component);
       }
       ImGui::EndDragDropTarget();
     }
     ImGui::Spacing();
 
-    OxUI::begin_properties();
-    OxUI::property("Volume Multiplier", &config.volume_multiplier);
-    OxUI::property("Pitch Multiplier", &config.pitch_multiplier);
-    OxUI::property("Play On Awake", &config.play_on_awake);
-    OxUI::property("Looping", &config.looping);
-    OxUI::end_properties();
+    ui::begin_properties();
+    ui::property("Volume Multiplier", &config.volume_multiplier);
+    ui::property("Pitch Multiplier", &config.pitch_multiplier);
+    ui::property("Play On Awake", &config.play_on_awake);
+    ui::property("Looping", &config.looping);
+    ui::end_properties();
 
     ImGui::Spacing();
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLAY "Play ")) && component.source)
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLAY "Play ")) && component.source)
       component.source->play();
     ImGui::SameLine();
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PAUSE "Pause ")) && component.source)
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PAUSE "Pause ")) && component.source)
       component.source->pause();
     ImGui::SameLine();
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_STOP "Stop ")) && component.source)
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_STOP "Stop ")) && component.source)
       component.source->stop();
     ImGui::Spacing();
 
-    OxUI::begin_properties();
-    OxUI::property("Spatialization", &config.spatialization);
+    ui::begin_properties();
+    ui::property("Spatialization", &config.spatialization);
 
     if (config.spatialization) {
       ImGui::Indent();
       const char* attenuation_type_strings[] = {"None", "Inverse", "Linear", "Exponential"};
       int attenuation_type = static_cast<int>(config.attenuation_model);
-      if (OxUI::property("Attenuation Model", &attenuation_type, attenuation_type_strings, 4))
+      if (ui::property("Attenuation Model", &attenuation_type, attenuation_type_strings, 4))
         config.attenuation_model = static_cast<AttenuationModelType>(attenuation_type);
-      OxUI::property("Roll Off", &config.roll_off);
-      OxUI::property("Min Gain", &config.min_gain);
-      OxUI::property("Max Gain", &config.max_gain);
-      OxUI::property("Min Distance", &config.min_distance);
-      OxUI::property("Max Distance", &config.max_distance);
+      ui::property("Roll Off", &config.roll_off);
+      ui::property("Min Gain", &config.min_gain);
+      ui::property("Max Gain", &config.max_gain);
+      ui::property("Min Distance", &config.min_distance);
+      ui::property("Max Distance", &config.max_distance);
       float degrees = glm::degrees(config.cone_inner_angle);
-      if (OxUI::property("Cone Inner Angle", &degrees))
+      if (ui::property("Cone Inner Angle", &degrees))
         config.cone_inner_angle = glm::radians(degrees);
       degrees = glm::degrees(config.cone_outer_angle);
-      if (OxUI::property("Cone Outer Angle", &degrees))
+      if (ui::property("Cone Outer Angle", &degrees))
         config.cone_outer_angle = glm::radians(degrees);
-      OxUI::property("Cone Outer Gain", &config.cone_outer_gain);
-      OxUI::property("Doppler Factor", &config.doppler_factor);
+      ui::property("Cone Outer Gain", &config.cone_outer_gain);
+      ui::property("Doppler Factor", &config.doppler_factor);
       ImGui::Unindent();
     }
-    OxUI::end_properties();
+    ui::end_properties();
 
     if (component.source) {
       const glm::mat4 inverted = glm::inverse(eutil::get_world_transform(context, entity));
@@ -438,129 +469,132 @@ void InspectorPanel::draw_components(Entity entity) {
     }
   });
 
-  draw_component<AudioListenerComponent>(" Audio Listener Component", context->registry, entity, [](AudioListenerComponent& component) {
+  draw_component<AudioListenerComponent>(" Audio Listener Component",
+                                         context->registry,
+                                         entity,
+                                         [](AudioListenerComponent& component, entt::entity e) {
     auto& config = component.config;
-    OxUI::begin_properties();
-    OxUI::property("Active", &component.active);
+    ui::begin_properties();
+    ui::property("Active", &component.active);
     float degrees = glm::degrees(config.cone_inner_angle);
-    if (OxUI::property("Cone Inner Angle", &degrees))
+    if (ui::property("Cone Inner Angle", &degrees))
       config.cone_inner_angle = glm::radians(degrees);
     degrees = glm::degrees(config.cone_outer_angle);
-    if (OxUI::property("Cone Outer Angle", &degrees))
+    if (ui::property("Cone Outer Angle", &degrees))
       config.cone_outer_angle = glm::radians(degrees);
-    OxUI::property("Cone Outer Gain", &config.cone_outer_gain);
-    OxUI::end_properties();
+    ui::property("Cone Outer Gain", &config.cone_outer_gain);
+    ui::end_properties();
   });
 
-  draw_component<LightComponent>(" Light Component", context->registry, entity, [](LightComponent& component) {
-    OxUI::begin_properties();
+  draw_component<LightComponent>(" Light Component", context->registry, entity, [](LightComponent& component, entt::entity e) {
+    ui::begin_properties();
     const char* light_type_strings[] = {"Directional", "Point", "Spot"};
     int light_type = component.type;
-    if (OxUI::property("Light Type", &light_type, light_type_strings, 3))
+    if (ui::property("Light Type", &light_type, light_type_strings, 3))
       component.type = static_cast<LightComponent::LightType>(light_type);
 
-    if (OxUI::property("Color Temperature Mode", &component.color_temperature_mode) && component.color_temperature_mode) {
+    if (ui::property("Color Temperature Mode", &component.color_temperature_mode) && component.color_temperature_mode) {
       ColorUtils::TempratureToColor(component.temperature, component.color);
     }
 
     if (component.color_temperature_mode) {
-      if (OxUI::property<uint32>("Temperature (K)", &component.temperature, 1000, 40000))
+      if (ui::property<uint32>("Temperature (K)", &component.temperature, 1000, 40000))
         ColorUtils::TempratureToColor(component.temperature, component.color);
     } else {
-      OxUI::property_vector("Color", component.color, true);
+      ui::property_vector("Color", component.color, true);
     }
 
-    OxUI::property("Intensity", &component.intensity, 0.0f, 100.0f);
+    ui::property("Intensity", &component.intensity, 0.0f, 100.0f);
 
     if (component.type != LightComponent::Directional) {
-      OxUI::property("Range", &component.range, 0.0f, 100.0f);
-      OxUI::property("Radius", &component.radius, 0.0f, 100.0f);
-      OxUI::property("Length", &component.length, 0.0f, 100.0f);
+      ui::property("Range", &component.range, 0.0f, 100.0f);
+      ui::property("Radius", &component.radius, 0.0f, 100.0f);
+      ui::property("Length", &component.length, 0.0f, 100.0f);
     }
 
     if (component.type == LightComponent::Spot) {
-      OxUI::property("Outer Cone Angle", &component.outer_cone_angle, 0.0f, 100.0f);
-      OxUI::property("Inner Cone Angle", &component.inner_cone_angle, 0.0f, 100.0f);
+      ui::property("Outer Cone Angle", &component.outer_cone_angle, 0.0f, 100.0f);
+      ui::property("Inner Cone Angle", &component.inner_cone_angle, 0.0f, 100.0f);
     }
 
-    OxUI::property("Cast Shadows", &component.cast_shadows);
+    ui::property("Cast Shadows", &component.cast_shadows);
 
     const ankerl::unordered_dense::map<uint32, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
     const ankerl::unordered_dense::map<int, uint32> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
 
     const char* res_strings[] = {"Auto", "512", "1024", "2048"};
     int idx = res_map.at(component.shadow_map_res);
-    if (OxUI::property("Shadow Resolution", &idx, res_strings, 4)) {
+    if (ui::property("Shadow Resolution", &idx, res_strings, 4)) {
       component.shadow_map_res = id_map.at(idx);
     }
 
     if (component.type == LightComponent::Directional) {
       for (uint32 i = 0; i < (uint32)component.cascade_distances.size(); ++i)
-        OxUI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
+        ui::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
     }
 
-    OxUI::end_properties();
+    ui::end_properties();
   });
 
-  draw_component<RigidbodyComponent>(" Rigidbody Component", context->registry, entity, [this](RigidbodyComponent& component) {
-    OxUI::begin_properties();
+  draw_component<RigidbodyComponent>(" Rigidbody Component", context->registry, entity, [this](RigidbodyComponent& component, entt::entity e) {
+    ui::begin_properties();
 
     const char* body_type_strings[] = {"Static", "Kinematic", "Dynamic"};
     int body_type = static_cast<int>(component.type);
-    if (OxUI::property("Body Type", &body_type, body_type_strings, 3))
+    if (ui::property("Body Type", &body_type, body_type_strings, 3))
       component.type = static_cast<RigidbodyComponent::BodyType>(body_type);
 
     if (component.type == RigidbodyComponent::BodyType::Dynamic) {
-      OxUI::property("Mass", &component.mass, 0.01f, 10000.0f);
-      OxUI::property("Linear Drag", &component.linear_drag);
-      OxUI::property("Angular Drag", &component.angular_drag);
-      OxUI::property("Gravity Scale", &component.gravity_scale);
-      OxUI::property("Allow Sleep", &component.allow_sleep);
-      OxUI::property("Awake", &component.awake);
-      OxUI::property("Continuous", &component.continuous);
-      OxUI::property("Interpolation", &component.interpolation);
+      ui::property("Mass", &component.mass, 0.01f, 10000.0f);
+      ui::property("Linear Drag", &component.linear_drag);
+      ui::property("Angular Drag", &component.angular_drag);
+      ui::property("Gravity Scale", &component.gravity_scale);
+      ui::property("Allow Sleep", &component.allow_sleep);
+      ui::property("Awake", &component.awake);
+      ui::property("Continuous", &component.continuous);
+      ui::property("Interpolation", &component.interpolation);
 
       component.linear_drag = glm::max(component.linear_drag, 0.0f);
       component.angular_drag = glm::max(component.angular_drag, 0.0f);
     }
 
-    OxUI::property("Is Sensor", &component.is_sensor);
-    OxUI::end_properties();
+    ui::property("Is Sensor", &component.is_sensor);
+    ui::end_properties();
   });
 
-  draw_component<BoxColliderComponent>(" Box Collider", context->registry, entity, [](BoxColliderComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property_vector("Size", component.size);
-    OxUI::property_vector("Offset", component.offset);
-    OxUI::property("Density", &component.density);
-    OxUI::property("Friction", &component.friction, 0.0f, 1.0f);
-    OxUI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    OxUI::end_properties();
+  draw_component<BoxColliderComponent>(" Box Collider", context->registry, entity, [](BoxColliderComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property_vector("Size", component.size);
+    ui::property_vector("Offset", component.offset);
+    ui::property("Density", &component.density);
+    ui::property("Friction", &component.friction, 0.0f, 1.0f);
+    ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
+    ui::end_properties();
 
     component.density = glm::max(component.density, 0.001f);
   });
 
-  draw_component<SphereColliderComponent>(" Sphere Collider", context->registry, entity, [](SphereColliderComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property("Radius", &component.radius);
-    OxUI::property_vector("Offset", component.offset);
-    OxUI::property("Density", &component.density);
-    OxUI::property("Friction", &component.friction, 0.0f, 1.0f);
-    OxUI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    OxUI::end_properties();
+  draw_component<SphereColliderComponent>(" Sphere Collider", context->registry, entity, [](SphereColliderComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property("Radius", &component.radius);
+    ui::property_vector("Offset", component.offset);
+    ui::property("Density", &component.density);
+    ui::property("Friction", &component.friction, 0.0f, 1.0f);
+    ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
+    ui::end_properties();
 
     component.density = glm::max(component.density, 0.001f);
   });
 
-  draw_component<CapsuleColliderComponent>(" Capsule Collider", context->registry, entity, [](CapsuleColliderComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property("Height", &component.height);
-    OxUI::property("Radius", &component.radius);
-    OxUI::property_vector("Offset", component.offset);
-    OxUI::property("Density", &component.density);
-    OxUI::property("Friction", &component.friction, 0.0f, 1.0f);
-    OxUI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    OxUI::end_properties();
+  draw_component<CapsuleColliderComponent>(" Capsule Collider", context->registry, entity, [](CapsuleColliderComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property("Height", &component.height);
+    ui::property("Radius", &component.radius);
+    ui::property_vector("Offset", component.offset);
+    ui::property("Density", &component.density);
+    ui::property("Friction", &component.friction, 0.0f, 1.0f);
+    ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
+    ui::end_properties();
 
     component.density = glm::max(component.density, 0.001f);
   });
@@ -568,80 +602,86 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<TaperedCapsuleColliderComponent>(" Tapered Capsule Collider",
                                                   context->registry,
                                                   entity,
-                                                  [](TaperedCapsuleColliderComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property("Height", &component.height);
-    OxUI::property("Top Radius", &component.top_radius);
-    OxUI::property("Bottom Radius", &component.bottom_radius);
-    OxUI::property_vector("Offset", component.offset);
-    OxUI::property("Density", &component.density);
-    OxUI::property("Friction", &component.friction, 0.0f, 1.0f);
-    OxUI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    OxUI::end_properties();
+                                                  [](TaperedCapsuleColliderComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property("Height", &component.height);
+    ui::property("Top Radius", &component.top_radius);
+    ui::property("Bottom Radius", &component.bottom_radius);
+    ui::property_vector("Offset", component.offset);
+    ui::property("Density", &component.density);
+    ui::property("Friction", &component.friction, 0.0f, 1.0f);
+    ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
+    ui::end_properties();
 
     component.density = glm::max(component.density, 0.001f);
   });
 
-  draw_component<CylinderColliderComponent>(" Cylinder Collider", context->registry, entity, [](CylinderColliderComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property("Height", &component.height);
-    OxUI::property("Radius", &component.radius);
-    OxUI::property_vector("Offset", component.offset);
-    OxUI::property("Density", &component.density);
-    OxUI::property("Friction", &component.friction, 0.0f, 1.0f);
-    OxUI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    OxUI::end_properties();
+  draw_component<CylinderColliderComponent>(" Cylinder Collider",
+                                            context->registry,
+                                            entity,
+                                            [](CylinderColliderComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property("Height", &component.height);
+    ui::property("Radius", &component.radius);
+    ui::property_vector("Offset", component.offset);
+    ui::property("Density", &component.density);
+    ui::property("Friction", &component.friction, 0.0f, 1.0f);
+    ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
+    ui::end_properties();
 
     component.density = glm::max(component.density, 0.001f);
   });
 
-  draw_component<MeshColliderComponent>(" Mesh Collider", context->registry, entity, [](MeshColliderComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property_vector("Offset", component.offset);
-    OxUI::property("Friction", &component.friction, 0.0f, 1.0f);
-    OxUI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    OxUI::end_properties();
+  draw_component<MeshColliderComponent>(" Mesh Collider", context->registry, entity, [](MeshColliderComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property_vector("Offset", component.offset);
+    ui::property("Friction", &component.friction, 0.0f, 1.0f);
+    ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
+    ui::end_properties();
   });
 
-  draw_component<CharacterControllerComponent>(" Character Controller", context->registry, entity, [](CharacterControllerComponent& component) {
-    OxUI::begin_properties();
-    OxUI::property("CharacterHeightStanding", &component.character_height_standing);
-    OxUI::property("CharacterRadiusStanding", &component.character_radius_standing);
-    OxUI::property("CharacterHeightCrouching", &component.character_height_crouching);
-    OxUI::property("CharacterRadiusCrouching", &component.character_radius_crouching);
+  draw_component<CharacterControllerComponent>(" Character Controller",
+                                               context->registry,
+                                               entity,
+                                               [](CharacterControllerComponent& component, entt::entity e) {
+    ui::begin_properties();
+    ui::property("CharacterHeightStanding", &component.character_height_standing);
+    ui::property("CharacterRadiusStanding", &component.character_radius_standing);
+    ui::property("CharacterHeightCrouching", &component.character_height_crouching);
+    ui::property("CharacterRadiusCrouching", &component.character_radius_crouching);
 
     // Movement
-    OxUI::property("ControlMovementDuringJump", &component.control_movement_during_jump);
-    OxUI::property("JumpForce", &component.jump_force);
+    ui::property("ControlMovementDuringJump", &component.control_movement_during_jump);
+    ui::property("JumpForce", &component.jump_force);
 
-    OxUI::property("Friction", &component.friction, 0.0f, 1.0f);
-    OxUI::property("CollisionTolerance", &component.collision_tolerance);
-    OxUI::end_properties();
+    ui::property("Friction", &component.friction, 0.0f, 1.0f);
+    ui::property("CollisionTolerance", &component.collision_tolerance);
+    ui::end_properties();
   });
 
-  draw_component<CameraComponent>("Camera Component", context->registry, entity, [](CameraComponent& component) {
-    OxUI::begin_properties();
+  draw_component<CameraComponent>("Camera Component", context->registry, entity, [](CameraComponent& component, entt::entity e) {
+    ui::begin_properties();
     static float fov = component.camera.get_fov();
-    if (OxUI::property("FOV", &fov)) {
+    if (ui::property("FOV", &fov)) {
       component.camera.set_fov(fov);
     }
     static float near_clip = component.camera.get_near();
-    if (OxUI::property("Near Clip", &near_clip)) {
+    if (ui::property("Near Clip", &near_clip)) {
       component.camera.set_near(near_clip);
     }
     static float far_clip = component.camera.get_far();
-    if (OxUI::property("Far Clip", &far_clip)) {
+    if (ui::property("Far Clip", &far_clip)) {
       component.camera.set_far(far_clip);
     }
-    OxUI::end_properties();
+    ui::end_properties();
   });
 
-  draw_component<LuaScriptComponent>("Lua Script Component", context->registry, entity, [](LuaScriptComponent& component) {
+  draw_component<LuaScriptComponent>("Lua Script Component", context->registry, entity, [](LuaScriptComponent& component, entt::entity e) {
     const float filter_cursor_pos_x = ImGui::GetCursorPosX();
     ImGuiTextFilter name_filter;
 
     name_filter.Draw("##scripts_filter",
-                     ImGui::GetContentRegionAvail().x - (OxUI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
+                     ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
 
     if (!name_filter.IsActive()) {
       ImGui::SameLine();
@@ -657,11 +697,11 @@ void InspectorPanel::draw_components(Entity entity) {
         constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
         if (ImGui::TreeNodeEx(name.c_str(), flags, "%s", name.c_str())) {
           auto rld_str = fmt::format("{} Reload", StringUtils::from_char8_t(ICON_MDI_REFRESH));
-          if (ImGui::Button(rld_str.c_str()))
+          if (ui::button(rld_str.c_str()))
             system->reload();
           ImGui::SameLine();
           auto rmv_str = fmt::format("{} Remove", StringUtils::from_char8_t(ICON_MDI_TRASH_CAN));
-          if (ImGui::Button(rmv_str.c_str()))
+          if (ui::button(rmv_str.c_str()))
             component.lua_systems.erase(component.lua_systems.begin() + i);
           ImGui::TreePop();
         }
@@ -680,62 +720,65 @@ void InspectorPanel::draw_components(Entity entity) {
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
     const auto btn = fmt::format("{} Drop a script file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
-    if (ImGui::Button(btn.c_str(), {x, y})) {
+    if (ui::button(btn.c_str(), {x, y})) {
       const std::string file_path = App::get_system<FileDialogs>()->open_file({{"Lua file", "lua"}});
       load_script(file_path, component);
     }
     if (ImGui::BeginDragDropTarget()) {
       if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-        const auto path = OxUI::get_path_from_imgui_payload(payload);
+        const auto path = ui::get_path_from_imgui_payload(payload);
         load_script(path, component);
       }
       ImGui::EndDragDropTarget();
     }
   });
 
-  draw_component<ParticleSystemComponent>("Particle System Component", context->registry, entity, [](const ParticleSystemComponent& component) {
+  draw_component<ParticleSystemComponent>("Particle System Component",
+                                          context->registry,
+                                          entity,
+                                          [](const ParticleSystemComponent& component, entt::entity e) {
     auto& props = component.system->get_properties();
 
     ImGui::Text("Active Particles Count: %u", component.system->get_active_particle_count());
     ImGui::BeginDisabled(props.looping);
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLAY)))
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLAY)))
       component.system->play();
     ImGui::SameLine();
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_STOP)))
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_STOP)))
       component.system->stop();
     ImGui::EndDisabled();
 
     ImGui::Separator();
 
-    OxUI::begin_properties();
-    OxUI::property("Duration", &props.duration);
-    if (OxUI::property("Looping", &props.looping)) {
+    ui::begin_properties();
+    ui::property("Duration", &props.duration);
+    if (ui::property("Looping", &props.looping)) {
       if (props.looping)
         component.system->play();
     }
-    OxUI::property("Start Delay", &props.start_delay);
-    OxUI::property("Start Lifetime", &props.start_lifetime);
-    OxUI::property_vector("Start Velocity", props.start_velocity);
-    OxUI::property_vector("Start Color", props.start_color, true);
-    OxUI::property_vector("Start Size", props.start_size);
-    OxUI::property_vector("Start Rotation", props.start_rotation);
-    OxUI::property("Gravity Modifier", &props.gravity_modifier);
-    OxUI::property("Simulation Speed", &props.simulation_speed);
-    OxUI::property("Play On Awake", &props.play_on_awake);
-    OxUI::property("Max Particles", &props.max_particles);
-    OxUI::end_properties();
+    ui::property("Start Delay", &props.start_delay);
+    ui::property("Start Lifetime", &props.start_lifetime);
+    ui::property_vector("Start Velocity", props.start_velocity);
+    ui::property_vector("Start Color", props.start_color, true);
+    ui::property_vector("Start Size", props.start_size);
+    ui::property_vector("Start Rotation", props.start_rotation);
+    ui::property("Gravity Modifier", &props.gravity_modifier);
+    ui::property("Simulation Speed", &props.simulation_speed);
+    ui::property("Play On Awake", &props.play_on_awake);
+    ui::property("Max Particles", &props.max_particles);
+    ui::end_properties();
 
     ImGui::Separator();
 
-    OxUI::begin_properties();
-    OxUI::property("Rate Over Time", &props.rate_over_time);
-    OxUI::property("Rate Over Distance", &props.rate_over_distance);
-    OxUI::property("Burst Count", &props.burst_count);
-    OxUI::property("Burst Time", &props.burst_time);
-    OxUI::property_vector("Position Start", props.position_start);
-    OxUI::property_vector("Position End", props.position_end);
+    ui::begin_properties();
+    ui::property("Rate Over Time", &props.rate_over_time);
+    ui::property("Rate Over Distance", &props.rate_over_distance);
+    ui::property("Burst Count", &props.burst_count);
+    ui::property("Burst Time", &props.burst_time);
+    ui::property_vector("Position Start", props.position_start);
+    ui::property_vector("Position End", props.position_end);
     // OxUI::Property("Texture", props.Texture); //TODO:
-    OxUI::end_properties();
+    ui::end_properties();
 
     draw_particle_over_lifetime_module("Velocity Over Lifetime", props.velocity_over_lifetime);
     draw_particle_over_lifetime_module("Force Over Lifetime", props.force_over_lifetime);

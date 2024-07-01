@@ -89,7 +89,7 @@ struct MeshComponent {
   std::vector<Shared<PBRMaterial>> materials = {};
   Mat4 transform = Mat4{1};
   std::vector<entt::entity> child_entities = {}; // filled at load
-  std::vector<Mat4> child_transforms = {}; // filled at submit
+  std::vector<Mat4> child_transforms = {};       // filled at submit
   AABB aabb = {};
   bool dirty = false;
 
@@ -102,16 +102,38 @@ struct MeshComponent {
   }
 };
 
-struct SpriteComponent { 
+struct SpriteComponent {
   Shared<SpriteMaterial> material = nullptr;
   uint32 layer = 0;
 
   // non-serialized data
   Mat4 transform = Mat4{1};
 
-  SpriteComponent() { 
+  SpriteComponent() {
     material = create_shared<SpriteMaterial>();
     material->create();
+  }
+};
+
+struct SpriteAnimationComponent {
+  uint32 num_frames = 0;
+  bool loop = true;
+  bool inverted = false;
+  uint32 fps = 30;
+  uint32 columns = 1;
+  float2 frame_size = {};
+
+  // non-serialized data
+  uint32 current_time = 0;
+  bool is_inverted = false;
+
+  void set_frame_size(Texture* sprite) {
+    if (num_frames > 0) {
+      const auto horizontal = sprite->get_extent().width / num_frames;
+      const auto vertical = sprite->get_extent().height;
+
+      frame_size = {horizontal, vertical};
+    }
   }
 };
 
@@ -323,6 +345,7 @@ using AllComponents = ComponentGroup<TransformComponent,
                                      MeshComponent,
                                      ParticleSystemComponent,
                                      SpriteComponent,
+                                     SpriteAnimationComponent,
 
                                      //  Physics
                                      RigidbodyComponent,

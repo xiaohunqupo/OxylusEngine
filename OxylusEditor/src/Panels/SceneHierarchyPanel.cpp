@@ -259,7 +259,7 @@ ImRect SceneHierarchyPanel::draw_entity_node(Entity entity, uint32_t depth, bool
 void SceneHierarchyPanel::drag_drop_target() const {
   if (ImGui::BeginDragDropTarget()) {
     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-      const std::filesystem::path path = OxUI::get_path_from_imgui_payload(payload);
+      const std::filesystem::path path = ui::get_path_from_imgui_payload(payload);
       if (path.extension() == ".oxscene") {
         EditorLayer::get()->open_scene(path);
       }
@@ -430,7 +430,7 @@ void SceneHierarchyPanel::on_imgui_render() {
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_BordersInner | ImGuiTableFlags_ScrollY;
 
     const float filter_cursor_pos_x = ImGui::GetCursorPosX();
-    m_filter.Draw("###HierarchyFilter", ImGui::GetContentRegionAvail().x - (OxUI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
+    m_filter.Draw("###HierarchyFilter", ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
     ImGui::SameLine();
 
     if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLUS)))

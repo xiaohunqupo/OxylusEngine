@@ -562,7 +562,7 @@ std::vector<Shared<Texture>> Mesh::load_images(const fastgltf::Asset& asset) {
   std::transform(std::execution::par, indices.begin(), indices.end(), raw_image_datas.begin(), [&](size_t index) {
     OX_SCOPED_ZONE_N("Load Image");
     const fastgltf::Image& image = asset.images[index];
-    ZoneName(image.name.c_str(), image.name.size());
+    OX_ZONE_NAME(image.name.c_str(), image.name.size());
 
     RawImageData rawImage = [&] {
       if (const auto* filePath = std::get_if<fastgltf::sources::URI>(&image.data)) {

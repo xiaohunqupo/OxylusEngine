@@ -51,6 +51,53 @@ void SceneRenderer::update() const {
     }
   }
 
+  // Sprite animation system
+  {
+    OX_SCOPED_ZONE_N("Sprite Animation System");
+    const auto sprite_view = _scene->registry.view<TransformComponent, SpriteComponent, SpriteAnimationComponent, TagComponent>();
+    for (const auto&& [entity, transform, sprite, sprite_animation, tag] : sprite_view.each()) {
+      if (!tag.enabled || sprite_animation.num_frames < 1 || sprite_animation.fps < 1 ||
+          sprite_animation.columns < 1 || sprite.material->parameters.albedo_map_id == Asset::INVALID_ID)
+        continue;
+
+      sprite_animation.current_time += App::get()->get_timestep().get_millis(); // FIXME: pass delta time to SceneRenderer::update()
+
+      const float duration = float(sprite_animation.num_frames) / sprite_animation.fps;
+      uint32 frame = glm::floor(sprite_animation.num_frames * (sprite_animation.current_time / duration));
+
+      if (sprite_animation.current_time > duration) {
+        if (sprite_animation.inverted) {
+          sprite_animation.is_inverted = sprite_animation.inverted ? !sprite_animation.is_inverted : false;
+          // Remove/add a frame depending on the direction
+          const float frame_length = 1.0f / sprite_animation.fps;
+          sprite_animation.current_time -= duration - frame_length;
+        } else {
+          sprite_animation.current_time -= duration;
+        }
+      }
+
+      if (sprite_animation.loop)
+        frame %= sprite_animation.num_frames;
+      else
+        frame = glm::min(frame, (uint32)sprite_animation.num_frames - 1);
+
+      frame = sprite_animation.is_inverted ? sprite_animation.num_frames - 1 - frame : frame;
+
+      uint32 frame_x = frame % sprite_animation.columns;
+      uint32 frame_y = frame / sprite_animation.columns;
+
+      auto& mat = sprite.material;
+      auto& texture = mat->get_albedo_texture();
+      auto& uv_size = mat->parameters.uv_size;
+      auto& uv_offset = mat->parameters.uv_offset;
+
+      auto texture_size = float2(texture->get_extent().width, texture->get_extent().height);
+      uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0], sprite_animation.frame_size[1] * 1.f / texture_size[1]};
+      // Horizontal only scroll. Change U0 and U1 only.
+      uv_offset = uv_offset + float2{uv_size.x * frame_x, uv_size.y * frame_y};
+    }
+  }
+
   // Sprite System
   {
     OX_SCOPED_ZONE_N("Sprite System");

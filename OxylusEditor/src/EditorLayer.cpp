@@ -238,13 +238,13 @@ void EditorLayer::on_imgui_render() {
         if (ImGui::BeginMenu("Assets")) {
           if (ImGui::MenuItem("Asset Manager")) {
           }
-          OxUI::tooltip("WIP");
+          ui::tooltip("WIP");
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Help")) {
           if (ImGui::MenuItem("About")) {
           }
-          OxUI::tooltip("WIP");
+          ui::tooltip("WIP");
           ImGui::EndMenu();
         }
         ImGui::SameLine();

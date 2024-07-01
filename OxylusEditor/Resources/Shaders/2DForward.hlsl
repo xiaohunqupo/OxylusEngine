@@ -44,9 +44,10 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   return output;
 }
 
+
 float4 PSmain(VOutput input) : SV_Target0 {
   SpriteMaterial material = get_sprite_material(input.material_index);
-  const SamplerState material_sampler = LINEAR_REPEATED_SAMPLER;
+  const SamplerState material_sampler = NEAREST_REPEATED_SAMPLER;
 
   float4 color = material.color.unpack();
 

@@ -27,6 +27,7 @@ void EditorTheme::init() {
   component_icon_map[typeid(CharacterControllerComponent).hash_code()] = ICON_MDI_CIRCLE_OUTLINE;
   component_icon_map[typeid(CameraComponent).hash_code()] = ICON_MDI_CAMERA;
   component_icon_map[typeid(ParticleSystemComponent).hash_code()] = ICON_MDI_LAMP;
-  component_icon_map[typeid(SpriteComponent).hash_code()] = ICON_MDI_RECTANGLE;
+  component_icon_map[typeid(SpriteComponent).hash_code()] = ICON_MDI_SQUARE_OUTLINE;
+  component_icon_map[typeid(SpriteAnimationComponent).hash_code()] = ICON_MDI_SHAPE_SQUARE_PLUS;
 }
 }

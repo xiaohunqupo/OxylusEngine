@@ -308,16 +308,16 @@ void ContentPanel::render_header() {
   if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_COGS)))
     ImGui::OpenPopup("SettingsPopup");
   if (ImGui::BeginPopup("SettingsPopup")) {
-    OxUI::begin_properties(ImGuiTableFlags_SizingStretchSame);
-    OxUI::property("Thumbnail Size",
+    ui::begin_properties(ImGuiTableFlags_SizingStretchSame);
+    ui::property("Thumbnail Size",
                    EditorCVar::cvar_file_thumbnail_size.get_ptr(),
                    thumbnail_size_grid_limit - 0.1f,
                    thumbnail_max_limit,
                    nullptr,
                    0.1f,
                    "");
-    OxUI::property("Show file thumbnails", (bool*)EditorCVar::cvar_file_thumbnails.get_ptr());
-    OxUI::end_properties();
+    ui::property("Show file thumbnails", (bool*)EditorCVar::cvar_file_thumbnails.get_ptr());
+    ui::end_properties();
     ImGui::EndPopup();
   }
 
@@ -568,7 +568,7 @@ void ContentPanel::render_body(bool grid) {
         // Background button
         static std::string id = "###";
         id[2] = static_cast<char>(i);
-        const bool clicked = OxUI::toggle_button(id.c_str(), highlight, background_thumbnail_size, 0.1f);
+        const bool clicked = ui::toggle_button(id.c_str(), highlight, background_thumbnail_size, 0.1f);
         if (m_elapsed_time > 0.25f && clicked) {
           EditorLayer::get()->set_context_as_file_with_path(strPath);
         }
@@ -609,7 +609,7 @@ void ContentPanel::render_body(bool grid) {
         // Foreground Image
         ImGui::SetCursorPos({cursor_pos.x + padding, cursor_pos.y + padding});
         ImGui::SetItemAllowOverlap();
-        OxUI::image(*_white_texture->get_view(),
+        ui::image(*_white_texture->get_view(),
                     {background_thumbnail_size.x - padding * 2.0f, background_thumbnail_size.y - padding * 2.0f},
                     {},
                     {},
@@ -619,12 +619,12 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
         ImGui::SetItemAllowOverlap();
         if (thumbnail_cache.contains(texture_name))
-          OxUI::image(*thumbnail_cache[texture_name]->get_view(), {thumb_image_size, thumb_image_size});
+          ui::image(*thumbnail_cache[texture_name]->get_view(), {thumb_image_size, thumb_image_size});
 
         // Type Color frame
         const ImVec2 type_color_frame_size = {scaled_thumbnail_size_x, scaled_thumbnail_size_x * 0.03f};
         ImGui::SetCursorPosX(cursor_pos.x + padding);
-        OxUI::image(*_white_texture->get_view(),
+        ui::image(*_white_texture->get_view(),
                     type_color_frame_size,
                     {0, 0},
                     {1, 1},
@@ -634,7 +634,7 @@ void ContentPanel::render_body(bool grid) {
         const ImVec2 rect_size = ImGui::GetItemRectSize();
         const ImRect clip_rect = ImRect({rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
                                         {rect_min.x + rect_size.x, rect_min.y + scaled_thumbnail_size_x - ImGuiLayer::regular_font->FontSize * 2.0f});
-        OxUI::clipped_text(clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
+        ui::clipped_text(clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
 
         if (!is_dir) {
           constexpr auto y_pos_pad = 10.f;
@@ -664,7 +664,7 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - line_height);
         if (thumbnail_cache.contains(texture_name))
-          OxUI::image(*thumbnail_cache[texture_name]->get_view(), {line_height, line_height});
+          ui::image(*thumbnail_cache[texture_name]->get_view(), {line_height, line_height});
         ImGui::SameLine();
         ImGui::TextUnformatted(filename);
 
