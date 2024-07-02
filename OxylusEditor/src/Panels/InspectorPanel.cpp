@@ -97,6 +97,8 @@ void InspectorPanel::draw_sprite_material_properties(Shared<SpriteMaterial>& mat
   if (ui::property("Albedo", material->get_albedo_texture()))
     material->set_albedo_texture(material->get_albedo_texture());
   ui::property_vector("Color", material->parameters.color, true, true);
+  ui::draw_vec2_control("UV Size", material->parameters.uv_size, nullptr, 1.0f);
+  ui::draw_vec2_control("UV Offset", material->parameters.uv_offset, nullptr, 0.0f);
 
   ui::end_properties();
 }
@@ -342,12 +344,18 @@ void InspectorPanel::draw_components(Entity entity) {
                                            entity,
                                            [this](SpriteAnimationComponent& component, entt::entity e) {
     ui::begin_properties();
-    ui::property("Number of frames", &component.num_frames);
-    ui::property("Loop", &component.loop);
-    ui::property("Inverted", &component.inverted);
-    ui::property("Frames per second", &component.fps);
-    ui::property("Columns", &component.columns);
-    ui::draw_vec2_control("Frame size", component.frame_size);
+    if (ui::property("Number of frames", &component.num_frames))
+      component.reset();
+    if (ui::property("Loop", &component.loop))
+      component.reset();
+    if (ui::property("Inverted", &component.inverted))
+      component.reset();
+    if (ui::property("Frames per second", &component.fps))
+      component.reset();
+    if (ui::property("Columns", &component.columns))
+      component.reset();
+    if (ui::draw_vec2_control("Frame size", component.frame_size))
+      component.reset();
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
     ImGui::Spacing();

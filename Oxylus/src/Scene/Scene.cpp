@@ -685,7 +685,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     }
   }
 
-  scene_renderer->update();
+  scene_renderer->update(delta_time);
 
   {
     OX_SCOPED_ZONE_N("PostOnUpdate Systems");
@@ -763,6 +763,6 @@ void Scene::on_imgui_render(const Timestep& delta_time) {
 void Scene::on_editor_update(const Timestep& delta_time, Camera& camera) {
   OX_SCOPED_ZONE;
   scene_renderer->get_render_pipeline()->submit_camera(&camera);
-  scene_renderer->update();
+  scene_renderer->update(delta_time);
 }
 } // namespace ox

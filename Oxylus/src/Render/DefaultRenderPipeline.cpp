@@ -558,13 +558,18 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
     std::vector<SpriteMaterial::Parameters> sprite_material_parameters = {};
     sprite_material_parameters.reserve(render_queue_2d.materials.size());
-    for (auto& mat : render_queue_2d.materials) {
+    for (uint32 index = 0; auto& mat : render_queue_2d.materials) {
       const auto& albedo = mat->get_albedo_texture();
 
       if (albedo && albedo->is_valid_id())
         descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
-      sprite_material_parameters.emplace_back(mat->parameters);
+      SpriteMaterial::Parameters par = mat->parameters;
+      par.uv_offset = sprite_component_list[index].current_uv_offset.value_or(mat->parameters.uv_offset);
+
+      sprite_material_parameters.emplace_back(par);
+
+      index += 1;
     }
 
     if (sprite_material_parameters.empty())

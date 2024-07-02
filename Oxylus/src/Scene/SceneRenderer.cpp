@@ -26,7 +26,7 @@ void SceneRenderer::init(EventDispatcher& dispatcher) {
   _render_pipeline->on_dispatcher_events(dispatcher);
 }
 
-void SceneRenderer::update() const {
+void SceneRenderer::update(const Timestep& delta_time) const {
   OX_SCOPED_ZONE;
 
   // Mesh System
@@ -56,16 +56,19 @@ void SceneRenderer::update() const {
     OX_SCOPED_ZONE_N("Sprite Animation System");
     const auto sprite_view = _scene->registry.view<TransformComponent, SpriteComponent, SpriteAnimationComponent, TagComponent>();
     for (const auto&& [entity, transform, sprite, sprite_animation, tag] : sprite_view.each()) {
-      if (!tag.enabled || sprite_animation.num_frames < 1 || sprite_animation.fps < 1 ||
-          sprite_animation.columns < 1 || sprite.material->parameters.albedo_map_id == Asset::INVALID_ID)
+      if (!tag.enabled || sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 ||
+          sprite.material->parameters.albedo_map_id == Asset::INVALID_ID)
         continue;
 
-      sprite_animation.current_time += App::get()->get_timestep().get_millis(); // FIXME: pass delta time to SceneRenderer::update()
+      const auto dt = glm::clamp((float)delta_time.get_seconds(), 0.0f, 0.25f);
+      const auto time = sprite_animation.current_time + dt;
+
+      sprite_animation.current_time = time;
 
       const float duration = float(sprite_animation.num_frames) / sprite_animation.fps;
-      uint32 frame = glm::floor(sprite_animation.num_frames * (sprite_animation.current_time / duration));
+      uint32 frame = math::flooru32(sprite_animation.num_frames * (time / duration));
 
-      if (sprite_animation.current_time > duration) {
+      if (time > duration) {
         if (sprite_animation.inverted) {
           sprite_animation.is_inverted = sprite_animation.inverted ? !sprite_animation.is_inverted : false;
           // Remove/add a frame depending on the direction
@@ -86,15 +89,14 @@ void SceneRenderer::update() const {
       uint32 frame_x = frame % sprite_animation.columns;
       uint32 frame_y = frame / sprite_animation.columns;
 
-      auto& mat = sprite.material;
-      auto& texture = mat->get_albedo_texture();
+      const auto& mat = sprite.material;
+      const auto& texture = mat->get_albedo_texture();
       auto& uv_size = mat->parameters.uv_size;
-      auto& uv_offset = mat->parameters.uv_offset;
+      const auto& uv_offset = mat->parameters.uv_offset;
 
       auto texture_size = float2(texture->get_extent().width, texture->get_extent().height);
       uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0], sprite_animation.frame_size[1] * 1.f / texture_size[1]};
-      // Horizontal only scroll. Change U0 and U1 only.
-      uv_offset = uv_offset + float2{uv_size.x * frame_x, uv_size.y * frame_y};
+      sprite.current_uv_offset = uv_offset + float2{uv_size.x * frame_x, uv_size.y * frame_y};
     }
   }
 

@@ -1,4 +1,5 @@
 #pragma once
+#include <optional>
 #include <string>
 
 #include "Core/Types.hpp"
@@ -109,6 +110,9 @@ struct SpriteComponent {
   // non-serialized data
   Mat4 transform = Mat4{1};
 
+  // set if an animation is controlling this sprite
+  std::optional<float2> current_uv_offset = std::nullopt;
+
   SpriteComponent() {
     material = create_shared<SpriteMaterial>();
     material->create();
@@ -119,13 +123,15 @@ struct SpriteAnimationComponent {
   uint32 num_frames = 0;
   bool loop = true;
   bool inverted = false;
-  uint32 fps = 30;
+  uint32 fps = 0;
   uint32 columns = 1;
   float2 frame_size = {};
 
   // non-serialized data
-  uint32 current_time = 0;
+  float current_time = 0.f;
   bool is_inverted = false;
+
+  void reset() { current_time = 0.f; }
 
   void set_frame_size(Texture* sprite) {
     if (num_frames > 0) {
@@ -133,7 +139,24 @@ struct SpriteAnimationComponent {
       const auto vertical = sprite->get_extent().height;
 
       frame_size = {horizontal, vertical};
+
+      reset();
     }
+  }
+
+  void set_num_frames(uint32 value) {
+    num_frames = value;
+    reset();
+  }
+
+  void set_fps(uint32 value) {
+    fps = value;
+    reset();
+  }
+
+  void set_columns(uint32 value) {
+    columns = value;
+    reset();
   }
 };
 

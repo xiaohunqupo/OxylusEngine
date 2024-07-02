@@ -11,7 +11,7 @@ public:
   ~SceneRenderer() = default;
 
   void init(EventDispatcher& dispatcher);
-  void update() const;
+  void update(const Timestep& delta_time) const;
 
   Shared<RenderPipeline> get_render_pipeline() const { return _render_pipeline; }
   void set_render_pipeline(const Shared<RenderPipeline>& render_pipeline) { _render_pipeline = render_pipeline;}

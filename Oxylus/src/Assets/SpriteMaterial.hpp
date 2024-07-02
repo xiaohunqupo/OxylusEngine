@@ -12,7 +12,7 @@ public:
     float4 color = float4(1.f);
 
     float2 uv_size = float2(1.f);
-    float2 uv_offset = float2(1.f);
+    float2 uv_offset = float2(0.f);
 
     uint32_t albedo_map_id = Asset::INVALID_ID;
   } parameters;
