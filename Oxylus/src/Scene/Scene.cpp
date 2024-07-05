@@ -1,6 +1,7 @@
 #include "Scene.hpp"
 
 #include "Entity.hpp"
+#include "Jolt/Physics/Body/AllowedDOFs.h"
 #include "Render/Camera.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/Timestep.hpp"
@@ -626,6 +627,7 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
   body_settings.mAngularDamping = glm::max(0.0f, component.angular_drag);
   body_settings.mMotionQuality = component.continuous ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete;
   body_settings.mGravityFactor = component.gravity_scale;
+  body_settings.mAllowedDOFs = (JPH::EAllowedDOFs)component.allowed_dofs;
 
   body_settings.mIsSensor = component.is_sensor;
 

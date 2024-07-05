@@ -547,6 +547,46 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<RigidbodyComponent>(" Rigidbody Component", context->registry, entity, [this](RigidbodyComponent& component, entt::entity e) {
     ui::begin_properties();
 
+    const char* dofs_strings[] = {
+      "None",
+      "All",
+      "Plane2D",
+      "Custom",
+    };
+    int current_dof_selection = 3;
+    switch (component.allowed_dofs) {
+      case RigidbodyComponent::AllowedDOFs::None   : current_dof_selection = 0; break;
+      case RigidbodyComponent::AllowedDOFs::All    : current_dof_selection = 1; break;
+      case RigidbodyComponent::AllowedDOFs::Plane2D: current_dof_selection = 2; break;
+      default                                      : current_dof_selection = 3; break;
+    }
+
+    if (ui::property("Allowed degree of freedom", &current_dof_selection, dofs_strings, std::size(dofs_strings))) {
+      switch (current_dof_selection) {
+        case 0: component.allowed_dofs = RigidbodyComponent::AllowedDOFs::None; break;
+        case 1: component.allowed_dofs = RigidbodyComponent::AllowedDOFs::All; break;
+        case 2: component.allowed_dofs = RigidbodyComponent::AllowedDOFs::Plane2D; break;
+      }
+    }
+
+    ImGui::Indent();
+    ui::begin_property_grid("Allowed positions", nullptr);
+    ImGui::CheckboxFlags("x", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::TranslationX);
+    ImGui::SameLine();
+    ImGui::CheckboxFlags("y", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::TranslationY);
+    ImGui::SameLine();
+    ImGui::CheckboxFlags("z", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::TranslationZ);
+    ui::end_property_grid();
+
+    ui::begin_property_grid("Allowed rotations", nullptr);
+    ImGui::CheckboxFlags("x", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::RotationX);
+    ImGui::SameLine();
+    ImGui::CheckboxFlags("y", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::RotationY);
+    ImGui::SameLine();
+    ImGui::CheckboxFlags("z", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::RotationZ);
+    ui::end_property_grid();
+    ImGui::Unindent();
+
     const char* body_type_strings[] = {"Static", "Kinematic", "Dynamic"};
     int body_type = static_cast<int>(component.type);
     if (ui::property("Body Type", &body_type, body_type_strings, 3))

@@ -137,6 +137,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
     const auto& rb = scene->registry.get<RigidbodyComponent>(entity);
 
     const auto table = toml::table{
+      {"allowed_dofs", (int)rb.allowed_dofs},
       {"type", (int)rb.type},
       TBL_FIELD(rb, mass),
       TBL_FIELD(rb, linear_drag),
@@ -342,6 +343,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       cc.camera.set_far(GET_FLOAT2(camera_node, "far"));
     } else if (const auto rb_node = ent.as_table()->get("rigidbody_component")) {
       auto& rb = reg.emplace<RigidbodyComponent>(deserialized_entity);
+      rb.allowed_dofs = (RigidbodyComponent::AllowedDOFs)GET_UINT322(rb_node, "allowed_dofs");
       rb.type = (RigidbodyComponent::BodyType)GET_UINT322(rb_node, "type");
       GET_FLOAT(rb_node, rb, mass);
       GET_FLOAT(rb_node, rb, linear_drag);
