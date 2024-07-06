@@ -1,4 +1,5 @@
 ﻿#include "FileSystem.hpp"
+#include <exception>
 
 #include "PlatformDetection.hpp"
 
@@ -12,9 +13,9 @@
 
 #include <filesystem>
 
+#include "App.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
-#include "App.hpp"
 
 namespace ox {
 std::pair<std::string, std::string> fs::split_path(std::string_view full_path) {
@@ -83,6 +84,24 @@ void fs::open_file_externally(std::string_view path) {
   OX_LOG_WARN("Not implemented on this platform!");
 #endif
 }
+
+void fs::copy_file(std::string_view from, std::string_view to) {
+  try {
+    std::filesystem::copy(from, to);
+  } catch (std::exception& exception) {
+    OX_LOG_ERROR(exception.what());
+  }
+}
+
+void fs::remove(std::string_view path) {
+  try {
+    std::filesystem::remove(path);
+  } catch (std::exception& exception) {
+    OX_LOG_ERROR(exception.what());
+  }
+}
+
+bool fs::exists(std::string_view path) { return std::filesystem::exists(path); }
 
 std::string fs::read_file(std::string_view file_path) {
   OX_SCOPED_ZONE;

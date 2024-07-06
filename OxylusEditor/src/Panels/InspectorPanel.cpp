@@ -784,6 +784,7 @@ void InspectorPanel::draw_components(Entity entity) {
   });
 
   draw_component<CPPScriptComponent>(" CPP Script Component", context->registry, entity, [](CPPScriptComponent& component, entt::entity e) {
+    std::vector<std::string> system_names_strs = {};
     std::vector<const char*> system_names = {};
     system_names.emplace_back("Empty");
 
@@ -793,16 +794,25 @@ void InspectorPanel::draw_components(Entity entity) {
     int current_system_selection = 0;
 
     auto* system_manager = App::get_system<SystemManager>();
-    for (auto& [hash, pair] : system_manager->system_registry) {
+    for (uint32 index = 1; auto& [hash, pair] : system_manager->system_registry) {
       auto& [name, system] = pair;
-      system_names.emplace_back(name);
+      std::string system_name = name;
+      system_name = system_name.erase(0, system_name.find(' ') + 1);
+      system_names.emplace_back(system_names_strs.emplace_back(system_name).c_str());
       system_hashes.emplace_back(hash);
+
+      if (component.system && system.get() == component.system.get())
+        current_system_selection = index;
+
+      index += 1;
     }
 
     ui::begin_properties();
     if (ui::property("Imported systems", &current_system_selection, system_names.data(), system_names.size())) {
       if (auto system = system_manager->get_system(system_hashes[current_system_selection]))
         component.system = system;
+      else
+        component.system = nullptr;
     }
     ui::end_properties();
   });

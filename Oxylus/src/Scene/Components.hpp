@@ -396,5 +396,6 @@ using AllComponents = ComponentGroup<TransformComponent,
                                      AudioListenerComponent,
 
                                      // Scripting
-                                     LuaScriptComponent>;
+                                     LuaScriptComponent,
+                                     CPPScriptComponent>;
 } // namespace ox

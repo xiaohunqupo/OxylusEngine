@@ -6,7 +6,7 @@
 #include <vector>
 
 namespace ox {
-/// @brief A lightweight std::filesystem alternative
+/// @brief A lightweight std::filesystem alternative and a safe wrapper for std::filesystem 
 namespace fs {
 /// @return directory and file
 std::pair<std::string, std::string> split_path(std::string_view full_path);
@@ -26,6 +26,12 @@ std::string preferred_path(std::string_view path);
 void open_folder_select_file(std::string_view path);
 /// @brief open the file in an external program
 void open_file_externally(std::string_view path);
+/// @brief copy file
+void copy_file(std::string_view from, std::string_view to);
+/// @brief remove dir/file
+void remove(std::string_view path);
+/// @brief dir/file exists
+bool exists(std::string_view path);
 
 std::string read_file(std::string_view file_path);
 std::vector<uint8_t> read_file_binary(std::string_view file_path);

@@ -4,21 +4,21 @@
 #include <entt/meta/context.hpp>
 #include <entt/meta/node.hpp>
 
-#include "Modules/ModuleRegistry.hpp"
 #include "Base.hpp"
+#include "Core/App.hpp"
 #include "FileSystem.hpp"
+#include "Modules/ModuleRegistry.hpp"
 #include "ProjectSerializer.hpp"
 
-#include "Modules/ModuleInterface.hpp"
 #include "Modules/ModuleUtil.hpp"
 
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-std::string Project::get_asset_directory() {
-  return fs::append_paths(get_project_directory(), active_project->project_config.asset_directory);
-}
+static std::filesystem::file_time_type last_module_write_time = {};
+
+std::string Project::get_asset_directory() { return fs::append_paths(get_project_directory(), active_project->project_config.asset_directory); }
 
 void Project::load_module() {
   if (get_config().module_name.empty())
@@ -26,11 +26,29 @@ void Project::load_module() {
 
   const auto module_path = fs::append_paths(get_project_directory(), project_config.module_name);
   ModuleUtil::load_module(project_config.module_name, module_path);
+  auto* module_registry = App::get_system<ModuleRegistry>();
+  if (auto* module = module_registry->get_lib(project_config.module_name))
+    last_module_write_time = std::filesystem::last_write_time(module->path + dylib::filename_components::suffix);
 }
 
 void Project::unload_module() const {
   if (!project_config.module_name.empty())
     ModuleUtil::unload_module(project_config.module_name);
+}
+
+void Project::check_module() {
+  if (get_config().module_name.empty())
+    return;
+
+  auto* module_registry = App::get_system<ModuleRegistry>();
+  if (auto* module = module_registry->get_lib(project_config.module_name)) {
+    const auto& module_path = module->path + dylib::filename_components::suffix;
+    if (std::filesystem::last_write_time(module_path).time_since_epoch().count() != last_module_write_time.time_since_epoch().count()) {
+      ModuleUtil::load_module(project_config.module_name, module->path);
+      last_module_write_time = std::filesystem::last_write_time(module_path);
+      OX_LOG_INFO("Reloaded {} module.", project_config.module_name);
+    }
+  }
 }
 
 Shared<Project> Project::create_new() {
@@ -85,4 +103,4 @@ bool Project::save_active(const std::string& path) {
   }
   return false;
 }
-}
+} // namespace ox

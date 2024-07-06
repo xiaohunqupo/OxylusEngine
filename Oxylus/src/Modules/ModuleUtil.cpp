@@ -8,8 +8,6 @@
 
 #include "Scripting/LuaManager.hpp"
 
-#include "Utils/Log.hpp"
-
 namespace ox {
 void ModuleUtil::load_module(const std::string& name, const std::string& path) {
   const auto lib = App::get_system<ModuleRegistry>()->add_lib(name, path);
@@ -20,7 +18,6 @@ void ModuleUtil::load_module(const std::string& name, const std::string& path) {
   lib->interface->register_components(state, entt::locator<entt::meta_ctx>::handle());
   auto* system_manager = App::get_system<SystemManager>();
   lib->interface->register_cpp_systems(system_manager);
-  OX_LOG_INFO("Successfully loaded module: {}", name);
 }
 
 void ModuleUtil::unload_module(const std::string& module_name) {
@@ -33,4 +30,4 @@ void ModuleUtil::unload_module(const std::string& module_name) {
   auto* system_manager = App::get_system<SystemManager>();
   lib->interface->unregister_cpp_systems(system_manager);
 }
-}
+} // namespace ox

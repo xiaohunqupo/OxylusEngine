@@ -37,7 +37,6 @@
 #include "Utils/CVars.hpp"
 #include "Utils/EmbeddedBanner.hpp"
 #include "Utils/Log.hpp"
-#include "Utils/StringUtils.hpp"
 
 namespace ox {
 EditorLayer* EditorLayer::instance = nullptr;
@@ -94,6 +93,8 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
 void EditorLayer::on_detach() { editor_config.save_config(); }
 
 void EditorLayer::on_update(const Timestep& delta_time) {
+  Project::get_active()->check_module();
+
   for (const auto& panel : viewport_panels) {
     if (panel->fullscreen_viewport) {
       fullscreen_viewport_panel = panel.get();

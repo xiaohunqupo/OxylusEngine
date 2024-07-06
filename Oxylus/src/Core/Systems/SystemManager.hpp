@@ -2,6 +2,7 @@
 #include "Core/Base.hpp"
 #include "Core/ESystem.hpp"
 #include "System.hpp"
+#include "Utils/Log.hpp"
 
 #include <ankerl/unordered_dense.h>
 #include <utility>

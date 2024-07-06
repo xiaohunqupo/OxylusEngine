@@ -2,30 +2,40 @@
 
 #include "ModuleInterface.hpp"
 
+#include "Core/FileSystem.hpp"
 #include "Utils/Log.hpp"
 
 namespace ox {
 void ModuleRegistry::init() {}
 
-void ModuleRegistry::deinit() {
-  clear();
-}
+void ModuleRegistry::deinit() { clear(); }
 
 Module* ModuleRegistry::add_lib(const std::string& name, std::string_view path) {
   try {
-    auto lib = create_unique<dylib>(path);
+    const std::string path_str = std::string(path);
+    const auto file_name = path_str + dylib::filename_components::suffix;
+    const auto new_file_name = std::string(path) + "_copy" + dylib::filename_components::suffix;
+    if (fs::exists(new_file_name)) {
+      remove_lib(name);
+      fs::remove(new_file_name);
+    }
+    fs::copy_file(file_name, new_file_name);
+    copied_file_paths.emplace_back(new_file_name);
+
+    const auto new_path = path_str + "_copy";
+
+    auto lib = create_unique<dylib>(new_path);
 
     const auto create_func = lib->get_function<ModuleInterface*()>("create_module");
     ModuleInterface* interface = create_func();
 
-    auto module = create_unique<Module>(std::move(lib), interface);
+    auto module = create_unique<Module>(std::move(lib), interface, path_str);
     libs.emplace(name, std::move(module));
 
     OX_LOG_INFO("Successfully loaded module: {}", name);
 
     return libs[name].get();
-  }
-  catch (const std::exception& exc) {
+  } catch (const std::exception& exc) {
     OX_LOG_ERROR("{}", exc.what());
     return nullptr;
   }
@@ -34,12 +44,13 @@ Module* ModuleRegistry::add_lib(const std::string& name, std::string_view path) 
 Module* ModuleRegistry::get_lib(const std::string& name) {
   try {
     return libs.at(name).get();
-  }
-  catch ([[maybe_unused]] const std::exception& exc) {
+  } catch ([[maybe_unused]] const std::exception& exc) {
     OX_LOG_ERROR("Module {} doesn't exists or has not been registered.", name);
     return nullptr;
   }
 }
+
+void ModuleRegistry::remove_lib(const std::string& name) { libs.erase(name); }
 
 void ModuleRegistry::clear() {
   for (auto&& [name, module] : libs) {
@@ -47,5 +58,10 @@ void ModuleRegistry::clear() {
     module->lib.reset();
   }
   libs.clear();
+
+  for (auto& p : copied_file_paths) {
+    fs::remove(p);
+  }
+  copied_file_paths.clear();
 }
-}
+} // namespace ox
