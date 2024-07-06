@@ -18,6 +18,7 @@ public:
   virtual void unregister_components(sol::state* state, const entt::locator<entt::meta_ctx>::node_type& ctx) = 0;
 
   virtual void register_cpp_systems(SystemManager* system_manager) = 0;
+  virtual void unregister_cpp_systems(SystemManager* system_manager) = 0;
 };
 
 // use this function return a heap allocated ModuleInterface

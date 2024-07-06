@@ -1,5 +1,6 @@
 ﻿#include "ModuleUtil.hpp"
 
+#include "Core/Systems/SystemManager.hpp"
 #include "ModuleInterface.hpp"
 #include "ModuleRegistry.hpp"
 
@@ -29,5 +30,7 @@ void ModuleUtil::unload_module(const std::string& module_name) {
 
   auto* state = App::get_system<LuaManager>()->get_state();
   lib->interface->unregister_components(state, entt::locator<entt::meta_ctx>::handle());
+  auto* system_manager = App::get_system<SystemManager>();
+  lib->interface->unregister_cpp_systems(system_manager);
 }
 }

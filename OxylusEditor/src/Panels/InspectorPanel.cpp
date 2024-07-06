@@ -249,6 +249,7 @@ void InspectorPanel::draw_components(Entity entity) {
     draw_add_component<MeshColliderComponent>(context->registry, entity, "Mesh Collider");
     draw_add_component<CharacterControllerComponent>(context->registry, entity, "Character Controller");
     draw_add_component<LuaScriptComponent>(context->registry, entity, "Lua Script Component");
+    draw_add_component<CPPScriptComponent>(context->registry, entity, "CPP Script Component");
     draw_add_component<SpriteComponent>(context->registry, entity, "Sprite Component");
     draw_add_component<SpriteAnimationComponent>(context->registry, entity, "Sprite Animation Component");
 

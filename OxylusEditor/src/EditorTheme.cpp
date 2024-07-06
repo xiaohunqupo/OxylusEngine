@@ -15,6 +15,7 @@ void EditorTheme::init() {
   component_icon_map[typeid(TransformComponent).hash_code()] = ICON_MDI_VECTOR_LINE;
   component_icon_map[typeid(MeshComponent).hash_code()] = ICON_MDI_VECTOR_SQUARE;
   component_icon_map[typeid(LuaScriptComponent).hash_code()] = ICON_MDI_LANGUAGE_LUA;
+  component_icon_map[typeid(CPPScriptComponent).hash_code()] = ICON_MDI_LANGUAGE_CPP;
   component_icon_map[typeid(PostProcessProbe).hash_code()] = ICON_MDI_SPRAY;
   component_icon_map[typeid(AudioListenerComponent).hash_code()] = ICON_MDI_CIRCLE_SLICE_8;
   component_icon_map[typeid(RigidbodyComponent).hash_code()] = ICON_MDI_SOCCER;
