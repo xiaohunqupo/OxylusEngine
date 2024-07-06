@@ -8,6 +8,7 @@
 
 #include <Assets/AssetManager.hpp>
 
+#include "Core/Systems/SystemManager.hpp"
 #include "Scene/Components.hpp"
 #include "Utils/ColorUtils.hpp"
 
@@ -779,6 +780,30 @@ void InspectorPanel::draw_components(Entity entity) {
       }
       ImGui::EndDragDropTarget();
     }
+  });
+
+  draw_component<CPPScriptComponent>(" CPP Script Component", context->registry, entity, [](CPPScriptComponent& component, entt::entity e) {
+    std::vector<const char*> system_names = {};
+    system_names.emplace_back("Empty");
+
+    std::vector<size_t> system_hashes = {};
+    system_hashes.emplace_back(0);
+
+    int current_system_selection = 0;
+
+    auto* system_manager = App::get_system<SystemManager>();
+    for (auto& [hash, pair] : system_manager->system_registry) {
+      auto& [name, system] = pair;
+      system_names.emplace_back(name);
+      system_hashes.emplace_back(hash);
+    }
+
+    ui::begin_properties();
+    if (ui::property("Imported systems", &current_system_selection, system_names.data(), system_names.size())) {
+      if (auto system = system_manager->get_system(system_hashes[current_system_selection]))
+        component.system = system;
+    }
+    ui::end_properties();
   });
 
   draw_component<ParticleSystemComponent>("Particle System Component",

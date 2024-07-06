@@ -17,6 +17,7 @@
 
 #include "Scripting/LuaManager.hpp"
 
+#include "Systems/SystemManager.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Thread/ThreadManager.hpp"
 
@@ -59,6 +60,7 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   register_system<LuaManager>();
   register_system<ModuleRegistry>();
   register_system<RendererConfig>();
+  register_system<SystemManager>();
 
   Window::init_window(app_spec);
   Window::set_dispatcher(&dispatcher);

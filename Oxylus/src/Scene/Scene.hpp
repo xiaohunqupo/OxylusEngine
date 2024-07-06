@@ -37,12 +37,6 @@ public:
 
   Entity load_mesh(const Shared<Mesh>& mesh);
 
-  template <typename T, typename... Args>
-  Scene* add_system(Args&&... args) {
-    systems.emplace_back(create_unique<T>(std::forward<Args>(args)...));
-    return this;
-  }
-
   void destroy_entity(Entity entity);
   void duplicate_children(Entity entity);
   Entity duplicate_entity(Entity entity);
@@ -83,9 +77,6 @@ private:
 
   // Renderer
   Shared<SceneRenderer> scene_renderer;
-
-  // Systems
-  std::vector<Unique<System>> systems;
 
   // Physics
   Physics3DContactListener* contact_listener_3d = nullptr;

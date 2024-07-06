@@ -127,7 +127,7 @@ public:
   }
 
   template <typename T>
-  static T* has_system() {
+  static bool has_system() {
     const auto typeName = typeid(T).hash_code();
     return instance->system_registry.contains(typeName);
   }

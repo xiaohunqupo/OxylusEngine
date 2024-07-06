@@ -17,6 +17,8 @@ void ModuleUtil::load_module(const std::string& name, const std::string& path) {
 
   auto* state = App::get_system<LuaManager>()->get_state();
   lib->interface->register_components(state, entt::locator<entt::meta_ctx>::handle());
+  auto* system_manager = App::get_system<SystemManager>();
+  lib->interface->register_cpp_systems(system_manager);
   OX_LOG_INFO("Successfully loaded module: {}", name);
 }
 

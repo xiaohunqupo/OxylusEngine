@@ -1,7 +1,9 @@
 #pragma once
 
-#include "Utils/Timestep.hpp"
+#include <Scene/Entity.hpp>
 #include "Event/Event.hpp"
+#include "Utils/Timestep.hpp"
+#include "entt/entity/fwd.hpp"
 
 #include <string>
 
@@ -9,53 +11,55 @@ namespace JPH {
 class ContactSettings;
 class ContactManifold;
 class Body;
-}
+} // namespace JPH
 
 namespace ox {
-class Scene;
-
 class System {
 public:
-  std::string name;
-
   System() = default;
-  System(std::string name) : name(std::move(name)) { }
   virtual ~System() = default;
 
-  /// Scene systems: Called right after when the scene gets initalized.
-  virtual void on_init() { }
+  /// Called right after when the scene gets initalized.
+  virtual void on_init(Scene* scene, entt::entity e) {}
 
   /// Called when the system is destroyed.
-  virtual void on_release(Scene* scene) { }
-
-  /// Called at the end of the core update loop.
-  virtual void on_update() { }
+  virtual void on_release(Scene* scene, entt::entity e) {}
 
   /// Called after physic system is updated.
-  virtual void on_update(Scene* scene, const Timestep& delta_time) { }
+  virtual void on_update(const Timestep& delta_time) {}
 
   /// Called every fixed frame-rate frame with the frequency of the physics system
-  virtual void on_fixed_update(Scene* scene, float delta_time) { }
-
-  /// Called before physics system is updated.
-  virtual void pre_on_update(Scene* scene, const Timestep& delta_time) { }
+  virtual void on_fixed_update(float delta_time) {}
 
   /// Called in the main imgui loop which is right after `App::on_update`
-  virtual void on_imgui_render() { }
-
-  /// Called in the main imgui loop which is right after `App::on_update`
-  virtual void on_imgui_render(Scene* scene, const Timestep& delta_time) { }
+  virtual void on_imgui_render(const Timestep& delta_time) {}
 
   /// Called right after main loop is finished before the core shutdown process.
-  virtual void on_shutdown() { }
+  virtual void on_shutdown() {}
 
   /// Physics interfaces
-  virtual void on_contact_added(Scene* scene, const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings) { }
-  virtual void on_contact_persisted(Scene* scene, const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings) { }
+  virtual void on_contact_added(Scene* scene,
+                                entt::entity e,
+                                const JPH::Body& body1,
+                                const JPH::Body& body2,
+                                const JPH::ContactManifold& manifold,
+                                const JPH::ContactSettings& settings) {}
+  virtual void on_contact_persisted(Scene* scene,
+                                    entt::entity e,
+                                    const JPH::Body& body1,
+                                    const JPH::Body& body2,
+                                    const JPH::ContactManifold& manifold,
+                                    const JPH::ContactSettings& settings) {}
 
-  void set_dispatcher(EventDispatcher* dispatcher) { m_dispatcher = dispatcher; }
+  void bind_globals(Scene* s, entt::entity e, EventDispatcher* d) {
+    scene = s;
+    entity = e;
+    dispatcher = d;
+  }
 
 protected:
-  EventDispatcher* m_dispatcher = nullptr;
+  Scene* scene = nullptr;
+  entt::entity entity = entt::null;
+  EventDispatcher* dispatcher = nullptr;
 };
-}
+} // namespace ox

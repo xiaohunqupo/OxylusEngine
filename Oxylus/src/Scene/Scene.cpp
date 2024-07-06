@@ -3,6 +3,7 @@
 #include "Entity.hpp"
 #include "Jolt/Physics/Body/AllowedDOFs.h"
 #include "Render/Camera.hpp"
+#include "Scene/Components.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/Timestep.hpp"
 
@@ -94,11 +95,6 @@ void Scene::init(const Shared<RenderPipeline>& render_pipeline) {
 
   scene_renderer->set_render_pipeline(render_pipeline);
   scene_renderer->init(dispatcher);
-
-  // Systems
-  for (const auto& system : systems) {
-    system->on_init();
-  }
 }
 
 Entity Scene::create_entity(const std::string& name) { return create_entity_with_uuid(UUID(), name); }
@@ -158,10 +154,15 @@ void Scene::update_physics(const Timestep& delta_time) {
     Physics::step(physics_ts);
 
     {
-      OX_SCOPED_ZONE_N("OnFixedUpdate Systems");
-      for (const auto& system : systems) {
-        system->on_fixed_update(this, physics_ts);
+      {
+        OX_SCOPED_ZONE_N("CPPScripting/on_fixed_update");
+        const auto script_view = registry.view<CPPScriptComponent>();
+        for (auto&& [e, script_component] : script_view.each()) {
+          script_component.system->on_fixed_update(physics_ts);
+        }
       }
+
+      // TODO: Lua on_fixed_update
     }
 
     physics_frame_accumulator -= physics_ts;
@@ -358,12 +359,23 @@ void Scene::on_runtime_start() {
     physics_system->OptimizeBroadPhase();
   }
 
-  // Lua scripts
-  const auto script_view = registry.view<LuaScriptComponent>();
-  for (auto&& [e, script_component] : script_view.each()) {
-    for (const auto& script : script_component.lua_systems) {
-      script->reload();
-      script->on_init(this, e);
+  // Scripting
+  {
+    OX_SCOPED_ZONE_N("LuaScripting/on_init");
+    const auto script_view = registry.view<LuaScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      for (const auto& script : script_component.lua_systems) {
+        script->reload();
+        script->on_init(this, e);
+      }
+    }
+  }
+
+  {
+    OX_SCOPED_ZONE_N("CPPScripting/on_init");
+    const auto script_view = registry.view<CPPScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      script_component.system->on_init(this, e);
     }
   }
 }
@@ -398,11 +410,20 @@ void Scene::on_runtime_stop() {
     contact_listener_3d = nullptr;
   }
 
-  // Lua scripts
-  const auto script_view = registry.view<LuaScriptComponent>();
-  for (auto&& [e, script_component] : script_view.each()) {
-    for (const auto& script : script_component.lua_systems) {
-      script->on_release(this, e);
+  // Scripting
+  {
+    const auto script_view = registry.view<CPPScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      script_component.system->on_release(this, e);
+    }
+  }
+
+  {
+    const auto script_view = registry.view<LuaScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      for (const auto& script : script_component.lua_systems) {
+        script->on_release(this, e);
+      }
     }
   }
 }
@@ -468,8 +489,16 @@ void Scene::on_contact_added(const JPH::Body& body1,
                              const JPH::ContactManifold& manifold,
                              const JPH::ContactSettings& settings) {
   OX_SCOPED_ZONE;
-  for (const auto& system : systems)
-    system->on_contact_added(this, body1, body2, manifold, settings);
+
+  {
+    OX_SCOPED_ZONE_N("CPPScripting/on_contact_added");
+    const auto script_view = registry.view<CPPScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      script_component.system->on_contact_added(this, e, body1, body2, manifold, settings);
+    }
+  }
+
+  // TODO: Lua callbacks
 }
 
 void Scene::on_contact_persisted(const JPH::Body& body1,
@@ -477,8 +506,16 @@ void Scene::on_contact_persisted(const JPH::Body& body1,
                                  const JPH::ContactManifold& manifold,
                                  const JPH::ContactSettings& settings) {
   OX_SCOPED_ZONE;
-  for (const auto& system : systems)
-    system->on_contact_persisted(this, body1, body2, manifold, settings);
+
+  {
+    OX_SCOPED_ZONE_N("CPPScripting/on_contact_persisted");
+    const auto script_view = registry.view<CPPScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      script_component.system->on_contact_persisted(this, e, body1, body2, manifold, settings);
+    }
+  }
+
+  // TODO: Lua callbacks
 }
 
 void Scene::create_rigidbody(entt::entity entity, const TransformComponent& transform, RigidbodyComponent& component) {
@@ -689,21 +726,18 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
 
   scene_renderer->update(delta_time);
 
-  {
-    OX_SCOPED_ZONE_N("PostOnUpdate Systems");
-    for (const auto& system : systems) {
-      system->pre_on_update(this, delta_time);
-    }
-  }
   update_physics(delta_time);
+
+  // Scripting
   {
-    OX_SCOPED_ZONE_N("OnUpdate Systems");
-    for (const auto& system : systems) {
-      system->on_update(this, delta_time);
+    OX_SCOPED_ZONE_N("CPPScripting/on_update");
+    const auto script_view = registry.view<CPPScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      script_component.system->bind_globals(this, e, &dispatcher);
+      script_component.system->on_update(delta_time);
     }
   }
 
-  // Scripting
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_update");
     const auto script_view = registry.view<LuaScriptComponent>();
@@ -748,8 +782,14 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
 
 void Scene::on_imgui_render(const Timestep& delta_time) {
   OX_SCOPED_ZONE;
-  for (const auto& system : systems)
-    system->on_imgui_render(this, delta_time);
+
+  {
+    OX_SCOPED_ZONE_N("CPPScripting/on_imgui_render");
+    const auto script_view = registry.view<CPPScriptComponent>();
+    for (auto&& [e, script_component] : script_view.each()) {
+      script_component.system->on_imgui_render(delta_time);
+    }
+  }
 
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_imgui_render");
