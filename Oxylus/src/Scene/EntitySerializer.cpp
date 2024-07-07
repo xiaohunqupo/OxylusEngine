@@ -3,7 +3,9 @@
 #include <filesystem>
 #include <fstream>
 
+#include "Core/Systems/SystemManager.hpp"
 #include "Scene.hpp"
+#include "Scene/Components.hpp"
 #include "SceneRenderer.hpp"
 
 #include "Assets/AssetManager.hpp"
@@ -27,10 +29,8 @@ namespace ox {
 #define GET_BOOL2(node, name) node->as_table()->get(name)->as_boolean()->get()
 #define GET_ARRAY(node, name) node->as_table()->get(name)->as_array()
 
-#define TBL_FIELD(c, field) \
-  { #field, c.field }
-#define TBL_FIELD_ARR(c, field) \
-  { #field, get_toml_array(c.field) }
+#define TBL_FIELD(c, field) {#field, c.field}
+#define TBL_FIELD_ARR(c, field) {#field, get_toml_array(c.field)}
 
 void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Entity entity) {
   entities->push_back(toml::table{{"uuid", std::to_string((uint64_t)eutil::get_uuid(scene->registry, entity))}});
@@ -263,6 +263,15 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
 
     entities->push_back(toml::table{{"lua_script_component", table}});
   }
+
+  if (scene->registry.all_of<CPPScriptComponent>(entity)) {
+    const auto& component = scene->registry.get<CPPScriptComponent>(entity);
+    const auto& system = component.system;
+    if (system) {
+      const auto table = toml::table{{"system_hash", std::to_string(component.system->hash_code)}};
+      entities->push_back(toml::table{{"cpp_script_component", table}});
+    }
+  }
 }
 
 void EntitySerializer::serialize_entity_binary(Archive& archive, Scene* scene, Entity entity) {
@@ -415,6 +424,11 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
         auto ab = App::get_absolute(path.as_string()->get());
         lsc.lua_systems.emplace_back(create_shared<LuaSystem>(ab));
       }
+    } else if (const auto cpp_node = ent.as_table()->get("cpp_script_component")) {
+      auto& csc = reg.emplace<CPPScriptComponent>(deserialized_entity);
+      auto system_hash = std::stoull(GET_STRING2(cpp_node, "system_hash"));
+      auto* system_manager = App::get_system<SystemManager>();
+      csc.system = system_manager->get_system(system_hash);
     }
   }
   return eutil::get_uuid(reg, deserialized_entity);

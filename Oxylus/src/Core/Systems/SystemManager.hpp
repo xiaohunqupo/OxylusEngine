@@ -22,6 +22,7 @@ public:
       system_registry.erase(hash_code);
 
     Shared<T> system = create_shared<T>(std::forward<Args>(args)...);
+    system->hash_code = hash_code;
     system_registry.emplace(hash_code, std::make_pair(typeid(T).name(), std::move(system)));
   }
 

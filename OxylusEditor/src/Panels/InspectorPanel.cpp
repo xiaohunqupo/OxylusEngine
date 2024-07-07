@@ -808,7 +808,7 @@ void InspectorPanel::draw_components(Entity entity) {
     }
 
     ui::begin_properties();
-    if (ui::property("Imported systems", &current_system_selection, system_names.data(), system_names.size())) {
+    if (ui::property("Imported systems", &current_system_selection, system_names.data(), system_names.size(), std::to_string(system_hashes[current_system_selection]).c_str())) {
       if (auto system = system_manager->get_system(system_hashes[current_system_selection]))
         component.system = system;
       else

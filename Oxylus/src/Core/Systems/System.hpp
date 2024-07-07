@@ -5,8 +5,6 @@
 #include "Utils/Timestep.hpp"
 #include "entt/entity/fwd.hpp"
 
-#include <string>
-
 namespace JPH {
 class ContactSettings;
 class ContactManifold;
@@ -16,6 +14,8 @@ class Body;
 namespace ox {
 class System {
 public:
+  std::size_t hash_code = {}; // set in SystemManager::register_system
+
   System() = default;
   virtual ~System() = default;
 
