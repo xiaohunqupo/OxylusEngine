@@ -44,6 +44,7 @@ void Project::check_module() {
   if (auto* module = module_registry->get_lib(project_config.module_name)) {
     const auto& module_path = module->path + dylib::filename_components::suffix;
     if (std::filesystem::last_write_time(module_path).time_since_epoch().count() != last_module_write_time.time_since_epoch().count()) {
+      ModuleUtil::unload_module(project_config.module_name);
       ModuleUtil::load_module(project_config.module_name, module->path);
       last_module_write_time = std::filesystem::last_write_time(module_path);
       OX_LOG_INFO("Reloaded {} module.", project_config.module_name);

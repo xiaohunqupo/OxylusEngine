@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <fstream>
 
+#include "Core/Base.hpp"
 #include "Core/Systems/SystemManager.hpp"
 #include "Scene.hpp"
 #include "Scene/Components.hpp"
@@ -17,6 +18,7 @@
 #include "Utils/Archive.hpp"
 
 #include "Utils/Log.hpp"
+#include "Utils/Toml.hpp"
 
 namespace ox {
 #define GET_STRING(node, component, name) component.name = node->as_table()->get(#name)->as_string()->get()
@@ -272,6 +274,31 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
       entities->push_back(toml::table{{"cpp_script_component", table}});
     }
   }
+
+  if (scene->registry.all_of<SpriteComponent>(entity)) {
+    const auto& component = scene->registry.get<SpriteComponent>(entity);
+    const auto table = toml::table{
+      TBL_FIELD(component, layer),
+      {"color", get_toml_array(component.material->parameters.color)},
+      {"uv_size", get_toml_array(component.material->parameters.uv_size)},
+      {"uv_offset", get_toml_array(component.material->parameters.uv_offset)},
+      {"texture_path", component.material->get_albedo_texture() ? component.material->get_albedo_texture()->get_path() : ""},
+    };
+    entities->push_back(toml::table{{"sprite_component", table}});
+  }
+
+  if (scene->registry.all_of<SpriteAnimationComponent>(entity)) {
+    const auto& component = scene->registry.get<SpriteAnimationComponent>(entity);
+    const auto table = toml::table{
+      TBL_FIELD(component, num_frames),
+      TBL_FIELD(component, loop),
+      TBL_FIELD(component, inverted),
+      TBL_FIELD(component, fps),
+      TBL_FIELD(component, columns),
+      {"frame_size", get_toml_array(component.frame_size)},
+    };
+    entities->push_back(toml::table{{"sprite_animation_component", table}});
+  }
 }
 
 void EntitySerializer::serialize_entity_binary(Archive& archive, Scene* scene, Entity entity) {
@@ -429,6 +456,25 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       auto system_hash = std::stoull(GET_STRING2(cpp_node, "system_hash"));
       auto* system_manager = App::get_system<SystemManager>();
       csc.system = system_manager->get_system(system_hash);
+    } else if (const auto sprite_node = ent.as_table()->get("sprite_component")) {
+      auto& sc = reg.emplace<SpriteComponent>(deserialized_entity);
+      GET_UINT32(sprite_node, sc, layer);
+      sc.material = create_shared<SpriteMaterial>();
+      sc.material->parameters.color = get_vec4_toml_array(GET_ARRAY(sprite_node, "color"));
+      sc.material->parameters.uv_offset = get_vec2_toml_array(GET_ARRAY(sprite_node, "uv_offset"));
+      sc.material->parameters.uv_size = get_vec2_toml_array(GET_ARRAY(sprite_node, "uv_size"));
+
+      const auto path = GET_STRING2(sprite_node, "texture_path");
+      if (!path.empty())
+        sc.material->set_albedo_texture(AssetManager::get_texture_asset({.path = path}));
+    } else if (const auto sprite_anim_node = ent.as_table()->get("sprite_animation_component")) {
+      auto& sac = reg.emplace<SpriteAnimationComponent>(deserialized_entity);
+      GET_UINT32(sprite_anim_node, sac, num_frames);
+      GET_BOOL(sprite_anim_node, sac, loop);
+      GET_BOOL(sprite_anim_node, sac, inverted);
+      GET_UINT32(sprite_anim_node, sac, fps);
+      GET_UINT32(sprite_anim_node, sac, columns);
+      sac.frame_size = get_vec2_toml_array(GET_ARRAY(sprite_anim_node, "frame_size"));
     }
   }
   return eutil::get_uuid(reg, deserialized_entity);
