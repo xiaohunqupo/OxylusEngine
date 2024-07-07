@@ -252,7 +252,7 @@ set_target_properties(nfd PROPERTIES FOLDER "Vendor")
 CPMAddPackage(
     NAME GLFW
     GITHUB_REPOSITORY glfw/glfw
-    GIT_TAG 3.3.8
+    GIT_TAG 3.4
     GIT_SHALLOW ON
     OPTIONS
     "GLFW_BUILD_TESTS OFF"
