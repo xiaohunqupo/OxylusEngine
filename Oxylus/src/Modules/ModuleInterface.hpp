@@ -7,12 +7,15 @@
 
 #include <entt/locator/locator.hpp>
 #include <entt/meta/context.hpp>
+#include <imgui_internal.h>
 #include <sol/state.hpp>
 
 namespace ox {
 class OX_SHARED ModuleInterface {
 public:
   virtual ~ModuleInterface() = default;
+
+  virtual void init(ImGuiContext* imgui_context) = 0;
 
   virtual void register_components(sol::state* state, const entt::locator<entt::meta_ctx>::node_type& ctx) = 0;
   virtual void unregister_components(sol::state* state, const entt::locator<entt::meta_ctx>::node_type& ctx) = 0;
