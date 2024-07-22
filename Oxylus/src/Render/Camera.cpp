@@ -1,13 +1,13 @@
 #include "Camera.hpp"
 
-#include "Utils/OxMath.hpp"
 #include "Utils/Profiler.hpp"
 
 #include "Renderer.hpp"
 
 namespace ox {
 Camera::Camera(Vec3 position) {
-  m_position = position;
+  _position = position;
+  _yaw = glm::radians(-90.f);
   update();
 }
 
@@ -30,41 +30,46 @@ void Camera::update(const Vec3& pos, const Vec3& rotation) {
 
 void Camera::update_view_matrix() {
   OX_SCOPED_ZONE;
-  const float cos_yaw = glm::cos(m_yaw);
-  const float sin_yaw = glm::sin(m_yaw);
-  const float cos_pitch = glm::cos(m_pitch);
-  const float sin_pitch = glm::sin(m_pitch);
+  const float cos_yaw = glm::cos(_yaw);
+  const float sin_yaw = glm::sin(_yaw);
+  const float cos_pitch = glm::cos(_pitch);
+  const float sin_pitch = glm::sin(_pitch);
 
-  m_forward.x = cos_yaw * cos_pitch;
-  m_forward.y = sin_pitch;
-  m_forward.z = sin_yaw * cos_pitch;
+  _forward.x = cos_yaw * cos_pitch;
+  _forward.y = sin_pitch;
+  _forward.z = sin_yaw * cos_pitch;
 
-  m_forward = glm::normalize(m_forward);
-  m_right = glm::normalize(glm::cross(m_forward, {m_tilt, 1, m_tilt}));
-  m_up = glm::normalize(glm::cross(m_right, m_forward));
+  _forward = glm::normalize(_forward);
+  _right = glm::normalize(glm::cross(_forward, {_tilt, 1, _tilt}));
+  _up = glm::normalize(glm::cross(_right, _forward));
 
-  matrices.view_matrix = glm::lookAt(m_position, m_position + m_forward, m_up);
+  matrices.view_matrix = glm::lookAt(_position, _position + _forward, _up);
 
-  m_aspect = (float)Renderer::get_viewport_width() / (float)Renderer::get_viewport_height();
+  _aspect = (float)Renderer::get_viewport_width() / (float)Renderer::get_viewport_height();
 }
 
 void Camera::update_projection_matrix() {
-  matrices.projection_matrix = glm::perspective(glm::radians(m_fov), m_aspect, far_clip, near_clip); // reversed-z
+  if (_projection == Projection::Perspective) {
+    matrices.projection_matrix = glm::perspective(glm::radians(_fov), _aspect, far_clip, near_clip); // reversed-z
+  } else {
+    matrices.projection_matrix = glm::ortho(-_aspect * _zoom, _aspect * _zoom, -_zoom, _zoom, 100.0f,
+                                            -100.0f);                                                // reversed-z
+  }
   matrices.projection_matrix[1][1] *= -1.0f;
 }
 
 Frustum Camera::get_frustum() {
-  const float half_v_side = get_far() * tanf(glm::radians(m_fov) * .5f);
+  const float half_v_side = get_far() * tanf(glm::radians(_fov) * .5f);
   const float half_h_side = half_v_side * get_aspect();
-  const Vec3 forward_far = get_far() * m_forward;
+  const Vec3 forward_far = get_far() * _forward;
 
   Frustum frustum = {
-    .top_face = {m_position, cross(m_right, forward_far - m_up * half_v_side)},
-    .bottom_face = {m_position, cross(forward_far + m_up * half_v_side, m_right)},
-    .right_face = {m_position, cross(forward_far - m_right * half_h_side, m_up)},
-    .left_face = {m_position, cross(m_up, forward_far + m_right * half_h_side)},
-    .far_face = {m_position + forward_far, -m_forward},
-    .near_face = {m_position + get_near() * m_forward, m_forward},
+    .top_face = {_position, cross(_right, forward_far - _up * half_v_side)},
+    .bottom_face = {_position, cross(forward_far + _up * half_v_side, _right)},
+    .right_face = {_position, cross(forward_far - _right * half_h_side, _up)},
+    .left_face = {_position, cross(_up, forward_far + _right * half_h_side)},
+    .far_face = {_position + forward_far, -_forward},
+    .near_face = {_position + get_near() * _forward, _forward},
   };
 
   frustum.init();

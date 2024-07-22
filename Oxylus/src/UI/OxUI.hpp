@@ -9,6 +9,7 @@
 #include <vuk/Value.hpp>
 
 #include "Core/Base.hpp"
+#include "Core/Types.hpp"
 
 namespace vuk {
 struct SampledImage;
@@ -35,7 +36,7 @@ public:
   static void push_frame_style(bool on = true);
   static void pop_frame_style();
 
-  static bool button(const char* label, const ImVec2& size = ImVec2(0, 0));
+  static bool button(const char* label, const ImVec2& size = ImVec2(0, 0), const char* tooltip = nullptr);
 
   static bool checkbox(const char* label, bool* v);
 
@@ -141,10 +142,10 @@ public:
   }
 
   // should be called after the item
-  static void tooltip(const char* text);
+  static void tooltip_hover(const char* text);
 
   // Texture
-  static bool property(const char* label, Shared<Texture>& texture, const char* tooltip = nullptr);
+  static bool property(const char* label, Shared<Texture>& texture, const char* tooltip = nullptr, bool linear_sampling = true);
 
   static void image(const vuk::Value<vuk::ImageAttachment>& attch,
                     ImVec2 size,
@@ -221,5 +222,7 @@ public:
   static void center_next_window();
 
   static void draw_framerate_overlay(ImVec2 work_pos = {}, ImVec2 work_size = {}, ImVec2 padding = {}, bool* visible = nullptr);
+
+  static ImVec2 to_imvec2(float2 v) { return ImVec2(v.x, v.y); }
 }; // namespace ui
 } // namespace ox

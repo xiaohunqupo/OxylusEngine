@@ -31,7 +31,7 @@ void RendererSettingsPanel::on_imgui_render() {
     ImGui::Text("FPS: %lf / (ms): %lf", static_cast<double>(avg), fps);
     ImGui::Text("GPU: %s", VkContext::get()->device_name.c_str());
     ImGui::Text("Internal Render Size: [ %u, %u ]", Renderer::get_viewport_width(), Renderer::get_viewport_height());
-    ui::tooltip("Current viewport resolution");
+    ui::tooltip_hover("Current viewport resolution");
 
     ImGui::Separator();
     if (ui::icon_button(ICON_MDI_RELOAD, "Reload render pipeline"))
@@ -46,8 +46,8 @@ void RendererSettingsPanel::on_imgui_render() {
 
     ImGui::SeparatorText("Environment");
     if (ui::begin_properties(ui::default_properties_flags, true, 0.3f)) {
-      const char* tonemaps[4] = {"ACES", "Uncharted2", "Filmic", "Reinhard"};
-      ui::property("Tonemapper", RendererCVar::cvar_tonemapper.get_ptr(), tonemaps, 4);
+      const char* tonemaps[5] = {"Disabled", "ACES", "Uncharted2", "Filmic", "Reinhard"};
+      ui::property("Tonemapper", RendererCVar::cvar_tonemapper.get_ptr(), tonemaps, 5);
       ui::property<float>("Exposure", RendererCVar::cvar_exposure.get_ptr(), 0, 5, "%.2f");
       ui::property<float>("Gamma", RendererCVar::cvar_gamma.get_ptr(), 0, 5, "%.2f");
       ui::end_properties();

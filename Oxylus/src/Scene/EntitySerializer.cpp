@@ -129,6 +129,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
       {"fov", camera.camera.get_fov()},
       {"near", camera.camera.get_near()},
       {"far", camera.camera.get_far()},
+      {"zoom", camera.camera.get_zoom()},
     };
 
     entities->push_back(toml::table{{"camera_component", table}});
@@ -299,6 +300,14 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
     };
     entities->push_back(toml::table{{"sprite_animation_component", table}});
   }
+
+  if (scene->registry.all_of<TilemapComponent>(entity)) {
+    const auto& component = scene->registry.get<TilemapComponent>(entity);
+    const auto table = toml::table{
+      TBL_FIELD(component, path),
+    };
+    entities->push_back(toml::table{{"tilemap_component", table}});
+  }
 }
 
 void EntitySerializer::serialize_entity_binary(Archive& archive, Scene* scene, Entity entity) {
@@ -377,6 +386,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       cc.camera.set_fov(GET_FLOAT2(camera_node, "fov"));
       cc.camera.set_near(GET_FLOAT2(camera_node, "near"));
       cc.camera.set_far(GET_FLOAT2(camera_node, "far"));
+      cc.camera.set_zoom(GET_FLOAT2(camera_node, "zoom"));
     } else if (const auto rb_node = ent.as_table()->get("rigidbody_component")) {
       auto& rb = reg.emplace<RigidbodyComponent>(deserialized_entity);
       rb.allowed_dofs = (RigidbodyComponent::AllowedDOFs)GET_UINT322(rb_node, "allowed_dofs");
@@ -475,6 +485,10 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       GET_UINT32(sprite_anim_node, sac, fps);
       GET_UINT32(sprite_anim_node, sac, columns);
       sac.frame_size = get_vec2_toml_array(GET_ARRAY(sprite_anim_node, "frame_size"));
+    } else if (const auto tilemap_node = ent.as_table()->get("tilemap_component")) {
+      auto& tmc = reg.emplace<TilemapComponent>(deserialized_entity);
+      const auto path = GET_STRING2(tilemap_node, "path");
+      tmc.load(path);
     }
   }
   return eutil::get_uuid(reg, deserialized_entity);

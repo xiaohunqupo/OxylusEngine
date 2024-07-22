@@ -24,7 +24,7 @@ void ProjectPanel::load_project_for_editor(const std::string& filepath) {
     EditorLayer::get()->open_scene(startScene);
     EditorConfig::get()->add_recent_project(Project::get_active().get());
     EditorLayer::get()->get_panel<ContentPanel>()->invalidate();
-    Visible = false;
+    visible = false;
   }
 }
 
@@ -36,7 +36,7 @@ void ProjectPanel::new_project(const std::string& project_dir, const std::string
 }
 
 void ProjectPanel::on_imgui_render() {
-  if (Visible && !ImGui::IsPopupOpen("ProjectSelector"))
+  if (visible && !ImGui::IsPopupOpen("ProjectSelector"))
     ImGui::OpenPopup("ProjectSelector");
   constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration |
                          ImGuiWindowFlags_NoDocking;
@@ -79,7 +79,7 @@ void ProjectPanel::on_imgui_render() {
       ImGui::SetNextItemWidth(-1);
       if (ImGui::Button("Create", ImVec2(120, 0))) {
         new_project(project_dir, project_name, project_asset_dir);
-        Visible = false;
+        visible = false;
         ImGui::CloseCurrentPopup();
       }
       ImGui::SetItemDefaultFocus();
@@ -109,7 +109,7 @@ void ProjectPanel::on_imgui_render() {
       }
       ui::align_right(ImVec2(120, 0).x);
       if (ImGui::Button("Skip", ImVec2(120, 0))) {
-        Visible = false;
+        visible = false;
         ImGui::CloseCurrentPopup();
       }
     }

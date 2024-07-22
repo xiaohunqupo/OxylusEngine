@@ -71,11 +71,7 @@ void ui::begin_property_grid(const char* label, const char* tooltip, const bool 
   ImGui::AlignTextToFramePadding();
   ImGui::TextUnformatted(label);
 
-  if (tooltip && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
-    ImGui::BeginTooltip();
-    ImGui::TextUnformatted(tooltip);
-    ImGui::EndTooltip();
-  }
+  tooltip_hover(tooltip);
 
   ImGui::TableNextColumn();
   ImGui::SetNextItemWidth(-1.0f);
@@ -97,9 +93,10 @@ void ui::end_property_grid() {
 void ui::push_frame_style(bool on) { ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, on ? 1.f : 0.f); }
 void ui::pop_frame_style() { ImGui::PopStyleVar(); }
 
-bool ui::button(const char* label, const ImVec2& size) {
+bool ui::button(const char* label, const ImVec2& size, const char* tooltip) {
   push_frame_style();
   bool changed = ImGui::Button(label, size);
+  tooltip_hover(tooltip);
   pop_frame_style();
   return changed;
 }
@@ -164,19 +161,15 @@ bool ui::property(const char* label, int* value, const char** dropdown_strings, 
   return modified;
 }
 
-void ui::tooltip(const char* text) {
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2(2, 5));
-
-  if (ImGui::IsItemHovered()) {
+void ui::tooltip_hover(const char* text) {
+  if (text && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
     ImGui::BeginTooltip();
     ImGui::TextUnformatted(text);
     ImGui::EndTooltip();
   }
-
-  ImGui::PopStyleVar();
 }
 
-bool ui::property(const char* label, Shared<Texture>& texture, const char* tooltip) {
+bool ui::property(const char* label, Shared<Texture>& texture, const char* tooltip, bool linear_sampling) {
   begin_property_grid(label, tooltip);
   bool changed = false;
 
@@ -200,14 +193,14 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
   };
 
   if (texture) {
-    if (ImGui::ImageButton(App::get()->get_imgui_layer()->add_image(*texture->get_view()), {button_size, button_size}, {1, 1}, {0, 0}, 0)) {
+    if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(*texture->get_view(), linear_sampling), {button_size, button_size})) {
       texture_load_func(texture, changed);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
       ImGui::BeginTooltip();
       ImGui::TextUnformatted(texture->get_path().c_str());
       ImGui::Spacing();
-      ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture->get_view()), {tooltip_size, tooltip_size}, {1, 1}, {0, 0});
+      ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture->get_view(), linear_sampling), {tooltip_size, tooltip_size});
       ImGui::EndTooltip();
     }
   } else {

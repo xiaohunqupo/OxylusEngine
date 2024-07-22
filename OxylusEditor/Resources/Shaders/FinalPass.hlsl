@@ -45,11 +45,14 @@ float4 main(VSInput input) : SV_TARGET {
   float3 final_color = final_image.rgb * get_scene().post_processing_data.exposure;
 
   // Tonemapping
-  final_color = tonemap_aces(final_color);
+  if (get_scene().post_processing_data.tonemapper > 0)
+    final_color = tonemap_aces(final_color);
 
   // Vignette
   if (get_scene().post_processing_data.vignette_offset.w > 0.0) {
-    final_color *= vignette(get_scene().post_processing_data.vignette_offset.unpack(), get_scene().post_processing_data.vignette_color.unpack(), input.uv);
+    final_color *= vignette(get_scene().post_processing_data.vignette_offset.unpack(),
+                            get_scene().post_processing_data.vignette_color.unpack(),
+                            input.uv);
   }
 
   // Gamma correction

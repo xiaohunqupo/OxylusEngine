@@ -2,8 +2,8 @@
 
 #include "Assets/PBRMaterial.hpp"
 #include "Assets/SpriteMaterial.hpp"
-#include "Scene/Entity.hpp"
 #include "EditorPanel.hpp"
+#include "Scene/Entity.hpp"
 
 namespace ox {
 class InspectorPanel : public EditorPanel {
@@ -25,4 +25,4 @@ private:
   Scene* context;
   bool debug_mode = false;
 };
-}
+} // namespace ox

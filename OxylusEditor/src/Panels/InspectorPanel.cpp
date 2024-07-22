@@ -6,7 +6,8 @@
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include <Assets/AssetManager.hpp>
+#include "Assets/AssetManager.hpp"
+#include "Assets/TilemapSerializer.hpp"
 
 #include "Core/Systems/SystemManager.hpp"
 #include "Scene/Components.hpp"
@@ -252,6 +253,7 @@ void InspectorPanel::draw_components(Entity entity) {
     draw_add_component<CPPScriptComponent>(context->registry, entity, "CPP Script Component");
     draw_add_component<SpriteComponent>(context->registry, entity, "Sprite Component");
     draw_add_component<SpriteAnimationComponent>(context->registry, entity, "Sprite Animation Component");
+    draw_add_component<TilemapComponent>(context->registry, entity, "Tilemap Component");
 
     ImGui::EndPopup();
   }
@@ -365,6 +367,24 @@ void InspectorPanel::draw_components(Entity entity) {
       if (auto* sc = context->registry.try_get<SpriteComponent>(e))
         component.set_frame_size(sc->material->get_albedo_texture().get());
     }
+    ui::end_properties();
+  });
+
+  draw_component<TilemapComponent>(" Tilemap Component", context->registry, entity, [this](TilemapComponent& component, entt::entity e) {
+    const float x = ImGui::GetContentRegionAvail().x;
+    const float y = ImGui::GetFrameHeight();
+    if (ui::button("Load tilemap", {x, y}, "Load exported png and json file from ldtk")) {
+      auto path = App::get_system<FileDialogs>()->open_file({{"json file", "json"}});
+      component.load(path);
+    }
+    ImGui::Separator();
+
+    ui::begin_properties();
+    std::string layer_name = "empty";
+    for (auto& [name, mat] : component.layers)
+      layer_name = name;
+    ui::text("Layers", layer_name.c_str());
+    ui::text("Tilemap size", fmt::format("x: {}, y: {}", component.tilemap_size.x, component.tilemap_size.y).c_str());
     ui::end_properties();
   });
 
@@ -710,19 +730,34 @@ void InspectorPanel::draw_components(Entity entity) {
   });
 
   draw_component<CameraComponent>("Camera Component", context->registry, entity, [](CameraComponent& component, entt::entity e) {
+    const auto is_perspective = component.camera.get_projection() == Camera::Projection::Perspective;
     ui::begin_properties();
-    static float fov = component.camera.get_fov();
-    if (ui::property("FOV", &fov)) {
-      component.camera.set_fov(fov);
+
+    const char* proj_strs[] = {"Perspective", "Orthographic"};
+    int proj = static_cast<int>(component.camera.get_projection());
+    if (ui::property("Projection", &proj, proj_strs, 2))
+      component.camera.set_projection(static_cast<Camera::Projection>(proj));
+
+    if (is_perspective) {
+      static float fov = component.camera.get_fov();
+      if (ui::property("FOV", &fov)) {
+        component.camera.set_fov(fov);
+      }
+      static float near_clip = component.camera.get_near();
+      if (ui::property("Near Clip", &near_clip)) {
+        component.camera.set_near(near_clip);
+      }
+      static float far_clip = component.camera.get_far();
+      if (ui::property("Far Clip", &far_clip)) {
+        component.camera.set_far(far_clip);
+      }
+    } else {
+      static float zoom = component.camera.get_zoom();
+      if (ui::property("Zoom", &zoom)) {
+        component.camera.set_zoom(zoom);
+      }
     }
-    static float near_clip = component.camera.get_near();
-    if (ui::property("Near Clip", &near_clip)) {
-      component.camera.set_near(near_clip);
-    }
-    static float far_clip = component.camera.get_far();
-    if (ui::property("Far Clip", &far_clip)) {
-      component.camera.set_far(far_clip);
-    }
+
     ui::end_properties();
   });
 
@@ -808,7 +843,11 @@ void InspectorPanel::draw_components(Entity entity) {
     }
 
     ui::begin_properties();
-    if (ui::property("Imported systems", &current_system_selection, system_names.data(), system_names.size(), std::to_string(system_hashes[current_system_selection]).c_str())) {
+    if (ui::property("Imported systems",
+                     &current_system_selection,
+                     system_names.data(),
+                     system_names.size(),
+                     std::to_string(system_hashes[current_system_selection]).c_str())) {
       if (auto system = system_manager->get_system(system_hashes[current_system_selection]))
         component.system = system;
       else

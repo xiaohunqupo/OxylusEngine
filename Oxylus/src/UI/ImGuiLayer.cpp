@@ -62,7 +62,7 @@ void ImGuiLayer::add_icon_font(float font_size) {
   // merge in icons from Font Awesome
   icons_config.MergeMode = true;
   icons_config.PixelSnapH = true;
-  icons_config.GlyphOffset.y = 1.0f;
+  icons_config.GlyphOffset.y = 0.5f;
   icons_config.OversampleH = icons_config.OversampleV = 3;
   icons_config.GlyphMinAdvanceX = 4.0f;
   icons_config.SizePixels = font_size;
@@ -246,9 +246,11 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
             if (pcmd->TextureId) {
               const auto& img = *reinterpret_cast<ImGuiLayer::ImGuiImage*>(pcmd->TextureId);
               if (img.global)
-                command_buffer.bind_image(0, 0, img.view).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
+                command_buffer.bind_image(0, 0, img.view)
+                  .bind_sampler(0, 0, img.linear_sampling ? vuk::LinearSamplerRepeated : vuk::NearestSamplerRepeated);
               else
-                command_buffer.bind_image(0, 0, sis[img.attachment_index]).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
+                command_buffer.bind_image(0, 0, sis[img.attachment_index])
+                  .bind_sampler(0, 0, img.linear_sampling ? vuk::LinearSamplerRepeated : vuk::NearestSamplerRepeated);
             }
 
             command_buffer.draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
@@ -262,11 +264,13 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
   })(target, sampled_images_array);
 }
 
-ImGuiLayer::ImGuiImage* ImGuiLayer::add_image(const vuk::ImageView& view) { return &*sampled_images.emplace(true, view, 0); }
+ImGuiLayer::ImGuiImage* ImGuiLayer::add_image(const vuk::ImageView& view, bool linear_sampling) {
+  return &*sampled_images.emplace(true, view, 0, linear_sampling);
+}
 
-ImGuiLayer::ImGuiImage* ImGuiLayer::add_attachment(const vuk::Value<vuk::ImageAttachment>& attach) {
+ImGuiLayer::ImGuiImage* ImGuiLayer::add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling) {
   sampled_attachments.emplace_back(attach);
-  return &*sampled_images.emplace(false, vuk::ImageView{}, (uint32_t)sampled_attachments.size() - 1u);
+  return &*sampled_images.emplace(false, vuk::ImageView{}, (uint32_t)sampled_attachments.size() - 1u, linear_sampling);
 }
 
 void ImGuiLayer::end() {

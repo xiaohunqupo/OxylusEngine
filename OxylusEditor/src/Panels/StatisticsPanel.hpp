@@ -4,16 +4,16 @@
 #include "EditorPanel.hpp"
 
 namespace ox {
-  class StatisticsPanel : public EditorPanel {
-  public:
-    StatisticsPanel();
-    void on_imgui_render() override;
+class StatisticsPanel : public EditorPanel {
+public:
+  StatisticsPanel();
+  void on_imgui_render() override;
 
-  private:
-    float m_FpsValues[50] = {};
-    std::vector<float> m_FrameTimes{};
+private:
+  float fps_values[50] = {};
+  std::vector<float> frame_times{};
 
-    void MemoryTab() const;
-    void RendererTab();
-  };
-}
+  void memory_tab() const;
+  void renderer_tab();
+};
+} // namespace ox

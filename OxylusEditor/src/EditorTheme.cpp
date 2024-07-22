@@ -30,5 +30,6 @@ void EditorTheme::init() {
   component_icon_map[typeid(ParticleSystemComponent).hash_code()] = ICON_MDI_LAMP;
   component_icon_map[typeid(SpriteComponent).hash_code()] = ICON_MDI_SQUARE_OUTLINE;
   component_icon_map[typeid(SpriteAnimationComponent).hash_code()] = ICON_MDI_SHAPE_SQUARE_PLUS;
+  component_icon_map[typeid(TilemapComponent).hash_code()] = ICON_MDI_SHAPE_POLYGON_PLUS;
 }
 }

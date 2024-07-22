@@ -5,6 +5,10 @@
 #include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
 #include "ImGuizmo.h"
+#include "Render/Camera.hpp"
+#include "Scene/Components.hpp"
+#include "UI/ImGuiLayer.hpp"
+#include "Utils/EditorConfig.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
 #include "Render/DebugRenderer.hpp"
@@ -22,6 +26,7 @@
 #include "Utils/OxMath.hpp"
 #include "Utils/StringUtils.hpp"
 #include "Utils/Timestep.hpp"
+#include "imgui.h"
 
 namespace ox {
 ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true) {
@@ -72,6 +77,7 @@ void ViewportPanel::on_imgui_render() {
       ui::property<float>("Camera sensitivity", EditorCVar::cvar_camera_sens.get_ptr(), 0.1f, 20.0f);
       ui::property<float>("Movement speed", EditorCVar::cvar_camera_speed.get_ptr(), 5, 100.0f);
       ui::property("Smooth camera", (bool*)EditorCVar::cvar_camera_smooth.get_ptr());
+      ui::property("Camera zoom", EditorCVar::cvar_camera_zoom.get_ptr(), 1, 100);
       ui::property<float>("Grid distance", RendererCVar::cvar_draw_grid_distance.get_ptr(), 10.f, 100.0f);
       ui::end_properties();
       ImGui::EndPopup();
@@ -121,6 +127,7 @@ void ViewportPanel::on_imgui_render() {
       projection[1][1] *= -1;
       Mat4 view_proj = projection * m_camera.get_view_matrix();
       const Frustum& frustum = m_camera.get_frustum();
+
       show_component_gizmo<LightComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
       show_component_gizmo<AudioSourceComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
       show_component_gizmo<AudioListenerComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
@@ -134,7 +141,7 @@ void ViewportPanel::on_imgui_render() {
       const float frame_height = 1.3f * ImGui::GetFrameHeight();
       const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
       const ImVec2 button_size = {frame_height, frame_height};
-      constexpr float button_count = 7.0f;
+      constexpr float button_count = 8.0f;
       const ImVec2 gizmo_position = {viewport_bounds[0].x + m_gizmo_position.x, viewport_bounds[0].y + m_gizmo_position.y};
       const ImRect bb(gizmo_position.x,
                       gizmo_position.y,
@@ -178,14 +185,21 @@ void ViewportPanel::on_imgui_render() {
         if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL), m_gizmo_type == ImGuizmo::UNIVERSAL, button_size, alpha, alpha))
           m_gizmo_type = ImGuizmo::UNIVERSAL;
         if (ui::toggle_button(m_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
-                                                                : StringUtils::from_char8_t(ICON_MDI_EARTH_OFF),
-                                m_gizmo_mode == ImGuizmo::WORLD,
-                                button_size,
-                                alpha,
-                                alpha))
+                                                              : StringUtils::from_char8_t(ICON_MDI_EARTH_OFF),
+                              m_gizmo_mode == ImGuizmo::WORLD,
+                              button_size,
+                              alpha,
+                              alpha))
           m_gizmo_mode = m_gizmo_mode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
         if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID), RendererCVar::cvar_draw_grid.get(), button_size, alpha, alpha))
           RendererCVar::cvar_draw_grid.toggle();
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
+                              m_camera.get_projection() == Camera::Projection::Orthographic,
+                              button_size,
+                              alpha,
+                              alpha))
+          m_camera.set_projection(m_camera.get_projection() == Camera::Projection::Orthographic ? Camera::Projection::Perspective
+                                                                                                : Camera::Projection::Orthographic);
 
         ImGui::PopStyleVar(2);
       }
@@ -194,27 +208,21 @@ void ViewportPanel::on_imgui_render() {
 
     {
       // Scene Button Group
-      const float frame_height = 1.0f * ImGui::GetFrameHeight();
-      const ImVec2 button_size = {frame_height, frame_height};
       constexpr float button_count = 3.0f;
-      constexpr float y_pad = 8.0f;
-      const ImVec2 gizmo_position = {viewport_bounds[0].x + m_viewport_size.x * 0.5f, viewport_bounds[0].y + y_pad};
-      const auto width = gizmo_position.x + button_size.x * button_count + 45.0f;
-      const ImRect bb(gizmo_position.x - 5.0f, gizmo_position.y, width, gizmo_position.y + button_size.y + 8);
-      ImVec4 frame_color = ImGui::GetStyleColorVec4(ImGuiCol_Tab);
-      frame_color.w = 0.5f;
-      ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(frame_color), false, 3.0f);
+      constexpr float y_pad = 3.0f;
+      const ImVec2 button_size = {35.f, 25.f};
+      const ImVec2 group_size = {button_size.x * button_count, button_size.y + y_pad};
 
-      ImGui::SetCursorPos({m_viewport_size.x * 0.5f, start_cursor_pos.y + ImGui::GetStyle().FramePadding.y + y_pad});
+      ImGui::SetCursorPos({m_viewport_size.x * 0.5f - (group_size.x * 0.5f), start_cursor_pos.y + y_pad});
       ImGui::BeginGroup();
       {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {1, 1});
+        ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
 
-        const ImVec2 button_size2 = {frame_height * 1.5f, frame_height};
         const bool highlight = EditorLayer::get()->scene_state == EditorLayer::SceneState::Play;
         const char8_t* icon = EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY : ICON_MDI_STOP;
-        if (ui::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size2)) {
+        if (ui::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
           if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit)
             EditorLayer::get()->on_scene_play();
           else if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Play)
@@ -222,17 +230,17 @@ void ViewportPanel::on_imgui_render() {
         }
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.4f));
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PAUSE), button_size2)) {
+        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PAUSE), button_size)) {
           if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Play)
             EditorLayer::get()->on_scene_stop();
         }
         ImGui::SameLine();
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_STEP_FORWARD), button_size2)) {
+        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_STEP_FORWARD), button_size)) {
           EditorLayer::get()->on_scene_simulate();
         }
         ImGui::PopStyleColor();
 
-        ImGui::PopStyleVar(2);
+        ImGui::PopStyleVar(3);
       }
       ImGui::EndGroup();
     }
@@ -254,7 +262,13 @@ void ViewportPanel::on_update() {
     Vec3 final_position = position;
     Vec2 final_yaw_pitch = yaw_pitch;
 
-    if (ImGui::IsMouseDown(ImGuiMouseButton_Right)) {
+    const auto is_ortho = m_camera.get_projection() == Camera::Projection::Orthographic;
+    if (is_ortho) {
+      final_position = {0.0f, 0.0f, 0.0f};
+      final_yaw_pitch = {glm::radians(-90.f), 0.f};
+    }
+
+    if (ImGui::IsMouseDown(ImGuiMouseButton_Right) && !is_ortho) {
       const Vec2 new_mouse_position = Input::get_mouse_position();
 
       if (!m_using_editor_camera) {
@@ -325,6 +339,7 @@ void ViewportPanel::on_update() {
     m_camera.set_position(EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position);
     m_camera.set_yaw(EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x);
     m_camera.set_pitch(EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y);
+    m_camera.set_zoom(EditorCVar::cvar_camera_zoom.get());
 
     m_camera.update();
   }
@@ -334,9 +349,9 @@ void ViewportPanel::draw_performance_overlay() {
   if (!performance_overlay_visible)
     return;
   ui::draw_framerate_overlay(ImVec2(viewport_position.x, viewport_position.y),
-                               ImVec2(viewport_panel_size.x, viewport_panel_size.y),
-                               {15, 55},
-                               &performance_overlay_visible);
+                             ImVec2(viewport_panel_size.x, viewport_panel_size.y),
+                             {15, 55},
+                             &performance_overlay_visible);
 }
 
 void ViewportPanel::draw_gizmos() {
@@ -366,13 +381,18 @@ void ViewportPanel::draw_gizmos() {
 
     const float snap_values[3] = {snap_value, snap_value, snap_value};
 
-    Manipulate(value_ptr(camera_view),
-               value_ptr(camera_projection),
-               static_cast<ImGuizmo::OPERATION>(m_gizmo_type),
-               static_cast<ImGuizmo::MODE>(m_gizmo_mode),
-               value_ptr(transform),
-               nullptr,
-               snap ? snap_values : nullptr);
+    const auto is_ortho = m_camera.get_projection() == Camera::Projection::Orthographic;
+    ImGuizmo::SetOrthographic(is_ortho);
+    if (m_gizmo_mode == ImGuizmo::OPERATION::TRANSLATE && is_ortho)
+      m_gizmo_mode = ImGuizmo::OPERATION::TRANSLATE_X | ImGuizmo::OPERATION::TRANSLATE_Y;
+
+    ImGuizmo::Manipulate(value_ptr(camera_view),
+                         value_ptr(camera_projection),
+                         static_cast<ImGuizmo::OPERATION>(m_gizmo_type),
+                         static_cast<ImGuizmo::MODE>(m_gizmo_mode),
+                         value_ptr(transform),
+                         nullptr,
+                         snap ? snap_values : nullptr);
 
     if (ImGuizmo::IsUsing()) {
       const Entity parent = eutil::get_parent(context.get(), selected_entity);

@@ -64,6 +64,6 @@ Mat4 get_world_transform(Scene* scene, Entity entity) {
 Mat4 get_local_transform(Scene* scene, Entity entity) {
   OX_SCOPED_ZONE;
   const auto& transform = scene->registry.get<TransformComponent>(entity);
-  return glm::translate(Mat4(1.0f), transform.position) * glm::toMat4(glm::quat(transform.rotation)) * glm::scale(Mat4(1.0f), transform.scale);
+  return transform.get_local_transform();
 }
 } // namespace ox

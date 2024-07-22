@@ -13,9 +13,11 @@
 #include "Scene/Components.hpp"
 #include "Scene/EntitySerializer.hpp"
 #include "Scene/SceneEvents.hpp"
+#include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/ImGuiScoped.hpp"
 #include "Utils/StringUtils.hpp"
+#include "glm/trigonometric.hpp"
 
 namespace ox {
 SceneHierarchyPanel::SceneHierarchyPanel() : EditorPanel("Scene Hierarchy", ICON_MDI_VIEW_LIST, true) {}
@@ -311,9 +313,15 @@ void SceneHierarchyPanel::draw_context_menu() {
       context->registry.emplace<SpriteComponent>(to_select);
     }
 
+    if (ImGui::MenuItem("Tilemap")) { 
+      to_select = context->create_entity("Tilemap");
+      context->registry.emplace<TilemapComponent>(to_select);
+    }
+
     if (ImGui::MenuItem("Camera")) {
       to_select = context->create_entity("Camera");
       context->registry.emplace<CameraComponent>(to_select);
+      context->registry.get<TransformComponent>(to_select).rotation.y = glm::radians(-90.f);
     }
 
     if (ImGui::MenuItem("Lua Script")) {

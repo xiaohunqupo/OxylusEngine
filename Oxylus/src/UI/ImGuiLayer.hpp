@@ -15,6 +15,7 @@ public:
     bool global;
     vuk::ImageView view;
     uint32_t attachment_index;
+    bool linear_sampling = true;
   };
 
   struct ImGuiData {
@@ -50,8 +51,8 @@ public:
                                                                   vuk::Compiler& compiler,
                                                                   vuk::Value<vuk::ImageAttachment> target) const;
 
-  ImGuiImage* add_image(const vuk::ImageView& view);
-  ImGuiImage* add_attachment(const vuk::Value<vuk::ImageAttachment>& attach);
+  ImGuiImage* add_image(const vuk::ImageView& view, bool linear_sampling = true);
+  ImGuiImage* add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling = true);
 
   static void apply_theme(bool dark = true);
   static void set_style();

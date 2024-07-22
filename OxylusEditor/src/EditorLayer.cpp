@@ -20,11 +20,11 @@
 #include "Panels/RendererSettingsPanel.hpp"
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
-#include "Render/Renderer.hpp"
 #include "Render/Window.hpp"
 
 #include "Scene/SceneRenderer.hpp"
 
+#include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/FileDialogs.hpp"
@@ -104,12 +104,12 @@ void EditorLayer::on_update(const Timestep& delta_time) {
   }
 
   for (const auto& [name, panel] : editor_panels) {
-    if (!panel->Visible)
+    if (!panel->visible)
       continue;
     panel->on_update();
   }
   for (const auto& panel : viewport_panels) {
-    if (!panel->Visible)
+    if (!panel->visible)
       continue;
     panel->on_update();
   }
@@ -189,7 +189,7 @@ void EditorLayer::on_imgui_render() {
           }
           ImGui::Separator();
           if (ImGui::MenuItem("Launcher...")) {
-            get_panel<ProjectPanel>()->Visible = true;
+            get_panel<ProjectPanel>()->visible = true;
           }
           ImGui::Separator();
           if (ImGui::MenuItem("Exit")) {
@@ -199,7 +199,7 @@ void EditorLayer::on_imgui_render() {
         }
         if (ImGui::BeginMenu("Edit")) {
           if (ImGui::MenuItem("Settings")) {
-            get_panel<EditorSettingsPanel>()->Visible = true;
+            get_panel<EditorSettingsPanel>()->visible = true;
           }
           if (ImGui::MenuItem("Reload project module")) {
             Project::get_active()->load_module();
@@ -216,12 +216,12 @@ void EditorLayer::on_imgui_render() {
           if (ImGui::MenuItem("Add viewport", nullptr)) {
             viewport_panels.emplace_back(create_unique<ViewportPanel>())->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
           }
-          ImGui::MenuItem("Inspector", nullptr, &get_panel<InspectorPanel>()->Visible);
-          ImGui::MenuItem("Scene hierarchy", nullptr, &get_panel<SceneHierarchyPanel>()->Visible);
+          ImGui::MenuItem("Inspector", nullptr, &get_panel<InspectorPanel>()->visible);
+          ImGui::MenuItem("Scene hierarchy", nullptr, &get_panel<SceneHierarchyPanel>()->visible);
           ImGui::MenuItem("Console window", nullptr, &runtime_console.visible);
           ImGui::MenuItem("Performance Overlay", nullptr, &viewport_panels[0]->performance_overlay_visible);
-          ImGui::MenuItem("Statistics", nullptr, &get_panel<StatisticsPanel>()->Visible);
-          if (ImGui::MenuItem("RenderGraph Panel", nullptr, &get_panel<RenderGraphPanel>()->Visible)) {
+          ImGui::MenuItem("Statistics", nullptr, &get_panel<StatisticsPanel>()->visible);
+          if (ImGui::MenuItem("RenderGraph Panel", nullptr, &get_panel<RenderGraphPanel>()->visible)) {
             get_panel<RenderGraphPanel>()->set_context(editor_scene);
           }
           if (ImGui::BeginMenu("Layout")) {
@@ -239,13 +239,13 @@ void EditorLayer::on_imgui_render() {
         if (ImGui::BeginMenu("Assets")) {
           if (ImGui::MenuItem("Asset Manager")) {
           }
-          ui::tooltip("WIP");
+          ui::tooltip_hover("WIP");
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Help")) {
           if (ImGui::MenuItem("About")) {
           }
-          ui::tooltip("WIP");
+          ui::tooltip_hover("WIP");
           ImGui::EndMenu();
         }
         ImGui::SameLine();
@@ -404,7 +404,7 @@ void EditorLayer::draw_panels() {
     panel->on_imgui_render();
 
   for (const auto& [name, panel] : editor_panels) {
-    if (panel->Visible)
+    if (panel->visible)
       panel->on_imgui_render();
   }
 

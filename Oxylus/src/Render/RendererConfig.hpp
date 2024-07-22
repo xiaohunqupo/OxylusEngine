@@ -54,10 +54,11 @@ inline AutoCVar_Float cvar_gamma("pp.gamma", "screen gamma", 2.2f);
 class RendererConfig : public ESystem {
 public:
   enum Tonemaps {
-    TONEMAP_ACES = 0,
-    TONEMAP_UNCHARTED,
-    TONEMAP_FILMIC,
-    TONEMAP_REINHARD,
+    TONEMAP_DISABLED = 0,
+    TONEMAP_ACES = 1,
+    TONEMAP_UNCHARTED = 2,
+    TONEMAP_FILMIC = 3,
+    TONEMAP_REINHARD = 4,
   };
 
   RendererConfig() = default;

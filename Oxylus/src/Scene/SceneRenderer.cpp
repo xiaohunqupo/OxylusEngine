@@ -115,6 +115,27 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     }
   }
 
+  // Tilemaps
+  {
+    OX_SCOPED_ZONE_N("Tilemap System");
+    const auto tilemap_view = _scene->registry.view<TransformComponent, TilemapComponent, TagComponent>();
+    for (const auto&& [entity, transform, tilemap, tag] : tilemap_view.each()) {
+      if (!tag.enabled)
+        continue;
+
+      // TODO: Tilemaps can also be just submitted as sprites into the renderer until we have the layering system.
+      SpriteComponent sprite{};
+      if (!tilemap.layers.empty())
+        sprite.material = tilemap.layers.begin()._Unwrapped()->second;
+
+      // FIXME: don't care about parents for now
+      transform.scale = {tilemap.tilemap_size, 1};
+      sprite.transform = transform.get_local_transform();
+
+      _render_pipeline->submit_sprite(sprite);
+    }
+  }
+
   {
     OX_SCOPED_ZONE_N("Draw physics shapes");
     if (RendererCVar::cvar_enable_debug_renderer.get() && RendererCVar::cvar_draw_physics_shapes.get()) {

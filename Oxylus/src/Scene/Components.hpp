@@ -2,6 +2,7 @@
 #include <optional>
 #include <string>
 
+#include "Assets/TilemapSerializer.hpp"
 #include "Core/Types.hpp"
 #include "Core/UUID.hpp"
 
@@ -74,6 +75,10 @@ struct TransformComponent {
   void set_from_matrix(const Mat4& transform_matrix) {
     OX_SCOPED_ZONE;
     math::decompose_transform(transform_matrix, position, rotation, scale);
+  }
+
+  float4x4 get_local_transform() const {
+    return glm::translate(Mat4(1.0f), position) * glm::toMat4(glm::quat(rotation)) * glm::scale(Mat4(1.0f), scale);
   }
 };
 
@@ -157,6 +162,20 @@ struct SpriteAnimationComponent {
   void set_columns(uint32 value) {
     columns = value;
     reset();
+  }
+};
+
+struct TilemapComponent {
+  std::string path = {};
+  ankerl::unordered_dense::map<std::string, Shared<SpriteMaterial>> layers = {};
+  int2 tilemap_size = {64, 64};
+
+  TilemapComponent() {}
+
+  void load(const std::string& _path) {
+    path = _path;
+    TilemapSerializer serializer(this);
+    serializer.deserialize(path);
   }
 };
 
@@ -381,6 +400,7 @@ using AllComponents = ComponentGroup<TransformComponent,
                                      ParticleSystemComponent,
                                      SpriteComponent,
                                      SpriteAnimationComponent,
+                                     TilemapComponent,
 
                                      //  Physics
                                      RigidbodyComponent,

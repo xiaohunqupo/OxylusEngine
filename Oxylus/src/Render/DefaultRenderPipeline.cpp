@@ -1211,7 +1211,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   })(material_depth_output, albedo, normal, normal_vertex, metallic_roughness, velocity, emission, vis_image_output);
 
   auto envmap_image = vuk::clear_image(vuk::declare_ia("sky_envmap_image", sky_envmap_texture.as_attachment()), vuk::Black<float>);
-  auto sky_envmap_output = sky_envmap_pass(envmap_image);
+  auto sky_envmap_output = dir_light_data ? sky_envmap_pass(envmap_image) : envmap_image;
 
   auto color_image = vuk::clear_image(vuk::declare_ia("color_image", color_texture.as_attachment()), vuk::Black<float>);
   // TODO: pass GTAO

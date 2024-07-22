@@ -8,7 +8,6 @@
 #include "Scene/Scene.hpp"
 #include "SceneHierarchyPanel.hpp"
 
-#include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 
 namespace ox {
@@ -64,7 +63,7 @@ private:
 
         auto name_s = std::string(entt::type_id<T>().name());
 
-        ui::tooltip(name_s.c_str());
+        ui::tooltip_hover(name_s.c_str());
       }
     }
   }
