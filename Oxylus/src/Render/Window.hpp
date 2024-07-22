@@ -1,6 +1,7 @@
 #pragma once
 #include "Core/App.hpp"
 #include "Core/Input.hpp"
+#include "Event/Event.hpp"
 
 typedef struct GLFWmonitor GLFWmonitor;
 
@@ -46,6 +47,7 @@ public:
   static void wait_for_events();
 
   static void set_dispatcher(EventDispatcher* dispatcher) { s_window_data.dispatcher = dispatcher; }
+  static EventDispatcher* get_dispatcher() { return s_window_data.dispatcher; }
 
 private:
   static struct WindowData {
@@ -55,4 +57,4 @@ private:
 
   static GLFWwindow* s_window_handle;
 };
-}
+} // namespace ox

@@ -45,40 +45,6 @@ void Window::init_window(const AppSpec& spec) {
   }
 
   glfwSetWindowCloseCallback(s_window_handle, close_window);
-
-  glfwSetKeyCallback(
-    get_glfw_window(),
-    [](GLFWwindow*, const int key, int, const int action, int) {
-      switch (action) {
-        case GLFW_PRESS: {
-          s_window_data.dispatcher->trigger(KeyPressedEvent((KeyCode)key, 0));
-          break;
-        }
-        case GLFW_RELEASE: {
-          s_window_data.dispatcher->trigger(KeyReleasedEvent((KeyCode)key));
-          break;
-        }
-        case GLFW_REPEAT: {
-          s_window_data.dispatcher->trigger(KeyPressedEvent((KeyCode)key, 1));
-          break;
-        }
-      }
-    });
-
-  glfwSetMouseButtonCallback(
-    get_glfw_window(),
-    [](GLFWwindow*, int button, int action, int) {
-      switch (action) {
-        case GLFW_PRESS: {
-          s_window_data.dispatcher->trigger(MouseButtonPressedEvent((MouseCode)button));
-          break;
-        }
-        case GLFW_RELEASE: {
-          s_window_data.dispatcher->trigger(MouseButtonReleasedEvent((MouseCode)button));
-          break;
-        }
-      }
-    });
 }
 
 void Window::poll_events() {

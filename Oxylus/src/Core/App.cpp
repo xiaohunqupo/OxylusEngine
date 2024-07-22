@@ -65,7 +65,6 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   Window::init_window(app_spec);
   Window::set_dispatcher(&dispatcher);
   Input::init();
-  Input::set_dispatcher_events(dispatcher);
 
   for (auto& [_, system] : system_registry) {
     system->set_dispatcher(&dispatcher);
