@@ -476,6 +476,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
   render_queue_2d.init();
   render_queue_2d.update();
+  render_queue_2d.sort();
 
   scene_data.num_lights = (uint32)scene_lights.size();
   scene_data.grid_max_distance = RendererCVar::cvar_draw_grid_distance.get();
@@ -1003,7 +1004,9 @@ void DefaultRenderPipeline::submit_light(const LightComponent& light) {
 void DefaultRenderPipeline::submit_sprite(const SpriteComponent& sprite) {
   OX_SCOPED_ZONE;
   sprite_component_list.emplace_back(sprite);
-  render_queue_2d.add(sprite);
+
+  const auto distance = glm::distance(float3(0.f, 0.f, current_camera->get_position().z), float3(0.f, 0.f, sprite.get_position().z));
+  render_queue_2d.add(sprite, distance);
 }
 
 void DefaultRenderPipeline::submit_camera(Camera* camera) {
@@ -1282,7 +1285,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       command_buffer.bind_graphics_pipeline(batch.pipeline_name)
         .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
           .depthTestEnable = true,
-          .depthWriteEnable = true,
+          .depthWriteEnable = false,
           .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
         })
         .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)

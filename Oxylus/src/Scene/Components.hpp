@@ -3,6 +3,7 @@
 #include <string>
 
 #include "Assets/TilemapSerializer.hpp"
+#include "Core/Base.hpp"
 #include "Core/Types.hpp"
 #include "Core/UUID.hpp"
 
@@ -112,8 +113,11 @@ struct SpriteComponent {
   Shared<SpriteMaterial> material = nullptr;
   uint32 layer = 0;
 
+  bool sort_y = true;
+
   // non-serialized data
   Mat4 transform = Mat4{1};
+  AABB rect = {};
 
   // set if an animation is controlling this sprite
   std::optional<float2> current_uv_offset = std::nullopt;
@@ -122,6 +126,9 @@ struct SpriteComponent {
     material = create_shared<SpriteMaterial>();
     material->create();
   }
+
+  float3 get_position() const { return float3(transform[3]); }
+  float2 get_size() const { return {glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1]))}; }
 };
 
 struct SpriteAnimationComponent {
@@ -180,7 +187,11 @@ struct TilemapComponent {
 };
 
 struct CameraComponent {
-  Camera camera;
+  Shared<Camera> camera = nullptr;
+
+  CameraComponent() { 
+    camera = create_shared<Camera>();
+  }
 };
 
 struct ParticleSystemComponent {

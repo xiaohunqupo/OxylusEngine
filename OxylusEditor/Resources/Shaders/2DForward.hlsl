@@ -10,8 +10,8 @@ struct VOutput {
 struct VertexInput {
   float4 position : POSITION;
   float2 size : SIZE;
-  uint32 material_index : MAT_INDEX;
-  uint32 flags : FLAGS;
+  uint32 material_id16_ypos16 : MAT_INDEX;
+  uint32 flags16_distance16 : FLAGS;
 };
 
 static float3 positions[6] =
@@ -21,7 +21,8 @@ static float2 uvs[6] = {float2(0.0, 1.0), float2(1.0, 1.0), float2(1.0, 0.0), fl
 VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   VOutput output = (VOutput)0;
 
-  SpriteMaterial material = get_sprite_material(input.material_index);
+  const uint32 material_index = unpack_u32_low(input.material_id16_ypos16);
+  SpriteMaterial material = get_sprite_material(material_index);
 
   float3 position = input.position;
   float4 uv_size_offset = float4(material.get_uv_size(), material.get_uv_offset());
@@ -32,18 +33,17 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   output.uv_alpha.xy = uvs[vertex_index];
   output.uv_alpha.xy = output.uv_alpha.xy * uv_size_offset.xy + uv_size_offset.zw;
 
-  const float facing = input.flags; // position.w;
+  const float facing = input.flags16_distance16; // position.w;
 
   const float screen_space = 0;
   float4 world_position = float4(float2(positions[vertex_index].xy * size.xy), 0, 1);
   world_position.xyz += position.xyz;
 
   output.position = mul(get_camera(0).projection_view, float4(world_position.xyz, 1.0f));
-  output.material_index = input.material_index;
+  output.material_index = material_index;
 
   return output;
 }
-
 
 float4 PSmain(VOutput input) : SV_Target0 {
   SpriteMaterial material = get_sprite_material(input.material_index);

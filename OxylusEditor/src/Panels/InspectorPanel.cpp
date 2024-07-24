@@ -337,6 +337,7 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<SpriteComponent>(" Sprite Component", context->registry, entity, [this](SpriteComponent& component, entt::entity e) {
     ui::begin_properties();
     ui::property("Layer", &component.layer);
+    ui::property("SortY", &component.sort_y);
     ui::end_properties();
 
     ImGui::SeparatorText("Material");
@@ -730,31 +731,31 @@ void InspectorPanel::draw_components(Entity entity) {
   });
 
   draw_component<CameraComponent>("Camera Component", context->registry, entity, [](CameraComponent& component, entt::entity e) {
-    const auto is_perspective = component.camera.get_projection() == Camera::Projection::Perspective;
+    const auto is_perspective = component.camera->get_projection() == Camera::Projection::Perspective;
     ui::begin_properties();
 
     const char* proj_strs[] = {"Perspective", "Orthographic"};
-    int proj = static_cast<int>(component.camera.get_projection());
+    int proj = static_cast<int>(component.camera->get_projection());
     if (ui::property("Projection", &proj, proj_strs, 2))
-      component.camera.set_projection(static_cast<Camera::Projection>(proj));
+      component.camera->set_projection(static_cast<Camera::Projection>(proj));
 
     if (is_perspective) {
-      static float fov = component.camera.get_fov();
+      float fov = component.camera->get_fov();
       if (ui::property("FOV", &fov)) {
-        component.camera.set_fov(fov);
+        component.camera->set_fov(fov);
       }
-      static float near_clip = component.camera.get_near();
+      float near_clip = component.camera->get_near();
       if (ui::property("Near Clip", &near_clip)) {
-        component.camera.set_near(near_clip);
+        component.camera->set_near(near_clip);
       }
-      static float far_clip = component.camera.get_far();
+      float far_clip = component.camera->get_far();
       if (ui::property("Far Clip", &far_clip)) {
-        component.camera.set_far(far_clip);
+        component.camera->set_far(far_clip);
       }
     } else {
-      static float zoom = component.camera.get_zoom();
+      float zoom = component.camera->get_zoom();
       if (ui::property("Zoom", &zoom)) {
-        component.camera.set_zoom(zoom);
+        component.camera->set_zoom(zoom);
       }
     }
 

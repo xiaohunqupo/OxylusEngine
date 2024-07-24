@@ -12,6 +12,7 @@
 #include "Passes/GTAO.hpp"
 #include "Passes/SPD.hpp"
 #include "Scene/Components.hpp"
+#include "Utils/OxMath.hpp"
 
 namespace ox {
 struct SkyboxLoadEvent;
@@ -301,11 +302,46 @@ private:
     uint32 count = 0;
   };
 
+  enum RenderFlags2D : uint32 {
+    RENDER_FLAGS_2D_NONE = 0,
+
+    RENDER_FLAGS_2D_SORT_Y = 1 << 0,
+  };
+
   struct SpriteGPUData {
     float4 position = {};
     float2 size = {};
-    uint32 material_id = 0;
-    uint32 flags = 0;
+    uint32 material_id16_ypos16 = 0;
+    uint32 flags16_distance16 = 0;
+
+    constexpr bool operator>(const SpriteGPUData& other) const {
+      union SortKey {
+        struct {
+          // The order of members is important here, it means the sort priority (low to high)!
+          uint64_t distance_y : 32;
+          uint64_t distance_z : 32;
+        } bits;
+
+        uint64_t value;
+      };
+      static_assert(sizeof(SortKey) == sizeof(uint64_t));
+      const SortKey a = {
+        .bits =
+          {
+            .distance_y = math::unpack_u32_low(flags16_distance16) & RENDER_FLAGS_2D_SORT_Y ? math::unpack_u32_high(material_id16_ypos16) : 0u,
+            .distance_z = math::unpack_u32_high(flags16_distance16),
+          },
+      };
+      const SortKey b = {
+        .bits =
+          {
+            .distance_y = math::unpack_u32_low(other.flags16_distance16) & RENDER_FLAGS_2D_SORT_Y ? math::unpack_u32_high(other.material_id16_ypos16)
+                                                                                                  : 0u,
+            .distance_z = math::unpack_u32_high(other.flags16_distance16),
+          },
+      };
+      return a.value > b.value;
+    }
   };
 
   struct RenderQueue2D {
@@ -329,6 +365,7 @@ private:
     }
 
     // TODO: this will take a list of materials
+    // TODO: sort pipelines
     void update() {
       const vuk::Name pipeline_name = "2d_forward_pipeline"; // FIXME: hardcoded until we have a modular material shader system
       if (current_pipeline_name != pipeline_name) {
@@ -339,21 +376,28 @@ private:
       previous_offset = num_sprites;
     }
 
-    void add(const SpriteComponent& sprite) {
+    void add(const SpriteComponent& sprite, float distance) {
       sprite.material->set_id((uint32)materials.size());
       materials.emplace_back(sprite.material);
 
-      const float2 size{glm::length(glm::vec3(sprite.transform[0])), glm::length(glm::vec3(sprite.transform[1]))};
+      uint16 flags = 0;
+      if (sprite.sort_y)
+        flags |= RENDER_FLAGS_2D_SORT_Y;
+
+      const uint32 flags_and_distance = math::pack_u16(uint16(flags), glm::packHalf1x16(distance));
+      const uint32 materialid_and_ypos = math::pack_u16(uint16(sprite.material->get_id()), glm::packHalf1x16(sprite.get_position().y));
 
       sprite_data.emplace_back(SpriteGPUData{
-        .position = float4(float3(sprite.transform[3]), 0.0f),
-        .size = size,
-        .material_id = sprite.material->get_id(),
-        .flags = 0,
+        .position = float4(sprite.get_position(), 0.0f),
+        .size = sprite.get_size(),
+        .material_id16_ypos16 = materialid_and_ypos,
+        .flags16_distance16 = flags_and_distance,
       });
 
       num_sprites += 1;
     }
+
+    void sort() { std::sort(sprite_data.begin(), sprite_data.end(), std::greater<SpriteGPUData>()); }
 
     void clear() {
       num_sprites = 0;

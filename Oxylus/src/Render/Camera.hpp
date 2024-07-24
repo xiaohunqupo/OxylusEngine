@@ -15,8 +15,8 @@ namespace ox {
 class Camera {
 public:
   enum class Projection {
-    Perspective,
-    Orthographic,
+    Perspective = 0,
+    Orthographic = 1,
   };
 
   Camera(Vec3 position = Vec3(0.0f, 0.0f, 0.0f));

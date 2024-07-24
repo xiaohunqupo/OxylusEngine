@@ -719,8 +719,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     const auto camera_view = registry.view<TransformComponent, CameraComponent>();
     for (const auto entity : camera_view) {
       auto [transform, camera] = camera_view.get<TransformComponent, CameraComponent>(entity);
-      camera.camera.update(transform.position, transform.rotation);
-      scene_renderer->get_render_pipeline()->submit_camera(&camera.camera);
+      camera.camera->update(transform.position, transform.rotation);
+      scene_renderer->get_render_pipeline()->submit_camera(camera.camera.get());
     }
   }
 

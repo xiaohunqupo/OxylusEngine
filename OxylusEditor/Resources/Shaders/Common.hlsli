@@ -386,8 +386,7 @@ float2 unpack_snorm2_x16(const uint packed) {
   return max(float2(signextended) / 32767.0f, -1.0f);
 }
 
-inline uint unpack_u32_high(uint packed) { return (packed >> 16) & 0xFFFF; }
-
-inline uint unpack_u32_low(uint packed) { return packed & 0xFFFF; }
+uint unpack_u32_low(uint packed) { return packed & 0xFFFF; }
+uint unpack_u32_high(uint packed) { return (packed >> 16) & 0xFFFF; }
 
 #endif

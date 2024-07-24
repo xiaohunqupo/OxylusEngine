@@ -110,6 +110,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
       const auto world_transform = eutil::get_world_transform(_scene, entity);
       sprite.transform = world_transform;
+      sprite.rect = sprite.rect.get_transformed(world_transform);
 
       _render_pipeline->submit_sprite(sprite);
     }
@@ -127,10 +128,12 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       SpriteComponent sprite{};
       if (!tilemap.layers.empty())
         sprite.material = tilemap.layers.begin()._Unwrapped()->second;
+      sprite.sort_y = false;
 
       // FIXME: don't care about parents for now
       transform.scale = {tilemap.tilemap_size, 1};
       sprite.transform = transform.get_local_transform();
+      sprite.rect = sprite.rect.get_transformed(sprite.transform);
 
       _render_pipeline->submit_sprite(sprite);
     }

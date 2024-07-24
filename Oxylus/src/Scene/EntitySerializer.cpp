@@ -126,10 +126,11 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
 
     // TODO: serialize the rest
     const auto table = toml::table{
-      {"fov", camera.camera.get_fov()},
-      {"near", camera.camera.get_near()},
-      {"far", camera.camera.get_far()},
-      {"zoom", camera.camera.get_zoom()},
+      {"projection", (uint32)camera.camera->get_projection()},
+      {"fov", camera.camera->get_fov()},
+      {"near", camera.camera->get_near()},
+      {"far", camera.camera->get_far()},
+      {"zoom", camera.camera->get_zoom()},
     };
 
     entities->push_back(toml::table{{"camera_component", table}});
@@ -280,6 +281,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
     const auto& component = scene->registry.get<SpriteComponent>(entity);
     const auto table = toml::table{
       TBL_FIELD(component, layer),
+      TBL_FIELD(component, sort_y),
       {"color", get_toml_array(component.material->parameters.color)},
       {"uv_size", get_toml_array(component.material->parameters.uv_size)},
       {"uv_offset", get_toml_array(component.material->parameters.uv_offset)},
@@ -383,10 +385,11 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       GET_FLOAT(pp_node, pp, sharpen_intensity);
     } else if (const auto camera_node = ent.as_table()->get("camera_component")) {
       auto& cc = reg.emplace<CameraComponent>(deserialized_entity);
-      cc.camera.set_fov(GET_FLOAT2(camera_node, "fov"));
-      cc.camera.set_near(GET_FLOAT2(camera_node, "near"));
-      cc.camera.set_far(GET_FLOAT2(camera_node, "far"));
-      cc.camera.set_zoom(GET_FLOAT2(camera_node, "zoom"));
+      cc.camera->set_projection((Camera::Projection)GET_UINT322(camera_node, "projection"));
+      cc.camera->set_fov(GET_FLOAT2(camera_node, "fov"));
+      cc.camera->set_near(GET_FLOAT2(camera_node, "near"));
+      cc.camera->set_far(GET_FLOAT2(camera_node, "far"));
+      cc.camera->set_zoom(GET_FLOAT2(camera_node, "zoom"));
     } else if (const auto rb_node = ent.as_table()->get("rigidbody_component")) {
       auto& rb = reg.emplace<RigidbodyComponent>(deserialized_entity);
       rb.allowed_dofs = (RigidbodyComponent::AllowedDOFs)GET_UINT322(rb_node, "allowed_dofs");
@@ -469,6 +472,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
     } else if (const auto sprite_node = ent.as_table()->get("sprite_component")) {
       auto& sc = reg.emplace<SpriteComponent>(deserialized_entity);
       GET_UINT32(sprite_node, sc, layer);
+      GET_BOOL(sprite_node, sc, sort_y);
       sc.material = create_shared<SpriteMaterial>();
       sc.material->parameters.color = get_vec4_toml_array(GET_ARRAY(sprite_node, "color"));
       sc.material->parameters.uv_offset = get_vec2_toml_array(GET_ARRAY(sprite_node, "uv_offset"));

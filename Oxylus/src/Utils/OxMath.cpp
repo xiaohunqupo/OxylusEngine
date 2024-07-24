@@ -82,6 +82,7 @@ Vec2 world_to_screen(const Vec3& world_pos, const glm::mat4& mvp, const float wi
   trans.y += win_pos_y;
   return {trans.x, trans.y};
 }
+
 Vec4 transform(const Vec4& vec, const Mat4& view) {
   auto result = Vec4(vec.z) * view[2] + view[3];
   result = Vec4(vec.y) * view[1] + result;
