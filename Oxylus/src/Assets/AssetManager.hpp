@@ -4,6 +4,7 @@
 #include <plf_colony.h>
 
 #include "Core/Base.hpp"
+#include "Core/ESystem.hpp"
 #include "Thread/TaskScheduler.hpp"
 
 namespace ox {
@@ -38,8 +39,12 @@ private:
   EventDispatcher* dispatcher = nullptr;
 };
 
-class AssetManager {
+class AssetManager : public ESystem {
 public:
+  void init() override {};
+  void deinit() override {};
+  void set_instance();
+
   static Shared<Texture> get_texture_asset(const TextureLoadInfo& info);
   static Shared<Texture> get_texture_asset(const std::string& name, const TextureLoadInfo& info);
   static AssetTask<Texture>* get_texture_asset_future(const TextureLoadInfo& info);
@@ -52,7 +57,9 @@ public:
   static void free_unused_assets();
 
 private:
-  static struct State {
+  static AssetManager* _instance;
+
+  struct State {
     std::vector<Unique<AssetTask<Mesh>>> mesh_tasks;
     std::vector<Unique<AssetTask<Texture>>> texture_tasks;
     std::vector<Unique<AssetTask<AudioSource>>> audio_tasks;

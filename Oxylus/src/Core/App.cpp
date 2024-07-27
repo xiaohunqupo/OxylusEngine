@@ -2,6 +2,7 @@
 
 #include <filesystem>
 
+#include "Assets/AssetManager.hpp"
 #include "FileSystem.hpp"
 #include "Layer.hpp"
 #include "LayerStack.hpp"
@@ -61,11 +62,14 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   register_system<ModuleRegistry>();
   register_system<RendererConfig>();
   register_system<SystemManager>();
+  register_system<AssetManager>();
 
   Window::init_window(app_spec);
   Window::set_dispatcher(&dispatcher);
   register_system<Input>();
+
   get_system<Input>()->set_instance();
+  get_system<AssetManager>()->set_instance();
 
   for (auto& [_, system] : system_registry) {
     system->set_dispatcher(&dispatcher);
