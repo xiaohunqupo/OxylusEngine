@@ -13,9 +13,10 @@ void ModuleUtil::load_module(const std::string& name, const std::string& path) {
   const auto lib = App::get_system<ModuleRegistry>()->add_lib(name, path);
   if (!lib)
     return;
-
+  
+  auto app_instance = App::get();
   auto* imgui_context = ImGui::GetCurrentContext();
-  lib->interface->init(imgui_context);
+  lib->interface->init(app_instance, imgui_context);
 
   auto* state = App::get_system<LuaManager>()->get_state();
   lib->interface->register_components(state, entt::locator<entt::meta_ctx>::handle());

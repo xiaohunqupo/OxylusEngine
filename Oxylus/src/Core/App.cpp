@@ -28,16 +28,16 @@
 #include "Utils/Random.hpp"
 
 namespace ox {
-App* App::instance = nullptr;
+App* App::_instance = nullptr;
 
 App::App(AppSpec spec) : app_spec(std::move(spec)) {
   OX_SCOPED_ZONE;
-  if (instance) {
+  if (_instance) {
     OX_LOG_ERROR("Application already exists!");
     return;
   }
 
-  instance = this;
+  _instance = this;
 
   layer_stack = create_shared<LayerStack>();
   thread_manager = create_shared<ThreadManager>();
@@ -64,7 +64,8 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
 
   Window::init_window(app_spec);
   Window::set_dispatcher(&dispatcher);
-  Input::init();
+  register_system<Input>();
+  get_system<Input>()->set_instance();
 
   for (auto& [_, system] : system_registry) {
     system->set_dispatcher(&dispatcher);
@@ -81,6 +82,11 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
 
 App::~App() { close(); }
 
+void App::set_instance(App* instance) {
+  _instance = instance;
+  get_system<Input>()->set_instance();
+}
+
 App& App::push_layer(Layer* layer) {
   layer_stack->push_layer(layer);
   layer->on_attach(dispatcher);
@@ -96,6 +102,8 @@ App& App::push_overlay(Layer* layer) {
 }
 
 void App::run() {
+  auto input_sys = get_system<Input>();
+
   while (is_running) {
     update_timestep();
 
@@ -106,7 +114,7 @@ void App::run() {
 
     update_renderer();
 
-    Input::reset_pressed();
+    input_sys->reset_pressed();
 
     Window::poll_events();
     while (VkContext::get()->suspend) {
@@ -149,7 +157,7 @@ bool App::asset_directory_exists() { return std::filesystem::exists(get_asset_di
 std::string App::get_asset_directory() {
   if (Project::get_active() && !Project::get_active()->get_config().asset_directory.empty())
     return Project::get_asset_directory();
-  return instance->app_spec.assets_path;
+  return _instance->app_spec.assets_path;
 }
 
 std::string App::get_asset_directory(const std::string_view asset_path) { return fs::append_paths(get_asset_directory(), asset_path); }
@@ -159,7 +167,7 @@ std::string App::get_asset_directory_absolute() {
     const auto p = std::filesystem::absolute(Project::get_asset_directory());
     return p.string();
   }
-  const auto p = absolute(std::filesystem::path(instance->app_spec.assets_path));
+  const auto p = absolute(std::filesystem::path(_instance->app_spec.assets_path));
   return p.string();
 }
 

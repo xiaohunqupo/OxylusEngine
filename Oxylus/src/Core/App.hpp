@@ -85,8 +85,9 @@ public:
   const AppCommandLineArgs& get_command_line_args() const { return app_spec.command_line_args; }
   ImGuiLayer* get_imgui_layer() const { return imgui_layer; }
   const Shared<LayerStack>& get_layer_stack() const { return layer_stack; }
-  static App* get() { return instance; }
-  static const Timestep& get_timestep() { return instance->timestep; }
+  static App* get() { return _instance; }
+  static void set_instance(App* instance);
+  static const Timestep& get_timestep() { return _instance->timestep; }
 
   static bool asset_directory_exists();
   static std::string get_asset_directory();
@@ -95,23 +96,23 @@ public:
   static std::string get_relative(const std::string& path);
   static std::string get_absolute(const std::string& path);
 
-  static SystemRegistry& get_system_registry() { return instance->system_registry; }
+  static SystemRegistry& get_system_registry() { return _instance->system_registry; }
 
   template <typename T, typename... Args>
   static void register_system(Args&&... args) {
     auto typeName = typeid(T).hash_code();
-    OX_ASSERT(!instance->system_registry.contains(typeName), "Registering system more than once.");
+    OX_ASSERT(!_instance->system_registry.contains(typeName), "Registering system more than once.");
 
     Shared<T> system = create_shared<T>(std::forward<Args>(args)...);
-    instance->system_registry.emplace(typeName, std::move(system));
+    _instance->system_registry.emplace(typeName, std::move(system));
   }
 
   template <typename T>
   static void unregister_system() {
     const auto typeName = typeid(T).hash_code();
 
-    if (instance->system_registry.contains(typeName)) {
-      instance->system_registry.erase(typeName);
+    if (_instance->system_registry.contains(typeName)) {
+      _instance->system_registry.erase(typeName);
     }
   }
 
@@ -119,8 +120,8 @@ public:
   static T* get_system() {
     const auto typeName = typeid(T).hash_code();
 
-    if (instance->system_registry.contains(typeName)) {
-      return dynamic_cast<T*>(instance->system_registry[typeName].get());
+    if (_instance->system_registry.contains(typeName)) {
+      return dynamic_cast<T*>(_instance->system_registry[typeName].get());
     }
 
     return nullptr;
@@ -129,11 +130,11 @@ public:
   template <typename T>
   static bool has_system() {
     const auto typeName = typeid(T).hash_code();
-    return instance->system_registry.contains(typeName);
+    return _instance->system_registry.contains(typeName);
   }
 
 private:
-  static App* instance;
+  static App* _instance;
   AppSpec app_spec;
   ImGuiLayer* imgui_layer;
   Shared<LayerStack> layer_stack;

@@ -3,6 +3,7 @@
 #define OX_BUILD_DLL
 #include "Linker.hpp"
 
+#include "Core/App.hpp"
 #include "Core/Systems/SystemManager.hpp"
 
 #include <entt/locator/locator.hpp>
@@ -15,7 +16,7 @@ class OX_SHARED ModuleInterface {
 public:
   virtual ~ModuleInterface() = default;
 
-  virtual void init(ImGuiContext* imgui_context) = 0;
+  virtual void init(App* app_instance, ImGuiContext* imgui_context) = 0;
 
   virtual void register_components(sol::state* state, const entt::locator<entt::meta_ctx>::node_type& ctx) = 0;
   virtual void unregister_components(sol::state* state, const entt::locator<entt::meta_ctx>::node_type& ctx) = 0;

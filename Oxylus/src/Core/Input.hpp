@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ESystem.hpp"
 #include "Keycodes.hpp"
 
 #include "ApplicationEvents.hpp"
@@ -9,13 +10,17 @@ typedef struct GLFWcursor GLFWcursor;
 typedef struct GLFWwindow GLFWwindow;
 
 namespace ox {
-class Input {
+class Input : public ESystem {
 public:
   enum class CursorState { Disabled = 0x00034003, Normal = 0x00034001, Hidden = 0x00034002 };
 
-  static void init();
-  static void reset_pressed();
-  static void reset();
+  void init() override;
+  void deinit() override;
+
+  void set_instance();
+
+  void reset_pressed();
+  void reset();
 
   static void on_key_pressed_event(const KeyPressedEvent& event);
   static void on_key_released_event(const KeyReleasedEvent& event);
@@ -23,11 +28,11 @@ public:
   static void on_mouse_button_released_event(const MouseButtonReleasedEvent& event);
 
   /// Keyboard
-  static bool get_key_pressed(const KeyCode key) { return input_data.key_pressed[int(key)]; }
-  static bool get_key_released(const KeyCode key) { return input_data.key_released[int(key)]; }
-  static bool get_key_held(const KeyCode key) { return input_data.key_held[int(key)]; }
-  static bool get_mouse_clicked(const MouseCode key) { return input_data.mouse_clicked[int(key)]; }
-  static bool get_mouse_held(const MouseCode key) { return input_data.mouse_held[int(key)]; }
+  static bool get_key_pressed(const KeyCode key) { return _instance->input_data.key_pressed[int(key)]; }
+  static bool get_key_released(const KeyCode key) { return _instance->input_data.key_released[int(key)]; }
+  static bool get_key_held(const KeyCode key) { return _instance->input_data.key_held[int(key)]; }
+  static bool get_mouse_clicked(const MouseCode key) { return _instance->input_data.mouse_clicked[int(key)]; }
+  static bool get_mouse_held(const MouseCode key) { return _instance->input_data.mouse_held[int(key)]; }
 
   /// Gamepad
   static bool get_gamepad_button_pressed(const GamepadButtonCode button) { return false; }
@@ -45,7 +50,7 @@ public:
   static float get_mouse_scroll_offset_y();
 
   /// Cursor
-  static CursorState get_cursor_state();
+  static CursorState get_cursor_state() { return _instance->cursor_state; }
   static void set_cursor_state(CursorState state);
   static GLFWcursor* load_cursor_icon(const char* image_path);
   /// @param cursor https://www.glfw.org/docs/3.4/group__shapes.html
@@ -58,7 +63,9 @@ private:
 #define MAX_KEYS 512
 #define MAX_BUTTONS 32
 
-  static struct InputData {
+  static Input* _instance;
+
+  struct InputData {
     bool key_pressed[MAX_KEYS] = {};
     bool key_released[MAX_KEYS] = {};
     bool key_held[MAX_KEYS] = {};
@@ -69,15 +76,15 @@ private:
     float mouse_offset_y;
     float scroll_offset_y;
     Vec2 mouse_pos;
-  } input_data;
+  } input_data = {};
 
-  static CursorState cursor_state;
+  CursorState cursor_state = CursorState::Normal;
 
-  static void set_key_pressed(const KeyCode key, const bool a) { input_data.key_pressed[int(key)] = a; }
-  static void set_key_released(const KeyCode key, const bool a) { input_data.key_released[int(key)] = a; }
-  static void set_key_held(const KeyCode key, const bool a) { input_data.key_held[int(key)] = a; }
-  static void set_mouse_clicked(const MouseCode key, const bool a) { input_data.mouse_clicked[int(key)] = a; }
-  static void set_mouse_held(const MouseCode key, const bool a) { input_data.mouse_held[int(key)] = a; }
+  void set_key_pressed(const KeyCode key, const bool a) { input_data.key_pressed[int(key)] = a; }
+  void set_key_released(const KeyCode key, const bool a) { input_data.key_released[int(key)] = a; }
+  void set_key_held(const KeyCode key, const bool a) { input_data.key_held[int(key)] = a; }
+  void set_mouse_clicked(const MouseCode key, const bool a) { input_data.mouse_clicked[int(key)] = a; }
+  void set_mouse_held(const MouseCode key, const bool a) { input_data.mouse_held[int(key)] = a; }
 
   static void cursor_pos_callback(GLFWwindow* window, double xpos_in, double ypos_in);
   static void scroll_callback(GLFWwindow* window, double xoffset, double yoffset);
