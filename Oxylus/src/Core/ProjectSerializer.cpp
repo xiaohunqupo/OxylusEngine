@@ -22,8 +22,6 @@ bool ProjectSerializer::serialize(const std::string& file_path) const {
 
   fs::write_file(file_path, root, "# Oxylus project file"); // TODO: check for result
 
-  project->set_project_file_path(file_path);
-
   return true;
 }
 
@@ -46,8 +44,6 @@ bool ProjectSerializer::deserialize(const std::string& file_path) const {
   } catch (const std::exception& exc) {
     OX_LOG_ERROR("{}", exc.what());
   }
-
-  project->set_project_file_path(file_path);
 
   return true;
 }

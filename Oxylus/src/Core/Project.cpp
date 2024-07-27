@@ -3,6 +3,7 @@
 #include <entt/locator/locator.hpp>
 #include <entt/meta/context.hpp>
 #include <entt/meta/node.hpp>
+#include <filesystem>
 
 #include "Base.hpp"
 #include "Core/App.hpp"
@@ -87,6 +88,7 @@ Shared<Project> Project::load(const std::string& path) {
   const ProjectSerializer serializer(project);
   if (serializer.deserialize(path)) {
     project->set_project_dir(std::filesystem::path(path).parent_path().string());
+    project->project_file_path = std::filesystem::absolute(path).string();
     active_project = project;
     active_project->load_module();
     OX_LOG_INFO("Project loaded: {0}", project->get_config().name);

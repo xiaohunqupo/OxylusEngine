@@ -24,7 +24,6 @@ public:
   void set_project_dir(const std::string& dir) { project_directory = dir; }
   static std::string get_asset_directory();
   const std::string& get_project_file_path() const { return project_file_path; }
-  void set_project_file_path(const std::string& path) { project_file_path = path; }
 
   void load_module();
   void unload_module() const;

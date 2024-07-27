@@ -3,7 +3,9 @@
 #include <string>
 
 #include "Assets/TilemapSerializer.hpp"
+#include "Core/App.hpp"
 #include "Core/Base.hpp"
+#include "Core/Systems/SystemManager.hpp"
 #include "Core/Types.hpp"
 #include "Core/UUID.hpp"
 
@@ -395,6 +397,11 @@ struct LuaScriptComponent {
 
 struct CPPScriptComponent {
   Shared<System> system = nullptr;
+
+  template<typename T>
+  void add_system() {
+    App::get_system<SystemManager>()->register_system<T>();
+  }
 };
 
 template <typename... Component>
