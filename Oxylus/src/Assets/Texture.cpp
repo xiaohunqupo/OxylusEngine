@@ -7,10 +7,10 @@
 #include <vuk/runtime/vk/AllocatorHelpers.hpp>
 #include <vuk/vsl/Core.hpp>
 
+#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Render/RendererCommon.hpp"
 #include "Render/Utils/VukCommon.hpp"
-#include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 
@@ -27,7 +27,7 @@ Texture::Texture(const TextureLoadInfo& info, std::source_location loc) {
 }
 
 void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk::ImageAttachment::Preset preset, std::source_location loc) {
-  auto& allocator = VkContext::get()->superframe_allocator;
+  auto& allocator = App::get_vkcontext().superframe_allocator;
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
   auto image = vuk::allocate_image(*allocator, ia);
@@ -42,7 +42,7 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
 }
 
 void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc) {
-  auto& allocator = VkContext::get()->superframe_allocator;
+  auto& allocator = App::get_vkcontext().superframe_allocator;
   auto ia = image_attachment;
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
   auto image = vuk::allocate_image(*allocator, ia);
@@ -58,7 +58,7 @@ void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::
 
 void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::Format format, Preset preset, std::source_location loc) {
   OX_SCOPED_ZONE;
-  auto& allocator = VkContext::get()->superframe_allocator;
+  auto& allocator = App::get_vkcontext().superframe_allocator;
 
   auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
@@ -77,7 +77,7 @@ void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::
 }
 
 void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
-  auto& allocator = VkContext::get()->superframe_allocator;
+  auto& allocator = App::get_vkcontext().superframe_allocator;
 
   if (load_info.mime == TextureLoadInfo::MimeType::Generic) {
     uint32_t width, height, chans;
@@ -138,15 +138,15 @@ void Texture::create_white_texture() {
 }
 
 void Texture::set_name(std::string_view name, const std::source_location& loc) {
-  const auto ctx = VkContext::get();
+  auto& ctx = App::get_vkcontext();
   if (!name.empty()) {
-    ctx->runtime->set_name(_image->image, vuk::Name(name));
-    ctx->runtime->set_name(_view->payload, vuk::Name(name));
+    ctx.runtime->set_name(_image->image, vuk::Name(name));
+    ctx.runtime->set_name(_view->payload, vuk::Name(name));
   } else {
     auto file = fs::get_file_name(loc.file_name());
     const auto n = fmt::format("{0}:{1}", file, loc.line());
-    ctx->runtime->set_name(_image->image, vuk::Name(n));
-    ctx->runtime->set_name(_view->payload, vuk::Name(n));
+    ctx.runtime->set_name(_image->image, vuk::Name(n));
+    ctx.runtime->set_name(_view->payload, vuk::Name(n));
   }
 }
 

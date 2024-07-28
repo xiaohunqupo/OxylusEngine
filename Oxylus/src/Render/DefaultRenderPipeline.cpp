@@ -1041,7 +1041,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     current_camera = default_camera.get();
   }
 
-  auto vk_context = VkContext::get();
+  auto& vk_context = App::get_vkcontext();
 
   Vec3 sun_direction = {0, 1, 0};
   Vec3 sun_color = {};
@@ -1065,7 +1065,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   })(vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), first_pass || resized ? vuk::eNone : vuk::eFragmentSampled | vuk::eComputeSampled));
 
   if (first_pass || resized) {
-    run_static_passes(*vk_context->superframe_allocator);
+    run_static_passes(*vk_context.superframe_allocator);
     hiz_image = clear_image(hiz_image, vuk::Black<float>);
     resized = false;
   }
@@ -1474,7 +1474,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                  *current_camera,
                                  App::get_timestep().get_elapsed_millis(),
                                  1.0f,
-                                 vk_context->current_frame);
+                                 vk_context.current_frame);
   #endif
 
   auto fxaa_ia = vuk::ImageAttachment::from_preset(Preset::eGeneric2D, vuk::Format::eR32G32B32A32Sfloat, {}, vuk::Samples::e1);
@@ -1523,7 +1523,7 @@ void DefaultRenderPipeline::update_skybox(const SkyboxLoadEvent& e) {
   cube_map = e.cube_map;
 
   if (cube_map)
-    generate_prefilter(*VkContext::get()->superframe_allocator);
+    generate_prefilter(*App::get_vkcontext().superframe_allocator);
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<vuk::ImageAttachment>& shadow_map) {
@@ -1542,7 +1542,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
       });
 
 #if 0
-    const auto max_viewport_count = VkContext::get()->get_max_viewport_count();
+    const auto max_viewport_count = App::get_vkcontext().get_max_viewport_count();
     for (auto& light : scene_lights) {
       if (!light.cast_shadows)
         continue;

@@ -47,17 +47,11 @@ public:
 
   VkContext() = default;
 
-  static void init();
-  static VkContext* get() { return s_instance; }
-
   void create_context(const AppSpec& spec);
   void handle_resize(uint32 width, uint32 height);
   void set_vsync(bool enable);
   bool is_vsync() const;
 
   uint32_t get_max_viewport_count() const { return vkbphysical_device.properties.limits.maxViewports; }
-
-private:
-  static VkContext* s_instance;
 };
 }

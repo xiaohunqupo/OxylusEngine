@@ -2,12 +2,12 @@
 
 #include <vuk/vsl/Core.hpp>
 
+#include "Core/App.hpp"
 #include "RendererCommon.hpp"
 
 #include "Utils/OxMath.hpp"
 #include "Utils/Profiler.hpp"
 
-#include "Vulkan/VkContext.hpp"
 
 namespace ox {
 DebugRenderer* DebugRenderer::instance = nullptr;
@@ -29,13 +29,13 @@ void DebugRenderer::init() {
   instance->debug_renderer_context.cube = RendererCommon::generate_cube();
   instance->debug_renderer_context.sphere = RendererCommon::generate_sphere();
 
-  auto [i_buff, i_buff_fut] = create_buffer(*VkContext::get()->superframe_allocator,
+  auto [i_buff, i_buff_fut] = create_buffer(*App::get_vkcontext().superframe_allocator,
                                             vuk::MemoryUsage::eCPUtoGPU,
                                             vuk::DomainFlagBits::eTransferOnGraphics,
                                             std::span(indices));
 
   auto compiler = vuk::Compiler{};
-  i_buff_fut.wait(*VkContext::get()->superframe_allocator, compiler);
+  i_buff_fut.wait(*App::get_vkcontext().superframe_allocator, compiler);
 
   instance->debug_renderer_context.index_buffer = std::move(i_buff);
 }

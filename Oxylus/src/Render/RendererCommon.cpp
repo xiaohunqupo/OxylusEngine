@@ -11,19 +11,19 @@
 #include "Assets/AssetManager.hpp"
 #include "Core/FileSystem.hpp"
 
+#include "Core/App.hpp"
 #include "Core/Types.hpp"
 
 #include "Utils/Log.hpp"
 #include "Utils/OxMath.hpp"
 
 #include "Utils/VukCommon.hpp"
-#include "Vulkan/VkContext.hpp"
 
 namespace ox {
 RendererCommon::MeshLib RendererCommon::mesh_lib = {};
 
 vuk::Value<vuk::ImageAttachment> RendererCommon::generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttachment> hdr_image) {
-  auto& allocator = VkContext::get()->superframe_allocator;
+  auto& allocator = App::get_vkcontext().superframe_allocator;
   if (!allocator->get_context().is_pipeline_available("equirectangular_to_cubemap")) {
     vuk::PipelineBaseCreateInfo equirectangular_to_cubemap;
     equirectangular_to_cubemap.add_glsl(fs::read_shader_file("Cubemap.vert"), "Cubemap.vert");
@@ -253,7 +253,7 @@ Shared<Mesh> RendererCommon::generate_sphere() {
 
 vuk::Value<vuk::ImageAttachment> RendererCommon::apply_blur(const vuk::Value<vuk::ImageAttachment>& src_attachment,
                                                             const vuk::Value<vuk::ImageAttachment>& dst_attachment) {
-  auto& allocator = *VkContext::get()->superframe_allocator;
+  auto& allocator = *App::get_vkcontext().superframe_allocator;
   if (!allocator.get_context().is_pipeline_available("gaussian_blur_pipeline")) {
     vuk::PipelineBaseCreateInfo pci;
     pci.add_hlsl(fs::read_shader_file("FullscreenTriangle.hlsl"), fs::get_shader_path("FullscreenTriangle.hlsl"), vuk::HlslShaderStage::eVertex);

@@ -9,6 +9,7 @@
 #include "Core/Types.hpp"
 #include "ESystem.hpp"
 
+#include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Timestep.hpp"
 #include "VFS.hpp"
@@ -89,6 +90,7 @@ public:
   static App* get() { return _instance; }
   static void set_instance(App* instance);
   static const Timestep& get_timestep() { return _instance->timestep; }
+  static VkContext& get_vkcontext() { return _instance->vk_context; }
 
   static bool asset_directory_exists();
   static std::string get_asset_directory();
@@ -139,6 +141,7 @@ private:
   AppSpec app_spec;
   ImGuiLayer* imgui_layer;
   Shared<LayerStack> layer_stack;
+  VkContext vk_context;
 
   SystemRegistry system_registry = {};
   EventDispatcher dispatcher;

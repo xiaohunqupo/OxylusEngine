@@ -105,7 +105,7 @@ void ImGuiLayer::init_for_vulkan() {
     io.Fonts->Build();
   }
 
-  imgui_impl_vuk_init(*VkContext::get()->superframe_allocator);
+  imgui_impl_vuk_init(*App::get_vkcontext().superframe_allocator);
 }
 
 void ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) {

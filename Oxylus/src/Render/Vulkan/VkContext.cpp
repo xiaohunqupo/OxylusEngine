@@ -12,8 +12,6 @@
 #include "Render/RendererConfig.hpp"
 
 namespace ox {
-VkContext* VkContext::s_instance = nullptr;
-
 static VkBool32 debug_callback(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
                                VkDebugUtilsMessageTypeFlagsEXT messageType,
                                const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
@@ -98,13 +96,6 @@ static vuk::Swapchain make_swapchain(vuk::Allocator allocator,
   old_swapchain->swapchain = vkswapchain->swapchain;
   old_swapchain->surface = surface;
   return std::move(*old_swapchain);
-}
-
-void VkContext::init() {
-  if (s_instance)
-    return;
-
-  s_instance = new VkContext();
 }
 
 inline VkSurfaceKHR create_surface_glfw(const VkInstance instance, GLFWwindow* window) {

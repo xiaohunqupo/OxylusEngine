@@ -29,7 +29,7 @@ void RendererSettingsPanel::on_imgui_render() {
     avg /= (float)size;
     const double fps = 1.0 / static_cast<double>(avg) * 1000.0;
     ImGui::Text("FPS: %lf / (ms): %lf", static_cast<double>(avg), fps);
-    ImGui::Text("GPU: %s", VkContext::get()->device_name.c_str());
+    ImGui::Text("GPU: %s", App::get_vkcontext().device_name.c_str());
     ImGui::Text("Internal Render Size: [ %u, %u ]", Renderer::get_viewport_width(), Renderer::get_viewport_height());
     ui::tooltip_hover("Current viewport resolution");
 

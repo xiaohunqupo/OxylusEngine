@@ -41,7 +41,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
 
   // consume renderer related cvars
   if (RendererCVar::cvar_reload_render_pipeline.get()) {
-    rp->init(*VkContext::get()->superframe_allocator);
+    rp->init(*App::get_vkcontext().superframe_allocator);
     RendererCVar::cvar_reload_render_pipeline.toggle();
   }
 

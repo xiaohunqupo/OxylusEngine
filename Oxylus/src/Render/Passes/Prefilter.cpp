@@ -3,6 +3,7 @@
 #include <glm/gtx/quaternion.hpp>
 #include <vuk/RenderGraph.hpp>
 
+#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Render/Mesh.hpp"
 #include "Render/Vulkan/VkContext.hpp"
@@ -11,13 +12,13 @@
 
 namespace ox {
 vuk::Value<vuk::ImageAttachment> Prefilter::generate_brdflut() {
-  const auto vk_context = VkContext::get();
+  auto& vk_context = App::get_vkcontext();
 
-  if (!vk_context->runtime->is_pipeline_available("BRDFLUTPipeline")) {
+  if (!vk_context.runtime->is_pipeline_available("BRDFLUTPipeline")) {
     vuk::PipelineBaseCreateInfo pci;
     pci.add_glsl(fs::read_shader_file("GenBrdfLut.vert"), "GenBrdfLut.vert");
     pci.add_glsl(fs::read_shader_file("GenBrdfLut.frag"), "GenBrdfLut.frag");
-    vk_context->runtime->create_named_pipeline("BRDFLUTPipeline", pci);
+    vk_context.runtime->create_named_pipeline("BRDFLUTPipeline", pci);
   }
 
   constexpr uint32_t dim = 512;
@@ -51,7 +52,7 @@ vuk::Value<vuk::ImageAttachment> Prefilter::generate_brdflut() {
 }
 
 vuk::Value<vuk::ImageAttachment> Prefilter::generate_irradiance_cube(const Shared<Mesh>& skybox, const Shared<Texture>& cubemap) {
-  const auto vk_context = VkContext::get();
+  auto& vk_context = App::get_vkcontext();
   constexpr int32_t dim = 64;
 
   const auto capture_projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);
@@ -62,11 +63,11 @@ vuk::Value<vuk::ImageAttachment> Prefilter::generate_irradiance_cube(const Share
                                 lookAt(Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 0.0f, 1.0f), Vec3(0.0f, -1.0f, 0.0f)),
                                 lookAt(Vec3(0.0f, 0.0f, 0.0f), Vec3(0.0f, 0.0f, -1.0f), Vec3(0.0f, -1.0f, 0.0f))};
 
-  if (!vk_context->runtime->is_pipeline_available("IrradiancePipeline")) {
+  if (!vk_context.runtime->is_pipeline_available("IrradiancePipeline")) {
     vuk::PipelineBaseCreateInfo pci;
     pci.add_glsl(fs::read_shader_file("Cubemap.vert"), "Cubemap.vert");
     pci.add_glsl(fs::read_shader_file("IrradianceCube.frag"), "IrradianceCube.frag");
-    vk_context->runtime->create_named_pipeline("IrradiancePipeline", pci);
+    vk_context.runtime->create_named_pipeline("IrradiancePipeline", pci);
   }
 
   vuk::ImageAttachment attachment = {
@@ -117,16 +118,16 @@ vuk::Value<vuk::ImageAttachment> Prefilter::generate_irradiance_cube(const Share
 }
 
 vuk::Value<vuk::ImageAttachment> Prefilter::generate_prefiltered_cube(const Shared<Mesh>& skybox, const Shared<Texture>& cubemap) {
-  const auto vk_context = VkContext::get();
+  auto& vk_context = App::get_vkcontext();
   constexpr int32_t dim = 512;
 
   constexpr auto pipeline_name = "PrefilterPipeline";
 
-  if (!vk_context->runtime->is_pipeline_available(pipeline_name)) {
+  if (!vk_context.runtime->is_pipeline_available(pipeline_name)) {
     vuk::PipelineBaseCreateInfo pci;
     pci.add_glsl(fs::read_shader_file("Cubemap.vert"), "Cubemap.vert");
     pci.add_glsl(fs::read_shader_file("PrefilterEnvMap.frag"), "PrefilterEnvMap.frag");
-    vk_context->runtime->create_named_pipeline(pipeline_name, pci);
+    vk_context.runtime->create_named_pipeline(pipeline_name, pci);
   }
 
   const auto capture_projection = glm::perspective(glm::radians(90.0f), 1.0f, 0.1f, 10.0f);

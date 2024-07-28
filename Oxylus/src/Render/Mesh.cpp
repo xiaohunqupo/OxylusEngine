@@ -59,23 +59,23 @@ Mesh::Mesh(const std::vector<Vertex>& vertices, const std::vector<uint32>& indic
   this->_vertices = vertices;
   this->_indices = indices;
 
-  const auto context = VkContext::get();
+  auto& context = App::get_vkcontext();
   auto compiler = vuk::Compiler{};
 
-  auto [vBuffer, vBufferFut] = create_buffer(*context->superframe_allocator,
+  auto [vBuffer, vBufferFut] = create_buffer(*context.superframe_allocator,
                                              vuk::MemoryUsage::eGPUonly,
                                              vuk::DomainFlagBits::eTransferOnGraphics,
                                              std::span(_vertices));
 
-  vBufferFut.wait(*context->superframe_allocator, compiler);
+  vBufferFut.wait(*context.superframe_allocator, compiler);
   vertex_buffer = std::move(vBuffer);
 
-  auto [iBuffer, iBufferFut] = create_buffer(*context->superframe_allocator,
+  auto [iBuffer, iBufferFut] = create_buffer(*context.superframe_allocator,
                                              vuk::MemoryUsage::eGPUonly,
                                              vuk::DomainFlagBits::eTransferOnGraphics,
                                              std::span(_indices));
 
-  iBufferFut.wait(*context->superframe_allocator, compiler);
+  iBufferFut.wait(*context.superframe_allocator, compiler);
   index_buffer = std::move(iBuffer);
 
   index_count = (uint32)indices.size();
@@ -487,7 +487,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
 // create buffers
 #if 0
-  auto ctx = VkContext::get();
+  const auto& ctx = App::get_vkcontext();
   auto compiler = vuk::Compiler{};
 
   auto [vBuffer, vBufferFut] = create_buffer(*ctx->superframe_allocator,

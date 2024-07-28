@@ -22,7 +22,7 @@ void SceneRenderer::init(EventDispatcher& dispatcher) {
   if (!_render_pipeline)
     _render_pipeline = create_shared<DefaultRenderPipeline>("DefaultRenderPipeline");
   Renderer::renderer_context.render_pipeline = _render_pipeline;
-  _render_pipeline->init(*VkContext::get()->superframe_allocator);
+  _render_pipeline->init(*App::get_vkcontext().superframe_allocator);
   _render_pipeline->on_dispatcher_events(dispatcher);
 }
 
