@@ -1,9 +1,9 @@
 #include "AssetManager.hpp"
 
+#include "Assets/Texture.hpp"
 #include "Audio/AudioSource.hpp"
 #include "Core/App.hpp"
 #include "Render/Mesh.hpp"
-
 
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
@@ -24,6 +24,7 @@ Shared<Texture> AssetManager::get_texture_asset(const TextureLoadInfo& info) {
   return load_texture_asset(info.path, info);
 }
 
+// TODO: Doesn't respect virtual dirs
 Shared<Texture> AssetManager::get_texture_asset(const std::string& name, const TextureLoadInfo& info) {
   if (_instance->_state.texture_assets.contains(name)) {
     return _instance->_state.texture_assets[name];
@@ -32,6 +33,7 @@ Shared<Texture> AssetManager::get_texture_asset(const std::string& name, const T
   return load_texture_asset(name, info);
 }
 
+// TODO: Doesn't respect virtual dirs
 AssetTask<Texture>* AssetManager::get_texture_asset_future(const TextureLoadInfo& info) {
   const auto* t = &_instance->_state.texture_tasks.emplace_back(create_unique<AssetTask<Texture>>([info] {
     if (_instance->_state.texture_assets.contains(info.path)) {
@@ -53,6 +55,7 @@ Shared<Mesh> AssetManager::get_mesh_asset(const std::string& path, const uint32_
   return load_mesh_asset(path, loadingFlags);
 }
 
+// TODO: Doesn't respect virtual dirs
 AssetTask<Mesh>* AssetManager::get_mesh_asset_future(const std::string& path, uint32_t loadingFlags) {
   const auto* t = &_instance->_state.mesh_tasks.emplace_back(create_unique<AssetTask<Mesh>>([path, loadingFlags] {
     if (_instance->_state.mesh_assets.contains(path)) {
@@ -77,21 +80,30 @@ Shared<AudioSource> AssetManager::get_audio_asset(const std::string& path) {
 Shared<Texture> AssetManager::load_texture_asset(const std::string& path, const TextureLoadInfo& info) {
   OX_SCOPED_ZONE;
 
-  Shared<Texture> texture = create_shared<Texture>(info);
+  const auto resolved_path = App::get_system<VFS>()->resolve_physical_dir(info.path);
+  TextureLoadInfo new_info = info;
+  new_info.path = resolved_path;
+
+  Shared<Texture> texture = create_shared<Texture>(new_info);
   texture->asset_id = (uint32_t)_instance->_state.texture_assets.size();
+  texture->asset_path = path;
   return _instance->_state.texture_assets.emplace(path, texture).first->second;
 }
 
 Shared<Mesh> AssetManager::load_mesh_asset(const std::string& path, uint32_t loadingFlags) {
   OX_SCOPED_ZONE;
-  Shared<Mesh> asset = create_shared<Mesh>(path);
+  const auto resolved_path = App::get_system<VFS>()->resolve_physical_dir(path);
+  Shared<Mesh> asset = create_shared<Mesh>(resolved_path);
   asset->asset_id = (uint32_t)_instance->_state.mesh_assets.size();
+  asset->asset_path = path;
   return _instance->_state.mesh_assets.emplace(path, asset).first->second;
 }
 
 Shared<AudioSource> AssetManager::load_audio_asset(const std::string& path) {
   OX_SCOPED_ZONE;
-  Shared<AudioSource> source = create_shared<AudioSource>(path);
+  const auto resolved_path = App::get_system<VFS>()->resolve_physical_dir(path);
+  Shared<AudioSource> source = create_shared<AudioSource>(resolved_path);
+  source->asset_path = path;
   return _instance->_state.audio_assets.emplace(path, source).first->second;
 }
 

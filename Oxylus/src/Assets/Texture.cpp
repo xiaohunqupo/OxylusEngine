@@ -79,11 +79,9 @@ void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::
 void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
   auto& allocator = VkContext::get()->superframe_allocator;
 
-  _path = load_info.path;
-
   if (load_info.mime == TextureLoadInfo::MimeType::Generic) {
     uint32_t width, height, chans;
-    const uint8_t* data = load_stb_image(_path, &width, &height, &chans);
+    const uint8_t* data = load_stb_image(load_info.path, &width, &height, &chans);
 
     if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
       create_texture({width, height, 1}, data, load_info.format, load_info.preset, loc);
@@ -103,7 +101,7 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
 
     delete[] data;
   } else {
-    const auto file_data = fs::read_file_binary(_path);
+    const auto file_data = fs::read_file_binary(load_info.path);
     ktxTexture2* ktx{};
     if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(),
                                                          file_data.size(),

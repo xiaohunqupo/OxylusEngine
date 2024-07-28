@@ -11,6 +11,7 @@
 
 #include "Utils/Log.hpp"
 #include "Utils/Timestep.hpp"
+#include "VFS.hpp"
 
 int main(int argc, char** argv);
 

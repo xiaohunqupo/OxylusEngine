@@ -9,7 +9,7 @@
 #include "Utils/Log.hpp"
 
 namespace ox {
-AudioSource::AudioSource(const std::string& filepath) : m_path(filepath) {
+AudioSource::AudioSource(const std::string& filepath) {
   m_sound = create_unique<ma_sound>();
 
   auto* engine = App::get_system<AudioEngine>()->get_engine();

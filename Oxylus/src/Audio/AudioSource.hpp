@@ -2,6 +2,7 @@
 
 #include <string>
 
+#include "Assets/Asset.hpp"
 #include "Core/Base.hpp"
 #include "Core/Types.hpp"
 
@@ -36,14 +37,12 @@ struct AudioSourceConfig {
   float doppler_factor = 1.0f;
 };
 
-class AudioSource {
+class AudioSource : public Asset {
 public:
   explicit AudioSource(const std::string& filepath);
   ~AudioSource();
   AudioSource(const AudioSource& other) = delete;
   AudioSource(AudioSource&& other) = delete;
-
-  const char* get_path() const { return m_path.c_str(); }
 
   void play() const;
   void pause() const;
@@ -68,7 +67,6 @@ public:
   void set_velocity(const Vec3& velocity) const;
 
 private:
-  std::string m_path;
   Unique<ma_sound> m_sound;
   bool m_spatialization = false;
 };

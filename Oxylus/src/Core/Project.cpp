@@ -5,8 +5,10 @@
 #include <entt/meta/node.hpp>
 #include <filesystem>
 
+#include "Assets/AssetManager.hpp"
 #include "Base.hpp"
 #include "Core/App.hpp"
+#include "Core/FileSystem.hpp"
 #include "FileSystem.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "ProjectSerializer.hpp"
@@ -89,8 +91,13 @@ Shared<Project> Project::load(const std::string& path) {
   if (serializer.deserialize(path)) {
     project->set_project_dir(std::filesystem::path(path).parent_path().string());
     project->project_file_path = std::filesystem::absolute(path).string();
+
+    const auto asset_dir_path = fs::append_paths(fs::get_directory(project->project_file_path), project->project_config.asset_directory);
+    App::get_system<VFS>()->mount_dir("Assets/", asset_dir_path);
+
     active_project = project;
     active_project->load_module();
+
     OX_LOG_INFO("Project loaded: {0}", project->get_config().name);
     return active_project;
   }

@@ -36,26 +36,6 @@ namespace ox {
 #define TBL_FIELD(c, field) {#field, c.field}
 #define TBL_FIELD_ARR(c, field) {#field, get_toml_array(c.field)}
 
-std::string convert_path_relative(const std::string& path) {
-  if (!Project::get_active())
-    return path;
-  auto absolute_asset_dir = fs::append_paths(Project::get_active()->get_project_file_path(), Project::get_asset_directory());
-  absolute_asset_dir = std::filesystem::path(absolute_asset_dir).parent_path().string();
-  return fs::preferred_path(std::filesystem::relative(path, absolute_asset_dir).string());
-}
-
-std::string convert_path_absolute(const std::string& path) {
-  if (!Project::get_active())
-    return path;
-  auto absolute_asset_dir = fs::append_paths(Project::get_active()->get_project_file_path(), Project::get_asset_directory());
-  absolute_asset_dir = std::filesystem::path(absolute_asset_dir).parent_path().string();
-  return fs::append_paths(absolute_asset_dir, path);
-}
-
-static std::string get_path(const std::string& p) { return convert_path_absolute(p); }
-
-static std::string save_path(const std::string& p) { return convert_path_relative(p); }
-
 void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Entity entity) {
   entities->push_back(toml::table{{"uuid", std::to_string((uint64_t)eutil::get_uuid(scene->registry, entity))}});
 
@@ -100,7 +80,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
   if (scene->registry.all_of<MeshComponent>(entity)) {
     const auto& mrc = scene->registry.get<MeshComponent>(entity);
 
-    const auto table = toml::table{{"mesh_path", save_path(mrc.mesh_base->path)}, TBL_FIELD(mrc, stationary), TBL_FIELD(mrc, cast_shadows)};
+    const auto table = toml::table{{"mesh_path", mrc.mesh_base->get_path()}, TBL_FIELD(mrc, stationary), TBL_FIELD(mrc, cast_shadows)};
 
     entities->push_back(toml::table{{"mesh_component", table}});
   }
@@ -283,7 +263,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
 
     toml::array path_array = {};
     for (const auto& system : systems)
-      path_array.push_back(save_path(system->get_path()));
+      path_array.push_back(system->get_path());
 
     const auto table = toml::table{{"paths", path_array}};
 
@@ -308,7 +288,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
       {"color", get_toml_array(component.material->parameters.color)},
       {"uv_size", get_toml_array(component.material->parameters.uv_size)},
       {"uv_offset", get_toml_array(component.material->parameters.uv_offset)},
-      {"texture_path", save_path(path)},
+      {"texture_path", path},
     };
     entities->push_back(toml::table{{"sprite_component", table}});
   }
@@ -329,7 +309,7 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
   if (scene->registry.all_of<TilemapComponent>(entity)) {
     const auto& component = scene->registry.get<TilemapComponent>(entity);
     const auto table = toml::table{
-      {"path", save_path(component.path)},
+      {"path", component.path},
     };
     entities->push_back(toml::table{{"tilemap_component", table}});
   }
@@ -377,7 +357,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       tc.rotation = get_vec3_toml_array(GET_ARRAY(transform_node, "rotation"));
       tc.scale = get_vec3_toml_array(GET_ARRAY(transform_node, "scale"));
     } else if (const auto mesh_node = ent.as_table()->get("mesh_component")) {
-      const auto path = get_path(GET_STRING2(mesh_node, "mesh_path"));
+      const auto path = GET_STRING2(mesh_node, "mesh_path");
       auto mesh = AssetManager::get_mesh_asset(path);
       auto& mc = reg.emplace<MeshComponent>(deserialized_entity, mesh);
       GET_BOOL(mesh_node, mc, cast_shadows);
@@ -484,7 +464,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       auto& lsc = reg.emplace<LuaScriptComponent>(deserialized_entity);
       auto paths = GET_ARRAY(lua_node, "paths");
       for (auto& path : *paths) {
-        auto ab = get_path(path.as_string()->get());
+        auto ab = App::get_system<VFS>()->resolve_physical_dir(path.as_string()->get());
         lsc.lua_systems.emplace_back(create_shared<LuaSystem>(ab));
       }
     } else if (const auto cpp_node = ent.as_table()->get("cpp_script_component")) {
@@ -501,7 +481,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       sc.material->parameters.uv_offset = get_vec2_toml_array(GET_ARRAY(sprite_node, "uv_offset"));
       sc.material->parameters.uv_size = get_vec2_toml_array(GET_ARRAY(sprite_node, "uv_size"));
 
-      const auto path = get_path(GET_STRING2(sprite_node, "texture_path"));
+      const auto path = GET_STRING2(sprite_node, "texture_path");
       if (!path.empty())
         sc.material->set_albedo_texture(AssetManager::get_texture_asset({.path = path}));
     } else if (const auto sprite_anim_node = ent.as_table()->get("sprite_animation_component")) {
@@ -514,7 +494,7 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       sac.frame_size = get_vec2_toml_array(GET_ARRAY(sprite_anim_node, "frame_size"));
     } else if (const auto tilemap_node = ent.as_table()->get("tilemap_component")) {
       auto& tmc = reg.emplace<TilemapComponent>(deserialized_entity);
-      const auto path = get_path(GET_STRING2(tilemap_node, "path"));
+      const auto path = App::get_system<VFS>()->resolve_physical_dir(GET_STRING2(tilemap_node, "path"));
       tmc.load(path);
     }
   }

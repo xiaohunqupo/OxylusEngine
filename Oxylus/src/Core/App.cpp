@@ -54,6 +54,7 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
     return;
   }
 
+  register_system<VFS>();
   register_system<Random>();
   register_system<TaskScheduler>();
   register_system<FileDialogs>();
@@ -89,6 +90,7 @@ App::~App() { close(); }
 void App::set_instance(App* instance) {
   _instance = instance;
   get_system<Input>()->set_instance();
+  get_system<AssetManager>()->set_instance();
 }
 
 App& App::push_layer(Layer* layer) {

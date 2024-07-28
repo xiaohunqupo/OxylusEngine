@@ -184,8 +184,6 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
   Timer timer;
 
-  path = file_path;
-
   const auto extension = fs::get_file_extension(file_path);
   const auto is_text = extension == "gltf";
   const auto is_binary = extension == "glb";
@@ -508,7 +506,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   iBufferFut.wait(*ctx->superframe_allocator, compiler);
   index_buffer = std::move(iBuffer);
 #endif
-  OX_LOG_INFO("Loaded mesh {0}:{1}", fs::get_name_with_extension(path), timer.get_elapsed_ms());
+  OX_LOG_INFO("Loaded mesh {0}:{1}", fs::get_name_with_extension(file_path), timer.get_elapsed_ms());
 }
 
 const Mesh* Mesh::bind_vertex_buffer(vuk::CommandBuffer& command_buffer) const {

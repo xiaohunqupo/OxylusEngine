@@ -42,4 +42,4 @@ private:
   std::string project_file_path;
   inline static Shared<Project> active_project;
 };
-}
+} // namespace ox

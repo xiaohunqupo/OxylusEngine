@@ -55,7 +55,6 @@ public:
     Mat4 get_local_transform() const { return translate(Mat4(1.0f), translation) * Mat4(rotation) * glm::scale(Mat4(1.0f), scale); }
   };
 
-  std::string path;
   std::vector<Node*> root_nodes;
   std::vector<Node> nodes;
   std::vector<Meshlet> _meshlets;

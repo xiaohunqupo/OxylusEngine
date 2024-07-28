@@ -44,7 +44,7 @@ std::string fs::get_directory(std::string_view path) {
     return std::string(path);
   }
 
-  return split_path(path).first;
+  return std::filesystem::path(path).parent_path().string();
 }
 
 std::string fs::append_paths(const std::string_view path, const std::string_view second_path) {
