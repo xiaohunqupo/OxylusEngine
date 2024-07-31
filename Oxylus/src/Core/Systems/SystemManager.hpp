@@ -16,7 +16,7 @@ public:
   void deinit() override {};
 
   template <typename T, typename... Args>
-  void register_system(Args&&... args) {
+  Shared<System> register_system(Args&&... args) {
     auto hash_code = typeid(T).hash_code();
     if (system_registry.contains(hash_code))
       system_registry.erase(hash_code);
@@ -24,6 +24,7 @@ public:
     Shared<T> system = create_shared<T>(std::forward<Args>(args)...);
     system->hash_code = hash_code;
     system_registry.emplace(hash_code, std::make_pair(typeid(T).name(), std::move(system)));
+    return system_registry[hash_code].second;
   }
 
   template <typename T>

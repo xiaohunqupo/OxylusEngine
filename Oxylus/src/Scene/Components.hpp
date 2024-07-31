@@ -191,9 +191,7 @@ struct TilemapComponent {
 struct CameraComponent {
   Shared<Camera> camera = nullptr;
 
-  CameraComponent() { 
-    camera = create_shared<Camera>();
-  }
+  CameraComponent() { camera = create_shared<Camera>(); }
 };
 
 struct ParticleSystemComponent {
@@ -396,11 +394,12 @@ struct LuaScriptComponent {
 };
 
 struct CPPScriptComponent {
-  Shared<System> system = nullptr;
+  std::vector<Shared<System>> systems = {};
 
-  template<typename T>
+  template <typename T>
   void add_system() {
-    App::get_system<SystemManager>()->register_system<T>();
+    auto system = App::get_system<SystemManager>()->register_system<T>();
+    systems.emplace(system);
   }
 };
 

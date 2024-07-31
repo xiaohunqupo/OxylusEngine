@@ -272,11 +272,12 @@ void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Ent
 
   if (scene->registry.all_of<CPPScriptComponent>(entity)) {
     const auto& component = scene->registry.get<CPPScriptComponent>(entity);
-    const auto& system = component.system;
-    if (system) {
-      const auto table = toml::table{{"system_hash", std::to_string(component.system->hash_code)}};
-      entities->push_back(toml::table{{"cpp_script_component", table}});
+    toml::array hash_array = {};
+    for (const auto& system : component.systems) {
+      hash_array.push_back(std::to_string(system->hash_code));
     }
+    const auto table = toml::table{{"system_hashes", hash_array}};
+    entities->push_back(toml::table{{"cpp_script_component", table}});
   }
 
   if (scene->registry.all_of<SpriteComponent>(entity)) {
@@ -469,9 +470,11 @@ UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene,
       }
     } else if (const auto cpp_node = ent.as_table()->get("cpp_script_component")) {
       auto& csc = reg.emplace<CPPScriptComponent>(deserialized_entity);
-      auto system_hash = std::stoull(GET_STRING2(cpp_node, "system_hash"));
-      auto* system_manager = App::get_system<SystemManager>();
-      csc.system = system_manager->get_system(system_hash);
+      auto system_hashes = GET_ARRAY(cpp_node, "system_hashes");
+      for (auto& hash : *system_hashes) {
+        auto* system_manager = App::get_system<SystemManager>();
+        csc.systems.emplace_back(system_manager->get_system(std::stoull(hash.as_string()->get())));
+      }
     } else if (const auto sprite_node = ent.as_table()->get("sprite_component")) {
       auto& sc = reg.emplace<SpriteComponent>(deserialized_entity);
       GET_UINT32(sprite_node, sc, layer);

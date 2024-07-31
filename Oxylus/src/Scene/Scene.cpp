@@ -158,7 +158,9 @@ void Scene::update_physics(const Timestep& delta_time) {
         OX_SCOPED_ZONE_N("CPPScripting/on_fixed_update");
         const auto script_view = registry.view<CPPScriptComponent>();
         for (auto&& [e, script_component] : script_view.each()) {
-          script_component.system->on_fixed_update(physics_ts);
+          for (const auto& system : script_component.systems) {
+            system->on_fixed_update(physics_ts);
+          }
         }
       }
 
@@ -375,7 +377,9 @@ void Scene::on_runtime_start() {
     OX_SCOPED_ZONE_N("CPPScripting/on_init");
     const auto script_view = registry.view<CPPScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
-      script_component.system->on_init(this, e);
+      for (const auto& system : script_component.systems) {
+        system->on_init(this, e);
+      }
     }
   }
 }
@@ -414,7 +418,9 @@ void Scene::on_runtime_stop() {
   {
     const auto script_view = registry.view<CPPScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
-      script_component.system->on_release(this, e);
+      for (const auto& system : script_component.systems) {
+        system->on_release(this, e);
+      }
     }
   }
 
@@ -494,7 +500,9 @@ void Scene::on_contact_added(const JPH::Body& body1,
     OX_SCOPED_ZONE_N("CPPScripting/on_contact_added");
     const auto script_view = registry.view<CPPScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
-      script_component.system->on_contact_added(this, e, body1, body2, manifold, settings);
+      for (const auto& system : script_component.systems) {
+        system->on_contact_added(this, e, body1, body2, manifold, settings);
+      }
     }
   }
 
@@ -511,7 +519,9 @@ void Scene::on_contact_persisted(const JPH::Body& body1,
     OX_SCOPED_ZONE_N("CPPScripting/on_contact_persisted");
     const auto script_view = registry.view<CPPScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
-      script_component.system->on_contact_persisted(this, e, body1, body2, manifold, settings);
+      for (const auto& system : script_component.systems) {
+        system->on_contact_persisted(this, e, body1, body2, manifold, settings);
+      }
     }
   }
 
@@ -733,8 +743,10 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     OX_SCOPED_ZONE_N("CPPScripting/on_update");
     const auto script_view = registry.view<CPPScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
-      script_component.system->bind_globals(this, e, &dispatcher);
-      script_component.system->on_update(delta_time);
+      for (const auto& system : script_component.systems) {
+        system->bind_globals(this, e, &dispatcher);
+        system->on_update(delta_time);
+      }
     }
   }
 
@@ -787,7 +799,9 @@ void Scene::on_imgui_render(const Timestep& delta_time) {
     OX_SCOPED_ZONE_N("CPPScripting/on_imgui_render");
     const auto script_view = registry.view<CPPScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
-      script_component.system->on_imgui_render(delta_time);
+      for (const auto& system : script_component.systems) {
+        system->on_imgui_render(delta_time);
+      }
     }
   }
 

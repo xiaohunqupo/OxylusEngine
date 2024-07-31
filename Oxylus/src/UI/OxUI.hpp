@@ -40,6 +40,8 @@ public:
 
   static bool checkbox(const char* label, bool* v);
 
+  static bool combo(const char* label, int* value, const char** dropdown_strings, int count, const char* tooltip = nullptr);
+
   static bool input_text(const char* label,
                          char* buf,
                          size_t buf_size,

@@ -108,6 +108,34 @@ bool ui::checkbox(const char* label, bool* v) {
   return changed;
 }
 
+bool ui::combo(const char* label, int* value, const char** dropdown_strings, int count, const char* tooltip) {
+  push_frame_style();
+
+  bool modified = false;
+  const char* current = dropdown_strings[*value];
+
+  if (ImGui::BeginCombo(id_buffer, current)) {
+    for (int i = 0; i < count; i++) {
+      const bool is_selected = current == dropdown_strings[i];
+      if (ImGui::Selectable(dropdown_strings[i], is_selected)) {
+        current = dropdown_strings[i];
+        *value = i;
+        modified = true;
+      }
+
+      if (is_selected)
+        ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  tooltip_hover(tooltip);
+
+  pop_frame_style();
+
+  return modified;
+}
+
 bool ui::input_text(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
   push_frame_style();
   bool changed = ImGui::InputText(label, buf, buf_size, flags, callback, user_data);
