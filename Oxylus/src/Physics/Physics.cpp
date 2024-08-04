@@ -4,31 +4,19 @@
 
 #include "RayCast.hpp"
 
-#include "Core/Base.hpp"
+#include "Core/App.hpp"
 #include "Utils/OxMath.hpp"
 
-#include "Jolt/RegisterTypes.h"
 #include "Jolt/Physics/Collision/CastResult.h"
 #include "Jolt/Physics/Collision/RayCast.h"
+#include "Jolt/RegisterTypes.h"
+
 
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-BPLayerInterfaceImpl Physics::layer_interface;
-JPH::TempAllocatorImpl* Physics::temp_allocator = nullptr;
-ObjectVsBroadPhaseLayerFilterImpl Physics::object_vs_broad_phase_layer_filter_interface;
-ObjectLayerPairFilterImpl Physics::object_layer_pair_filter_interface;
-JPH::PhysicsSystem* Physics::physics_system = nullptr;
-JPH::JobSystemThreadPool* Physics::job_system = nullptr;
-
-std::map<Physics::EntityLayer, Physics::EntityLayerData> Physics::layer_collision_mask =
-{
-  {BIT(0), {"Static", static_cast<uint16_t>(0xFFFF), 0}},
-  {BIT(1), {"Default", static_cast<uint16_t>(0xFFFF), 1}},
-  {BIT(2), {"Player", static_cast<uint16_t>(0xFFFF), 2}},
-  {BIT(3), {"Sensor", static_cast<uint16_t>(0xFFFF), 3}},
-};
+Physics* Physics::_instance = nullptr;
 
 static void TraceImpl(const char* inFMT, ...) {
   va_list list;
@@ -65,14 +53,18 @@ void Physics::init() {
   job_system = new JPH::JobSystemThreadPool();
   job_system->Init(JPH::cMaxPhysicsJobs, JPH::cMaxPhysicsBarriers, (int)std::thread::hardware_concurrency() - 1);
   physics_system = new JPH::PhysicsSystem();
-  physics_system->Init(
-    MAX_BODIES,
-    0,
-    MAX_BODY_PAIRS,
-    MAX_CONTACT_CONSTRAINS,
-    layer_interface,
-    object_vs_broad_phase_layer_filter_interface,
-    object_layer_pair_filter_interface);
+  physics_system->Init(MAX_BODIES,
+                       0,
+                       MAX_BODY_PAIRS,
+                       MAX_CONTACT_CONSTRAINS,
+                       layer_interface,
+                       object_vs_broad_phase_layer_filter_interface,
+                       object_layer_pair_filter_interface);
+}
+
+void Physics::set_instance() {
+  if (_instance == nullptr)
+    _instance = App::get_system<Physics>();
 }
 
 void Physics::step(float physicsTs) {
@@ -83,7 +75,7 @@ void Physics::step(float physicsTs) {
   physics_system->Update(physicsTs, 1, temp_allocator, job_system);
 }
 
-void Physics::shutdown() {
+void Physics::deinit() {
   JPH::UnregisterTypes();
   delete JPH::Factory::sInstance;
   JPH::Factory::sInstance = nullptr;
@@ -100,19 +92,15 @@ JPH::PhysicsSystem* Physics::get_physics_system() {
   return physics_system;
 }
 
-JPH::BodyInterface& Physics::get_body_interface() {
-  return physics_system->GetBodyInterface();
-}
+JPH::BodyInterface& Physics::get_body_interface() { return physics_system->GetBodyInterface(); }
 
-const JPH::BroadPhaseQuery& Physics::get_broad_phase() {
-  return physics_system->GetBroadPhaseQuery();
-}
+const JPH::BroadPhaseQuery& Physics::get_broad_phase() { return physics_system->GetBroadPhaseQuery(); }
 
 JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> Physics::cast_ray(const RayCast& ray_cast) {
   JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> collector;
   const JPH::RayCast ray{math::to_jolt(ray_cast.get_origin()), math::to_jolt(ray_cast.get_direction())};
-  get_broad_phase().CastRay(ray, collector);
+  _instance->get_broad_phase().CastRay(ray, collector);
 
   return collector;
 }
-}
+} // namespace ox

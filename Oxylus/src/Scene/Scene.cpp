@@ -150,8 +150,10 @@ void Scene::update_physics(const Timestep& delta_time) {
   bool stepped = false;
   physics_frame_accumulator += (float)delta_time.get_seconds();
 
+  auto physics = App::get_system<Physics>();
+
   while (physics_frame_accumulator >= physics_ts) {
-    Physics::step(physics_ts);
+    physics->step(physics_ts);
 
     {
       {
@@ -173,7 +175,7 @@ void Scene::update_physics(const Timestep& delta_time) {
 
   const float interpolation_factor = physics_frame_accumulator / physics_ts;
 
-  const auto& body_interface = Physics::get_physics_system()->GetBodyInterface();
+  const auto& body_interface = physics->get_physics_system()->GetBodyInterface();
   const auto view = registry.group<RigidbodyComponent>(entt::get<TransformComponent>);
   for (auto&& [e, rb, tc] : view.each()) {
     if (!rb.runtime_body)
@@ -331,12 +333,12 @@ void Scene::on_runtime_start() {
   physics_frame_accumulator = 0.0f;
 
   // Physics
+  auto physics = App::get_system<Physics>();
   {
     OX_SCOPED_ZONE_N("Physics Start");
-    Physics::init();
     body_activation_listener_3d = new Physics3DBodyActivationListener();
     contact_listener_3d = new Physics3DContactListener(this);
-    const auto physics_system = Physics::get_physics_system();
+    const auto physics_system = physics->get_physics_system();
     physics_system->SetBodyActivationListener(body_activation_listener_3d);
     physics_system->SetContactListener(contact_listener_3d);
 
@@ -391,7 +393,8 @@ void Scene::on_runtime_stop() {
 
   // Physics
   {
-    JPH::BodyInterface& body_interface = Physics::get_physics_system()->GetBodyInterface();
+    auto physics = App::get_system<Physics>();
+    JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
     const auto rb_view = registry.view<RigidbodyComponent>();
     for (auto&& [e, rb] : rb_view.each()) {
       if (rb.runtime_body) {
@@ -535,7 +538,9 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
 
   // TODO: We should get rid of 'new' usages and use JPH::Ref<> instead.
 
-  auto& body_interface = Physics::get_body_interface();
+  auto physics = App::get_system<Physics>();
+
+  auto& body_interface = physics->get_body_interface();
   if (component.runtime_body) {
     body_interface.DestroyBody(static_cast<JPH::Body*>(component.runtime_body)->GetID());
     component.runtime_body = nullptr;
@@ -655,8 +660,8 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
 
   auto layer = registry.get<TagComponent>(entity).layer;
   uint8_t layer_index = 1; // Default Layer
-  auto collision_mask_it = Physics::layer_collision_mask.find(layer);
-  if (collision_mask_it != Physics::layer_collision_mask.end())
+  auto collision_mask_it = physics->layer_collision_mask.find(layer);
+  if (collision_mask_it != physics->layer_collision_mask.end())
     layer_index = collision_mask_it->second.index;
 
   JPH::BodyCreationSettings body_settings(compound_shape_settings.Create().Get(),
@@ -691,6 +696,9 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
   OX_SCOPED_ZONE;
   if (!running)
     return;
+
+  auto physics = App::get_system<Physics>();
+
   const auto position = JPH::Vec3(transform.position.x, transform.position.y, transform.position.z);
   const auto capsule_shape = JPH::RotatedTranslatedShapeSettings(JPH::Vec3(0,
                                                                            0.5f * component.character_height_standing +
@@ -710,7 +718,7 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
   settings->mFriction = 0.0f;                                                     // For now this is not set.
   settings->mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(),
                                            -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
-  component.character = create_shared<JPH::Character>(settings.get(), position, JPH::Quat::sIdentity(), 0, Physics::get_physics_system());
+  component.character = create_shared<JPH::Character>(settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
   component.character->AddToPhysicsSystem(JPH::EActivation::Activate);
 }
 
@@ -734,6 +742,29 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     }
   }
 
+  // TODO: maybe bindings should be done once at entity creation...
+  //       we can do it with entt on_create etc. callbacks...
+  // scripting binds
+  const auto cpp_script_view = registry.view<CPPScriptComponent>();
+  {
+    OX_SCOPED_ZONE_N("CPPScripting/binding");
+    for (auto&& [e, script_component] : cpp_script_view.each()) {
+      for (const auto& system : script_component.systems) {
+        system->bind_globals(this, e, &dispatcher);
+      }
+    }
+  }
+
+  const auto lua_script_view = registry.view<LuaScriptComponent>();
+  {
+    OX_SCOPED_ZONE_N("LuaScripting/binding");
+    for (auto&& [e, script_component] : lua_script_view.each()) {
+      for (const auto& script : script_component.lua_systems) {
+        script->bind_globals(this, e, delta_time);
+      }
+    }
+  }
+
   scene_renderer->update(delta_time);
 
   update_physics(delta_time);
@@ -741,10 +772,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
   // Scripting
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_update");
-    const auto script_view = registry.view<CPPScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
+    for (auto&& [e, script_component] : cpp_script_view.each()) {
       for (const auto& system : script_component.systems) {
-        system->bind_globals(this, e, &dispatcher);
         system->on_update(delta_time);
       }
     }
@@ -752,10 +781,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
 
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_update");
-    const auto script_view = registry.view<LuaScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
+    for (auto&& [e, script_component] : lua_script_view.each()) {
       for (const auto& script : script_component.lua_systems) {
-        script->bind_globals(this, e, delta_time);
         script->on_update(delta_time);
       }
     }

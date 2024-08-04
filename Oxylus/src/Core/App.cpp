@@ -6,6 +6,7 @@
 #include "FileSystem.hpp"
 #include "Layer.hpp"
 #include "LayerStack.hpp"
+#include "Physics/Physics.hpp"
 #include "Project.hpp"
 
 #include "Audio/AudioEngine.hpp"
@@ -63,13 +64,16 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   register_system<RendererConfig>();
   register_system<SystemManager>();
   register_system<AssetManager>();
+  register_system<Physics>();
 
   Window::init_window(app_spec);
   Window::set_dispatcher(&dispatcher);
   register_system<Input>();
 
+  // Shortcut for commonly used Systems
   get_system<Input>()->set_instance();
   get_system<AssetManager>()->set_instance();
+  get_system<Physics>()->set_instance();
 
   for (auto& [_, system] : system_registry) {
     system->set_dispatcher(&dispatcher);
