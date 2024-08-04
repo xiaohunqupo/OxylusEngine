@@ -134,7 +134,9 @@ void App::run() {
   for (auto& [_, system] : system_registry)
     system->deinit();
 
+  system_registry.clear();
   Renderer::deinit();
+
   ThreadManager::get()->wait_all_threads();
   Window::close_window(Window::get_glfw_window());
 }

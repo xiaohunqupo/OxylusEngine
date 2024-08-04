@@ -260,6 +260,8 @@ private:
   vuk::Buffer debug_aabb_buffer;
 
   vuk::Buffer vertex_buffer_2d;
+  vuk::Unique<vuk::Buffer> debug_vertex_buffer;
+  vuk::Unique<vuk::Buffer> debug_vertex_buffer_previous;
 
   vuk::SamplerCreateInfo hiz_sampler_ci;
   VkSamplerReductionModeCreateInfoEXT create_info_reduction;
@@ -538,5 +540,8 @@ private:
                                                             vuk::Value<vuk::ImageAttachment>& upsample_image,
                                                             vuk::Value<vuk::ImageAttachment>& input);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> apply_grid(vuk::Value<vuk::ImageAttachment>& target, vuk::Value<vuk::ImageAttachment>& depth);
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> debug_pass(vuk::Allocator& frame_allocator,
+                                                            vuk::Value<vuk::ImageAttachment>& depth_output,
+                                                            vuk::Value<vuk::ImageAttachment>& input_clr);
 };
 } // namespace ox

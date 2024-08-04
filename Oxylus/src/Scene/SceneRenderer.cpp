@@ -1,5 +1,6 @@
 ﻿#include "SceneRenderer.hpp"
 
+#include "Render/RendererConfig.hpp"
 #include "Scene.hpp"
 
 #include "Core/App.hpp"
@@ -110,9 +111,14 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
       const auto world_transform = eutil::get_world_transform(_scene, entity);
       sprite.transform = world_transform;
+      sprite.rect = AABB(float3(-0.5,- 0.5,- 0.5), float3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(world_transform);
 
       _render_pipeline->submit_sprite(sprite);
+
+      if (RendererCVar::cvar_draw_bounding_boxes.get()) {
+        DebugRenderer::draw_aabb(sprite.rect, Vec4(1, 1, 1, 1.0f));
+      }
     }
   }
 
@@ -133,6 +139,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       // FIXME: don't care about parents for now
       transform.scale = {tilemap.tilemap_size, 1};
       sprite.transform = transform.get_local_transform();
+      sprite.rect = AABB(float3(-0.5,- 0.5,- 0.5), float3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(sprite.transform);
 
       _render_pipeline->submit_sprite(sprite);

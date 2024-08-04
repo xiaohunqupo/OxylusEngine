@@ -276,6 +276,8 @@ struct RigidbodyComponent {
   glm::quat previous_rotation = Vec3(0.0f);
   Vec3 translation = Vec3(0.0f);
   glm::quat rotation = Vec3(0.0f);
+
+  JPH::Body* get_body() { return static_cast<JPH::Body*>(runtime_body); }
 };
 
 struct BoxColliderComponent {
