@@ -7,6 +7,13 @@
 #include "Core/Types.hpp"
 
 #include "Profiler.hpp"
+#include "Render/BoundingVolume.hpp"
+
+namespace JPH {
+class AABox;
+class Vec3;
+class Vec4;
+} // namespace JPH
 
 namespace ox::math {
 inline uint32 flooru32(float value) {
@@ -40,13 +47,13 @@ constexpr uint32_t previous_power2(uint32_t x) {
   return v;
 }
 
-inline glm::vec3 unproject_uv_zo(float depth, glm::vec2 uv, const glm::mat4& invXProj) {
-  glm::vec4 ndc = glm::vec4(uv * 2.0f - 1.0f, depth, 1.0f);
-  glm::vec4 world = invXProj * ndc;
-  return glm::vec3(world) / world.w;
+inline float3 unproject_uv_zo(float depth, float2 uv, const float4x4& invXProj) {
+  float4 ndc = float4(uv * 2.0f - 1.0f, depth, 1.0f);
+  float4 world = invXProj * ndc;
+  return float3(world) / world.w;
 }
 
-bool decompose_transform(const glm::mat4& transform, Vec3& translation, Vec3& rotation, Vec3& scale);
+bool decompose_transform(const float4x4& transform, float3& translation, float3& rotation, float3& scale);
 
 template <typename T>
 static T smooth_damp(const T& current, const T& target, T& current_velocity, float smooth_time, const float max_speed, float delta_time) {
@@ -92,9 +99,15 @@ static T smooth_damp(const T& current, const T& target, T& current_velocity, flo
 float lerp(float a, float b, float t);
 float inverse_lerp(float a, float b, float value);
 float inverse_lerp_clamped(float a, float b, float value);
-Vec2 world_to_screen(const Vec3& world_pos, const glm::mat4& mvp, float width, float height, float win_pos_x, float win_pos_y);
+float2 world_to_screen(const float3& world_pos, const float4x4& mvp, float width, float height, float win_pos_x, float win_pos_y);
 
-Vec4 transform(const Vec4& vec, const Mat4& view);
-Vec4 transform_normal(const Vec4& vec, const Mat4& mat);
-Vec4 transform_coord(const Vec4& vec, const Mat4& view);
+float4 transform(const float4& vec, const float4x4& view);
+float4 transform_normal(const float4& vec, const float4x4& mat);
+float4 transform_coord(const float4& vec, const float4x4& view);
+
+float3 from_jolt(const JPH::Vec3& vec);
+JPH::Vec3 to_jolt(const float3& vec);
+float4 from_jolt(const JPH::Vec4& vec);
+JPH::Vec4 to_jolt(const float4& vec);
+AABB from_jolt(const JPH::AABox& aabb);
 } // namespace ox::math

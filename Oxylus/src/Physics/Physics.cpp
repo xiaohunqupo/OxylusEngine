@@ -2,10 +2,10 @@
 
 #include <cstdarg>
 
-#include "JoltHelpers.hpp"
 #include "RayCast.hpp"
 
 #include "Core/Base.hpp"
+#include "Utils/OxMath.hpp"
 
 #include "Jolt/RegisterTypes.h"
 #include "Jolt/Physics/Collision/CastResult.h"
@@ -110,7 +110,7 @@ const JPH::BroadPhaseQuery& Physics::get_broad_phase() {
 
 JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> Physics::cast_ray(const RayCast& ray_cast) {
   JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> collector;
-  const JPH::RayCast ray{convert_to_jolt_vec3(ray_cast.get_origin()), convert_to_jolt_vec3(ray_cast.get_direction())};
+  const JPH::RayCast ray{math::to_jolt(ray_cast.get_origin()), math::to_jolt(ray_cast.get_direction())};
   get_broad_phase().CastRay(ray, collector);
 
   return collector;

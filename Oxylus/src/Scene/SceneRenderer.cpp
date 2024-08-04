@@ -6,7 +6,6 @@
 #include "Core/App.hpp"
 
 #include "Jolt/Physics/Body/Body.h"
-#include "Physics/JoltHelpers.hpp"
 
 #include "Entity.hpp"
 
@@ -157,7 +156,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
         const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
         if (body) {
           const auto scale = JPH::Vec3{1, 1, 1}; // convert_to_jolt_vec3(transform.scale);
-          auto aabb = convert_jolt_aabb(body->GetShape()->GetWorldSpaceBounds(body->GetCenterOfMassTransform(), scale));
+          auto aabb = math::from_jolt(body->GetShape()->GetWorldSpaceBounds(body->GetCenterOfMassTransform(), scale));
           DebugRenderer::draw_aabb(aabb, Vec4(0, 1, 0, 1.0f));
         }
       }

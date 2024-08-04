@@ -1,9 +1,11 @@
 #include "OxMath.hpp"
 
 #include <glm/gtx/matrix_decompose.hpp>
+#include <Jolt/Jolt.h>
+#include <Jolt/Geometry/AABox.h>
 
 namespace ox::math {
-bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale) {
+bool decompose_transform(const float4x4& transform, float3& translation, float3& rotation, float3& scale) {
   OX_SCOPED_ZONE;
   using namespace glm;
   using T = float;
@@ -23,10 +25,10 @@ bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm
   }
 
   // Next take care of translation (easy).
-  translation = vec3(local_matrix[3]);
+  translation = float3(local_matrix[3]);
   local_matrix[3] = vec4(0, 0, 0, local_matrix[3].w);
 
-  vec3 row[3];
+  float3 row[3];
 
   // Now get scale and shear.
   for (length_t i = 0; i < 3; ++i)
@@ -71,7 +73,7 @@ float inverse_lerp_clamped(float a, float b, float value) {
   return glm::clamp((value - a) / den, 0.0f, 1.0f);
 }
 
-Vec2 world_to_screen(const Vec3& world_pos, const glm::mat4& mvp, const float width, float height, const float win_pos_x, const float win_pos_y) {
+float2 world_to_screen(const float3& world_pos, const float4x4& mvp, const float width, float height, const float win_pos_x, const float win_pos_y) {
   Vec4 trans = mvp * Vec4(world_pos, 1.0f);
   trans *= 0.5f / trans.w;
   trans += Vec4(0.5f, 0.5f, 0.0f, 0.0f);
@@ -102,4 +104,10 @@ Vec4 transform_coord(const Vec4& vec, const Mat4& view) {
   result = result / Vec4(result.w);
   return result;
 }
+
+float3 from_jolt(const JPH::Vec3& vec) { return {vec.GetX(), vec.GetY(), vec.GetZ()}; }
+JPH::Vec3 to_jolt(const float3& vec) { return {vec.x, vec.y, vec.z}; }
+float4 from_jolt(const JPH::Vec4& vec) { return {vec.GetX(), vec.GetY(), vec.GetZ(), vec.GetW()}; }
+JPH::Vec4 to_jolt(const float4& vec) { return {vec.x, vec.y, vec.z, vec.w}; }
+AABB from_jolt(const JPH::AABox& aabb) { return {from_jolt(aabb.mMin), from_jolt(aabb.mMax)}; }
 } // namespace ox::math
