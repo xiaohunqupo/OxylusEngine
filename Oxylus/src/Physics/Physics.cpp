@@ -87,14 +87,14 @@ void Physics::deinit() {
 JPH::PhysicsSystem* Physics::get_physics_system() {
   OX_SCOPED_ZONE;
 
-  OX_CHECK_NULL(physics_system, "Physics system not initialized");
+  OX_CHECK_NULL(_instance->physics_system, "Physics system not initialized");
 
-  return physics_system;
+  return _instance->physics_system;
 }
 
-JPH::BodyInterface& Physics::get_body_interface() { return physics_system->GetBodyInterface(); }
+JPH::BodyInterface& Physics::get_body_interface() { return _instance->physics_system->GetBodyInterface(); }
 
-const JPH::BroadPhaseQuery& Physics::get_broad_phase() { return physics_system->GetBroadPhaseQuery(); }
+const JPH::BroadPhaseQuery& Physics::get_broad_phase() { return _instance->physics_system->GetBroadPhaseQuery(); }
 
 JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> Physics::cast_ray(const RayCast& ray_cast) {
   JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> collector;

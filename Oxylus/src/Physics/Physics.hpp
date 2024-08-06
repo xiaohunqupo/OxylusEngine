@@ -40,9 +40,9 @@ public:
   void set_instance();
   void step(float physicsTs);
 
-  JPH::PhysicsSystem* get_physics_system();
-  JPH::BodyInterface& get_body_interface();
-  const JPH::BroadPhaseQuery& get_broad_phase();
+  static JPH::PhysicsSystem* get_physics_system();
+  static JPH::BodyInterface& get_body_interface();
+  static const JPH::BroadPhaseQuery& get_broad_phase();
 
   static JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> cast_ray(const RayCast& ray_cast);
 
