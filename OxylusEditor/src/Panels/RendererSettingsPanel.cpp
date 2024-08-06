@@ -40,7 +40,7 @@ void RendererSettingsPanel::on_imgui_render() {
     if (ui::begin_properties(ui::default_properties_flags, true, 0.3f)) {
       ui::property("Draw AABBs", (bool*)RendererCVar::cvar_draw_bounding_boxes.get_ptr());
       ui::property("Draw meshlet AABBs", (bool*)RendererCVar::cvar_draw_meshlet_aabbs.get_ptr());
-      ui::property("Draw physics shapes", (bool*)RendererCVar::cvar_draw_physics_shapes.get_ptr());
+      ui::property("Physics renderer", (bool*)RendererCVar::cvar_enable_physics_debug_renderer.get_ptr());
       ui::end_properties();
     }
 

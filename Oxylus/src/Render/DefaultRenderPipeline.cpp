@@ -1429,7 +1429,17 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
                                                                    vuk::Value<vuk::ImageAttachment>& depth_output,
                                                                    vuk::Value<vuk::ImageAttachment>& input_clr) {
   const auto& lines = DebugRenderer::get_instance()->get_lines(false);
-  auto [vertices, index_count] = DebugRenderer::get_vertices_from_lines(lines);
+  auto [line_vertices, line_index_count] = DebugRenderer::get_vertices_from_lines(lines);
+
+  const auto& triangles = DebugRenderer::get_instance()->get_triangles(false);
+  auto [triangle_vertices, triangle_index_count] = DebugRenderer::get_vertices_from_triangles(triangles);
+
+  const uint32 index_count = line_index_count + triangle_index_count;
+  if (index_count >= DebugRenderer::MAX_LINE_INDICES)
+    OX_LOG_ERROR("Increase DebugRenderer::MAX_LINE_INDICES");
+
+  std::vector<Vertex> vertices = line_vertices;
+  vertices.insert(vertices.end(), triangle_vertices.begin(), triangle_vertices.end());
 
   if (vertices.empty())
     vertices.emplace_back(Vertex{});
@@ -1458,7 +1468,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
   auto& v_buffer_dt = *vd_buff;
 #endif
 
-  return vuk::make_pass("debug_pass2", [this, index_count, dbg_index_buffer](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) _output) {
+  return vuk::make_pass("debug_pass2", [this, line_index_count, dbg_index_buffer](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) _output) {
     // not depth tested
     command_buffer.bind_graphics_pipeline("unlit_pipeline")
       .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
@@ -1479,7 +1489,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
     camera_cb.camera_data[0] = get_main_camera_data();
     bind_camera_buffer(command_buffer);
 
-    command_buffer.draw_indexed(index_count, 1, 0, 0, 0);
+    command_buffer.draw_indexed(line_index_count, 1, 0, 0, 0);
 
 #if 0 // TODO
   // depth tested

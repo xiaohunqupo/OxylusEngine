@@ -15,8 +15,8 @@ inline AutoCVar_Int cvar_shadows_pcf("rr.shadows_pcf", "use pcf in cascaded shad
 inline AutoCVar_Int cvar_draw_grid("rr.draw_grid", "draw editor scene grid", 1);
 inline AutoCVar_Float cvar_draw_grid_distance("rr.grid_distance", "max grid distance", 20.f);
 inline AutoCVar_Int cvar_draw_bounding_boxes("rr.draw_bounding_boxes", "draw mesh bounding boxes", 0);
-inline AutoCVar_Int cvar_draw_physics_shapes("rr.draw_physics_shapes", "draw physics shapes", 0);
-inline AutoCVar_Int cvar_enable_debug_renderer("rr.debug_renderer", "draw debug shapes", 1);
+inline AutoCVar_Int cvar_enable_physics_debug_renderer("rr.physics_debug_renderer", "enable physics debug renderer", 0);
+inline AutoCVar_Int cvar_enable_debug_renderer("rr.debug_renderer", "enable debug renderer", 1);
 inline AutoCVar_Int cvar_draw_meshlet_aabbs("rr.draw_meshlet_aabbs", "draw meshlet aabbs", 0);
 inline AutoCVar_Int cvar_freeze_culling_frustum("rr.freeze_culling_frustum", "freeze culling frustum", 0);
 inline AutoCVar_Int cvar_draw_camera_frustum("rr.draw_camera_frustum", "draw camera frustum", 0);

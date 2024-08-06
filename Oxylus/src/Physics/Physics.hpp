@@ -7,6 +7,7 @@
 #include "Jolt/Core/JobSystemThreadPool.h"
 #include "Jolt/Physics/Collision/CollisionCollectorImpl.h"
 #include "Jolt/Physics/PhysicsSystem.h"
+#include "Render/DebugRenderer.hpp"
 
 namespace ox {
 class RayCast;
@@ -40,6 +41,7 @@ public:
   void deinit() override;
   void set_instance();
   void step(float physicsTs);
+  void debug_draw();
 
   static JPH::PhysicsSystem* get_physics_system();
   static JPH::BodyInterface& get_body_interface()  { return _instance->physics_system->GetBodyInterface(); }
@@ -54,5 +56,6 @@ private:
   JPH::PhysicsSystem* physics_system;
   JPH::TempAllocatorImpl* temp_allocator;
   JPH::JobSystemThreadPool* job_system;
+  PhysicsDebugRenderer* debug_renderer;
 };
 } // namespace ox

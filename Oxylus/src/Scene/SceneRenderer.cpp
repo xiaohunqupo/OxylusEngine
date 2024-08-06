@@ -1,5 +1,6 @@
 ﻿#include "SceneRenderer.hpp"
 
+#include "Physics/Physics.hpp"
 #include "Render/RendererConfig.hpp"
 #include "Scene.hpp"
 
@@ -110,7 +111,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
       const auto world_transform = eutil::get_world_transform(_scene, entity);
       sprite.transform = world_transform;
-      sprite.rect = AABB(float3(-0.5,- 0.5,- 0.5), float3(0.5, 0.5, 0.5));
+      sprite.rect = AABB(float3(-0.5, -0.5, -0.5), float3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(world_transform);
 
       _render_pipeline->submit_sprite(sprite);
@@ -138,28 +139,18 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       // FIXME: don't care about parents for now
       transform.scale = {tilemap.tilemap_size, 1};
       sprite.transform = transform.get_local_transform();
-      sprite.rect = AABB(float3(-0.5,- 0.5,- 0.5), float3(0.5, 0.5, 0.5));
+      sprite.rect = AABB(float3(-0.5, -0.5, -0.5), float3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(sprite.transform);
 
       _render_pipeline->submit_sprite(sprite);
     }
   }
 
+  // Physics debug renderer
   {
-    OX_SCOPED_ZONE_N("Draw physics shapes");
-    if (RendererCVar::cvar_enable_debug_renderer.get() && RendererCVar::cvar_draw_physics_shapes.get()) {
-      const auto mesh_collider_view = _scene->registry.view<TransformComponent, RigidbodyComponent, TagComponent>();
-      for (const auto&& [entity, transform, rb, tag] : mesh_collider_view.each()) {
-        if (!tag.enabled)
-          continue;
-
-        const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
-        if (body) {
-          const auto scale = JPH::Vec3{1, 1, 1}; // convert_to_jolt_vec3(transform.scale);
-          auto aabb = math::from_jolt(body->GetShape()->GetWorldSpaceBounds(body->GetCenterOfMassTransform(), scale));
-          DebugRenderer::draw_aabb(aabb, Vec4(0, 1, 0, 1.0f));
-        }
-      }
+    if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
+      auto physics = App::get_system<Physics>();
+      physics->debug_draw();
     }
   }
 

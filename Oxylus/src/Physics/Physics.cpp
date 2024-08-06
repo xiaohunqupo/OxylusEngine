@@ -2,6 +2,7 @@
 
 #include <cstdarg>
 
+#include "Jolt/Physics/Body/BodyManager.h"
 #include "RayCast.hpp"
 
 #include "Core/App.hpp"
@@ -47,6 +48,8 @@ void Physics::init() {
   JPH::Factory::sInstance = new JPH::Factory();
   JPH::RegisterTypes();
 
+  debug_renderer = new PhysicsDebugRenderer();
+
   temp_allocator = new JPH::TempAllocatorImpl(10 * 1024 * 1024);
 
   job_system = new JPH::JobSystemThreadPool();
@@ -76,6 +79,14 @@ void Physics::step(float physicsTs) {
   physics_system->Update(physicsTs, 1, temp_allocator, job_system);
 }
 
+void Physics::debug_draw() {
+  JPH::BodyManager::DrawSettings settings{};
+  settings.mDrawShape = true;
+  settings.mDrawShapeWireframe = true;
+
+  physics_system->DrawBodies(settings, debug_renderer);
+}
+
 void Physics::deinit() {
   JPH::UnregisterTypes();
   delete JPH::Factory::sInstance;
@@ -83,6 +94,7 @@ void Physics::deinit() {
   delete temp_allocator;
   delete physics_system;
   delete job_system;
+  delete debug_renderer;
 }
 
 JPH::PhysicsSystem* Physics::get_physics_system() {
