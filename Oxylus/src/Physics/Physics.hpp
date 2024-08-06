@@ -21,6 +21,7 @@ public:
     uint8_t index = 1;
   };
 
+  // TODO: Make a way to add/change layers via editor and api
   std::map<EntityLayer, EntityLayerData> layer_collision_mask = {
     {BIT(0), {"Static", static_cast<uint16_t>(0xFFFF), 0}},
     {BIT(1), {"Default", static_cast<uint16_t>(0xFFFF), 1}},
@@ -41,8 +42,9 @@ public:
   void step(float physicsTs);
 
   static JPH::PhysicsSystem* get_physics_system();
-  static JPH::BodyInterface& get_body_interface();
+  static JPH::BodyInterface& get_body_interface()  { return _instance->physics_system->GetBodyInterface(); }
   static const JPH::BroadPhaseQuery& get_broad_phase_query() { return _instance->physics_system->GetBroadPhaseQuery(); }
+  static const JPH::BodyLockInterface& get_body_interface_lock() { return _instance->physics_system->GetBodyLockInterface(); }
 
   static JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> cast_ray(const RayCast& ray_cast);
 

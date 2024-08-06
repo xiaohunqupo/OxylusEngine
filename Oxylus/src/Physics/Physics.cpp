@@ -92,13 +92,10 @@ JPH::PhysicsSystem* Physics::get_physics_system() {
   return _instance->physics_system;
 }
 
-JPH::BodyInterface& Physics::get_body_interface() { return _instance->physics_system->GetBodyInterface(); }
-
-
 JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> Physics::cast_ray(const RayCast& ray_cast) {
   JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> collector;
   const JPH::RayCast ray{math::to_jolt(ray_cast.get_origin()), math::to_jolt(ray_cast.get_direction())};
-  _instance->get_broad_phase().CastRay(ray, collector);
+  _instance->get_broad_phase_query().CastRay(ray, collector);
 
   return collector;
 }
