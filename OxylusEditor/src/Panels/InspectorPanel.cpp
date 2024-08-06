@@ -615,13 +615,13 @@ void InspectorPanel::draw_components(Entity entity) {
     if (ui::property("Body Type", &body_type, body_type_strings, 3))
       component.type = static_cast<RigidbodyComponent::BodyType>(body_type);
 
+    ui::property("Allow Sleep", &component.allow_sleep);
+    ui::property("Awake", &component.awake);
     if (component.type == RigidbodyComponent::BodyType::Dynamic) {
       ui::property("Mass", &component.mass, 0.01f, 10000.0f);
       ui::property("Linear Drag", &component.linear_drag);
       ui::property("Angular Drag", &component.angular_drag);
       ui::property("Gravity Scale", &component.gravity_scale);
-      ui::property("Allow Sleep", &component.allow_sleep);
-      ui::property("Awake", &component.awake);
       ui::property("Continuous", &component.continuous);
       ui::property("Interpolation", &component.interpolation);
 
