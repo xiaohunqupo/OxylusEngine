@@ -7,7 +7,6 @@
 #include <glm/vec3.hpp>
 #include <glm/vec4.hpp>
 
-namespace ox {
 using int8 = std::int8_t;
 using int16 = std::int16_t;
 using int32 = std::int32_t;
@@ -70,4 +69,3 @@ using UMat4 = glm::umat4x4;
 using uint4x4 = glm::umat4x4;
 
 using Quat = glm::quat;
-} // namespace ox
