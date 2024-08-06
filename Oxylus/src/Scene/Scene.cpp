@@ -689,6 +689,8 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
                                                                                                           : JPH::EActivation::DontActivate;
   body_interface.AddBody(body->GetID(), activation);
 
+  body->SetUserData((uint64)entity);
+
   component.runtime_body = body;
 }
 
