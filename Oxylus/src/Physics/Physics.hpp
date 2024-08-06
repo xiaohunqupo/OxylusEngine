@@ -42,7 +42,7 @@ public:
 
   static JPH::PhysicsSystem* get_physics_system();
   static JPH::BodyInterface& get_body_interface();
-  static const JPH::BroadPhaseQuery& get_broad_phase();
+  static const JPH::BroadPhaseQuery& get_broad_phase_query() { return _instance->physics_system->GetBroadPhaseQuery(); }
 
   static JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> cast_ray(const RayCast& ray_cast);
 
