@@ -62,6 +62,9 @@ public:
                             const JPH::ContactManifold& manifold,
                             const JPH::ContactSettings& settings);
 
+  void create_rigidbody(Entity ent, const TransformComponent& transform, RigidbodyComponent& component);
+  void create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const;
+
   Entity get_entity_by_uuid(UUID uuid);
 
   // Renderer
@@ -91,9 +94,6 @@ private:
 
   // Physics
   void update_physics(const Timestep& delta_time);
-  void create_rigidbody(Entity ent, const TransformComponent& transform, RigidbodyComponent& component);
-  void create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const;
-
   // Events
   void handle_future_mesh_load_event(const FutureMeshLoadEvent& event);
 
