@@ -79,14 +79,15 @@ void Scene::init(const Shared<RenderPipeline>& render_pipeline) {
   OX_SCOPED_ZONE;
 
   // ctors
-  registry.on_construct<RigidbodyComponent>().connect<&Scene::rigidbody_component_ctor>(this);
-  registry.on_construct<BoxColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  registry.on_construct<SphereColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  registry.on_construct<CapsuleColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  registry.on_construct<TaperedCapsuleColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  registry.on_construct<CylinderColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  registry.on_construct<MeshColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  registry.on_construct<CharacterControllerComponent>().connect<&Scene::character_controller_component_ctor>(this);
+  // TODO: remove these...
+  //registry.on_construct<RigidbodyComponent>().connect<&Scene::rigidbody_component_ctor>(this);
+  //registry.on_construct<BoxColliderComponent>().connect<&Scene::collider_component_ctor>(this);
+  //registry.on_construct<SphereColliderComponent>().connect<&Scene::collider_component_ctor>(this);
+  //registry.on_construct<CapsuleColliderComponent>().connect<&Scene::collider_component_ctor>(this);
+  //registry.on_construct<TaperedCapsuleColliderComponent>().connect<&Scene::collider_component_ctor>(this);
+  //registry.on_construct<CylinderColliderComponent>().connect<&Scene::collider_component_ctor>(this);
+  //registry.on_construct<MeshColliderComponent>().connect<&Scene::collider_component_ctor>(this);
+  //registry.on_construct<CharacterControllerComponent>().connect<&Scene::character_controller_component_ctor>(this);
 
   dispatcher.sink<FutureMeshLoadEvent>().connect<&Scene::handle_future_mesh_load_event>(*this);
 
