@@ -11,7 +11,6 @@
 #include "Jolt/Physics/Collision/RayCast.h"
 #include "Jolt/RegisterTypes.h"
 
-
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 
@@ -65,6 +64,8 @@ void Physics::init() {
 void Physics::set_instance() {
   if (_instance == nullptr)
     _instance = App::get_system<Physics>();
+  JPH::Factory::sInstance = new JPH::Factory();
+  JPH::RegisterTypes();
 }
 
 void Physics::step(float physicsTs) {
