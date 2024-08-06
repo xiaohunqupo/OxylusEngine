@@ -93,6 +93,7 @@ void App::set_instance(App* instance) {
   _instance = instance;
   get_system<Input>()->set_instance();
   get_system<AssetManager>()->set_instance();
+  get_system<Physics>()->set_instance();
 }
 
 App& App::push_layer(Layer* layer) {
