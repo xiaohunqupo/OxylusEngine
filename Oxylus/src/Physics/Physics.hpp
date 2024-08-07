@@ -47,6 +47,7 @@ public:
   static JPH::BodyInterface& get_body_interface()  { return _instance->physics_system->GetBodyInterface(); }
   static const JPH::BroadPhaseQuery& get_broad_phase_query() { return _instance->physics_system->GetBroadPhaseQuery(); }
   static const JPH::BodyLockInterface& get_body_interface_lock() { return _instance->physics_system->GetBodyLockInterface(); }
+  static PhysicsDebugRenderer* get_debug_renderer() { return _instance->debug_renderer; }
 
   static JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> cast_ray(const RayCast& ray_cast);
 

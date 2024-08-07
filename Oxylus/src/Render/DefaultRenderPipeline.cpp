@@ -1482,7 +1482,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
       .set_primitive_topology(vuk::PrimitiveTopology::eLineList)
       .set_viewport(0, vuk::Rect2D::framebuffer())
       .set_scissor(0, vuk::Rect2D::framebuffer())
-      .bind_vertex_buffer(0, *debug_vertex_buffer_previous, 0, vertex_pack)
+      .bind_vertex_buffer(0, *debug_vertex_buffer, 0, vertex_pack)
       .bind_index_buffer(dbg_index_buffer, vuk::IndexType::eUint32)
       .bind_persistent(0, *descriptor_set_00);
 
