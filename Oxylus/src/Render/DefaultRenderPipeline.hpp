@@ -308,6 +308,7 @@ private:
     RENDER_FLAGS_2D_NONE = 0,
 
     RENDER_FLAGS_2D_SORT_Y = 1 << 0,
+    RENDER_FLAGS_2D_FLIP_X = 1 << 1,
   };
 
   struct SpriteGPUData {
@@ -385,6 +386,9 @@ private:
       uint16 flags = 0;
       if (sprite.sort_y)
         flags |= RENDER_FLAGS_2D_SORT_Y;
+
+      if (sprite.flip_x)
+        flags |= RENDER_FLAGS_2D_FLIP_X;
 
       const uint32 flags_and_distance = math::pack_u16(uint16(flags), glm::packHalf1x16(distance));
       const uint32 materialid_and_ypos = math::pack_u16(uint16(sprite.material->get_id()), glm::packHalf1x16(sprite.get_position().y));

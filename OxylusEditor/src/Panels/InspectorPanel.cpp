@@ -338,6 +338,7 @@ void InspectorPanel::draw_components(Entity entity) {
     ui::begin_properties();
     ui::property("Layer", &component.layer);
     ui::property("SortY", &component.sort_y);
+    ui::property("FlipX", &component.flip_x);
     ui::end_properties();
 
     ImGui::SeparatorText("Material");

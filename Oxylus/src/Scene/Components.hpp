@@ -116,6 +116,7 @@ struct SpriteComponent {
   uint32 layer = 0;
 
   bool sort_y = true;
+  bool flip_x = false;
 
   // non-serialized data
   Mat4 transform = Mat4{1};

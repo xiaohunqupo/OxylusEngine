@@ -1,10 +1,14 @@
 #include "Globals.hlsli"
 
+#define RENDER_FLAGS_2D_SORT_Y 1u << 0u
+#define RENDER_FLAGS_2D_FLIP_X 1u << 1u
+
 struct VOutput {
   float4 position : SV_Position;
   float3 normal : NORMAL;
   float4 uv_alpha : UV;
   uint32 material_index : MAT_INDEX;
+  uint32 flags : FLAGS;
 };
 
 struct VertexInput {
@@ -21,6 +25,9 @@ static float2 uvs[6] = {float2(0.0, 1.0), float2(1.0, 1.0), float2(1.0, 0.0), fl
 VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   VOutput output = (VOutput)0;
 
+  const uint32 flags = unpack_u32_low(input.flags16_distance16);
+  output.flags = flags;
+
   const uint32 material_index = unpack_u32_low(input.material_id16_ypos16);
   SpriteMaterial material = get_sprite_material(material_index);
 
@@ -31,12 +38,10 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   const uint vertex_index = vertex_id % 6;
 
   output.uv_alpha.xy = uvs[vertex_index];
-  output.uv_alpha.xy = output.uv_alpha.xy * uv_size_offset.xy + uv_size_offset.zw;
+  output.uv_alpha.xy = (output.uv_alpha.xy * uv_size_offset.xy) + (uv_size_offset.zw);
 
-  const float facing = input.flags16_distance16; // position.w;
-
-  const float screen_space = 0;
-  float4 world_position = float4(float2(positions[vertex_index].xy * size.xy), 0, 1);
+  const int flip = flags & RENDER_FLAGS_2D_FLIP_X;
+  float4 world_position = float4(float2(positions[vertex_index].xy * size.xy * float2((float)flip ? -1 : 1, 1)), 0, 1);
   world_position.xyz += position.xyz;
 
   output.position = mul(get_camera(0).projection_view, float4(world_position.xyz, 1.0f));
@@ -52,7 +57,8 @@ float4 PSmain(VOutput input) : SV_Target0 {
   float4 color = material.color.unpack();
 
   if (material.albedo_map_id != INVALID_ID) {
-    color *= get_sprite_material_albedo_texture(material).Sample(material_sampler, input.uv_alpha.xy);
+    float2 uv = input.uv_alpha.xy;
+    color *= get_sprite_material_albedo_texture(material).Sample(material_sampler, uv);
   }
 
   return color;
