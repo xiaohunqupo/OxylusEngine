@@ -43,8 +43,7 @@ public:
   static bool combo(const char* label, int* value, const char** dropdown_strings, int count, const char* tooltip = nullptr);
 
   static bool input_text(const char* label,
-                         char* buf,
-                         size_t buf_size,
+                         std::string* str,
                          ImGuiInputTextFlags flags = 0,
                          ImGuiInputTextCallback callback = NULL,
                          void* user_data = NULL);

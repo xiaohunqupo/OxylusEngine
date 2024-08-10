@@ -136,9 +136,9 @@ bool ui::combo(const char* label, int* value, const char** dropdown_strings, int
   return modified;
 }
 
-bool ui::input_text(const char* label, char* buf, size_t buf_size, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+bool ui::input_text(const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
   push_frame_style();
-  bool changed = ImGui::InputText(label, buf, buf_size, flags, callback, user_data);
+  bool changed = ImGui::InputText(label, str, flags, callback, user_data);
   pop_frame_style();
   return changed;
 }

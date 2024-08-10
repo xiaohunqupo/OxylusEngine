@@ -219,13 +219,10 @@ void InspectorPanel::draw_components(Entity entity) {
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.75f);
   if (tag_component) {
     auto& tag = tag_component->tag;
-    char buffer[256] = {};
-    tag.copy(buffer, sizeof buffer);
+
     if (s_rename_entity)
       ImGui::SetKeyboardFocusHere();
-    if (ui::input_text("##Tag", buffer, sizeof(buffer), ImGuiInputTextFlags_EnterReturnsTrue)) {
-      tag = std::string(buffer);
-    }
+    ui::input_text("##Tag", &tag_component->tag, ImGuiInputTextFlags_EnterReturnsTrue);
   }
   ImGui::PopItemWidth();
   ImGui::SameLine();
