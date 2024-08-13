@@ -1,7 +1,8 @@
 #include "Window.hpp"
 
-#include "Utils/Log.hpp"
 #include "Core/EmbeddedLogo.hpp"
+#include "Utils/Log.hpp"
+
 
 #include "stb_image.h"
 
@@ -21,8 +22,13 @@ void Window::init_window(const AppSpec& spec) {
 
   const auto monitor_size = get_monitor_size();
 
-  const auto window_width = (float)monitor_size.x * 0.8f;
-  const auto window_height = (float)monitor_size.y * 0.8f;
+  auto window_width = (float)monitor_size.x * 0.8f;
+  auto window_height = (float)monitor_size.y * 0.8f;
+
+  if (spec.default_window_size.x != 0 && spec.default_window_size.y != 0) { 
+    window_width = spec.default_window_size.x;
+    window_height = spec.default_window_size.y;
+  }
 
   glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
   s_window_handle = glfwCreateWindow((int)window_width, (int)window_height, spec.name.c_str(), nullptr, nullptr);
@@ -31,11 +37,15 @@ void Window::init_window(const AppSpec& spec) {
   const auto center = get_center_pos((int)window_width, (int)window_height);
   glfwSetWindowPos(s_window_handle, center.x, center.y);
 
-  //Load file icon
+  // Load file icon
   {
     int width, height, channels;
     const auto image_data = stbi_load_from_memory(EngineLogo, (int)EngineLogoLen, &width, &height, &channels, 4);
-    const GLFWimage window_icon{.width = 40, .height = 40, .pixels = image_data,};
+    const GLFWimage window_icon{
+      .width = 40,
+      .height = 40,
+      .pixels = image_data,
+    };
     glfwSetWindowIcon(s_window_handle, 1, &window_icon);
     stbi_image_free(image_data);
   }
@@ -57,9 +67,7 @@ void Window::close_window(GLFWwindow*) {
   glfwTerminate();
 }
 
-void Window::set_window_user_data(void* data) {
-  glfwSetWindowUserPointer(get_glfw_window(), data);
-}
+void Window::set_window_user_data(void* data) { glfwSetWindowUserPointer(get_glfw_window(), data); }
 
 GLFWwindow* Window::get_glfw_window() {
   if (s_window_handle == nullptr) {
@@ -98,63 +106,34 @@ IVec2 Window::get_center_pos(const int width, const int height) {
   glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &monitor_posx, &monitor_posy, &monitor_width, &monitor_height);
   const auto video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
 
-  return {
-    monitor_posx + (video_mode->width - width) / 2,
-    monitor_posy + (video_mode->height - height) / 2
-  };
+  return {monitor_posx + (video_mode->width - width) / 2, monitor_posy + (video_mode->height - height) / 2};
 }
 
-bool Window::is_focused() {
-  return glfwGetWindowAttrib(get_glfw_window(), GLFW_FOCUSED);
-}
+bool Window::is_focused() { return glfwGetWindowAttrib(get_glfw_window(), GLFW_FOCUSED); }
 
-bool Window::is_minimized() {
-  return glfwGetWindowAttrib(get_glfw_window(), GLFW_ICONIFIED);
-}
+bool Window::is_minimized() { return glfwGetWindowAttrib(get_glfw_window(), GLFW_ICONIFIED); }
 
-void Window::minimize() {
-  glfwIconifyWindow(s_window_handle);
-}
+void Window::minimize() { glfwIconifyWindow(s_window_handle); }
 
-void Window::maximize() {
-  glfwMaximizeWindow(s_window_handle);
-}
+void Window::maximize() { glfwMaximizeWindow(s_window_handle); }
 
-bool Window::is_maximized() {
-  return glfwGetWindowAttrib(s_window_handle, GLFW_MAXIMIZED);
-}
+bool Window::is_maximized() { return glfwGetWindowAttrib(s_window_handle, GLFW_MAXIMIZED); }
 
-void Window::restore() {
-  glfwRestoreWindow(s_window_handle);
-}
+void Window::restore() { glfwRestoreWindow(s_window_handle); }
 
-bool Window::is_decorated() {
-  return (bool)glfwGetWindowAttrib(s_window_handle, GLFW_DECORATED);
-}
+bool Window::is_decorated() { return (bool)glfwGetWindowAttrib(s_window_handle, GLFW_DECORATED); }
 
-void Window::set_undecorated() {
-  glfwSetWindowAttrib(s_window_handle, GLFW_DECORATED, false);
-}
+void Window::set_undecorated() { glfwSetWindowAttrib(s_window_handle, GLFW_DECORATED, false); }
 
-void Window::set_decorated() {
-  glfwSetWindowAttrib(s_window_handle, GLFW_DECORATED, true);
-}
+void Window::set_decorated() { glfwSetWindowAttrib(s_window_handle, GLFW_DECORATED, true); }
 
-bool Window::is_floating() {
-  return (bool)glfwGetWindowAttrib(s_window_handle, GLFW_FLOATING);
-}
+bool Window::is_floating() { return (bool)glfwGetWindowAttrib(s_window_handle, GLFW_FLOATING); }
 
-void Window::set_floating() {
-  glfwSetWindowAttrib(s_window_handle, GLFW_FLOATING, true);
-}
+void Window::set_floating() { glfwSetWindowAttrib(s_window_handle, GLFW_FLOATING, true); }
 
-void Window::set_not_floating() {
-  glfwSetWindowAttrib(s_window_handle, GLFW_FLOATING, false);
-}
+void Window::set_not_floating() { glfwSetWindowAttrib(s_window_handle, GLFW_FLOATING, false); }
 
-bool Window::is_fullscreen_borderless() {
-  return s_window_data.is_fullscreen_borderless;
-}
+bool Window::is_fullscreen_borderless() { return s_window_data.is_fullscreen_borderless; }
 
 void Window::set_fullscreen_borderless() {
   auto* monitor = glfwGetPrimaryMonitor();
@@ -175,4 +154,4 @@ void Window::wait_for_events() {
   OX_SCOPED_ZONE;
   glfwWaitEvents();
 }
-}
+} // namespace ox

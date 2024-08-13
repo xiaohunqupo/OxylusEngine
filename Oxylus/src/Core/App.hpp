@@ -69,6 +69,7 @@ struct AppSpec {
   std::string assets_path = "Resources";
   uint32_t device_index = 0;
   AppCommandLineArgs command_line_args;
+  int2 default_window_size = {0, 0};
 };
 
 using SystemRegistry = ankerl::unordered_dense::map<size_t, Shared<ESystem>>;
