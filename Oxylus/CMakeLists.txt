@@ -184,7 +184,7 @@ endif()
 # fastgltf
 CPMAddPackage(
     NAME fastgltf
-    VERSION 0.7.2
+    VERSION 0.8.0
     GITHUB_REPOSITORY spnda/fastgltf
     GIT_SHALLOW ON
     OPTIONS
