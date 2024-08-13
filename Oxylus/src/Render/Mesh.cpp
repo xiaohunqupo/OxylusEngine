@@ -4,6 +4,7 @@
 #include <fastgltf/glm_element_traits.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
+#include <fastgltf/math.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <ktx.h>
 #include <meshoptimizer.h>
@@ -152,10 +153,10 @@ glm::mat4 node_to_mat4(const fastgltf::Node& node) {
 
     // T * R * S
     transform = glm::translate(Mat4(1.0f), translation) * rotationMat * glm::scale(Mat4(1.0f), scale);
-  } else if (auto* mat = std::get_if<fastgltf::Node::TransformMatrix>(&node.transform)) {
-    transform = glm::make_mat4(mat->data());
   }
-  // else node has identity transform
+  // else if (auto* mat = std::get_if<fastgltf::Node::>(&node.transform)) {
+  //   transform = glm::make_mat4(mat->data());
+  // }
 
   return transform;
 }
@@ -200,15 +201,11 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
                                     Extensions::KHR_lights_punctual | Extensions::KHR_materials_emissive_strength;
     auto parser = fastgltf::Parser(gltfExtensions);
 
-    auto data = fastgltf::GltfDataBuffer();
-    data.loadFromFile(file_path);
+    fastgltf::GltfDataBuffer data;
+    data.FromPath(file_path);
 
-    constexpr auto options = fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages | fastgltf::Options::LoadGLBBuffers;
-    if (is_binary) {
-      return parser.loadGltfBinary(&data, fs::get_directory(file_path), options);
-    }
-
-    return parser.loadGltfJson(&data, fs::get_directory(file_path), options);
+    constexpr auto options = fastgltf::Options::LoadExternalBuffers | fastgltf::Options::LoadExternalImages;
+    return parser.loadGltf(data, fs::get_directory(file_path), options);
   }();
 
   if (auto err = maybeAsset.error(); err != fastgltf::Error::None) {
@@ -260,12 +257,12 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
     const glm::mat4 local_transform = node_to_mat4(*gltf_node);
 
-    std::array<float, 16> local_transform_array{};
+    fastgltf::math::fmat4x4 local_transform_array{};
     std::copy_n(&local_transform[0][0], 16, local_transform_array.data());
-    std::array<float, 3> scale_array{};
-    std::array<float, 4> rotation_array{};
-    std::array<float, 3> translation_array{};
-    fastgltf::decomposeTransformMatrix(local_transform_array, scale_array, rotation_array, translation_array);
+    fastgltf::math::fvec3 scale_array{};
+    fastgltf::math::fquat rotation_array{};
+    fastgltf::math::fvec3 translation_array{};
+    fastgltf::math::decomposeTransformMatrix(local_transform_array, scale_array, rotation_array, translation_array);
 
     node->translation = glm::make_vec3(translation_array.data());
     node->rotation = {rotation_array[3], rotation_array[0], rotation_array[1], rotation_array[2]};
@@ -285,26 +282,26 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
       for (const fastgltf::Mesh& mesh = asset.meshes[gltf_node->meshIndex.value()]; const auto& primitive : mesh.primitives) {
         AccessorIndices accessor_indices;
         if (auto it = primitive.findAttribute("POSITION"); it != primitive.attributes.end()) {
-          accessor_indices.positions_index = it->second;
+          accessor_indices.positions_index = it->accessorIndex;
         } else {
           OX_ASSERT(false);
         }
 
         if (auto it = primitive.findAttribute("NORMAL"); it != primitive.attributes.end()) {
-          accessor_indices.normals_index = it->second;
+          accessor_indices.normals_index = it->accessorIndex;
         } else {
           // TODO: calculate normal
           OX_ASSERT(false);
         }
 
         if (auto it = primitive.findAttribute("TEXCOORD_0"); it != primitive.attributes.end()) {
-          accessor_indices.texcoords_index = it->second;
+          accessor_indices.texcoords_index = it->accessorIndex;
         } else {
           // Okay, texcoord can be safely missing
         }
 
         if (auto it = primitive.findAttribute("COLOR_0"); it != primitive.attributes.end()) {
-          accessor_indices.colors_index = it->second;
+          accessor_indices.colors_index = it->accessorIndex;
         }
 
         OX_ASSERT(primitive.indicesAccessor.has_value() && "Non-indexed meshes are not supported");
