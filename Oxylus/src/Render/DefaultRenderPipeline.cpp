@@ -1275,8 +1275,10 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                                 VUK_IA(vuk::eColorWrite) target,
                                                 VUK_IA(vuk::eDepthStencilRW) depth) {
     auto vertex_pack_2d = vuk::Packed{
-      vuk::Format::eR32G32B32A32Sfloat, // 16 postition
-      vuk::Format::eR32G32Sfloat,       // 8 size
+      vuk::Format::eR32G32B32A32Sfloat, // 16 row
+      vuk::Format::eR32G32B32A32Sfloat, // 16 row
+      vuk::Format::eR32G32B32A32Sfloat, // 16 row
+      vuk::Format::eR32G32B32A32Sfloat, // 16 row
       vuk::Format::eR32Uint,            // 4 material_id
       vuk::Format::eR32Uint,            // 4 flags
     };

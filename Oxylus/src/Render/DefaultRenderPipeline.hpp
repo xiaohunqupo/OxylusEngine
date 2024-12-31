@@ -312,8 +312,7 @@ private:
   };
 
   struct SpriteGPUData {
-    float4 position = {};
-    float2 size = {};
+    float4x4 transform = {};
     uint32 material_id16_ypos16 = 0;
     uint32 flags16_distance16 = 0;
 
@@ -394,8 +393,7 @@ private:
       const uint32 materialid_and_ypos = math::pack_u16(uint16(sprite.material->get_id()), glm::packHalf1x16(sprite.get_position().y));
 
       sprite_data.emplace_back(SpriteGPUData{
-        .position = float4(sprite.get_position(), 0.0f),
-        .size = sprite.get_size(),
+        .transform = sprite.transform,
         .material_id16_ypos16 = materialid_and_ypos,
         .flags16_distance16 = flags_and_distance,
       });

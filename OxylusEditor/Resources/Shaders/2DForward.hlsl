@@ -12,8 +12,7 @@ struct VOutput {
 };
 
 struct VertexInput {
-  float4 position : POSITION;
-  float2 size : SIZE;
+  PackedFloat4x4 transform : TRANSFORM;
   uint32 material_id16_ypos16 : MAT_INDEX;
   uint32 flags16_distance16 : FLAGS;
 };
@@ -31,9 +30,8 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   const uint32 material_index = unpack_u32_low(input.material_id16_ypos16);
   SpriteMaterial material = get_sprite_material(material_index);
 
-  float3 position = input.position;
+  float4x4 unpacked_transform = transpose(input.transform.unpack());
   float4 uv_size_offset = float4(material.get_uv_size(), material.get_uv_offset());
-  float2 size = input.size;
 
   const uint vertex_index = vertex_id % 6;
 
@@ -41,8 +39,8 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   output.uv_alpha.xy = (output.uv_alpha.xy * uv_size_offset.xy) + (uv_size_offset.zw);
 
   const int flip = flags & RENDER_FLAGS_2D_FLIP_X;
-  float4 world_position = float4(float2(positions[vertex_index].xy * size.xy * float2((float)flip ? -1 : 1, 1)), 0, 1);
-  world_position.xyz += position.xyz;
+  float4 world_position = float4(float2(positions[vertex_index].xy * float2((float)flip ? -1 : 1, 1)), 0, 1);
+  world_position = mul(unpacked_transform, world_position);
 
   output.position = mul(get_camera(0).projection_view, float4(world_position.xyz, 1.0f));
   output.material_index = material_index;

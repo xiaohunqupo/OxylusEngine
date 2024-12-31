@@ -119,7 +119,7 @@ struct SpriteComponent {
   bool flip_x = false;
 
   // non-serialized data
-  Mat4 transform = Mat4{1};
+  float4x4 transform = {};
   AABB rect = {};
 
   // set if an animation is controlling this sprite

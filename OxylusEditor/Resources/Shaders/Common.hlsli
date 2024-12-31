@@ -60,6 +60,18 @@ struct PackedFloat4 {
   }
 };
 
+struct PackedFloat4x4 { 
+  float4 r1, r2, r3, r4;
+
+  float4x4 unpack() { return float4x4(r1, r2, r3, r4); }
+  void pack(float4x4 m) { 
+    r1 = m[0];
+    r2 = m[1];
+    r3 = m[2];
+    r4 = m[3];
+  }
+};
+
 struct Vertex {
   PackedFloat3 position : POSITION;
   uint32 normal : NORMAL; // Octahedral encoding: decode with unpack_snorm2_x16 and oct_to_vec3
