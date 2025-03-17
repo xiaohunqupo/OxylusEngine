@@ -51,8 +51,8 @@ public:
                                                                   vuk::Compiler& compiler,
                                                                   vuk::Value<vuk::ImageAttachment> target) const;
 
-  ImGuiImage* add_image(const vuk::ImageView& view, bool linear_sampling = true);
-  ImGuiImage* add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling = true);
+  ImTextureID add_image(const vuk::ImageView& view, bool linear_sampling = true);
+  ImTextureID add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling = true);
 
   static void apply_theme(bool dark = true);
   static void set_style();

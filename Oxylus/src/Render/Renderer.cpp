@@ -56,7 +56,7 @@ void Renderer::draw(VkContext* vkctx, ImGuiLayer* imgui_layer, LayerStack& layer
 
   vuk::Allocator frame_allocator(frame_resource);
 
-  auto imported_swapchain = vuk::declare_swapchain(*vkctx->swapchain);
+  auto imported_swapchain = vuk::acquire_swapchain(*vkctx->swapchain);
   auto swapchain_image = vuk::acquire_next_image("swp_img", std::move(imported_swapchain));
 
   vuk::ProfilingCallbacks cbs = vkctx->tracy_profiler->setup_vuk_callback();

@@ -59,6 +59,12 @@ void SPD::init(vuk::Allocator& allocator, Config config) {
   _config = config;
 
   vuk::PipelineBaseCreateInfo pci = {};
+
+  auto compile_options = vuk::ShaderCompileOptions{};
+  compile_options.compiler_flags = vuk::ShaderCompilerFlagBits::eGlLayout | vuk::ShaderCompilerFlagBits::eMatrixColumnMajor |
+                                   vuk::ShaderCompilerFlagBits::eNoWarnings;
+  pci.set_compile_options(compile_options);
+
   vuk::DescriptorSetLayoutCreateInfo layout_create_info = {};
   if (config.load == SPDLoad::Load) {
     layout_create_info.bindings = {

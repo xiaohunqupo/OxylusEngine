@@ -316,7 +316,7 @@ private:
     uint32 material_id16_ypos16 = 0;
     uint32 flags16_distance16 = 0;
 
-    constexpr bool operator>(const SpriteGPUData& other) const {
+    bool operator>(const SpriteGPUData& other) const {
       union SortKey {
         struct {
           // The order of members is important here, it means the sort priority (low to high)!

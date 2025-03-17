@@ -136,7 +136,13 @@ target_link_libraries(${PROJECT_NAME} PUBLIC Vulkan::Vulkan)
 target_include_directories(${PROJECT_NAME} PUBLIC ${Vulkan_INCLUDE_DIRS})
 
 # dear imgui
-CPMAddPackage("gh:ocornut/imgui#docking")
+CPMAddPackage(
+    NAME imgui
+    GITHUB_REPOSITORY ocornut/imgui
+    GIT_TAG docking
+	VERSION 1.91.6
+    GIT_SHALLOW ON
+)
 target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR})
 
 file(GLOB ImGuiFiles "${imgui_SOURCE_DIR}/*.h" "${imgui_SOURCE_DIR}/*.cpp")
@@ -219,7 +225,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC loguru)
 set_target_properties(loguru PROPERTIES FOLDER "Vendor")
 
 # vk-bootstrap
-CPMAddPackage("gh:charles-lunarg/vk-bootstrap#a5950c070082e851e621206fca7b3b0b008dcb28")
+CPMAddPackage("gh:charles-lunarg/vk-bootstrap#main")
 target_link_libraries(${PROJECT_NAME} PUBLIC vk-bootstrap)
 set_target_properties(vk-bootstrap PROPERTIES FOLDER "Vendor")
 
@@ -388,5 +394,5 @@ set_target_properties(obj_basisu_cbind PROPERTIES FOLDER "Vendor")
 set_target_properties(objUtil PROPERTIES FOLDER "Vendor")
 
 # imspinner
-CPMAddPackage("gh:dalerank/imspinner#254b46994a76222a6da06111978a1674865a050d")
+CPMAddPackage("gh:dalerank/imspinner#master")
 target_include_directories(${PROJECT_NAME} PUBLIC ${imspinner_SOURCE_DIR})

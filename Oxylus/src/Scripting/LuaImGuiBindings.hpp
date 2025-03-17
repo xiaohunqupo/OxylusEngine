@@ -1953,7 +1953,6 @@ inline std::tuple<float, float, float> ColorConvertHSVtoRGB(float h, float s, fl
 }
 
 // Inputs Utilities: Keyboard
-inline int GetKeyIndex(int imgui_key) { return ImGui::GetKeyIndex(static_cast<ImGuiKey>(imgui_key)); }
 inline bool IsKeyDown(int user_key_index) { return ImGui::IsKeyDown((ImGuiKey)user_key_index); }
 inline bool IsKeyPressed(int user_key_index) { return ImGui::IsKeyPressed((ImGuiKey)user_key_index); }
 inline bool IsKeyPressed(int user_key_index, bool repeat) { return ImGui::IsKeyPressed((ImGuiKey)user_key_index, repeat); }
@@ -3478,7 +3477,6 @@ inline void init(sol::state* lua) {
 #pragma endregion Color Utilities
 
 #pragma region Inputs Utilities: Keyboard
-  ImGui.set_function("GetKeyIndex", GetKeyIndex);
   ImGui.set_function("IsKeyDown", IsKeyDown);
   ImGui.set_function("IsKeyPressed",
                      sol::overload(

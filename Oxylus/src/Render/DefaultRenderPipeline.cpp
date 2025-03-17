@@ -34,6 +34,7 @@
 
 #include "Utils/RectPacker.hpp"
 #include "vuk/ImageAttachment.hpp"
+#include "vuk/ShaderSource.hpp"
 #include "vuk/Value.hpp"
 #include "vuk/runtime/vk/Allocator.hpp"
 
@@ -77,6 +78,12 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   OX_SCOPED_ZONE;
 
   vuk::PipelineBaseCreateInfo bindless_pci = {};
+
+  auto compile_options = vuk::ShaderCompileOptions{};
+  compile_options.compiler_flags = vuk::ShaderCompilerFlagBits::eGlLayout | vuk::ShaderCompilerFlagBits::eMatrixColumnMajor |
+                                   vuk::ShaderCompilerFlagBits::eNoWarnings;
+  bindless_pci.set_compile_options(compile_options);
+
   vuk::DescriptorSetLayoutCreateInfo bindless_dslci_00 = {};
   bindless_dslci_00.bindings = {
     binding(0, vuk::DescriptorType::eStorageBuffer, 1),
@@ -97,6 +104,14 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   for (int i = 0; i < 13; i++)
     bindless_dslci_00.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
   bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_00);
+
+  vuk::DescriptorSetLayoutCreateInfo bindless_dslci_01 = {};
+  bindless_dslci_01.bindings = {
+    binding(0, vuk::DescriptorType::eUniformBuffer, 1),
+  };
+  bindless_dslci_01.index = 1;
+  //bindless_dslci_01.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+  bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
 
   using SS = vuk::HlslShaderStage;
 
@@ -122,50 +137,50 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   });
 
   // --- Culling ---
-  vuk::DescriptorSetLayoutCreateInfo bindless_dslci_01 = {};
-  bindless_dslci_01.bindings = {
+  vuk::DescriptorSetLayoutCreateInfo bindless_dslci_02 = {};
+  bindless_dslci_02.bindings = {
     binding(0, vuk::DescriptorType::eStorageBuffer, 6), // read
     binding(1, vuk::DescriptorType::eStorageBuffer, 4), // rw
   };
-  bindless_dslci_01.index = 2;
+  bindless_dslci_02.index = 2;
   for (int i = 0; i < 2; i++)
-    bindless_dslci_01.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+    bindless_dslci_02.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
+    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_02);
     bindless_pci.add_hlsl(SHADER_FILE("VisBuffer.hlsl"), SS::eVertex, "VSmain");
     bindless_pci.add_hlsl(SHADER_FILE("VisBuffer.hlsl"), SS::ePixel, "PSmain");
     TRY(allocator.get_context().create_named_pipeline("vis_buffer_pipeline", bindless_pci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
+    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_02);
     bindless_pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);
     bindless_pci.add_hlsl(SHADER_FILE("MaterialVisBuffer.hlsl"), SS::ePixel, "PSmain");
     TRY(allocator.get_context().create_named_pipeline("material_vis_buffer_pipeline", bindless_pci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
+    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_02);
     bindless_pci.add_hlsl(SHADER_FILE("VisBufferResolve.hlsl"), SS::eVertex, "VSmain");
     bindless_pci.add_hlsl(SHADER_FILE("VisBufferResolve.hlsl"), SS::ePixel, "PSmain");
     TRY(allocator.get_context().create_named_pipeline("resolve_vis_buffer_pipeline", bindless_pci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
+    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_02);
     bindless_pci.add_hlsl(SHADER_FILE("CullMeshlets.hlsl"), SS::eCompute);
     TRY(allocator.get_context().create_named_pipeline("cull_meshlets_pipeline", bindless_pci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
+    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_02);
     bindless_pci.add_hlsl(SHADER_FILE("CullTriangles.hlsl"), SS::eCompute);
     TRY(allocator.get_context().create_named_pipeline("cull_triangles_pipeline", bindless_pci))
   });
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
+    bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_02);
     bindless_pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);
     bindless_pci.add_hlsl(SHADER_FILE("ShadePBR.hlsl"), SS::ePixel, "PSmain");
     TRY(allocator.get_context().create_named_pipeline("shading_pipeline", bindless_pci))
@@ -283,7 +298,7 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
 
   task_scheduler->wait_for_all();
 
-  fsr.load_pipelines(allocator, bindless_pci);
+  // fsr.load_pipelines(allocator, bindless_pci);
 
   vuk::SamplerCreateInfo envmap_spd_sampler_ci = {};
   envmap_spd_sampler_ci.magFilter = vuk::Filter::eLinear;
@@ -358,8 +373,8 @@ DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data(co
     .output_index = 0,
   };
 
-  if (RendererCVar::cvar_fsr_enable.get())
-    cam->set_jitter(fsr.get_jitter());
+  // if (RendererCVar::cvar_fsr_enable.get())
+  // cam->set_jitter(fsr.get_jitter());
 
   camera_data.temporalaa_jitter = cam->get_jitter();
   camera_data.temporalaa_jitter_prev = cam->get_previous_jitter();
@@ -826,8 +841,8 @@ void DefaultRenderPipeline::create_static_resources() {
 }
 
 void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
-  if (fsr.get_render_res() != ext)
-    fsr.create_fs2_resources(ext, ext / 1.5f);
+  // if (fsr.get_render_res() != ext)
+  // fsr.create_fs2_resources(ext, ext / 1.5f);
 
   if (color_texture.get_extent() != ext) { // since they all should be sized the same
     color_texture.create_texture(ext, vuk::Format::eR32G32B32A32Sfloat, Preset::eRTT2DUnmipped);
@@ -1063,9 +1078,9 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   update_frame_data(frame_allocator);
 
-  auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) {
-    return output;
-  })(vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), first_pass || resized ? vuk::eNone : vuk::eFragmentSampled | vuk::eComputeSampled));
+  auto hiz_ia = first_pass || resized ? vuk::declare_ia("hiz_image", hiz_texture.as_attachment())
+                                      : vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), vuk::eFragmentSampled | vuk::eComputeSampled);
+  auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) { return output; })(hiz_ia);
 
   if (first_pass || resized) {
     run_static_passes(*vk_context.superframe_allocator);
@@ -1114,7 +1129,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   })(vis_meshlets_buff_output, triangles_dis_buffer_output, instanced_idx_buf, indirect_commands_buff);
 
   auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture->as_attachment()), vuk::DepthZero);
-  auto vis_image = vuk::clear_image(vuk::acquire_ia("visibility_image", visibility_texture.as_attachment(), vuk::eNone), vuk::Black<float>);
+  auto vis_image = vuk::clear_image(vuk::declare_ia("visibility_image", visibility_texture.as_attachment()), vuk::Black<float>);
 
   auto [vis_image_output, depth_output] = vuk::make_pass("main_vis_buffer_pass",
                                                          [this](vuk::CommandBuffer& command_buffer,
@@ -1220,6 +1235,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   auto sky_envmap_output = dir_light_data ? sky_envmap_pass(envmap_image) : envmap_image;
 
   auto color_image = vuk::clear_image(vuk::declare_ia("color_image", color_texture.as_attachment()), vuk::Black<float>);
+
   // TODO: pass GTAO
   auto color_output = vuk::make_pass("shading_pass",
                                      [this](vuk::CommandBuffer& command_buffer,
@@ -1470,7 +1486,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
   auto& v_buffer_dt = *vd_buff;
 #endif
 
-  return vuk::make_pass("debug_pass2", [this, line_index_count, dbg_index_buffer](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) _output) {
+  return vuk::make_pass("debug_pass2",
+                        [this, line_index_count, dbg_index_buffer](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) _output) {
     // not depth tested
     command_buffer.bind_graphics_pipeline("unlit_pipeline")
       .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{

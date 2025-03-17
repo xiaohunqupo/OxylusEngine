@@ -98,10 +98,6 @@ void ImGuiLayer::init_for_vulkan() {
     bold_font = io.Fonts->AddFontFromFileTTF(bold_font_path.c_str(), font_size, &fonts_config);
     add_icon_font(font_size);
     io.Fonts->TexGlyphPadding = 1;
-    for (int n = 0; n < io.Fonts->ConfigData.Size; n++) {
-      ImFontConfig* font_config = &io.Fonts->ConfigData[n];
-      font_config->RasterizerMultiply = 1.0f;
-    }
     io.Fonts->Build();
   }
 
@@ -122,7 +118,6 @@ void ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) {
   imgui_data.font_texture = create_shared<Texture>();
   imgui_data.font_texture->create_texture({(unsigned)width, (unsigned)height, 1}, pixels, vuk::Format::eR8G8B8A8Srgb, Preset::eRTT2DUnmipped);
   imgui_data.font_image = {true, *imgui_data.font_texture->get_view(), 0};
-  io.Fonts->TexID = &imgui_data.font_image;
 
   vuk::PipelineBaseCreateInfo pci;
   pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
@@ -264,13 +259,13 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
   })(target, sampled_images_array);
 }
 
-ImGuiLayer::ImGuiImage* ImGuiLayer::add_image(const vuk::ImageView& view, bool linear_sampling) {
-  return &*sampled_images.emplace(true, view, 0, linear_sampling);
+ImTextureID ImGuiLayer::add_image(const vuk::ImageView& view, bool linear_sampling) {
+  return (ImTextureID)&*sampled_images.emplace(true, view, 0, linear_sampling);
 }
 
-ImGuiLayer::ImGuiImage* ImGuiLayer::add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling) {
+ImTextureID ImGuiLayer::add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling) {
   sampled_attachments.emplace_back(attach);
-  return &*sampled_images.emplace(false, vuk::ImageView{}, (uint32_t)sampled_attachments.size() - 1u, linear_sampling);
+  return (ImTextureID)&*sampled_images.emplace(false, vuk::ImageView{}, (uint32_t)sampled_attachments.size() - 1u, linear_sampling);
 }
 
 void ImGuiLayer::end() {
@@ -447,7 +442,8 @@ void ImGuiLayer::set_style() {
 
     style->WindowPadding = ImVec2(4.0f, 4.0f);
     style->FramePadding = ImVec2(4.0f, 4.0f);
-    style->TabMinWidthForCloseButton = 0.1f;
+    style->TabCloseButtonMinWidthSelected = 0.1f;
+    style->TabCloseButtonMinWidthUnselected = 0.1f;
     style->CellPadding = ImVec2(8.0f, 4.0f);
     style->ItemSpacing = ImVec2(8.0f, 3.0f);
     style->ItemInnerSpacing = ImVec2(2.0f, 4.0f);

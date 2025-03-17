@@ -33,6 +33,7 @@ void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk
   auto image = vuk::allocate_image(*allocator, ia);
   ia.image = **image;
   auto view = vuk::allocate_image_view(*allocator, ia);
+  ia.image_view = **view;
 
   _image = std::move(*image);
   _view = std::move(*view);
@@ -67,7 +68,7 @@ void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::
   if (ia.level_count > 1)
     fut = vuk::generate_mips(fut, ia.level_count);
 
-  fut.as_released(vuk::eFragmentSampled).wait(*allocator, _compiler);
+  fut.wait(*allocator, _compiler);
 
   _image = std::move(tex);
   _view = std::move(view);

@@ -48,7 +48,7 @@ struct AppCommandLineArgs {
   std::optional<Arg> get(const uint32 index) const {
     try {
       return args.at(index);
-    } catch (std::exception& exception) {
+    } catch ([[maybe_unused]] std::exception& exception) {
       return std::nullopt;
     }
   }
