@@ -609,7 +609,7 @@ void ContentPanel::render_body(bool grid) {
         // Foreground Image
         ImGui::SetCursorPos({cursor_pos.x + padding, cursor_pos.y + padding});
         ImGui::SetItemAllowOverlap();
-        ui::image(*_white_texture->get_view(),
+        ui::image(*_white_texture,
                     {background_thumbnail_size.x - padding * 2.0f, background_thumbnail_size.y - padding * 2.0f},
                     {},
                     {},
@@ -619,12 +619,12 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
         ImGui::SetItemAllowOverlap();
         if (thumbnail_cache.contains(texture_name))
-          ui::image(*thumbnail_cache[texture_name]->get_view(), {thumb_image_size, thumb_image_size});
+          ui::image(*thumbnail_cache[texture_name], {thumb_image_size, thumb_image_size});
 
         // Type Color frame
         const ImVec2 type_color_frame_size = {scaled_thumbnail_size_x, scaled_thumbnail_size_x * 0.03f};
         ImGui::SetCursorPosX(cursor_pos.x + padding);
-        ui::image(*_white_texture->get_view(),
+        ui::image(*_white_texture,
                     type_color_frame_size,
                     {0, 0},
                     {1, 1},
@@ -664,7 +664,7 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - line_height);
         if (thumbnail_cache.contains(texture_name))
-          ui::image(*thumbnail_cache[texture_name]->get_view(), {line_height, line_height});
+          ui::image(*thumbnail_cache[texture_name], {line_height, line_height});
         ImGui::SameLine();
         ImGui::TextUnformatted(filename);
 

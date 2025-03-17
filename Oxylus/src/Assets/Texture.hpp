@@ -2,6 +2,7 @@
 #include <source_location>
 #include <string>
 #include <vuk/ImageAttachment.hpp>
+#include <vuk/Value.hpp>
 
 #include "Asset.hpp"
 
@@ -37,6 +38,7 @@ public:
                       std::source_location loc = std::source_location::current());
   void load(const TextureLoadInfo& load_info, std::source_location loc = std::source_location::current());
   vuk::ImageAttachment as_attachment() const { return _attachment; }
+  vuk::Value<vuk::ImageAttachment> as_attachment_value() const;
 
   const vuk::Unique<vuk::Image>& get_image() const { return _image; }
   const vuk::Unique<vuk::ImageView>& get_view() const { return _view; }
@@ -75,6 +77,7 @@ private:
   vuk::ImageAttachment _attachment;
   vuk::Unique<vuk::Image> _image;
   vuk::Unique<vuk::ImageView> _view;
+  std::string _name;
 
   static Shared<Texture> _white_texture;
 };

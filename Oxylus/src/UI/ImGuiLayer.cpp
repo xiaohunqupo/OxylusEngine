@@ -3,10 +3,12 @@
 #include <imgui.h>
 #include <plf_colony.h>
 
+#include <algorithm>
 #include <glm/common.hpp>
 
 #include <icons/IconsMaterialDesignIcons.h>
 #include <icons/MaterialDesign.inl>
+#include <utility>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/AllocatorHelpers.hpp>
@@ -78,7 +80,6 @@ void ImGuiLayer::init_for_vulkan() {
   const auto regular_font_path = App::get_asset_directory("Fonts/FiraSans-Regular.ttf");
   const auto bold_font_path = App::get_asset_directory("Fonts/FiraSans-Bold.ttf");
 
-  const ImGuiIO& io = ImGui::GetIO();
   constexpr float font_size = 16.0f;
   constexpr float font_size_small = 12.0f;
 
@@ -89,6 +90,7 @@ void ImGuiLayer::init_for_vulkan() {
   fonts_config.GlyphMinAdvanceX = 4.0f;
   fonts_config.SizePixels = font_size;
 
+  ImGuiIO& io = ImGui::GetIO();
   {
     OX_SCOPED_ZONE_N("Font Loading/Building");
     regular_font = io.Fonts->AddFontFromFileTTF(regular_font_path.c_str(), font_size, &fonts_config);
@@ -101,23 +103,20 @@ void ImGuiLayer::init_for_vulkan() {
     io.Fonts->Build();
   }
 
-  imgui_impl_vuk_init(*App::get_vkcontext().superframe_allocator);
-}
-
-void ImGuiLayer::imgui_impl_vuk_init(vuk::Allocator& allocator) {
-  OX_SCOPED_ZONE;
+  auto& allocator = *App::get_vkcontext().superframe_allocator;
   auto& ctx = allocator.get_context();
-  auto& io = ImGui::GetIO();
   io.BackendRendererName = "oxylus";
-  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset; // We can honor the ImDrawCmd::VtxOffset field, allowing for large meshes.
+  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
   unsigned char* pixels;
   int width, height;
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
-  imgui_data.font_texture = create_shared<Texture>();
-  imgui_data.font_texture->create_texture({(unsigned)width, (unsigned)height, 1}, pixels, vuk::Format::eR8G8B8A8Srgb, Preset::eRTT2DUnmipped);
-  imgui_data.font_image = {true, *imgui_data.font_texture->get_view(), 0};
+  font_texture = create_shared<Texture>();
+  font_texture->create_texture({.width = (unsigned)width, .height = (unsigned)height, .depth = 1},
+                               pixels,
+                               vuk::Format::eR8G8B8A8Srgb,
+                               Preset::eRTT2DUnmipped);
 
   vuk::PipelineBaseCreateInfo pci;
   pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
@@ -135,15 +134,14 @@ void ImGuiLayer::begin() {
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
   sampled_images.clear();
-  sampled_attachments.clear();
 }
 
 vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& allocator,
                                                               vuk::Compiler& compiler,
-                                                              vuk::Value<vuk::ImageAttachment> target) const {
+                                                              vuk::Value<vuk::ImageAttachment> target) {
   OX_SCOPED_ZONE;
-  auto reset_render_state = [this](const ImGuiData& data, vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
-    command_buffer.bind_image(0, 0, *data.font_texture->get_view()).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
+  auto reset_render_state = [this](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
+    command_buffer.bind_image(0, 0, *font_texture->get_view()).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
     if (index.size > 0) {
       command_buffer.bind_index_buffer(index, sizeof(ImDrawIdx) == 2 ? vuk::IndexType::eUint16 : vuk::IndexType::eUint32);
     }
@@ -161,38 +159,47 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
     command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
   };
 
-  const size_t vertex_size = draw_data->TotalVtxCount * sizeof(ImDrawVert);
-  const size_t index_size = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
+  size_t vertex_size = draw_data->TotalVtxCount * sizeof(ImDrawVert);
+  size_t index_size = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
   auto imvert = *allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, vertex_size, 1});
   auto imind = *allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, index_size, 1});
 
   size_t vtx_dst = 0, idx_dst = 0;
   for (int n = 0; n < draw_data->CmdListsCount; n++) {
     const ImDrawList* cmd_list = draw_data->CmdLists[n];
-    const auto imverto = imvert->add_offset(vtx_dst * sizeof(ImDrawVert));
-    const auto imindo = imind->add_offset(idx_dst * sizeof(ImDrawIdx));
+    auto imverto = imvert->add_offset(vtx_dst * sizeof(ImDrawVert));
+    auto imindo = imind->add_offset(idx_dst * sizeof(ImDrawIdx));
 
-    // TODO:
-    vuk::host_data_to_buffer(allocator, vuk::DomainFlagBits{}, imverto, std::span(cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size))
-      .wait(allocator, compiler);
-    vuk::host_data_to_buffer(allocator, vuk::DomainFlagBits{}, imindo, std::span(cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size))
-      .wait(allocator, compiler);
+    memcpy(imverto.mapped_ptr, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
+    memcpy(imindo.mapped_ptr, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
+
     vtx_dst += cmd_list->VtxBuffer.Size;
     idx_dst += cmd_list->IdxBuffer.Size;
   }
 
-  const auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(sampled_attachments));
+  vuk::SamplerCreateInfo sci;
+  sci.minFilter = sci.magFilter = vuk::Filter::eLinear;
+  sci.mipmapMode = vuk::SamplerMipmapMode::eLinear;
+  sci.addressModeU = sci.addressModeV = sci.addressModeW = vuk::SamplerAddressMode::eRepeat;
+
+  // add rendergraph dependencies to be transitioned
+  ImGui::GetIO().Fonts->TexID = (ImTextureID)(sampled_images.size() + 1);
+  sampled_images.push_back(combine_image_sampler("imgui font",
+                                                 vuk::acquire_ia("imgui font", font_texture->as_attachment(), vuk::Access::eFragmentSampled),
+                                                 vuk::acquire_sampler("font sampler", sci)));
+  // make all rendergraph sampled images available
+  auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(sampled_images));
 
   return vuk::make_pass("imgui",
                         [this, verts = imvert.get(), inds = imind.get(), reset_render_state](vuk::CommandBuffer& command_buffer,
                                                                                              VUK_IA(vuk::eColorWrite) color_rt,
-                                                                                             VUK_ARG(vuk::ImageAttachment[],
+                                                                                             VUK_ARG(vuk::SampledImage[],
                                                                                                      vuk::Access::eFragmentSampled) sis) {
     command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
       .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
       .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
 
-    reset_render_state(imgui_data, command_buffer, verts, inds);
+    reset_render_state(command_buffer, verts, inds);
     // Will project scissor/clipping rectangles into framebuffer space
     const ImVec2 clip_off = draw_data->DisplayPos;         // (0,0) unless using multi-viewports
     const ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
@@ -209,7 +216,7 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
           // User callback, registered via ImDrawList::AddCallback()
           // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
           if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
-            reset_render_state(imgui_data, command_buffer, verts, inds);
+            reset_render_state(command_buffer, verts, inds);
           else
             pcmd->UserCallback(cmd_list, pcmd);
         } else {
@@ -224,10 +231,8 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
           const auto fb_height = command_buffer.get_ongoing_render_pass().extent.height;
           if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0f && clip_rect.w >= 0.0f) {
             // Negative offsets are illegal for vkCmdSetScissor
-            if (clip_rect.x < 0.0f)
-              clip_rect.x = 0.0f;
-            if (clip_rect.y < 0.0f)
-              clip_rect.y = 0.0f;
+            clip_rect.x = std::max(clip_rect.x, 0.0f);
+            clip_rect.y = std::max(clip_rect.y, 0.0f);
 
             // Apply scissor/clipping rectangle
             vuk::Rect2D scissor;
@@ -239,13 +244,9 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
 
             // Bind texture
             if (pcmd->TextureId) {
-              const auto& img = *reinterpret_cast<ImGuiLayer::ImGuiImage*>(pcmd->TextureId);
-              if (img.global)
-                command_buffer.bind_image(0, 0, img.view)
-                  .bind_sampler(0, 0, img.linear_sampling ? vuk::LinearSamplerRepeated : vuk::NearestSamplerRepeated);
-              else
-                command_buffer.bind_image(0, 0, sis[img.attachment_index])
-                  .bind_sampler(0, 0, img.linear_sampling ? vuk::LinearSamplerRepeated : vuk::NearestSamplerRepeated);
+              auto ia_index = static_cast<size_t>(pcmd->TextureId) - 1;
+
+              command_buffer.bind_image(0, 0, sis[ia_index].ia).bind_sampler(0, 0, sis[ia_index].sci);
             }
 
             command_buffer.draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
@@ -256,16 +257,17 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
       global_vtx_offset += cmd_list->VtxBuffer.Size;
     }
     return color_rt;
-  })(target, sampled_images_array);
+  })(std::move(target), std::move(sampled_images_array));
 }
 
-ImTextureID ImGuiLayer::add_image(const vuk::ImageView& view, bool linear_sampling) {
-  return (ImTextureID)&*sampled_images.emplace(true, view, 0, linear_sampling);
+ImTextureID ImGuiLayer::add_sampled_image(vuk::Value<vuk::SampledImage> sampled_image) {
+  auto idx = sampled_images.size() + 1;
+  sampled_images.emplace_back(std::move(sampled_image));
+  return (ImTextureID)idx;
 }
 
-ImTextureID ImGuiLayer::add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling) {
-  sampled_attachments.emplace_back(attach);
-  return (ImTextureID)&*sampled_images.emplace(false, vuk::ImageView{}, (uint32_t)sampled_attachments.size() - 1u, linear_sampling);
+ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment> image) {
+  return add_sampled_image(combine_image_sampler("_simg", std::move(image), vuk::acquire_sampler("_default_sampler", {})));
 }
 
 void ImGuiLayer::end() {

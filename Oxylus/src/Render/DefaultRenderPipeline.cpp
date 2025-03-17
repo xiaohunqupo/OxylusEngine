@@ -105,13 +105,14 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
     bindless_dslci_00.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
   bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_00);
 
-  vuk::DescriptorSetLayoutCreateInfo bindless_dslci_01 = {};
-  bindless_dslci_01.bindings = {
-    binding(0, vuk::DescriptorType::eUniformBuffer, 1),
+  vuk::DescriptorSetLayoutCreateInfo bindless_dslci_02 = {};
+  bindless_dslci_02.bindings = {
+    binding(0, vuk::DescriptorType::eStorageBuffer, 6), // read
+    binding(1, vuk::DescriptorType::eStorageBuffer, 4), // rw
   };
-  bindless_dslci_01.index = 1;
-  //bindless_dslci_01.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
-  bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_01);
+  bindless_dslci_02.index = 2;
+  for (int i = 0; i < 2; i++)
+    bindless_dslci_02.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
 
   using SS = vuk::HlslShaderStage;
 
@@ -137,15 +138,6 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
   });
 
   // --- Culling ---
-  vuk::DescriptorSetLayoutCreateInfo bindless_dslci_02 = {};
-  bindless_dslci_02.bindings = {
-    binding(0, vuk::DescriptorType::eStorageBuffer, 6), // read
-    binding(1, vuk::DescriptorType::eStorageBuffer, 4), // rw
-  };
-  bindless_dslci_02.index = 2;
-  for (int i = 0; i < 2; i++)
-    bindless_dslci_02.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
-
   task_scheduler->add_task([=]() mutable {
     bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_02);
     bindless_pci.add_hlsl(SHADER_FILE("VisBuffer.hlsl"), SS::eVertex, "VSmain");

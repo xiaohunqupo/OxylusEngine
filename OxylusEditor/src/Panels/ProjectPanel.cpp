@@ -51,7 +51,7 @@ void ProjectPanel::on_imgui_render() {
 
     const auto scale = Window::get_content_scale();
 
-    ui::image(*EditorLayer::get()->engine_banner->get_view(), {(float)banner_size.width * scale.x, (float)banner_size.height * scale.y});
+    ui::image(*EditorLayer::get()->engine_banner, {(float)banner_size.width * scale.x, (float)banner_size.height * scale.y});
     ui::spacing(2);
     ImGui::SeparatorText("Projects");
     ui::spacing(2);

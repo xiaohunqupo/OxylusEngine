@@ -18,10 +18,8 @@ public:
     bool linear_sampling = true;
   };
 
-  struct ImGuiData {
-    Shared<Texture> font_texture = nullptr;
-    ImGuiImage font_image = {};
-  };
+  Shared<Texture> font_texture = nullptr;
+  std::vector<vuk::Value<vuk::SampledImage>> sampled_images;
 
   static ImFont* bold_font;
   static ImFont* regular_font;
@@ -49,23 +47,17 @@ public:
 
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> render_draw_data(vuk::Allocator& allocator,
                                                                   vuk::Compiler& compiler,
-                                                                  vuk::Value<vuk::ImageAttachment> target) const;
+                                                                  vuk::Value<vuk::ImageAttachment> target);
 
-  ImTextureID add_image(const vuk::ImageView& view, bool linear_sampling = true);
-  ImTextureID add_attachment(const vuk::Value<vuk::ImageAttachment>& attach, bool linear_sampling = true);
+  ImTextureID add_sampled_image(vuk::Value<vuk::SampledImage> sampled_image);
+  ImTextureID add_image(vuk::Value<vuk::ImageAttachment>);
 
   static void apply_theme(bool dark = true);
   static void set_style();
-
-  plf::colony<ImGuiImage> sampled_images;
-  std::vector<vuk::Value<vuk::ImageAttachment>> sampled_attachments;
-
 private:
-  ImGuiData imgui_data;
   ImDrawData* draw_data = nullptr;
 
   void init_for_vulkan();
   void add_icon_font(float font_size);
-  void imgui_impl_vuk_init(vuk::Allocator& allocator);
 };
 } // namespace ox

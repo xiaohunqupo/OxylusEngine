@@ -104,10 +104,7 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
   } else {
     const auto file_data = fs::read_file_binary(load_info.path);
     ktxTexture2* ktx{};
-    if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(),
-                                                         file_data.size(),
-                                                         KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
-                                                         &ktx);
+    if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(), file_data.size(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
         result != KTX_SUCCESS) {
       OX_LOG_ERROR("Couldn't load KTX2 file {}", ktxErrorString(result));
     }
@@ -130,6 +127,10 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
   }
 }
 
+vuk::Value<vuk::ImageAttachment> Texture::as_attachment_value() const {
+  return vuk::acquire_ia(vuk::Name(_name), as_attachment(), vuk::Access::eFragmentSampled);
+}
+
 void Texture::create_white_texture() {
   OX_SCOPED_ZONE;
   _white_texture = create_shared<Texture>();
@@ -143,11 +144,13 @@ void Texture::set_name(std::string_view name, const std::source_location& loc) {
   if (!name.empty()) {
     ctx.runtime->set_name(_image->image, vuk::Name(name));
     ctx.runtime->set_name(_view->payload, vuk::Name(name));
+    _name = name;
   } else {
     auto file = fs::get_file_name(loc.file_name());
     const auto n = fmt::format("{0}:{1}", file, loc.line());
     ctx.runtime->set_name(_image->image, vuk::Name(n));
     ctx.runtime->set_name(_view->payload, vuk::Name(n));
+    _name = n;
   }
 }
 
