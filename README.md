@@ -1,5 +1,5 @@
 # Oxylus Engine
-![Logo](https://cdn.discordapp.com/attachments/1012357737256058924/1109482685388312677/OXLogoBanner.png)     
+![Logo](https://i.imgur.com/4JpO3vl.png)     
 [![CI](https://img.shields.io/github/actions/workflow/status/Hatrickek/OxylusEngine/cmake.yml?&style=for-the-badge&logo=cmake&logoColor=orange&labelColor=black)](https://github.com/Hatrickek/OxylusEngine/actions/workflows/cmake.yml)
 ## About   
 This is my hobby project that I work on in my spare time to learn more about graphics programming and engine architectures. Especially Vulkan and C++.
