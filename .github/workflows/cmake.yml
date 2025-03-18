@@ -36,9 +36,9 @@ jobs:
         version: 17.0
         platform: x64
     - name: Setup cmake
-      uses: jwlawson/actions-setup-cmake@v1.12
+      uses: jwlawson/actions-setup-cmake@v2
     - name: Install Vulkan SDK
-      uses: humbletim/install-vulkan-sdk@v1.1.1
+      uses: humbletim/install-vulkan-sdk@v1.2
       with:
         version: ${{env.VULKAN_VERSION}}
         cache: true
@@ -73,17 +73,17 @@ jobs:
       with:
         submodules: recursive
     - name: Install Vulkan SDK
-      uses: humbletim/install-vulkan-sdk@v1.1.1
+      uses: humbletim/install-vulkan-sdk@v1.2
       with:
         version: ${{env.VULKAN_VERSION}}
         cache: true
     - name: Setup MSVC
-      uses: ilammy/msvc-dev-cmd@v1.12.1
+      uses: ilammy/msvc-dev-cmd@v1.13.0
       with:
         arch: ${{ matrix.arch }}
         vsversion: 2022
     - name: Add msbuild to PATH
-      uses: microsoft/setup-msbuild@v1.3
+      uses: microsoft/setup-msbuild@v2
     - name: Configure CMake
       run: cmake -S . -B ${{github.workspace}}/build -G "Visual Studio 17 2022" -A x64 -DCMAKE_BUILD_TYPE=${{env.BUILD_TYPE}}
     - name: Build
@@ -109,11 +109,11 @@ jobs:
   #
   #  steps:
   #  - name: Checkout Code
-  #    uses: actions/checkout@v3
+  #    uses: actions/checkout@v4
   #    with:
   #      submodules: recursive
   #  - name: Install Vulkan SDK
-  #    uses: humbletim/install-vulkan-sdk@v1.1.1
+  #    uses: humbletim/install-vulkan-sdk@v1.2
   #    with:
   #      version: ${{env.VULKAN_VERSION}}
   #      cache: true
