@@ -133,7 +133,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       // TODO: Tilemaps can also be just submitted as sprites into the renderer until we have the layering system.
       SpriteComponent sprite{};
       if (!tilemap.layers.empty())
-        sprite.material = tilemap.layers.begin()._Unwrapped()->second;
+        sprite.material = tilemap.layers.begin()->second;
       sprite.sort_y = false;
 
       // FIXME: don't care about parents for now

@@ -35,7 +35,7 @@ inline uint16 unpack_u32_high(uint32 packed) { return (packed >> 16) & 0xFFFF; }
 inline float2 sign_not_zero(float2 v) { return {(v.x >= 0.0f) ? +1.0f : -1.0f, (v.y >= 0.0f) ? +1.0f : -1.0f}; }
 
 inline float2 float32x3_to_oct(float3 v) {
-  const float2 p = float2{v.x, v.y} * (1.0f / (abs(v.x) + abs(v.y) + abs(v.z)));
+  const float2 p = float2{v.x, v.y} * (1.0f / (glm::abs(v.x) + glm::abs(v.y) + glm::abs(v.z)));
   return (v.z <= 0.0f) ? ((1.0f - glm::abs(float2{p.y, p.x})) * sign_not_zero(p)) : p;
 }
 

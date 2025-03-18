@@ -282,6 +282,22 @@ RuntimeConsole::ParsedCommandValue RuntimeConsole::parse_value(const std::string
 
 std::string RuntimeConsole::parse_command(const std::string& command) { return command.substr(0, command.find(' ')); }
 
+// cross-platform _strnicmp
+int compare_ci(const std::string_view s1, const std::string_view s2, const size_t n) {
+  const size_t len1 = std::min(s1.size(), n);
+  const size_t len2 = std::min(s2.size(), n);
+
+  for (size_t i = 0; i < std::min(len1, len2); ++i) {
+    const char c1 = (char)std::tolower((unsigned char)s1[i]);
+    const char c2 = (char)std::tolower((unsigned char)s2[i]);
+
+    if (c1 != c2)
+      return c1 - c2;
+  }
+
+  return (len1 < len2) ? -1 : (len1 > len2) ? 1 : 0;
+}
+
 int RuntimeConsole::input_text_callback(ImGuiInputTextCallbackData* data) {
   switch (data->EventFlag) {
     case ImGuiInputTextFlags_CallbackCompletion: {
@@ -295,13 +311,13 @@ int RuntimeConsole::input_text_callback(ImGuiInputTextCallbackData* data) {
         word_start--;
       }
 
-      const auto avaiable_commands = get_available_commands();
+      const auto available_commands = get_available_commands();
 
       // Build a list of candidates
       std::vector<const char*> candidates;
-      for (const auto& avaiable_command : avaiable_commands)
-        if (_strnicmp(avaiable_command.c_str(), word_start, (int)(word_end - word_start)) == 0)
-          candidates.push_back(avaiable_command.c_str());
+      for (const auto& available_command : available_commands)
+        if (compare_ci(available_command, word_start, (int)(word_end - word_start)) == 0)
+          candidates.push_back(available_command.c_str());
 
       if (candidates.empty()) {
         add_log("No match", loguru::Verbosity_WARNING);

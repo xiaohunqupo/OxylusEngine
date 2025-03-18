@@ -320,7 +320,7 @@ set_target_properties(TracyClient PROPERTIES FOLDER "Vendor")
 CPMAddPackage(
     NAME lua
     GITHUB_REPOSITORY walterschell/Lua
-    GIT_TAG 88246d621abf7b6fba9332f49229d507f020e450
+    GIT_TAG master
     GIT_SHALLOW ON
     OPTIONS
         "LUA_SUPPORT_DL OFF"
@@ -333,7 +333,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${lua_SOURCE_DIR}/lua-5.4.6/in
 
 CPMAddPackage(
     NAME sol2
-    GITHUB_REPOSITORY Hatrickek/sol2
+    GITHUB_REPOSITORY ThePhD/sol2
     GIT_TAG develop
     OPTIONS
         "SOL2_BUILD_LUA OFF"

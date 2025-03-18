@@ -133,7 +133,6 @@ void ImGuiLayer::begin() {
   OX_SCOPED_ZONE;
   ImGui_ImplGlfw_NewFrame();
   ImGui::NewFrame();
-  sampled_images.clear();
 }
 
 vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& allocator,
@@ -256,6 +255,8 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
       global_idx_offset += cmd_list->IdxBuffer.Size;
       global_vtx_offset += cmd_list->VtxBuffer.Size;
     }
+
+    sampled_images.clear();
     return color_rt;
   })(std::move(target), std::move(sampled_images_array));
 }
