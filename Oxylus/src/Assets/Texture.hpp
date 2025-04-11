@@ -52,9 +52,6 @@ public:
     return (uint32_t)log2f((float)std::max(std::max(extent.width, extent.height), extent.depth)) + 1;
   }
 
-  static void create_white_texture();
-  static Shared<Texture> get_white_texture() { return _white_texture; }
-
   /// Loads the given file using stb. Returned data must be freed manually.
   static uint8_t* load_stb_image(const std::string& filename,
                                  uint32_t* width = nullptr,
@@ -78,7 +75,5 @@ private:
   vuk::Unique<vuk::Image> _image;
   vuk::Unique<vuk::ImageView> _view;
   std::string _name;
-
-  static Shared<Texture> _white_texture;
 };
 } // namespace ox

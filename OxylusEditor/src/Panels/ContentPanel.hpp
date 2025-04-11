@@ -42,7 +42,7 @@ public:
 
   void init();
   void on_update() override;
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   void invalidate();
 

@@ -18,6 +18,10 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
+std::string fs::current_path() {
+  return std::filesystem::current_path().string();
+}
+
 std::pair<std::string, std::string> fs::split_path(std::string_view full_path) {
   const size_t found = full_path.find_last_of("/\\");
   return {

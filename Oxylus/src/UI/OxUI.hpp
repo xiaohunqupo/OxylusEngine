@@ -217,6 +217,6 @@ public:
 
   static void draw_framerate_overlay(ImVec2 work_pos = {}, ImVec2 work_size = {}, ImVec2 padding = {}, bool* visible = nullptr);
 
-  static ImVec2 to_imvec2(float2 v) { return ImVec2(v.x, v.y); }
+  static ImVec2 to_imvec2(glm::vec2 v) { return ImVec2(v.x, v.y); }
 }; // namespace ui
 } // namespace ox

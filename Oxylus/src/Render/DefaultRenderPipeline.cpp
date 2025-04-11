@@ -29,7 +29,6 @@
 #include "Vulkan/VkContext.hpp"
 
 #include "Core/FileSystem.hpp"
-#include "Renderer.hpp"
 #include "Utils/VukCommon.hpp"
 
 #include "Utils/RectPacker.hpp"
@@ -346,7 +345,7 @@ DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data(co
   auto* cam = use_frozen_camera ? &frozen_camera : current_camera;
 
   CameraData camera_data{
-    .position = Vec4(cam->get_position(), 0.0f),
+    .position = glm::vec4(cam->get_position(), 0.0f),
     .projection = cam->get_projection_matrix(),
     .inv_projection = cam->get_inv_projection_matrix(),
     .view = cam->get_view_matrix(),
@@ -386,21 +385,21 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
   OX_SCOPED_ZONE;
 
   const auto lightRotation = glm::toMat4(glm::quat(light.rotation));
-  const auto to = math::transform_normal(Vec4(0.0f, -1.0f, 0.0f, 0.0f), lightRotation);
-  const auto up = math::transform_normal(Vec4(0.0f, 0.0f, 1.0f, 0.0f), lightRotation);
-  auto light_view = glm::lookAt(Vec3{}, Vec3(to), Vec3(up));
+  const auto to = math::transform_normal(glm::vec4(0.0f, -1.0f, 0.0f, 0.0f), lightRotation);
+  const auto up = math::transform_normal(glm::vec4(0.0f, 0.0f, 1.0f, 0.0f), lightRotation);
+  auto light_view = glm::lookAt(glm::vec3{}, glm::vec3(to), glm::vec3(up));
 
   const auto unproj = camera.get_inverse_projection_view();
 
-  Vec4 frustum_corners[8] = {
-    math::transform_coord(Vec4(-1.f, -1.f, 1.f, 1.f), unproj), // near
-    math::transform_coord(Vec4(-1.f, -1.f, 0.f, 1.f), unproj), // far
-    math::transform_coord(Vec4(-1.f, 1.f, 1.f, 1.f), unproj),  // near
-    math::transform_coord(Vec4(-1.f, 1.f, 0.f, 1.f), unproj),  // far
-    math::transform_coord(Vec4(1.f, -1.f, 1.f, 1.f), unproj),  // near
-    math::transform_coord(Vec4(1.f, -1.f, 0.f, 1.f), unproj),  // far
-    math::transform_coord(Vec4(1.f, 1.f, 1.f, 1.f), unproj),   // near
-    math::transform_coord(Vec4(1.f, 1.f, 0.f, 1.f), unproj),   // far
+  glm::vec4 frustum_corners[8] = {
+    math::transform_coord(glm::vec4(-1.f, -1.f, 1.f, 1.f), unproj), // near
+    math::transform_coord(glm::vec4(-1.f, -1.f, 0.f, 1.f), unproj), // far
+    math::transform_coord(glm::vec4(-1.f, 1.f, 1.f, 1.f), unproj),  // near
+    math::transform_coord(glm::vec4(-1.f, 1.f, 0.f, 1.f), unproj),  // far
+    math::transform_coord(glm::vec4(1.f, -1.f, 1.f, 1.f), unproj),  // near
+    math::transform_coord(glm::vec4(1.f, -1.f, 0.f, 1.f), unproj),  // far
+    math::transform_coord(glm::vec4(1.f, 1.f, 1.f, 1.f), unproj),   // near
+    math::transform_coord(glm::vec4(1.f, 1.f, 0.f, 1.f), unproj),   // far
   };
 
   // Compute shadow cameras:
@@ -410,7 +409,7 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
     const float split_near = cascade == 0 ? 0 : light.cascade_distances[cascade - 1] / farPlane;
     const float split_far = light.cascade_distances[cascade] / farPlane;
 
-    Vec4 corners[8] = {
+    glm::vec4 corners[8] = {
       math::transform(lerp(frustum_corners[0], frustum_corners[1], split_near), light_view),
       math::transform(lerp(frustum_corners[0], frustum_corners[1], split_far), light_view),
       math::transform(lerp(frustum_corners[2], frustum_corners[3], split_near), light_view),
@@ -422,7 +421,7 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
     };
 
     // Compute cascade bounding sphere center:
-    Vec4 center = {};
+    glm::vec4 center = {};
     for (int j = 0; j < std::size(corners); ++j) {
       center += corners[j];
     }
@@ -435,7 +434,7 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
     }
 
     // Fit AABB onto bounding sphere:
-    auto vRadius = Vec4(radius);
+    auto vRadius = glm::vec4(radius);
     auto vMin = center - vRadius;
     auto vMax = center + vRadius;
 
@@ -460,7 +459,10 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
   }
 }
 
-void DefaultRenderPipeline::create_cubemap_cameras(std::vector<DefaultRenderPipeline::CameraSH>& camera_data, const Vec3 pos, float near, float far) {
+void DefaultRenderPipeline::create_cubemap_cameras(std::vector<DefaultRenderPipeline::CameraSH>& camera_data,
+                                                   const glm::vec3 pos,
+                                                   float near,
+                                                   float far) {
   OX_CHECK_EQ(camera_data.size(), 6);
   constexpr auto fov = 90.0f;
   const auto shadowProj = glm::perspective(glm::radians(fov), 1.0f, near, far);
@@ -490,7 +492,11 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
   scene_data.num_lights = (uint32)scene_lights.size();
   scene_data.grid_max_distance = RendererCVar::cvar_draw_grid_distance.get();
-  scene_data.screen_size = IVec2(Renderer::get_viewport_width(), Renderer::get_viewport_height());
+
+  const auto app = App::get();
+  const auto extent = app->get_swapchain_extent();
+  scene_data.screen_size = glm::ivec2{extent.x, extent.y};
+
   scene_data.screen_size_rcp = {1.0f / (float)std::max(1u, scene_data.screen_size.x), 1.0f / (float)std::max(1u, scene_data.screen_size.y)};
   scene_data.meshlet_count = scene_flattened.get_meshlet_instances_count();
   scene_data.draw_meshlet_aabbs = RendererCVar::cvar_draw_meshlet_aabbs.get();
@@ -591,7 +597,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
     light_datas.reserve(scene_lights.size());
 
-    const Vec2 atlas_dim_rcp = Vec2(1.0f / float(shadow_map_atlas.get_extent().width), 1.0f / float(shadow_map_atlas.get_extent().height));
+    const glm::vec2 atlas_dim_rcp = glm::vec2(1.0f / float(shadow_map_atlas.get_extent().width), 1.0f / float(shadow_map_atlas.get_extent().height));
 
     for (auto& lc : scene_lights) {
       auto& light = light_datas.emplace_back();
@@ -600,7 +606,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
       light.set_type((uint32)lc.type);
       light.rotation = lc.rotation;
       light.set_direction(lc.direction);
-      light.set_color(float4(lc.color * (lc.type == LightComponent::Directional ? 1.0f : lc.intensity), 1.0f));
+      light.set_color(glm::vec4(lc.color * (lc.type == LightComponent::Directional ? 1.0f : lc.intensity), 1.0f));
       light.set_radius(lc.radius);
       light.set_length(lc.length);
 
@@ -731,7 +737,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     // scene cubemap texture array
     descriptor_set_00->update_sampled_image(6, SKY_ENVMAP_INDEX, *sky_envmap_texture.get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
-    // scene Read/Write float4 textures
+    // scene Read/Write glm::vec4 textures
     descriptor_set_00->update_storage_image(8, SKY_TRANSMITTANCE_LUT_INDEX, *sky_transmittance_lut.get_view());
     descriptor_set_00->update_storage_image(8, SKY_MULTISCATTER_LUT_INDEX, *sky_multiscatter_lut.get_view());
 
@@ -947,7 +953,7 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
             shadow_map_atlas.create_texture(ia);
             shadow_map_atlas_transparent.create_texture(ia);
 
-            scene_data.shadow_atlas_res = UVec2(shadow_map_atlas.get_extent().width, shadow_map_atlas.get_extent().height);
+            scene_data.shadow_atlas_res = glm::uvec2(shadow_map_atlas.get_extent().width, shadow_map_atlas.get_extent().height);
           }
 
           break;
@@ -984,11 +990,9 @@ void DefaultRenderPipeline::create_descriptor_sets(vuk::Allocator& allocator) {
 }
 
 void DefaultRenderPipeline::run_static_passes(vuk::Allocator& allocator) {
-  auto* compiler = get_compiler();
-
   auto transmittance_fut = sky_transmittance_pass();
   auto multiscatter_fut = sky_multiscatter_pass(transmittance_fut);
-  multiscatter_fut.wait(allocator, *compiler);
+  multiscatter_fut.wait(allocator, _compiler);
 }
 
 void DefaultRenderPipeline::on_dispatcher_events(EventDispatcher& dispatcher) {
@@ -1015,7 +1019,7 @@ void DefaultRenderPipeline::submit_sprite(const SpriteComponent& sprite) {
   OX_SCOPED_ZONE;
   sprite_component_list.emplace_back(sprite);
 
-  const auto distance = glm::distance(float3(0.f, 0.f, current_camera->get_position().z), float3(0.f, 0.f, sprite.get_position().z));
+  const auto distance = glm::distance(glm::vec3(0.f, 0.f, current_camera->get_position().z), glm::vec3(0.f, 0.f, sprite.get_position().z));
   render_queue_2d.add(sprite, distance);
 }
 
@@ -1031,7 +1035,7 @@ void DefaultRenderPipeline::submit_camera(Camera* camera) {
 
   if ((bool)RendererCVar::cvar_freeze_culling_frustum.get() && (bool)RendererCVar::cvar_draw_camera_frustum.get()) {
     const auto proj = frozen_camera.get_projection_matrix() * frozen_camera.get_view_matrix();
-    DebugRenderer::draw_frustum(proj, float4(0, 1, 0, 1), 1.0f, 0.0f); // reversed-z
+    DebugRenderer::draw_frustum(proj, glm::vec4(0, 1, 0, 1), 1.0f, 0.0f); // reversed-z
   }
 
   current_camera = camera;
@@ -1039,9 +1043,7 @@ void DefaultRenderPipeline::submit_camera(Camera* camera) {
 
 void DefaultRenderPipeline::shutdown() {}
 
-vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator& frame_allocator,
-                                                                  vuk::Value<vuk::ImageAttachment> target,
-                                                                  vuk::Extent3D ext) {
+vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator& frame_allocator, vuk::Extent3D ext, vuk::Format format) {
   OX_SCOPED_ZONE;
   if (!current_camera) {
     OX_LOG_ERROR("No camera is set for rendering!");
@@ -1053,8 +1055,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   auto& vk_context = App::get_vkcontext();
 
-  Vec3 sun_direction = {0, 1, 0};
-  Vec3 sun_color = {};
+  glm::vec3 sun_direction = {0, 1, 0};
+  glm::vec3 sun_color = {};
 
   if (dir_light_data) {
     sun_direction = dir_light_data->direction;
@@ -1062,7 +1064,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   }
 
   scene_data.sun_direction = sun_direction;
-  scene_data.sun_color = Vec4(sun_color, 1.0f);
+  scene_data.sun_color = glm::vec4(sun_color, 1.0f);
 
   create_dynamic_textures(ext);
 
@@ -1070,9 +1072,19 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   update_frame_data(frame_allocator);
 
+  const auto final_ia = vuk::ImageAttachment{
+    .extent = ext,
+    .format = format,
+    .sample_count = vuk::SampleCountFlagBits::e1,
+    .level_count = 1,
+    .layer_count = 1,
+  };
+  auto final_image = vuk::clear_image(vuk::declare_ia("final_image", final_ia), vuk::Black<float>);
+
   auto hiz_ia = first_pass || resized ? vuk::declare_ia("hiz_image", hiz_texture.as_attachment())
                                       : vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), vuk::eFragmentSampled | vuk::eComputeSampled);
-  auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) { return output; })(hiz_ia);
+  auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) {
+    return output; })(hiz_ia);
 
   if (first_pass || resized) {
     run_static_passes(*vk_context.superframe_allocator);
@@ -1224,7 +1236,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   })(material_depth_output, albedo, normal, normal_vertex, metallic_roughness, velocity, emission, vis_image_output);
 
   auto envmap_image = vuk::clear_image(vuk::declare_ia("sky_envmap_image", sky_envmap_texture.as_attachment()), vuk::Black<float>);
-  auto sky_envmap_output = dir_light_data ? sky_envmap_pass(envmap_image) : envmap_image;
+  auto sky_envmap_output = dir_light_data ? sky_envmap_pass(frame_allocator, envmap_image) : envmap_image;
 
   auto color_image = vuk::clear_image(vuk::declare_ia("color_image", color_texture.as_attachment()), vuk::Black<float>);
 
@@ -1355,7 +1367,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .layer_count = 1,
     };
     auto bloom_down_image = vuk::clear_image(vuk::declare_ia("bloom_down_image", bloom_ia), vuk::Black<float>);
-    bloom_down_image.same_extent_as(target);
+    bloom_down_image.same_extent_as(final_image);
 
     auto bloom_up_ia = vuk::ImageAttachment{
       .format = vuk::Format::eR32G32B32A32Sfloat,
@@ -1364,7 +1376,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .layer_count = 1,
     };
     auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_up_ia), vuk::Black<float>);
-    bloom_up_image.same_extent_as(target);
+    bloom_up_image.same_extent_as(final_image);
 
     bloom_output = bloom_pass(bloom_down_image, bloom_up_image, color_output_w2d);
   }
@@ -1385,7 +1397,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
       .bind_image(2, 1, bloom_img)
       .draw(3, 1, 0, 0);
     return target;
-  })(target, color_output_w2d, bloom_output);
+  })(final_image, color_output_w2d, bloom_output);
 
   return debug_pass(frame_allocator, depth_output, final_output);
 #if 0
@@ -1545,6 +1557,7 @@ void DefaultRenderPipeline::on_update(Scene* scene) {
   }
 }
 
+// TODO: Not called anymore so needs to be called somewhere else!! Old Code!!
 void DefaultRenderPipeline::on_submit() {
   first_pass = false;
 
@@ -1725,7 +1738,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
 
   struct BloomPushConst {
     // x: threshold, y: clamp, z: radius, w: unused
-    Vec4 params = {};
+    glm::vec4 params = {};
   } bloom_push_const;
 
   bloom_push_const.params.x = RendererCVar::cvar_bloom_threshold.get();
@@ -1735,13 +1748,15 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
                                   [bloom_push_const](vuk::CommandBuffer& command_buffer,
                                                      VUK_IA(vuk::eComputeRW) target,
                                                      VUK_IA(vuk::eComputeSampled) input) {
+    const auto extent = App::get()->get_swapchain_extent();
+
     command_buffer.bind_compute_pipeline("bloom_prefilter_pipeline")
       .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, bloom_push_const)
       .bind_image(0, 0, target)
       .bind_sampler(0, 0, vuk::NearestMagLinearMinSamplerClamped)
       .bind_image(0, 1, input)
       .bind_sampler(0, 1, vuk::NearestMagLinearMinSamplerClamped)
-      .dispatch((Renderer::get_viewport_width() + 8 - 1) / 8, (Renderer::get_viewport_height() + 8 - 1) / 8, 1);
+      .dispatch((extent.y + 8 - 1) / 8, (extent.y + 8 - 1) / 8, 1);
     return target;
   });
 
@@ -1753,7 +1768,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
   for (uint32_t i = 1; i < bloom_mip_count; i++) {
     auto pass = vuk::make_pass("bloom_downsample",
                                [i](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) target, VUK_IA(vuk::eComputeSampled) input) {
-      const auto size = IVec2(Renderer::get_viewport_width() / (1 << i), Renderer::get_viewport_height() / (1 << i));
+      const auto extent = App::get()->get_swapchain_extent();
+      const auto size = glm::ivec2(extent.x / (1 << i), extent.y / (1 << i));
 
       command_buffer.bind_compute_pipeline("bloom_downsample_pipeline")
         .bind_image(0, 0, target)
@@ -1779,7 +1795,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
                                    VUK_IA(vuk::eComputeRW) output,
                                    VUK_IA(vuk::eComputeSampled) src1,
                                    VUK_IA(vuk::eComputeSampled) src2) {
-      const auto size = IVec2(Renderer::get_viewport_width() / (1 << i), Renderer::get_viewport_height() / (1 << i));
+      const auto extent = App::get()->get_swapchain_extent();
+      const auto size = glm::ivec2(extent.x / (1 << i), extent.y / (1 << i));
 
       command_buffer.bind_compute_pipeline("bloom_upsample_pipeline")
         .bind_image(0, 0, output)
@@ -1814,7 +1831,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
   gtao_settings.final_value_power = RendererCVar::cvar_gtao_final_value_power.get();
   gtao_settings.depth_mip_sampling_offset = RendererCVar::cvar_gtao_depth_mip_sampling_offset.get();
 
-  gtao_update_constants(gtao_constants, (int)Renderer::get_viewport_width(), (int)Renderer::get_viewport_height(), gtao_settings, current_camera, 0);
+  const auto extent = App::get()->get_swapchain_extent();
+  gtao_update_constants(gtao_constants, (int)extent.x, (int)extent.y, gtao_settings, current_camera, 0);
 
   auto [gtao_const_buff, gtao_const_buff_fut] = create_cpu_buffer(frame_allocator, std::span(&gtao_constants, 1));
   auto& gtao_const_buffer = *gtao_const_buff;
@@ -1841,6 +1859,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
                                                             VUK_IA(vuk::eComputeRW) depth_mip2,
                                                             VUK_IA(vuk::eComputeRW) depth_mip3,
                                                             VUK_IA(vuk::eComputeRW) depth_mip4) {
+    const auto extent = App::get()->get_swapchain_extent();
     command_buffer.bind_compute_pipeline("gtao_first_pipeline")
       .bind_buffer(0, 0, gtao_const_buffer)
       .bind_image(0, 1, depth_input)
@@ -1850,7 +1869,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
       .bind_image(0, 5, depth_mip3)
       .bind_image(0, 6, depth_mip4)
       .bind_sampler(0, 7, vuk::NearestSamplerClamped)
-      .dispatch((Renderer::get_viewport_width() + 16 - 1) / 16, (Renderer::get_viewport_height() + 16 - 1) / 16);
+      .dispatch((extent.x + 16 - 1) / 16, (extent.y + 16 - 1) / 16);
   });
 
   gtao_depth_pass(depth_input, mip0, mip1, mip2, mip3, mip4);
@@ -1861,6 +1880,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
                                                            VUK_IA(vuk::eComputeRW) edge_image,
                                                            VUK_IA(vuk::eComputeSampled) gtao_depth_input,
                                                            VUK_IA(vuk::eComputeSampled) normal_input) {
+    const auto extent = App::get()->get_swapchain_extent();
     command_buffer.bind_compute_pipeline("gtao_main_pipeline")
       .bind_buffer(0, 0, gtao_const_buffer)
       .bind_image(0, 1, gtao_depth_input)
@@ -1868,7 +1888,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
       .bind_image(0, 3, main_image)
       .bind_image(0, 4, edge_image)
       .bind_sampler(0, 5, vuk::NearestSamplerClamped)
-      .dispatch((Renderer::get_viewport_width() + 8 - 1) / 8, (Renderer::get_viewport_height() + 8 - 1) / 8);
+      .dispatch((extent.x + 8 - 1) / 8, (extent.y + 8 - 1) / 8);
 
     return std::make_tuple(main_image, edge_image);
   });
@@ -1899,14 +1919,16 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
                                                            VUK_IA(vuk::eComputeRW) output,
                                                            VUK_IA(vuk::eComputeSampled) input,
                                                            VUK_IA(vuk::eComputeSampled) edge_image) {
+      const auto extent = App::get()->get_swapchain_extent();
+
       command_buffer.bind_compute_pipeline("gtao_denoise_pipeline")
         .bind_buffer(0, 0, gtao_const_buffer)
         .bind_image(0, 1, input)
         .bind_image(0, 2, edge_image)
         .bind_image(0, 3, output)
         .bind_sampler(0, 4, vuk::NearestSamplerClamped)
-        .dispatch((Renderer::get_viewport_width() + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
-                  (Renderer::get_viewport_height() + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
+        .dispatch((extent.x + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
+                  (extent.y + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
                   1);
 
       return output;
@@ -1931,14 +1953,16 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
                                                             VUK_IA(vuk::eComputeRW) final_image,
                                                             VUK_IA(vuk::eComputeSampled) denoise_input,
                                                             VUK_IA(vuk::eComputeSampled) edge_input) {
+    const auto extent = App::get()->get_swapchain_extent();
+
     command_buffer.bind_compute_pipeline("gtao_final_pipeline")
       .bind_buffer(0, 0, gtao_const_buffer)
       .bind_image(0, 1, denoise_input)
       .bind_image(0, 2, edge_input)
       .bind_image(0, 3, final_image)
       .bind_sampler(0, 4, vuk::NearestSamplerClamped)
-      .dispatch((Renderer::get_viewport_width() + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
-                (Renderer::get_viewport_height() + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
+      .dispatch((extent.x + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
+                (extent.y + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
                 1);
     return final_image;
   });
@@ -1952,10 +1976,12 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::apply_fxaa(vuk::Value<vu
 
   auto pass = vuk::make_pass("fxaa", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorRW) dst, VUK_IA(vuk::eFragmentSampled) src) {
     struct FXAAData {
-      Vec2 inverse_screen_size;
+      glm::vec2 inverse_screen_size;
     } fxaa_data;
 
-    fxaa_data.inverse_screen_size = 1.0f / Vec2((float)Renderer::get_viewport_width(), (float)Renderer::get_viewport_height());
+    const auto extent = App::get()->get_swapchain_extent();
+
+    fxaa_data.inverse_screen_size = 1.0f / glm::vec2(extent.x, extent.y);
 
     auto* fxaa_buffer = command_buffer.scratch_buffer<FXAAData>(0, 1);
     *fxaa_buffer = fxaa_data;
@@ -2004,23 +2030,22 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::apply_grid(vuk::Value<vu
 
 void DefaultRenderPipeline::generate_prefilter(vuk::Allocator& allocator) {
   OX_SCOPED_ZONE;
-  auto* compiler = get_compiler();
 
   auto brdf_img = Prefilter::generate_brdflut();
-  brdf_texture = *brdf_img.get(allocator, *compiler);
+  brdf_texture = *brdf_img.get(allocator, _compiler);
 
   auto irradiance_img = Prefilter::generate_irradiance_cube(m_cube, cube_map);
-  irradiance_texture = *irradiance_img.get(allocator, *compiler);
+  irradiance_texture = *irradiance_img.get(allocator, _compiler);
 
   auto prefilter_img = Prefilter::generate_prefiltered_cube(m_cube, cube_map);
-  prefiltered_texture = *prefilter_img.get(allocator, *compiler);
+  prefiltered_texture = *prefilter_img.get(allocator, _compiler);
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_transmittance_pass() {
   OX_SCOPED_ZONE;
 
   return vuk::make_pass("sky_transmittance_lut_pass", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) dst) {
-    const IVec2 lut_size = {256, 64};
+    const glm::ivec2 lut_size = {256, 64};
     command_buffer.bind_persistent(0, *descriptor_set_00)
       .bind_compute_pipeline("sky_transmittance_pipeline")
       .dispatch((lut_size.x + 8 - 1) / 8, (lut_size.y + 8 - 1) / 8);
@@ -2034,14 +2059,15 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_multiscatter_pass(vu
 
   return vuk::make_pass("sky_multiscatter_lut_pass",
                         [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) dst, VUK_IA(vuk::eComputeSampled) transmittance_lut) {
-    const IVec2 lut_size = {32, 32};
+    const glm::ivec2 lut_size = {32, 32};
     command_buffer.bind_compute_pipeline("sky_multiscatter_pipeline").bind_persistent(0, *descriptor_set_00).dispatch(lut_size.x, lut_size.y);
 
     return dst;
   })(vuk::clear_image(vuk::declare_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment()), vuk::Black<float>), transmittance_lut);
 }
 
-vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Value<vuk::ImageAttachment>& envmap_image) {
+vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Allocator& frame_allocator,
+                                                                        vuk::Value<vuk::ImageAttachment>& envmap_image) {
   [[maybe_unused]] auto map = vuk::make_pass("sky_envmap_pass", [this](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorRW) envmap) {
     auto sh_cameras = std::vector<CameraSH>(6);
     create_cubemap_cameras(sh_cameras);
@@ -2065,7 +2091,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Val
     return envmap;
   })(envmap_image.mip(0));
 
-  return envmap_spd.dispatch("envmap_spd", *get_frame_allocator(), envmap_image);
+  return envmap_spd.dispatch("envmap_spd", frame_allocator, envmap_image);
 }
 
 #if 0 // UNUSED

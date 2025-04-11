@@ -28,7 +28,7 @@ static bool s_rename_entity = false;
 
 InspectorPanel::InspectorPanel() : EditorPanel("Inspector", ICON_MDI_INFORMATION, true), context(nullptr) {}
 
-void InspectorPanel::on_imgui_render() {
+void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   selected_entity = EditorLayer::get()->get_selected_entity();
   context = EditorLayer::get()->get_selected_scene().get();
 
@@ -285,7 +285,7 @@ void InspectorPanel::draw_components(Entity entity) {
   draw_component<TransformComponent>(" Transform Component", context->registry, entity, [](TransformComponent& component, entt::entity e) {
     ui::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV);
     ui::draw_vec3_control("Translation", component.position);
-    Vec3 rotation = glm::degrees(component.rotation);
+    glm::vec3 rotation = glm::degrees(component.rotation);
     ui::draw_vec3_control("Rotation", rotation);
     component.rotation = glm::radians(rotation);
     ui::draw_vec3_control("Scale", component.scale, nullptr, 1.0f);
@@ -491,7 +491,7 @@ void InspectorPanel::draw_components(Entity entity) {
 
     if (component.source) {
       const glm::mat4 inverted = glm::inverse(eutil::get_world_transform(context, entity));
-      const Vec3 forward = normalize(Vec3(inverted[2]));
+      const glm::vec3 forward = glm::normalize(glm::vec3(inverted[2]));
       component.source->set_config(config);
       component.source->set_position(context->registry.get<TransformComponent>(entity).position);
       component.source->set_direction(-forward);

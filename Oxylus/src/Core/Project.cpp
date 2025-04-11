@@ -9,9 +9,9 @@
 #include "Base.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
-#include "FileSystem.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "ProjectSerializer.hpp"
+#include "VFS.hpp"
 
 #include "Modules/ModuleUtil.hpp"
 

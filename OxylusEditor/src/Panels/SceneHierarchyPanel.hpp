@@ -10,7 +10,7 @@ class SceneHierarchyPanel : public EditorPanel {
 public:
   SceneHierarchyPanel();
   void on_update() override;
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   ImRect draw_entity_node(Entity entity, uint32_t depth = 0, bool force_expand_tree = false, bool is_part_of_prefab = false);
   void set_context(const Shared<Scene>& scene);

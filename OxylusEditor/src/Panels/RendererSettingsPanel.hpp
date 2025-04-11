@@ -8,7 +8,7 @@ namespace ox {
   class RendererSettingsPanel : public EditorPanel {
   public:
     RendererSettingsPanel();
-    void on_imgui_render() override;
+    void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   private:
     float m_FpsValues[50] = {};

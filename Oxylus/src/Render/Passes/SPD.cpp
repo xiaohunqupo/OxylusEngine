@@ -1,5 +1,7 @@
 ﻿#include "SPD.hpp"
 
+#include <glm/vec2.hpp>
+#include <glm/vec4.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/Descriptor.hpp>
@@ -12,10 +14,10 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-static void SpdSetup(uint2& dispatchThreadGroupCountXY,    // CPU side: dispatch thread group count xy
-                     uint2& workGroupOffset,               // GPU side: pass in as constant
-                     uint2& numWorkGroupsAndMips,          // GPU side: pass in as constant
-                     UVec4 rectInfo,                       // left, top, width, height
+static void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY,    // CPU side: dispatch thread group count xy
+                     glm::uvec2& workGroupOffset,               // GPU side: pass in as constant
+                     glm::uvec2& numWorkGroupsAndMips,          // GPU side: pass in as constant
+                     glm::uvec4 rectInfo,                       // left, top, width, height
                      int32_t mips)                         // optional: if -1, calculate based on rect width and height
 {
   workGroupOffset[0] = rectInfo[0] / 64;                   // rectInfo[0] = left
@@ -38,10 +40,10 @@ static void SpdSetup(uint2& dispatchThreadGroupCountXY,    // CPU side: dispatch
   }
 }
 
-static void SpdSetup(uint2& dispatchThreadGroupCountXY, // CPU side: dispatch thread group count xy
-                     uint2& workGroupOffset,            // GPU side: pass in as constant
-                     uint2& numWorkGroupsAndMips,       // GPU side: pass in as constant
-                     uint4 rectInfo)                    // left, top, width, height
+static void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY, // CPU side: dispatch thread group count xy
+                     glm::uvec2& workGroupOffset,            // GPU side: pass in as constant
+                     glm::uvec2& numWorkGroupsAndMips,       // GPU side: pass in as constant
+                     glm::uvec4 rectInfo)                    // left, top, width, height
 {
   SpdSetup(dispatchThreadGroupCountXY, workGroupOffset, numWorkGroupsAndMips, rectInfo, -1);
 }
@@ -190,10 +192,10 @@ vuk::Value<vuk::ImageAttachment> SPD::dispatch(vuk::Name pass_name, vuk::Allocat
   descriptor_set->commit(allocator.get_context());
 
   auto pass = vuk::make_pass(pass_name, [this, num_uavs](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) input) {
-    uint2 dispatchThreadGroupCountXY;
-    uint2 workGroupOffset;                                                         // needed if Left and Top are not 0,0
-    uint2 numWorkGroupsAndMips;
-    const uint4 rectInfo = uint4(0, 0, input->extent.width, input->extent.height); // left, top, width, height
+    glm::uvec2 dispatchThreadGroupCountXY;
+    glm::uvec2 workGroupOffset;                                                         // needed if Left and Top are not 0,0
+    glm::uvec2 numWorkGroupsAndMips;
+    const glm::uvec4 rectInfo = glm::uvec4(0, 0, input->extent.width, input->extent.height); // left, top, width, height
     SpdSetup(dispatchThreadGroupCountXY, workGroupOffset, numWorkGroupsAndMips, rectInfo);
 
     command_buffer.image_barrier(input,

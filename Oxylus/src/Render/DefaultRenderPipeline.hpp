@@ -27,9 +27,7 @@ public:
   void load_pipelines(vuk::Allocator& allocator);
   void shutdown() override;
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator,
-                                                           vuk::Value<vuk::ImageAttachment> target,
-                                                           vuk::Extent3D ext) override;
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, vuk::Extent3D ext, vuk::Format) override;
   void on_update(Scene* scene) override;
   void on_submit() override;
 
@@ -49,7 +47,7 @@ private:
   bool saved_camera = false;
 
   struct MeshInstance {
-    Mat4 transform;
+    glm::mat4 transform;
   };
 
   struct MeshInstancePointer {
@@ -64,7 +62,7 @@ private:
   };
 
   struct ShaderEntity {
-    Mat4 transform;
+    glm::mat4 transform;
   };
 
   // scene cubemap textures
@@ -98,15 +96,15 @@ private:
   static constexpr auto DEBUG_AABB_INDEX = 0;
 
   struct LightData {
-    float3 position;
+    glm::vec3 position;
 
-    float3 rotation;
+    glm::vec3 rotation;
     uint32 type8_flags8_range16;
 
-    uint2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
-    uint2 color;                        // half4 packed
+    glm::uvec2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
+    glm::uvec2 color;                        // half4 packed
 
-    float4 shadow_atlas_mul_add;
+    glm::vec4 shadow_atlas_mul_add;
 
     uint32 radius16_length16;
     uint32 matrix_index;
@@ -117,13 +115,13 @@ private:
     void set_range(float value) { type8_flags8_range16 |= glm::packHalf1x16(value) << 16u; }
     void set_radius(float value) { radius16_length16 |= glm::packHalf1x16(value); }
     void set_length(float value) { radius16_length16 |= glm::packHalf1x16(value) << 16u; }
-    void set_color(float4 value) {
+    void set_color(glm::vec4 value) {
       color.x |= glm::packHalf1x16(value.x);
       color.x |= glm::packHalf1x16(value.y) << 16u;
       color.y |= glm::packHalf1x16(value.z);
       color.y |= glm::packHalf1x16(value.w) << 16u;
     }
-    void set_direction(float3 value) {
+    void set_direction(glm::vec3 value) {
       direction16_cone_angle_cos16.x |= glm::packHalf1x16(value.x);
       direction16_cone_angle_cos16.x |= glm::packHalf1x16(value.y) << 16u;
       direction16_cone_angle_cos16.y |= glm::packHalf1x16(value.z);
@@ -136,45 +134,45 @@ private:
     void set_cube_remap_far(float value) { remap |= glm::packHalf1x16(value) << 16u; }
     void set_indices(uint32 indices) { matrix_index = indices; }
     void set_gravity(float value) { set_cone_angle_cos(value); }
-    void set_collider_tip(float3 value) { shadow_atlas_mul_add = float4(value.x, value.y, value.z, 0); }
+    void set_collider_tip(glm::vec3 value) { shadow_atlas_mul_add = glm::vec4(value.x, value.y, value.z, 0); }
   };
 
   std::vector<LightData> light_datas;
 
   struct CameraSH {
-    Mat4 projection_view;
+    glm::mat4 projection_view;
     Frustum frustum;
   };
 
   struct CameraData {
-    Vec4 position = {};
+    glm::vec4 position = {};
 
-    Mat4 projection = {};
-    Mat4 inv_projection = {};
-    Mat4 view = {};
-    Mat4 inv_view = {};
-    Mat4 projection_view = {};
-    Mat4 inv_projection_view = {};
+    glm::mat4 projection = {};
+    glm::mat4 inv_projection = {};
+    glm::mat4 view = {};
+    glm::mat4 inv_view = {};
+    glm::mat4 projection_view = {};
+    glm::mat4 inv_projection_view = {};
 
-    Mat4 previous_projection = {};
-    Mat4 previous_inv_projection = {};
-    Mat4 previous_view = {};
-    Mat4 previous_inv_view = {};
-    Mat4 previous_projection_view = {};
-    Mat4 previous_inv_projection_view = {};
+    glm::mat4 previous_projection = {};
+    glm::mat4 previous_inv_projection = {};
+    glm::mat4 previous_view = {};
+    glm::mat4 previous_inv_view = {};
+    glm::mat4 previous_projection_view = {};
+    glm::mat4 previous_inv_projection_view = {};
 
-    Vec2 temporalaa_jitter = {};
-    Vec2 temporalaa_jitter_prev = {};
+    glm::vec2 temporalaa_jitter = {};
+    glm::vec2 temporalaa_jitter_prev = {};
 
-    Vec4 frustum_planes[6] = {};
+    glm::vec4 frustum_planes[6] = {};
 
-    Vec3 up = {};
+    glm::vec3 up = {};
     float near_clip = 0;
-    Vec3 forward = {};
+    glm::vec3 forward = {};
     float far_clip = 0;
-    Vec3 right = {};
+    glm::vec3 right = {};
     float fov = 0;
-    Vec3 _pad = {};
+    glm::vec3 _pad = {};
     uint32_t output_index = 0;
   };
 
@@ -186,16 +184,16 @@ private:
   struct SceneData {
     uint32 num_lights;
     float grid_max_distance;
-    UVec2 screen_size;
+    glm::uvec2 screen_size;
     int draw_meshlet_aabbs;
 
-    Vec2 screen_size_rcp;
-    UVec2 shadow_atlas_res;
+    glm::vec2 screen_size_rcp;
+    glm::uvec2 shadow_atlas_res;
 
-    Vec3 sun_direction;
+    glm::vec3 sun_direction;
     uint32 meshlet_count;
 
-    Vec4 sun_color; // pre-multipled with intensity
+    glm::vec4 sun_color; // pre-multipled with intensity
 
     struct Indices {
       int albedo_image_index;
@@ -230,20 +228,20 @@ private:
       int enable_ssr = 1;
       int enable_gtao = 1;
 
-      Vec4 vignette_color = Vec4(0.0f, 0.0f, 0.0f, 0.25f); // rgb: color, a: intensity
-      Vec4 vignette_offset = Vec4(0.0f, 0.0f, 0.0f, 0.0f); // xy: offset, z: useMask, w: enable effect
-      Vec2 film_grain = {};                                // x: enable, y: amount
-      Vec2 chromatic_aberration = {};                      // x: enable, y: amount
-      Vec2 sharpen = {};                                   // x: enable, y: amount
+      glm::vec4 vignette_color = glm::vec4(0.0f, 0.0f, 0.0f, 0.25f); // rgb: color, a: intensity
+      glm::vec4 vignette_offset = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // xy: offset, z: useMask, w: enable effect
+      glm::vec2 film_grain = {};                                     // x: enable, y: amount
+      glm::vec2 chromatic_aberration = {};                           // x: enable, y: amount
+      glm::vec2 sharpen = {};                                        // x: enable, y: amount
     } post_processing_data;
   } scene_data;
 
 #define MAX_AABB_COUNT 100000
 
   struct DebugAabb {
-    float3 center;
-    float3 extent;
-    float4 color;
+    glm::vec3 center;
+    glm::vec3 extent;
+    glm::vec4 color;
   };
 
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_00;
@@ -312,7 +310,7 @@ private:
   };
 
   struct SpriteGPUData {
-    float4x4 transform = {};
+    glm::mat4 transform = {};
     uint32 material_id16_ypos16 = 0;
     uint32 flags16_distance16 = 0;
 
@@ -422,7 +420,7 @@ private:
   struct SceneFlattened {
     std::vector<Mesh::Meshlet> meshlets;
     std::vector<Mesh::MeshletInstance> meshlet_instances;
-    std::vector<Mat4> transforms;
+    std::vector<glm::mat4> transforms;
     std::vector<Shared<PBRMaterial>> materials;
 
     std::vector<uint32> indices{};
@@ -519,7 +517,7 @@ private:
   void bind_camera_buffer(vuk::CommandBuffer& command_buffer);
   CameraData get_main_camera_data(bool use_frozen_camera = false);
   void create_dir_light_cameras(const LightComponent& light, Camera& camera, std::vector<CameraSH>& camera_data, uint32_t cascade_count);
-  void create_cubemap_cameras(std::vector<CameraSH>& camera_data, Vec3 pos = {}, float near = 0.1f, float far = 90.0f);
+  void create_cubemap_cameras(std::vector<CameraSH>& camera_data, glm::vec3 pos = {}, float near = 0.1f, float far = 90.0f);
   void update_frame_data(vuk::Allocator& allocator);
   void create_static_resources();
   void create_dynamic_textures(const vuk::Extent3D& ext);
@@ -529,7 +527,7 @@ private:
   void update_skybox(const SkyboxLoadEvent& e);
   void generate_prefilter(vuk::Allocator& allocator);
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_envmap_pass(vuk::Value<vuk::ImageAttachment>& envmap_image);
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_envmap_pass(vuk::Allocator& frame_allocator, vuk::Value<vuk::ImageAttachment>& envmap_image);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_transmittance_pass();
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> sky_multiscatter_pass(vuk::Value<vuk::ImageAttachment>& transmittance_lut);
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> apply_fxaa(vuk::Value<vuk::ImageAttachment>& target, vuk::Value<vuk::ImageAttachment>& input);

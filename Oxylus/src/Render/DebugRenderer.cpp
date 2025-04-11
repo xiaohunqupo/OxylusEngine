@@ -51,7 +51,7 @@ void DebugRenderer::reset(bool clear_depth_tested) {
   }
 }
 
-void DebugRenderer::draw_point(const float3& pos, float point_radius, const float4& color, bool depth_tested) {
+void DebugRenderer::draw_point(const glm::vec3& pos, float point_radius, const glm::vec4& color, bool depth_tested) {
   OX_SCOPED_ZONE;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_points.emplace_back(Point{pos, color, point_radius});
@@ -59,7 +59,7 @@ void DebugRenderer::draw_point(const float3& pos, float point_radius, const floa
     instance->draw_list.debug_points.emplace_back(Point{pos, color, point_radius});
 }
 
-void DebugRenderer::draw_line(const float3& start, const float3& end, float line_width, const float4& color, bool depth_tested) {
+void DebugRenderer::draw_line(const glm::vec3& start, const glm::vec3& end, float line_width, const glm::vec4& color, bool depth_tested) {
   OX_SCOPED_ZONE;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_lines.emplace_back(Line{start, end, color});
@@ -67,7 +67,7 @@ void DebugRenderer::draw_line(const float3& start, const float3& end, float line
     instance->draw_list.debug_lines.emplace_back(Line{start, end, color});
 }
 
-void DebugRenderer::draw_triangle(const float3& v0, const float3& v1, const float3& v2, const float4& color, bool depth_tested) {
+void DebugRenderer::draw_triangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec4& color, bool depth_tested) {
   OX_SCOPED_ZONE;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_triangles.emplace_back(Triangle{v0, v1, v2, color});
@@ -77,69 +77,69 @@ void DebugRenderer::draw_triangle(const float3& v0, const float3& v1, const floa
 
 void DebugRenderer::draw_circle(int num_verts,
                                 float radius,
-                                const float3& position,
+                                const glm::vec3& position,
                                 const glm::quat& rotation,
-                                const float4& color,
+                                const glm::vec4& color,
                                 bool depth_tested) {
   float step = 360.0f / float(num_verts);
 
   for (int i = 0; i < num_verts; i++) {
     float cx = glm::cos(step * i) * radius;
     float cy = glm::sin(step * i) * radius;
-    float3 current = float3(cx, cy, 0.0f);
+    glm::vec3 current = glm::vec3(cx, cy, 0.0f);
 
     float nx = glm::cos(step * (i + 1)) * radius;
     float ny = glm::sin(step * (i + 1)) * radius;
-    float3 next = float3(nx, ny, 0.0f);
+    glm::vec3 next = glm::vec3(nx, ny, 0.0f);
 
     draw_line(position + (rotation * current), position + (rotation * next), 1.0f, color, depth_tested);
   }
 }
 
-void DebugRenderer::draw_sphere(float radius, const float3& position, const float4& color, bool depth_tested) {
-  draw_circle(20, radius, position, glm::quat(float3(0.0f, 0.0f, 0.0f)), color, depth_tested);
-  draw_circle(20, radius, position, glm::quat(float3(90.0f, 0.0f, 0.0f)), color, depth_tested);
-  draw_circle(20, radius, position, glm::quat(float3(0.0f, 90.0f, 90.0f)), color, depth_tested);
+void DebugRenderer::draw_sphere(float radius, const glm::vec3& position, const glm::vec4& color, bool depth_tested) {
+  draw_circle(20, radius, position, glm::quat(glm::vec3(0.0f, 0.0f, 0.0f)), color, depth_tested);
+  draw_circle(20, radius, position, glm::quat(glm::vec3(90.0f, 0.0f, 0.0f)), color, depth_tested);
+  draw_circle(20, radius, position, glm::quat(glm::vec3(0.0f, 90.0f, 90.0f)), color, depth_tested);
 }
 
 void draw_arc(int num_verts,
               float radius,
-              const float3& start,
-              const float3& end,
+              const glm::vec3& start,
+              const glm::vec3& end,
               const glm::quat& rotation,
-              const float4& color,
+              const glm::vec4& color,
               bool depth_tested) {
   float step = 180.0f / num_verts;
-  glm::quat rot = glm::lookAt(rotation * start, rotation * end, float3(0.0f, 1.0f, 0.0f));
+  glm::quat rot = glm::lookAt(rotation * start, rotation * end, glm::vec3(0.0f, 1.0f, 0.0f));
   rot = rotation * rot;
 
-  float3 arcCentre = (start + end) * 0.5f;
+  glm::vec3 arcCentre = (start + end) * 0.5f;
   for (int i = 0; i < num_verts; i++) {
     float cx = glm::cos(step * i) * radius;
     float cy = glm::sin(step * i) * radius;
-    float3 current = float3(cx, cy, 0.0f);
+    glm::vec3 current = glm::vec3(cx, cy, 0.0f);
 
     float nx = glm::cos(step * (i + 1)) * radius;
     float ny = glm::sin(step * (i + 1)) * radius;
-    float3 next = float3(nx, ny, 0.0f);
+    glm::vec3 next = glm::vec3(nx, ny, 0.0f);
 
     DebugRenderer::draw_line(arcCentre + (rot * current), arcCentre + (rot * next), 1.0f, color, depth_tested);
   }
 }
 
-void DebugRenderer::draw_capsule(const float3& position,
+void DebugRenderer::draw_capsule(const glm::vec3& position,
                                  const glm::quat& rotation,
                                  float height,
                                  float radius,
-                                 const float4& color,
+                                 const glm::vec4& color,
                                  bool depth_tested) {
-  float3 up = (rotation * float3(0.0f, 1.0f, 0.0f));
+  glm::vec3 up = (rotation * glm::vec3(0.0f, 1.0f, 0.0f));
 
-  float3 top_sphere_Centre = position + up * (height * 0.5f);
-  float3 bottom_sphere_centre = position - up * (height * 0.5f);
+  glm::vec3 top_sphere_Centre = position + up * (height * 0.5f);
+  glm::vec3 bottom_sphere_centre = position - up * (height * 0.5f);
 
-  draw_circle(20, radius, top_sphere_Centre, rotation * glm::quat(float3(glm::radians(90.0f), 0.0f, 0.0f)), color, depth_tested);
-  draw_circle(20, radius, bottom_sphere_centre, rotation * glm::quat(float3(glm::radians(90.0f), 0.0f, 0.0f)), color, depth_tested);
+  draw_circle(20, radius, top_sphere_Centre, rotation * glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f)), color, depth_tested);
+  draw_circle(20, radius, bottom_sphere_centre, rotation * glm::quat(glm::vec3(glm::radians(90.0f), 0.0f, 0.0f)), color, depth_tested);
 
   // Draw 10 arcs
   // Sides
@@ -148,14 +148,14 @@ void DebugRenderer::draw_capsule(const float3& position,
     float z = glm::cos(step * i) * radius;
     float x = glm::sin(step * i) * radius;
 
-    float3 offset = rotation * float4(x, 0.0f, z, 0.0f);
+    glm::vec3 offset = rotation * glm::vec4(x, 0.0f, z, 0.0f);
     draw_line(bottom_sphere_centre + offset, top_sphere_Centre + offset, 1.0f, color, depth_tested);
 
     if (i < 10) {
       float z2 = glm::cos(step * (i + 10)) * radius;
       float x2 = glm::sin(step * (i + 10)) * radius;
 
-      float3 offset2 = rotation * float4(x2, 0.0f, z2, 0.0f);
+      glm::vec3 offset2 = rotation * glm::vec4(x2, 0.0f, z2, 0.0f);
       // Top Hemishpere
       draw_arc(20, radius, top_sphere_Centre + offset, top_sphere_Centre + offset2, rotation, color, depth_tested);
       // Bottom Hemisphere
@@ -163,7 +163,7 @@ void DebugRenderer::draw_capsule(const float3& position,
                radius,
                bottom_sphere_centre + offset,
                bottom_sphere_centre + offset2,
-               rotation * glm::quat(float3(glm::radians(180.0f), 0.0f, 0.0f)),
+               rotation * glm::quat(glm::vec3(glm::radians(180.0f), 0.0f, 0.0f)),
                color,
                depth_tested);
     }
@@ -174,34 +174,34 @@ void DebugRenderer::draw_cone(int num_circle_verts,
                               int num_lines_to_circle,
                               float angle,
                               float length,
-                              const float3& position,
+                              const glm::vec3& position,
                               const glm::quat& rotation,
-                              const float4& color,
+                              const glm::vec4& color,
                               bool depth_tested) {
   float endAngle = glm::tan(angle * 0.5f) * length;
-  float3 forward = -(rotation * float3(0.0f, 0.0f, -1.0f));
-  float3 endPosition = position + forward * length;
+  glm::vec3 forward = -(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
+  glm::vec3 endPosition = position + forward * length;
   float offset = 0.0f;
   draw_circle(num_circle_verts, endAngle, endPosition, rotation, color, depth_tested);
 
   for (int i = 0; i < num_lines_to_circle; i++) {
     float a = i * 90.0f;
-    float3 point = rotation * float3(glm::cos(a), glm::sin(a), 0.0f) * endAngle;
+    glm::vec3 point = rotation * glm::vec3(glm::cos(a), glm::sin(a), 0.0f) * endAngle;
     draw_line(position, position + point + forward * length, false, color);
   }
 }
 
-void DebugRenderer::draw_aabb(const AABB& aabb, const float4& color, bool corners_only, float width, bool depth_tested) {
-  float3 uuu = aabb.max;
-  float3 lll = aabb.min;
+void DebugRenderer::draw_aabb(const AABB& aabb, const glm::vec4& color, bool corners_only, float width, bool depth_tested) {
+  glm::vec3 uuu = aabb.max;
+  glm::vec3 lll = aabb.min;
 
-  float3 ull(uuu.x, lll.y, lll.z);
-  float3 uul(uuu.x, uuu.y, lll.z);
-  float3 ulu(uuu.x, lll.y, uuu.z);
+  glm::vec3 ull(uuu.x, lll.y, lll.z);
+  glm::vec3 uul(uuu.x, uuu.y, lll.z);
+  glm::vec3 ulu(uuu.x, lll.y, uuu.z);
 
-  float3 luu(lll.x, uuu.y, uuu.z);
-  float3 llu(lll.x, lll.y, uuu.z);
-  float3 lul(lll.x, uuu.y, lll.z);
+  glm::vec3 luu(lll.x, uuu.y, uuu.z);
+  glm::vec3 llu(lll.x, lll.y, uuu.z);
+  glm::vec3 lul(lll.x, uuu.y, lll.z);
 
   // Draw edges
   if (!corners_only) {
@@ -258,7 +258,7 @@ void DebugRenderer::draw_aabb(const AABB& aabb, const float4& color, bool corner
   }
 }
 
-void DebugRenderer::draw_frustum(const Mat4& frustum, const float4& color, float near, float far) {
+void DebugRenderer::draw_frustum(const glm::mat4& frustum, const glm::vec4& color, float near, float far) {
   // Get frustum corners in world space
   auto tln = math::unproject_uv_zo(near, {0, 1}, frustum);
   auto trn = math::unproject_uv_zo(near, {1, 1}, frustum);
@@ -289,7 +289,7 @@ void DebugRenderer::draw_frustum(const Mat4& frustum, const float4& color, float
   draw_line(brn, brf, 1.0f, color, true);
 }
 
-void DebugRenderer::draw_ray(const RayCast& ray, const float4& color, const float distance, const bool depth_tested) {
+void DebugRenderer::draw_ray(const RayCast& ray, const glm::vec4& color, const float distance, const bool depth_tested) {
   draw_line(ray.get_origin(), ray.get_origin() + ray.get_direction() * distance, 1.0f, color, depth_tested);
 }
 
@@ -401,8 +401,8 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
 
   const TriangleBatch* pBatch = static_cast<const TriangleBatch*>(geometry->mLODs[uiLod].mTriangleBatch.GetPtr());
 
-  const float4x4 trans = reinterpret_cast<const float4x4&>(inModelMatrix);
-  const float4 color = math::from_jolt(inModelColor.ToVec4());
+  const glm::mat4 trans = reinterpret_cast<const glm::mat4&>(inModelMatrix);
+  const glm::vec4 color = math::from_jolt(inModelColor.ToVec4());
 
   // TODO: currently only renders into not depth tested list...
   auto debug_renderer = ox::DebugRenderer::get_instance();
@@ -412,9 +412,9 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
       for (uint32 t = 0; t < pBatch->triangles.size(); ++t) {
         auto& tri = debug_renderer->draw_list.debug_triangles.emplace_back();
         tri.col = pBatch->triangles[t].col * color;
-        tri.p1 = trans * float4(pBatch->triangles[t].p1, 1.f);
-        tri.p2 = trans * float4(pBatch->triangles[t].p2, 1.f);
-        tri.p3 = trans * float4(pBatch->triangles[t].p3, 1.f);
+        tri.p1 = trans * glm::vec4(pBatch->triangles[t].p1, 1.f);
+        tri.p2 = trans * glm::vec4(pBatch->triangles[t].p2, 1.f);
+        tri.p3 = trans * glm::vec4(pBatch->triangles[t].p3, 1.f);
       }
     }
 
@@ -422,9 +422,9 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
       for (uint32 t = 0; t < pBatch->triangles.size(); ++t) {
         auto& tri = debug_renderer->draw_list.debug_triangles.emplace_back();
         tri.col = pBatch->triangles[t].col * color;
-        tri.p1 = trans * float4(pBatch->triangles[t].p1, 1.f);
-        tri.p2 = trans * float4(pBatch->triangles[t].p3, 1.f);
-        tri.p3 = trans * float4(pBatch->triangles[t].p2, 1.f);
+        tri.p1 = trans * glm::vec4(pBatch->triangles[t].p1, 1.f);
+        tri.p2 = trans * glm::vec4(pBatch->triangles[t].p3, 1.f);
+        tri.p3 = trans * glm::vec4(pBatch->triangles[t].p2, 1.f);
       }
     }
   } else {
@@ -432,9 +432,9 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
       const auto& tri = pBatch->triangles[t];
       const auto col = pBatch->triangles[t].col * color;
 
-      const float3 v0 = trans * float4(tri.p1, 1.0f);
-      const float3 v1 = trans * float4(tri.p2, 1.0f);
-      const float3 v2 = trans * float4(tri.p3, 1.0f);
+      const glm::vec3 v0 = trans * glm::vec4(tri.p1, 1.0f);
+      const glm::vec3 v1 = trans * glm::vec4(tri.p2, 1.0f);
+      const glm::vec3 v2 = trans * glm::vec4(tri.p3, 1.0f);
 
       debug_renderer->draw_list.debug_lines.emplace_back(ox::DebugRenderer::Line{v0, v1, col});
       debug_renderer->draw_list.debug_lines.emplace_back(ox::DebugRenderer::Line{v1, v2, col});

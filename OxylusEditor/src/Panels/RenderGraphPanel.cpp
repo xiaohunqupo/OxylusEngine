@@ -18,7 +18,7 @@
 namespace ox {
 RenderGraphPanel::RenderGraphPanel() : EditorPanel("RenderGraph", ICON_MDI_CHART_BAR_STACKED, false) {}
 
-void RenderGraphPanel::on_imgui_render() {
+void RenderGraphPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (!context)
     return;
 

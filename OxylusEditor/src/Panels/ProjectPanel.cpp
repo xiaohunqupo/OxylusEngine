@@ -35,7 +35,7 @@ void ProjectPanel::new_project(const std::string& project_dir, const std::string
     EditorConfig::get()->add_recent_project(project.get());
 }
 
-void ProjectPanel::on_imgui_render() {
+void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (visible && !ImGui::IsPopupOpen("ProjectSelector"))
     ImGui::OpenPopup("ProjectSelector");
   constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration |
@@ -49,9 +49,10 @@ void ProjectPanel::on_imgui_render() {
 
     const auto banner_size = EditorLayer::get()->engine_banner->get_extent();
 
-    const auto scale = Window::get_content_scale();
+    const auto& window = App::get()->get_window();
+    const float32 scale = window.get_content_scale();
 
-    ui::image(*EditorLayer::get()->engine_banner, {(float)banner_size.width * scale.x, (float)banner_size.height * scale.y});
+    ui::image(*EditorLayer::get()->engine_banner, {static_cast<float>(banner_size.width) * scale, static_cast<float>(banner_size.height) * scale});
     ui::spacing(2);
     ImGui::SeparatorText("Projects");
     ui::spacing(2);

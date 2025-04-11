@@ -5,9 +5,9 @@
 
 namespace ox {
 struct Vertex {
-  float3 position;
+  glm::vec3 position;
   uint32 normal;
-  float2 uv;
+  glm::vec2 uv;
 };
 
 inline auto vertex_pack = vuk::Packed{

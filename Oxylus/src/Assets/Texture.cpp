@@ -17,8 +17,6 @@
 namespace ox {
 static vuk::Compiler _compiler;
 
-Shared<Texture> Texture::_white_texture = nullptr;
-
 Texture::Texture(const TextureLoadInfo& info, std::source_location loc) {
   if (!info.path.empty())
     load(info, loc);
@@ -129,14 +127,6 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
 
 vuk::Value<vuk::ImageAttachment> Texture::as_attachment_value() const {
   return vuk::acquire_ia(vuk::Name(_name), as_attachment(), vuk::Access::eFragmentSampled);
-}
-
-void Texture::create_white_texture() {
-  OX_SCOPED_ZONE;
-  _white_texture = create_shared<Texture>();
-  char white_texture_data[16 * 16 * 4];
-  memset(white_texture_data, 0xff, 16 * 16 * 4);
-  _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 }
 
 void Texture::set_name(std::string_view name, const std::source_location& loc) {

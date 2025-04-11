@@ -1,7 +1,6 @@
+#include "Core/EmbeddedLogo.hpp"
 #include "Core/EntryPoint.hpp"
-#include "Core/Project.hpp"
 #include "EditorLayer.hpp"
-#include "SandboxLayer.hpp"
 
 namespace ox {
 class OxylusEditor : public App {
@@ -22,13 +21,11 @@ App* create_application(const AppCommandLineArgs& args) {
 #endif
   spec.working_directory = std::filesystem::current_path().string();
   spec.command_line_args = args;
+  const WindowInfo::Icon icon = {.data = EngineLogo, .data_length = EngineLogoLen};
+  spec.window_info = {.title = spec.name, .icon = icon, .width = 1600, .height = 900, .flags = WindowFlag::Centered | WindowFlag::Resizable};
 
   const auto app = new OxylusEditor(spec);
-
-  if (spec.command_line_args.contains("sandbox"))
-    app->push_layer(new SandboxLayer());
-  else
-    app->push_layer(new EditorLayer());
+  app->push_layer(new EditorLayer());
 
   return app;
 }

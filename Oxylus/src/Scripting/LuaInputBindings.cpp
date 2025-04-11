@@ -23,20 +23,16 @@ void bind_input(const Shared<sol::state>& state) {
   SET_TYPE_FUNCTION(input, Input, get_mouse_position);
   SET_TYPE_FUNCTION(input, Input, set_mouse_position);
 
-  const std::initializer_list<std::pair<sol::string_view, Input::CursorState>> cursor_states = {
-    {"Disabled", Input::CursorState::Disabled},
-    {"Normal", Input::CursorState::Normal},
-    {"Hidden", Input::CursorState::Hidden}
-  };
+  const std::initializer_list<std::pair<sol::string_view, Input::CursorState>> cursor_states = {{"Disabled", Input::CursorState::Disabled},
+                                                                                                {"Normal", Input::CursorState::Normal},
+                                                                                                {"Hidden", Input::CursorState::Hidden}};
   state->new_enum<Input::CursorState, true>("CursorState", cursor_states);
-  input.set_function("set_cursor_state", [](const Input::CursorState cursor_state) { return Input::set_cursor_state(cursor_state); });
-  SET_TYPE_FUNCTION(input, Input, get_cursor_state);
 
   // TODO: controller support
-  //input.set_function("get_controller_axis", [](int id, int axis) -> float { return Input::get_controller_axis(id, axis); });
-  //input.set_function("get_controller_name", [](int id) -> std::string { return Input::get_controller_name(id); });
-  //input.set_function("get_controller_hat", [](int id, int hat) -> int { return Input::get_controller_hat(id, hat); });
-  //input.set_function("is_controller_button_pressed", [](int id, int button) -> bool { return Input::is_controller_button_pressed(id, button); });
+  // input.set_function("get_controller_axis", [](int id, int axis) -> float { return Input::get_controller_axis(id, axis); });
+  // input.set_function("get_controller_name", [](int id) -> std::string { return Input::get_controller_name(id); });
+  // input.set_function("get_controller_hat", [](int id, int hat) -> int { return Input::get_controller_hat(id, hat); });
+  // input.set_function("is_controller_button_pressed", [](int id, int button) -> bool { return Input::is_controller_button_pressed(id, button); });
 
   const std::initializer_list<std::pair<sol::string_view, KeyCode>> key_items = {
     {"A", KeyCode::A},
@@ -65,21 +61,19 @@ void bind_input(const Shared<sol::state>& state) {
     {"X", KeyCode::X},
     {"Y", KeyCode::Y},
     {"Z", KeyCode::Z},
-    //{ "UNKOWN", KeyCode::Unknown },
     {"Space", KeyCode::Space},
     {"Escape", KeyCode::Escape},
-    {"APOSTROPHE", KeyCode::Apostrophe},
+    {"Apostrophe", KeyCode::Apostrophe},
     {"Comma", KeyCode::Comma},
-    {"MINUS", KeyCode::Minus},
-    {"PERIOD", KeyCode::Period},
-    {"SLASH", KeyCode::Slash},
-    {"SEMICOLON", KeyCode::Semicolon},
-    {"EQUAL", KeyCode::Equal},
-    {"LEFT_BRACKET", KeyCode::LeftBracket},
-    {"BACKSLASH", KeyCode::Backslash},
-    {"RIGHT_BRACKET", KeyCode::RightBracket},
-    //{ "BACK_TICK", KeyCode::BackTick },
-    {"Enter", KeyCode::Enter},
+    {"Minus", KeyCode::Minus},
+    {"Period", KeyCode::Period},
+    {"Slash", KeyCode::Slash},
+    {"Semicolon", KeyCode::Semicolon},
+    {"Equal", KeyCode::Equal},
+    {"LeftBracket", KeyCode::LeftBracket},
+    {"Backslash", KeyCode::Backslash},
+    {"RightBracket", KeyCode::RightBracket},
+    {"Return", KeyCode::Return},
     {"Tab", KeyCode::Tab},
     {"Backspace", KeyCode::Backspace},
     {"Insert", KeyCode::Insert},
@@ -118,22 +112,22 @@ void bind_input(const Shared<sol::state>& state) {
     {"F10", KeyCode::F10},
     {"F11", KeyCode::F11},
     {"F12", KeyCode::F12},
-    {"KeyCodepad0", KeyCode::D0},
-    {"KeyCodepad1", KeyCode::D1},
-    {"KeyCodepad2", KeyCode::D2},
-    {"KeyCodepad3", KeyCode::D3},
-    {"KeyCodepad4", KeyCode::D4},
-    {"KeyCodepad5", KeyCode::D5},
-    {"KeyCodepad6", KeyCode::D6},
-    {"KeyCodepad7", KeyCode::D7},
-    {"KeyCodepad8", KeyCode::D8},
-    {"KeyCodepad9", KeyCode::D9},
-    {"Decimal", KeyCode::Period},
+    {"D0", KeyCode::D0},
+    {"D1", KeyCode::D1},
+    {"D2", KeyCode::D2},
+    {"D3", KeyCode::D3},
+    {"D4", KeyCode::D4},
+    {"D5", KeyCode::D5},
+    {"D6", KeyCode::D6},
+    {"D7", KeyCode::D7},
+    {"D8", KeyCode::D8},
+    {"D9", KeyCode::D9},
+    {"Period", KeyCode::Period},
     {"Divide", KeyCode::Slash},
-    {"Multiply", KeyCode::KPMultiply},
-    {"Subtract", KeyCode::Minus},
-    {"Add", KeyCode::KPAdd},
-    {"KPEqual", KeyCode::KPEqual}
+    {"KPMultiply", KeyCode::KPMultiply},
+    {"Minus", KeyCode::Minus},
+    {"KPAdd", KeyCode::KPAdd},
+    {"KPEqual", KeyCode::KPEqual},
   };
   state->new_enum<KeyCode, true>("Key", key_items);
 
@@ -144,4 +138,4 @@ void bind_input(const Shared<sol::state>& state) {
   };
   state->new_enum<MouseCode, true>("MouseButton", mouse_items);
 }
-}
+} // namespace ox::LuaBindings

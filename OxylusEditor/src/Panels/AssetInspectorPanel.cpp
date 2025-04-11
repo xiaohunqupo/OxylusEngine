@@ -10,7 +10,7 @@ namespace ox {
 
   void AssetInspectorPanel::on_update() { }
 
-  void AssetInspectorPanel::on_imgui_render() {
+  void AssetInspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
     if (on_begin()) {
       if (EditorContextType::Asset == EditorLayer::get()->get_context().get_type()) {
         if (EditorLayer::get()->get_context().get_asset_extension() == ".oxmat") {

@@ -1,5 +1,10 @@
 #pragma once
+
+#include <glm/vec3.hpp>
+
 #include "Core/Types.hpp"
+
+#include <glm/trigonometric.hpp>
 
 namespace ox {
 struct AudioListenerConfig {
@@ -13,11 +18,11 @@ public:
   AudioListener() = default;
 
   void set_config(const AudioListenerConfig& config) const;
-  void set_position(const Vec3& position) const;
-  void set_direction(const Vec3& forward) const;
-  void set_velocity(const Vec3& velocity) const;
+  void set_position(const glm::vec3& position) const;
+  void set_direction(const glm::vec3& forward) const;
+  void set_velocity(const glm::vec3& velocity) const;
 
 private:
-  uint32_t m_ListenerIndex = 0;
+  uint32 m_ListenerIndex = 0;
 };
 }

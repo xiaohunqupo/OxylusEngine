@@ -6,34 +6,34 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-void AABB::translate(const float3& translation) {
+void AABB::translate(const glm::vec3& translation) {
   OX_SCOPED_ZONE;
   min += translation;
   max += translation;
 }
 
-void AABB::scale(const float3& scale) {
+void AABB::scale(const glm::vec3& scale) {
   OX_SCOPED_ZONE;
   min *= scale;
   max *= scale;
 }
 
-void AABB::rotate(const Mat3& rotation) {
+void AABB::rotate(const glm::mat3& rotation) {
   OX_SCOPED_ZONE;
   const auto center = get_center();
   const auto extents = get_extents();
 
-  const auto rotated_extents = float3(rotation * float4(extents, 1.0f));
+  const auto rotated_extents = glm::vec3(rotation * glm::vec4(extents, 1.0f));
 
   min = center - rotated_extents;
   max = center + rotated_extents;
 }
 
-void AABB::transform(const float4x4& transform) {
+void AABB::transform(const glm::mat4& transform) {
   OX_SCOPED_ZONE;
-  const float3 new_center = transform * float4(get_center(), 1.0f);
-  const float3 old_edge = get_size() * 0.5f;
-  const float3 new_edge = float3(glm::abs(transform[0][0]) * old_edge.x + glm::abs(transform[1][0]) * old_edge.y + glm::abs(transform[2][0]) * old_edge.z,
+  const glm::vec3 new_center = transform * glm::vec4(get_center(), 1.0f);
+  const glm::vec3 old_edge = get_size() * 0.5f;
+  const glm::vec3 new_edge = glm::vec3(glm::abs(transform[0][0]) * old_edge.x + glm::abs(transform[1][0]) * old_edge.y + glm::abs(transform[2][0]) * old_edge.z,
                              glm::abs(transform[0][1]) * old_edge.x + glm::abs(transform[1][1]) * old_edge.y + glm::abs(transform[2][1]) * old_edge.z,
                              glm::abs(transform[0][2]) * old_edge.x + glm::abs(transform[1][2]) * old_edge.y +
                                glm::abs(transform[2][2]) * old_edge.z);
@@ -42,7 +42,7 @@ void AABB::transform(const float4x4& transform) {
   max = new_center + new_edge;
 }
 
-AABB AABB::get_transformed(const float4x4& transform) const {
+AABB AABB::get_transformed(const glm::mat4& transform) const {
   AABB aabb(*this);
   aabb.transform(transform);
   return aabb;
@@ -81,7 +81,7 @@ bool AABB::is_on_frustum(const Frustum& frustum) const {
          is_on_or_forward_plane(frustum.bottom_face) && is_on_or_forward_plane(frustum.near_face) && is_on_or_forward_plane(frustum.far_face);
 }
 
-bool AABB::intersects(const float3& point) const {
+bool AABB::intersects(const glm::vec3& point) const {
   if (point.x < min.x || point.x > max.x || point.y < min.y || point.y > max.y || point.z < min.z || point.z > max.z)
     return false;
   return true;
@@ -133,7 +133,7 @@ bool AABB::intersects(const RayCast& ray) const {
 }
 
 bool Sphere::intersects(const AABB& b) const {
-  const float3 closestPointInAabb = glm::min(glm::max(center, b.min), b.max);
+  const glm::vec3 closestPointInAabb = glm::min(glm::max(center, b.min), b.max);
   const float distanceSquared = glm::distance2(closestPointInAabb, center);
   return distanceSquared < radius * radius;
 }
@@ -149,7 +149,7 @@ bool Sphere::intersects(const Sphere& b, float& dist) const {
   return dist < 0;
 }
 
-bool Sphere::intersects(const Sphere& b, float& dist, float3& direction) const {
+bool Sphere::intersects(const Sphere& b, float& dist, glm::vec3& direction) const {
   auto dir = center - b.center;
   const auto dist1 = glm::length(dir);
   dir = dir / dist1;
@@ -161,16 +161,16 @@ bool Sphere::intersects(const Sphere& b, float& dist, float3& direction) const {
 
 bool Sphere::intersects(const RayCast& b) const {
   float dist;
-  float3 direction;
+  glm::vec3 direction;
   return intersects(b, dist, direction);
 }
 
 bool Sphere::intersects(const RayCast& b, float& dist) const {
-  float3 direction;
+  glm::vec3 direction;
   return intersects(b, dist, direction);
 }
 
-bool Sphere::intersects(const RayCast& b, float& dist, float3& direction) const {
+bool Sphere::intersects(const RayCast& b, float& dist, glm::vec3& direction) const {
   auto C = center;
   auto O = b.get_origin();
   auto D = b.get_direction();

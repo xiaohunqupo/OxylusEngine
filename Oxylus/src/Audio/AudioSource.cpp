@@ -1,5 +1,6 @@
 #include "AudioSource.hpp"
 
+#include <glm/common.hpp>
 #include <miniaudio.h>
 
 #include "AudioEngine.hpp"

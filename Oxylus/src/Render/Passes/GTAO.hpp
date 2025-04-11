@@ -1,4 +1,6 @@
 #pragma once
+#include <glm/vec2.hpp>
+
 #include "Core/Types.hpp"
 
 namespace ox {
@@ -10,16 +12,16 @@ class Camera;
 #define XE_GTAO_NUMTHREADS_Y 8     // these can be changed
 
 struct GTAOConstants {
-  IVec2 viewport_size;
-  Vec2 viewport_pixel_size; // .zw == 1.0 / ViewportSize.xy
+  glm::ivec2 viewport_size;
+  glm::vec2 viewport_pixel_size; // .zw == 1.0 / ViewportSize.xy
 
-  Vec2 depth_unpack_consts;
-  Vec2 camera_tan_half_fov;
+  glm::vec2 depth_unpack_consts;
+  glm::vec2 camera_tan_half_fov;
 
-  Vec2 ndc_to_view_mul;
-  Vec2 ndc_to_view_add;
+  glm::vec2 ndc_to_view_mul;
+  glm::vec2 ndc_to_view_add;
 
-  Vec2 ndc_to_view_mul_x_pixel_size;
+  glm::vec2 ndc_to_view_mul_x_pixel_size;
   float effect_radius; // world (viewspace) maximum size of the shadow
   float effect_falloff_range;
 

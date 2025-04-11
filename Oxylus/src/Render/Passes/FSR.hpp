@@ -1,4 +1,5 @@
 #pragma once
+#include <glm/vec2.hpp>
 #include <vuk/Value.hpp>
 
 #include "Assets/Texture.hpp"
@@ -16,7 +17,7 @@ public:
   FSR() = default;
   ~FSR() = default;
 
-  float2 get_jitter() const;
+  glm::vec2 get_jitter() const;
   vuk::Extent3D get_render_res() const { return _render_res;}
   vuk::Extent3D get_present_res() const { return _present_res;}
 

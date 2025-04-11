@@ -18,22 +18,22 @@ public:
   static constexpr uint32_t MAX_LINE_INDICES = MAX_LINES * 6;
 
   struct Line {
-    float3 p1 = {};
-    float3 p2 = {};
-    float4 col = {};
+    glm::vec3 p1 = {};
+    glm::vec3 p2 = {};
+    glm::vec4 col = {};
   };
 
   struct Point {
-    float3 p1 = {};
-    float4 col = {};
+    glm::vec3 p1 = {};
+    glm::vec4 col = {};
     float size = 0;
   };
 
   struct Triangle {
-    float3 p1 = {};
-    float3 p2 = {};
-    float3 p3 = {};
-    float4 col = {};
+    glm::vec3 p1 = {};
+    glm::vec3 p2 = {};
+    glm::vec3 p3 = {};
+    glm::vec4 col = {};
   };
 
   DebugRenderer() = default;
@@ -44,40 +44,40 @@ public:
   static void reset(bool clear_depth_tested = true);
 
   /// Draw Point (circle)
-  static void draw_point(const float3& pos, float point_radius, const float4& color = float4(1.0f, 1.0f, 1.0f, 1.0f), bool depth_tested = false);
+  static void draw_point(const glm::vec3& pos, float point_radius, const glm::vec4& color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f), bool depth_tested = false);
 
   /// Draw Line with a given thickness
-  static void draw_line(const float3& start, const float3& end, float line_width, const float4& color = float4(1), bool depth_tested = false);
-  static void draw_triangle(const float3& v0, const float3& v1, const float3& v2, const float4& color, bool depth_tested = false);
+  static void draw_line(const glm::vec3& start, const glm::vec3& end, float line_width, const glm::vec4& color = glm::vec4(1), bool depth_tested = false);
+  static void draw_triangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec4& color, bool depth_tested = false);
 
   static void draw_circle(int num_verts,
                           float radius,
-                          const float3& position,
+                          const glm::vec3& position,
                           const glm::quat& rotation,
-                          const float4& color,
+                          const glm::vec4& color,
                           bool depth_tested = false);
-  static void draw_sphere(float radius, const float3& position, const float4& color, bool depth_tested = false);
-  static void draw_capsule(const float3& position,
+  static void draw_sphere(float radius, const glm::vec3& position, const glm::vec4& color, bool depth_tested = false);
+  static void draw_capsule(const glm::vec3& position,
                            const glm::quat& rotation,
                            float height,
                            float radius,
-                           const float4& color,
+                           const glm::vec4& color,
                            bool depth_tested = false);
   static void draw_cone(int num_circle_verts,
                         int num_lines_to_circle,
                         float angle,
                         float length,
-                        const float3& position,
+                        const glm::vec3& position,
                         const glm::quat& rotation,
-                        const float4& color,
+                        const glm::vec4& color,
                         bool depth_tested = false);
   static void draw_aabb(const AABB& aabb,
-                        const float4& color = float4(1.0f),
+                        const glm::vec4& color = glm::vec4(1.0f),
                         bool corners_only = false,
                         float width = 1.0f,
                         bool depth_tested = false);
-  static void draw_frustum(const Mat4& frustum, const float4& color, float near, float far);
-  static void draw_ray(const RayCast& ray, const float4& color, const float distance, const bool depth_tested = false);
+  static void draw_frustum(const glm::mat4& frustum, const glm::vec4& color, float near, float far);
+  static void draw_ray(const RayCast& ray, const glm::vec4& color, const float distance, const bool depth_tested = false);
 
   static DebugRenderer* get_instance() { return instance; }
   const std::vector<Line>& get_lines(bool depth_tested = true) const {

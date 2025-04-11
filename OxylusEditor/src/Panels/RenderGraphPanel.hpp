@@ -17,7 +17,7 @@ public:
   RenderGraphPanel();
   ~RenderGraphPanel() override = default;
 
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
   void set_context(const Shared<Scene>& scene) { context = scene; }
 
 private:

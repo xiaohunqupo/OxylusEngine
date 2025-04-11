@@ -8,7 +8,7 @@
 namespace ox {
   EditorSettingsPanel::EditorSettingsPanel() : EditorPanel("Editor Settings", ICON_MDI_COGS, false) { }
 
-  void EditorSettingsPanel::on_imgui_render() {
+  void EditorSettingsPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
     constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
     if (on_begin(window_flags)) {
       //Theme

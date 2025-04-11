@@ -41,7 +41,7 @@ ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true)
   });
 }
 
-void ViewportPanel::on_imgui_render() {
+void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
   draw_performance_overlay();
 
   constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar;
@@ -85,14 +85,14 @@ void ViewportPanel::on_imgui_render() {
 
     const auto viewport_min_region = ImGui::GetWindowContentRegionMin();
     const auto viewport_max_region = ImGui::GetWindowContentRegionMax();
-    viewport_position = Vec2(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
+    viewport_position = glm::vec2(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
     viewport_bounds[0] = {viewport_min_region.x + viewport_position.x, viewport_min_region.y + viewport_position.y};
     viewport_bounds[1] = {viewport_max_region.x + viewport_position.x, viewport_max_region.y + viewport_position.y};
 
     is_viewport_focused = ImGui::IsWindowFocused();
     is_viewport_hovered = ImGui::IsWindowHovered();
 
-    viewport_panel_size = Vec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+    viewport_panel_size = glm::vec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
     if ((int)m_viewport_size.x != (int)viewport_panel_size.x || (int)m_viewport_size.y != (int)viewport_panel_size.y) {
       m_viewport_size = {viewport_panel_size.x, viewport_panel_size.y};
     }
@@ -101,22 +101,21 @@ void ViewportPanel::on_imgui_render() {
     const auto fixed_width = m_viewport_size.y * sixteen_nine_ar;
     ImGui::SetCursorPosX((viewport_panel_size.x - fixed_width) * 0.5f);
 
-    const auto extent = vuk::Extent3D((uint32_t)fixed_width, (uint32_t)viewport_panel_size.y, 1);
-    const auto rp = context->get_renderer()->get_render_pipeline();
-
     const auto off = (viewport_panel_size.x - fixed_width) * 0.5f; // add offset since we render image with fixed aspect ratio
     viewport_offset = {viewport_bounds[0].x + off * 0.5f, viewport_bounds[0].y};
 
-    rp->detach_swapchain(extent, viewport_offset);
-    vuk::Value<vuk::ImageAttachment>* final_image = rp->get_final_image();
-
-    if (final_image) {
-      ui::image(*final_image, ImVec2{fixed_width, viewport_panel_size.y});
+    const auto* app = App::get();
+    const auto& scene_renderer = context->get_renderer();
+    auto& frame_allocator = app->get_vkcontext().get_frame_allocator();
+    if (scene_renderer != nullptr && frame_allocator != nullopt) {
+      const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), extent, format);
+      ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)), ImVec2{fixed_width, viewport_panel_size.y});
     } else {
-      const auto text_width = ImGui::CalcTextSize("No render target!").x;
+      const auto warning_text = "No scene render output!";
+      const auto text_width = ImGui::CalcTextSize(warning_text).x;
       ImGui::SetCursorPosX((m_viewport_size.x - text_width) * 0.5f);
       ImGui::SetCursorPosY(m_viewport_size.y * 0.5f);
-      ImGui::Text("No render target!");
+      ImGui::Text(warning_text);
     }
 
     if (m_scene_hierarchy_panel)
@@ -125,7 +124,7 @@ void ViewportPanel::on_imgui_render() {
     if (!context->is_running()) {
       auto projection = m_camera.get_projection_matrix();
       projection[1][1] *= -1;
-      Mat4 view_proj = projection * m_camera.get_view_matrix();
+      glm::mat4 view_proj = projection * m_camera.get_view_matrix();
       const Frustum& frustum = m_camera.get_frustum();
 
       show_component_gizmo<LightComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
@@ -150,7 +149,7 @@ void ViewportPanel::on_imgui_render() {
       ImVec4 frame_color = ImGui::GetStyleColorVec4(ImGuiCol_Tab);
       frame_color.w = 0.5f;
       ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(frame_color), false, ImGui::GetStyle().FrameRounding);
-      const Vec2 temp_gizmo_position = m_gizmo_position;
+      const glm::vec2 temp_gizmo_position = m_gizmo_position;
 
       ImGui::SetCursorPos({start_cursor_pos.x + temp_gizmo_position.x + frame_padding.x, start_cursor_pos.y + temp_gizmo_position.y});
       ImGui::BeginGroup();
@@ -257,10 +256,10 @@ void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel&
 
 void ViewportPanel::on_update() {
   if (is_viewport_hovered && !context->is_running() && m_use_editor_camera) {
-    const Vec3& position = m_camera.get_position();
-    const Vec2 yaw_pitch = Vec2(m_camera.get_yaw(), m_camera.get_pitch());
-    Vec3 final_position = position;
-    Vec2 final_yaw_pitch = yaw_pitch;
+    const glm::vec3& position = m_camera.get_position();
+    const glm::vec2 yaw_pitch = glm::vec2(m_camera.get_yaw(), m_camera.get_pitch());
+    glm::vec3 final_position = position;
+    glm::vec2 final_yaw_pitch = yaw_pitch;
 
     const auto is_ortho = m_camera.get_projection() == Camera::Projection::Orthographic;
     if (is_ortho) {
@@ -269,18 +268,19 @@ void ViewportPanel::on_update() {
     }
 
     if (ImGui::IsMouseDown(ImGuiMouseButton_Right) && !is_ortho) {
-      const Vec2 new_mouse_position = Input::get_mouse_position();
+      const glm::vec2 new_mouse_position = Input::get_mouse_position();
 
       if (!m_using_editor_camera) {
         m_using_editor_camera = true;
         m_locked_mouse_position = new_mouse_position;
-        Input::set_cursor_state(Input::CursorState::Disabled);
+        const auto* app = App::get();
+        app->get_window().set_cursor(WindowCursor::Hand);
       }
 
       Input::set_mouse_position(m_locked_mouse_position.x, m_locked_mouse_position.y);
       // Input::SetCursorIcon(EditorLayer::Get()->m_CrosshairCursor);
 
-      const Vec2 change = (new_mouse_position - m_locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
+      const glm::vec2 change = (new_mouse_position - m_locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
       final_yaw_pitch.x += change.x;
       final_yaw_pitch.y = glm::clamp(final_yaw_pitch.y - change.y, glm::radians(-89.9f), glm::radians(89.9f));
 
@@ -302,7 +302,7 @@ void ViewportPanel::on_update() {
     }
     // Panning
     else if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
-      const Vec2 new_mouse_position = Input::get_mouse_position();
+      const glm::vec2 new_mouse_position = Input::get_mouse_position();
 
       if (!m_using_editor_camera) {
         m_using_editor_camera = true;
@@ -312,29 +312,29 @@ void ViewportPanel::on_update() {
       Input::set_mouse_position(m_locked_mouse_position.x, m_locked_mouse_position.y);
       // Input::SetCursorIcon(EditorLayer::Get()->m_CrosshairCursor);
 
-      const Vec2 change = (new_mouse_position - m_locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
+      const glm::vec2 change = (new_mouse_position - m_locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
 
       const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
       final_position += m_camera.get_forward() * change.y * max_move_speed;
       final_position += m_camera.get_right() * change.x * max_move_speed;
     } else {
-      // Input::SetCursorIconDefault();
-      Input::set_cursor_state(Input::CursorState::Normal);
+      const auto* app = App::get();
+      app->get_window().set_cursor(WindowCursor::Arrow);
       m_using_editor_camera = false;
     }
 
-    const Vec3 damped_position = math::smooth_damp(position,
-                                                   final_position,
-                                                   m_translation_velocity,
-                                                   m_translation_dampening,
-                                                   10000.0f,
-                                                   (float)App::get_timestep().get_seconds());
-    const Vec2 damped_yaw_pitch = math::smooth_damp(yaw_pitch,
-                                                    final_yaw_pitch,
-                                                    m_rotation_velocity,
-                                                    m_rotation_dampening,
-                                                    1000.0f,
-                                                    (float)App::get_timestep().get_seconds());
+    const glm::vec3 damped_position = math::smooth_damp(position,
+                                                        final_position,
+                                                        m_translation_velocity,
+                                                        m_translation_dampening,
+                                                        10000.0f,
+                                                        (float)App::get_timestep().get_seconds());
+    const glm::vec2 damped_yaw_pitch = math::smooth_damp(yaw_pitch,
+                                                         final_yaw_pitch,
+                                                         m_rotation_velocity,
+                                                         m_rotation_dampening,
+                                                         1000.0f,
+                                                         (float)App::get_timestep().get_seconds());
 
     m_camera.set_position(EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position);
     m_camera.set_yaw(EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x);
@@ -368,9 +368,9 @@ void ViewportPanel::draw_gizmos() {
     auto camera_projection = m_camera.get_projection_matrix();
     camera_projection[1][1] *= -1;
 
-    const Mat4& camera_view = m_camera.get_view_matrix();
+    const glm::mat4& camera_view = m_camera.get_view_matrix();
 
-    Mat4 transform = eutil::get_world_transform(context.get(), selected_entity);
+    glm::mat4 transform = eutil::get_world_transform(context.get(), selected_entity);
 
     // Snapping
     const bool snap = Input::get_key_held(KeyCode::LeftControl);
@@ -396,11 +396,11 @@ void ViewportPanel::draw_gizmos() {
 
     if (ImGuizmo::IsUsing()) {
       const Entity parent = eutil::get_parent(context.get(), selected_entity);
-      const Mat4& parent_world_transform = parent != entt::null ? eutil::get_world_transform(context.get(), parent) : Mat4(1.0f);
-      Vec3 translation, rotation, scale;
+      const glm::mat4& parent_world_transform = parent != entt::null ? eutil::get_world_transform(context.get(), parent) : glm::mat4(1.0f);
+      glm::vec3 translation, rotation, scale;
       if (math::decompose_transform(inverse(parent_world_transform) * transform, translation, rotation, scale)) {
         tc->position = translation;
-        const Vec3 delta_rotation = rotation - tc->rotation;
+        const glm::vec3 delta_rotation = rotation - tc->rotation;
         tc->rotation += delta_rotation;
         tc->scale = scale;
       }

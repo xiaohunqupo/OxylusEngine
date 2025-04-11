@@ -60,7 +60,7 @@ public:
   void on_detach() override;
 
   void on_update(const Timestep& delta_time) override;
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   void new_scene();
   void open_scene_file_dialog();
@@ -106,7 +106,6 @@ private:
   // Scene
   std::string last_save_scene_path{};
 
-  void draw_panels();
   RuntimeConsole runtime_console = {};
 
   // Config

@@ -1,6 +1,8 @@
 #include "App.hpp"
 
 #include <filesystem>
+#include <ranges>
+#include <vuk/vsl/Core.hpp>
 
 #include "Assets/AssetManager.hpp"
 #include "FileSystem.hpp"
@@ -8,12 +10,13 @@
 #include "LayerStack.hpp"
 #include "Physics/Physics.hpp"
 #include "Project.hpp"
+#include "VFS.hpp"
 
 #include "Audio/AudioEngine.hpp"
 
 #include "Modules/ModuleRegistry.hpp"
 
-#include "Render/Renderer.hpp"
+#include "Render/RendererConfig.hpp"
 #include "Render/Window.hpp"
 
 #include "Scripting/LuaManager.hpp"
@@ -57,25 +60,25 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   register_system<ModuleRegistry>();
   register_system<RendererConfig>();
   register_system<SystemManager>();
-  register_system<AssetManager>();
   register_system<Physics>();
 
-  Window::init_window(app_spec);
-  Window::set_dispatcher(&dispatcher);
+  window = Window::create(spec.window_info);
+
   register_system<Input>();
 
   // Shortcut for commonly used Systems
-  get_system<Input>()->set_instance();
-  get_system<AssetManager>()->set_instance();
-  get_system<Physics>()->set_instance();
+  Input::set_instance();
+  Physics::set_instance();
 
-  for (auto& [_, system] : system_registry) {
+  for (const auto& system : system_registry | std::views::values) {
     system->set_dispatcher(&dispatcher);
     system->init();
   }
 
-  vk_context.create_context(app_spec);
-  Renderer::init();
+  const bool enable_validation = spec.command_line_args.contains("vulkan-validation");
+  vk_context.create_context(window, enable_validation);
+
+  DebugRenderer::init();
 
   imgui_layer = new ImGuiLayer();
   push_overlay(imgui_layer);
@@ -86,7 +89,6 @@ App::~App() { close(); }
 void App::set_instance(App* instance) {
   _instance = instance;
   get_system<Input>()->set_instance();
-  get_system<AssetManager>()->set_instance();
   get_system<Physics>()->set_instance();
 }
 
@@ -105,24 +107,100 @@ App& App::push_overlay(Layer* layer) {
 }
 
 void App::run() {
-  auto input_sys = get_system<Input>();
+  const auto input_sys = get_system<Input>();
+
+  WindowCallbacks window_callbacks = {};
+  window_callbacks.user_data = this;
+  window_callbacks.on_resize = [](void* user_data, const glm::uvec2 size) {
+    const auto app = static_cast<App*>(user_data);
+    app->vk_context.handle_resize(size.x, size.y);
+  };
+  window_callbacks.on_close = [](void* user_data) {
+    const auto app = static_cast<App*>(user_data);
+    app->is_running = false;
+  };
+  window_callbacks.on_mouse_pos = [](void* user_data, const glm::vec2 position, [[maybe_unused]] glm::vec2 relative) {
+    const auto* app = static_cast<App*>(user_data);
+    app->imgui_layer->on_mouse_pos(position);
+
+    const auto input_system = get_system<Input>();
+    input_system->input_data.mouse_offset_x = input_system->input_data.mouse_pos.x - position.x;
+    input_system->input_data.mouse_offset_y = input_system->input_data.mouse_pos.y - position.y;
+    input_system->input_data.mouse_pos = position;
+  };
+  window_callbacks.on_mouse_button = [](void* user_data, const uint8 button, const bool down) {
+    const auto* app = static_cast<App*>(user_data);
+    app->imgui_layer->on_mouse_button(button, down);
+
+    const auto input_system = get_system<Input>();
+    const auto ox_button = Input::to_mouse_code(button);
+    if (down) {
+      input_system->set_mouse_clicked(ox_button, true);
+      input_system->set_mouse_held(ox_button, true);
+    } else {
+      input_system->set_mouse_clicked(ox_button, false);
+      input_system->set_mouse_held(ox_button, false);
+    }
+  };
+  window_callbacks.on_mouse_scroll = [](void* user_data, const glm::vec2 offset) {
+    const auto* app = static_cast<App*>(user_data);
+    app->imgui_layer->on_mouse_scroll(offset);
+
+    const auto input_system = get_system<Input>();
+    input_system->input_data.scroll_offset_y = offset.y;
+  };
+  window_callbacks.on_key =
+    [](void* user_data, const SDL_Keycode key_code, const SDL_Scancode scan_code, const uint16 mods, const bool down, const bool repeat) {
+    const auto* app = static_cast<App*>(user_data);
+    app->imgui_layer->on_key(key_code, scan_code, mods, down);
+
+    const auto input_system = get_system<Input>();
+    const auto ox_key_code = Input::to_keycode(key_code, scan_code);
+    if (down) {
+      input_system->set_key_pressed(ox_key_code, repeat);
+      input_system->set_key_released(ox_key_code, false);
+      input_system->set_key_held(ox_key_code, true);
+    } else {
+      input_system->set_key_pressed(ox_key_code, false);
+      input_system->set_key_released(ox_key_code, true);
+      input_system->set_key_held(ox_key_code, false);
+    }
+  };
+  window_callbacks.on_text_input = [](void* user_data, const char8* text) {
+    const auto* app = static_cast<App*>(user_data);
+    app->imgui_layer->on_text_input(text);
+  };
 
   while (is_running) {
-    update_timestep();
+    timestep.on_update();
 
-    update_layers(timestep);
+    window.poll(window_callbacks);
 
-    for (auto& [_, system] : system_registry)
-      system->update();
+    auto swapchain_attachment = vk_context.new_frame();
+    swapchain_attachment = vuk::clear_image(std::move(swapchain_attachment), vuk::Black<float32>);
 
-    update_renderer();
+    const auto extent = swapchain_attachment->extent;
+    this->swapchain_extent = glm::vec2{extent.width, extent.height};
+
+    imgui_layer->begin_frame(timestep.get_seconds(), extent);
+
+    for (Layer* layer : *layer_stack.get()) {
+      layer->on_update(timestep);
+      layer->on_render(extent, swapchain_attachment->format);
+    }
+
+    for (const auto& system : system_registry | std::views::values) {
+      system->on_update();
+      system->on_render(extent, swapchain_attachment->format);
+    }
+
+    auto& frame_allocator = vk_context.get_frame_allocator();
+
+    swapchain_attachment = imgui_layer->end_frame(frame_allocator.value(), std::move(swapchain_attachment));
+
+    vk_context.end_frame(frame_allocator.value(), swapchain_attachment);
 
     input_sys->reset_pressed();
-
-    Window::poll_events();
-    while (App::get_vkcontext().suspend) {
-      Window::wait_for_events();
-    }
   }
 
   layer_stack.reset();
@@ -130,32 +208,20 @@ void App::run() {
   if (Project::get_active())
     Project::get_active()->unload_module();
 
-  for (auto& [_, system] : system_registry)
+  for (const auto& system : system_registry | std::views::values)
     system->deinit();
 
   system_registry.clear();
-  Renderer::deinit();
+
+  DebugRenderer::release();
 
   ThreadManager::get()->wait_all_threads();
-  Window::close_window(Window::get_glfw_window());
-}
-
-void App::update_layers(const Timestep& ts) {
-  OX_SCOPED_ZONE_N("Update Layers");
-  for (Layer* layer : *layer_stack.get())
-    layer->on_update(ts);
-}
-
-void App::update_renderer() { Renderer::draw(&vk_context, imgui_layer, *layer_stack.get()); }
-
-void App::update_timestep() {
-  timestep.on_update();
-
-  ImGuiIO& io = ImGui::GetIO();
-  io.DeltaTime = (float)timestep.get_seconds();
+  window.destroy();
 }
 
 void App::close() { is_running = false; }
+
+glm::vec2 App::get_swapchain_extent() const { return this->swapchain_extent; }
 
 bool App::asset_directory_exists() { return std::filesystem::exists(get_asset_directory()); }
 
@@ -175,8 +241,6 @@ std::string App::get_asset_directory_absolute() {
   const auto p = absolute(std::filesystem::path(_instance->app_spec.assets_path));
   return p.string();
 }
-
-std::string App::get_relative(const std::string& path) { return fs::preferred_path(std::filesystem::relative(path, get_asset_directory()).string()); }
 
 std::string App::get_absolute(const std::string& path) { return fs::append_paths(fs::preferred_path(get_asset_directory_absolute()), path); }
 } // namespace ox

@@ -39,11 +39,11 @@ public:
   struct Node {
     std::string name;
 
-    Vec3 translation = {};
-    Quat rotation = {};
-    Vec3 scale = Vec3(1.0f);
-    Mat4 local_transform = {};
-    Mat4 global_transform = {};
+    glm::vec3 translation = {};
+    glm::quat rotation = {};
+    glm::vec3 scale = glm::vec3(1.0f);
+    glm::mat4 local_transform = {};
+    glm::mat4 global_transform = {};
 
     AABB aabb;
 
@@ -52,7 +52,7 @@ public:
     std::vector<Node*> children = {};
     std::vector<MeshletInstance> meshlet_indices;
 
-    Mat4 get_local_transform() const { return translate(Mat4(1.0f), translation) * Mat4(rotation) * glm::scale(Mat4(1.0f), scale); }
+    glm::mat4 get_local_transform() const { return translate(glm::mat4(1.0f), translation) * glm::mat4(rotation) * glm::scale(glm::mat4(1.0f), scale); }
   };
 
   std::vector<Node*> root_nodes;

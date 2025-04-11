@@ -41,11 +41,9 @@
 #include "Scripting/LuaManager.hpp"
 
 namespace ox {
-Scene::Scene() { init(); }
+Scene::Scene() { init("Untitled"); }
 
-Scene::Scene(std::string name) : scene_name(std::move(name)) { init(); }
-
-Scene::Scene(const Shared<RenderPipeline>& render_pipeline) { init(render_pipeline); }
+Scene::Scene(const std::string& name) { init(name); }
 
 Scene::~Scene() {
   App::get_system<LuaManager>()->get_state()->collect_gc();
@@ -75,26 +73,16 @@ void Scene::character_controller_component_ctor(entt::registry& reg, entt::entit
   create_character_controller(reg.get<TransformComponent>(entity), component);
 }
 
-void Scene::init(const Shared<RenderPipeline>& render_pipeline) {
+void Scene::init(const std::string& name) {
   OX_SCOPED_ZONE;
 
-  // ctors
-  // TODO: remove these...
-  //registry.on_construct<RigidbodyComponent>().connect<&Scene::rigidbody_component_ctor>(this);
-  //registry.on_construct<BoxColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  //registry.on_construct<SphereColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  //registry.on_construct<CapsuleColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  //registry.on_construct<TaperedCapsuleColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  //registry.on_construct<CylinderColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  //registry.on_construct<MeshColliderComponent>().connect<&Scene::collider_component_ctor>(this);
-  //registry.on_construct<CharacterControllerComponent>().connect<&Scene::character_controller_component_ctor>(this);
+  this->scene_name = name;
 
   dispatcher.sink<FutureMeshLoadEvent>().connect<&Scene::handle_future_mesh_load_event>(*this);
 
   // Renderer
-  scene_renderer = create_shared<SceneRenderer>(this);
+  scene_renderer = create_unique<SceneRenderer>(this);
 
-  scene_renderer->set_render_pipeline(render_pipeline);
   scene_renderer->init(dispatcher);
 }
 
@@ -195,7 +183,7 @@ void Scene::update_physics(const Timestep& delta_time) {
         rb.previous_translation = rb.translation;
         rb.previous_rotation = rb.rotation;
         rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
-        rb.rotation = Vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+        rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
       }
 
       tc.position = glm::lerp(rb.previous_translation, rb.translation, interpolation_factor);
@@ -207,7 +195,7 @@ void Scene::update_physics(const Timestep& delta_time) {
       rb.previous_translation = rb.translation;
       rb.previous_rotation = rb.rotation;
       rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
-      rb.rotation = Vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+      rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
       tc.position = rb.translation;
       tc.rotation = glm::eulerAngles(rb.rotation);
     }
@@ -226,7 +214,7 @@ void Scene::update_physics(const Timestep& delta_time) {
           ch.previous_translation = ch.translation;
           ch.previous_rotation = ch.rotation;
           ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
-          ch.rotation = Vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+          ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
         }
 
         tc.position = glm::lerp(ch.previous_translation, ch.translation, interpolation_factor);
@@ -238,7 +226,7 @@ void Scene::update_physics(const Timestep& delta_time) {
         ch.previous_translation = ch.translation;
         ch.previous_rotation = ch.rotation;
         ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
-        ch.rotation = Vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+        ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
         tc.position = ch.translation;
         tc.rotation = glm::eulerAngles(ch.rotation);
       }
@@ -556,7 +544,7 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
     const auto& bc = registry.get<BoxColliderComponent>(entity);
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), bc.friction, bc.restitution);
 
-    Vec3 scale = bc.size;
+    glm::vec3 scale = bc.size;
     JPH::BoxShapeSettings shape_settings({glm::abs(scale.x), glm::abs(scale.y), glm::abs(scale.z)}, 0.05f, mat);
     shape_settings.SetDensity(glm::max(0.001f, bc.density));
 
@@ -624,8 +612,8 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
     // scale vertices
     const auto world_transform = eutil::get_world_transform(this, entity);
     for (auto& vert : vertices) {
-      Vec4 scaled_pos = world_transform * Vec4(vert.position, 1.0);
-      vert.position = Vec3(scaled_pos);
+      glm::vec4 scaled_pos = world_transform * glm::vec4(vert.position, 1.0);
+      vert.position = glm::vec3(scaled_pos);
     }
 
     const uint32_t vertex_count = (uint32_t)vertices.size();
@@ -798,8 +786,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     for (auto&& [e, ac, tc] : listener_view.each()) {
       ac.listener = create_shared<AudioListener>();
       if (ac.active) {
-        const Mat4 inverted = inverse(eutil::get_world_transform(this, e));
-        const Vec3 forward = normalize(Vec3(inverted[2]));
+        const glm::mat4 inverted = inverse(eutil::get_world_transform(this, e));
+        const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
         ac.listener->set_config(ac.config);
         ac.listener->set_position(tc.position);
         ac.listener->set_direction(-forward);
@@ -810,8 +798,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     const auto source_view = registry.group<AudioSourceComponent>(entt::get<TransformComponent>);
     for (auto&& [e, ac, tc] : source_view.each()) {
       if (ac.source) {
-        const Mat4 inverted = inverse(eutil::get_world_transform(this, e));
-        const Vec3 forward = normalize(Vec3(inverted[2]));
+        const glm::mat4 inverted = inverse(eutil::get_world_transform(this, e));
+        const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
         ac.source->set_config(ac.config);
         ac.source->set_position(tc.position);
         ac.source->set_direction(forward);

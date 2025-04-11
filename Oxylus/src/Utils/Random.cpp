@@ -1,4 +1,5 @@
 ﻿#include "Random.hpp"
+#include <glm/ext/quaternion_geometric.hpp>
 
 namespace ox {
 std::mt19937 Random::random_engine;
@@ -22,7 +23,7 @@ float Random::get_float() {
   return (float)distribution(random_engine) / (float)std::numeric_limits<uint32_t>::max();
 }
 
-Vec3 Random::get_vec3() {
+glm::vec3 Random::get_vec3() {
   return {get_float(), get_float(), get_float()};
 }
 

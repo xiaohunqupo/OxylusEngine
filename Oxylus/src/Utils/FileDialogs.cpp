@@ -1,5 +1,6 @@
 #include "FileDialogs.hpp"
 
+#include "Core/App.hpp"
 #include "Profiler.hpp"
 
 #include "Render/Window.hpp"

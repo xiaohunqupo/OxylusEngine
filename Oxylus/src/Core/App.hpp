@@ -8,11 +8,12 @@
 #include "Base.hpp"
 #include "Core/Types.hpp"
 #include "ESystem.hpp"
+#include "Render/Window.hpp"
+#include "UUID.hpp"
 
 #include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Timestep.hpp"
-#include "VFS.hpp"
 
 int main(int argc, char** argv);
 
@@ -68,8 +69,8 @@ struct AppSpec {
   std::string working_directory = {};
   std::string assets_path = "Resources";
   uint32_t device_index = 0;
-  AppCommandLineArgs command_line_args;
-  int2 default_window_size = {0, 0};
+  AppCommandLineArgs command_line_args = {};
+  WindowInfo window_info = {};
 };
 
 using SystemRegistry = ankerl::unordered_dense::map<size_t, Shared<ESystem>>;
@@ -79,25 +80,32 @@ public:
   App(AppSpec spec);
   virtual ~App();
 
-  App& push_layer(Layer* layer);
-  App& push_overlay(Layer* layer);
+  static App* get() { return _instance; }
+  static void set_instance(App* instance);
 
   void close();
 
+  App& push_layer(Layer* layer);
+  App& push_overlay(Layer* layer);
+
   const AppSpec& get_specification() const { return app_spec; }
   const AppCommandLineArgs& get_command_line_args() const { return app_spec.command_line_args; }
+
   ImGuiLayer* get_imgui_layer() const { return imgui_layer; }
   const Shared<LayerStack>& get_layer_stack() const { return layer_stack; }
-  static App* get() { return _instance; }
-  static void set_instance(App* instance);
-  static const Timestep& get_timestep() { return _instance->timestep; }
+
+  const Window& get_window() const { return window; }
   static VkContext& get_vkcontext() { return _instance->vk_context; }
+  glm::vec2 get_swapchain_extent() const;
+
+  static const Timestep& get_timestep() { return _instance->timestep; }
 
   static bool asset_directory_exists();
+
+  // TODO: Get rid off these
   static std::string get_asset_directory();
   static std::string get_asset_directory(std::string_view asset_path); // appends the asset_path at the end
   static std::string get_asset_directory_absolute();
-  static std::string get_relative(const std::string& path);
   static std::string get_absolute(const std::string& path);
 
   static SystemRegistry& get_system_registry() { return _instance->system_registry; }
@@ -143,6 +151,8 @@ private:
   ImGuiLayer* imgui_layer;
   Shared<LayerStack> layer_stack;
   VkContext vk_context;
+  Window window;
+  glm::vec2 swapchain_extent = {};
 
   SystemRegistry system_registry = {};
   EventDispatcher dispatcher;
@@ -154,9 +164,6 @@ private:
   float last_frame_time = 0.0f;
 
   void run();
-  void update_layers(const Timestep& ts);
-  void update_renderer();
-  void update_timestep();
 
   friend int ::main(int argc, char** argv);
 };

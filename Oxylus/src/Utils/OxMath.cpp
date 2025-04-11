@@ -5,7 +5,7 @@
 #include <Jolt/Geometry/AABox.h>
 
 namespace ox::math {
-bool decompose_transform(const float4x4& transform, float3& translation, float3& rotation, float3& scale) {
+bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale) {
   OX_SCOPED_ZONE;
   using namespace glm;
   using T = float;
@@ -25,10 +25,10 @@ bool decompose_transform(const float4x4& transform, float3& translation, float3&
   }
 
   // Next take care of translation (easy).
-  translation = float3(local_matrix[3]);
+  translation = glm::vec3(local_matrix[3]);
   local_matrix[3] = vec4(0, 0, 0, local_matrix[3].w);
 
-  float3 row[3];
+  glm::vec3 row[3];
 
   // Now get scale and shear.
   for (length_t i = 0; i < 3; ++i)
@@ -73,10 +73,10 @@ float inverse_lerp_clamped(float a, float b, float value) {
   return glm::clamp((value - a) / den, 0.0f, 1.0f);
 }
 
-float2 world_to_screen(const float3& world_pos, const float4x4& mvp, const float width, float height, const float win_pos_x, const float win_pos_y) {
-  Vec4 trans = mvp * Vec4(world_pos, 1.0f);
+glm::vec2 world_to_screen(const glm::vec3& world_pos, const glm::mat4& mvp, const float width, float height, const float win_pos_x, const float win_pos_y) {
+  glm::vec4 trans = mvp * glm::vec4(world_pos, 1.0f);
   trans *= 0.5f / trans.w;
-  trans += Vec4(0.5f, 0.5f, 0.0f, 0.0f);
+  trans += glm::vec4(0.5f, 0.5f, 0.0f, 0.0f);
   trans.y = 1.f - trans.y;
   trans.x *= width;
   trans.y *= height;
@@ -85,29 +85,29 @@ float2 world_to_screen(const float3& world_pos, const float4x4& mvp, const float
   return {trans.x, trans.y};
 }
 
-Vec4 transform(const Vec4& vec, const Mat4& view) {
-  auto result = Vec4(vec.z) * view[2] + view[3];
-  result = Vec4(vec.y) * view[1] + result;
-  result = Vec4(vec.x) * view[0] + result;
+glm::vec4 transform(const glm::vec4& vec, const glm::mat4& view) {
+  auto result = glm::vec4(vec.z) * view[2] + view[3];
+  result = glm::vec4(vec.y) * view[1] + result;
+  result = glm::vec4(vec.x) * view[0] + result;
   return result;
 }
-Vec4 transform_normal(const Vec4& vec, const Mat4& mat) {
-  auto result = Vec4(vec.z) * mat[2];
-  result = Vec4(vec.y) * mat[1] + result;
-  result = Vec4(vec.x) * mat[0] + result;
+glm::vec4 transform_normal(const glm::vec4& vec, const glm::mat4& mat) {
+  auto result = glm::vec4(vec.z) * mat[2];
+  result = glm::vec4(vec.y) * mat[1] + result;
+  result = glm::vec4(vec.x) * mat[0] + result;
   return result;
 }
-Vec4 transform_coord(const Vec4& vec, const Mat4& view) {
-  auto result = Vec4(vec.z) * view[2] + view[3];
-  result = Vec4(vec.y) * view[1] + result;
-  result = Vec4(vec.x) * view[0] + result;
-  result = result / Vec4(result.w);
+glm::vec4 transform_coord(const glm::vec4& vec, const glm::mat4& view) {
+  auto result = glm::vec4(vec.z) * view[2] + view[3];
+  result = glm::vec4(vec.y) * view[1] + result;
+  result = glm::vec4(vec.x) * view[0] + result;
+  result = result / glm::vec4(result.w);
   return result;
 }
 
-float3 from_jolt(const JPH::Vec3& vec) { return {vec.GetX(), vec.GetY(), vec.GetZ()}; }
-JPH::Vec3 to_jolt(const float3& vec) { return {vec.x, vec.y, vec.z}; }
-float4 from_jolt(const JPH::Vec4& vec) { return {vec.GetX(), vec.GetY(), vec.GetZ(), vec.GetW()}; }
-JPH::Vec4 to_jolt(const float4& vec) { return {vec.x, vec.y, vec.z, vec.w}; }
+glm::vec3 from_jolt(const JPH::Vec3& vec) { return {vec.GetX(), vec.GetY(), vec.GetZ()}; }
+JPH::Vec3 to_jolt(const glm::vec3& vec) { return {vec.x, vec.y, vec.z}; }
+glm::vec4 from_jolt(const JPH::Vec4& vec) { return {vec.GetX(), vec.GetY(), vec.GetZ(), vec.GetW()}; }
+JPH::Vec4 to_jolt(const glm::vec4& vec) { return {vec.x, vec.y, vec.z, vec.w}; }
 AABB from_jolt(const JPH::AABox& aabb) { return {from_jolt(aabb.mMin), from_jolt(aabb.mMax)}; }
 } // namespace ox::math

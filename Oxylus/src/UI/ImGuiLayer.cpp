@@ -1,11 +1,11 @@
 #include "ImGuiLayer.hpp"
-#include <backends/imgui_impl_glfw.h>
 #include <imgui.h>
 #include <plf_colony.h>
 
 #include <algorithm>
 #include <glm/common.hpp>
 
+#include <SDL3/SDL_mouse.h>
 #include <icons/IconsMaterialDesignIcons.h>
 #include <icons/MaterialDesign.inl>
 #include <utility>
@@ -16,6 +16,7 @@
 #include <vuk/vsl/Core.hpp>
 
 #include "Core/App.hpp"
+#include "Core/FileSystem.hpp"
 #include "ImGuizmo.h"
 #include "imgui_frag.hpp"
 #include "imgui_vert.hpp"
@@ -46,39 +47,13 @@ void ImGuiLayer::on_attach(EventDispatcher&) {
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard /*| ImGuiConfigFlags_ViewportsEnable*/ | ImGuiConfigFlags_DockingEnable |
-                    ImGuiConfigFlags_DpiEnableScaleFonts | ImGuiConfigFlags_DpiEnableScaleViewports;
-  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+                    ImGuiConfigFlags_DpiEnableScaleFonts;
+  io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_HasMouseCursors;
   /*io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;*/
 
-  init_for_vulkan();
-
-  apply_theme();
-  set_style();
-}
-
-void ImGuiLayer::add_icon_font(float font_size) {
-  OX_SCOPED_ZONE;
-  const ImGuiIO& io = ImGui::GetIO();
-  static constexpr ImWchar ICONS_RANGES[] = {ICON_MIN_MDI, ICON_MAX_MDI, 0};
-  ImFontConfig icons_config;
-  // merge in icons from Font Awesome
-  icons_config.MergeMode = true;
-  icons_config.PixelSnapH = true;
-  icons_config.GlyphOffset.y = 0.5f;
-  icons_config.OversampleH = icons_config.OversampleV = 3;
-  icons_config.GlyphMinAdvanceX = 4.0f;
-  icons_config.SizePixels = font_size;
-
-  io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &icons_config, ICONS_RANGES);
-}
-
-void ImGuiLayer::init_for_vulkan() {
-  OX_SCOPED_ZONE;
-  ImGui_ImplGlfw_InitForVulkan(Window::get_glfw_window(), true);
-
   // Upload Fonts
-  const auto regular_font_path = App::get_asset_directory("Fonts/FiraSans-Regular.ttf");
-  const auto bold_font_path = App::get_asset_directory("Fonts/FiraSans-Bold.ttf");
+  const auto regular_font_path = fs::append_paths(fs::current_path(), "Resources/Fonts/FiraSans-Regular.ttf");
+  const auto bold_font_path = fs::append_paths(fs::current_path(), "Resources/Fonts/FiraSans-Bold.ttf");
 
   constexpr float font_size = 16.0f;
   constexpr float font_size_small = 12.0f;
@@ -90,7 +65,6 @@ void ImGuiLayer::init_for_vulkan() {
   fonts_config.GlyphMinAdvanceX = 4.0f;
   fonts_config.SizePixels = font_size;
 
-  ImGuiIO& io = ImGui::GetIO();
   {
     OX_SCOPED_ZONE_N("Font Loading/Building");
     regular_font = io.Fonts->AddFontFromFileTTF(regular_font_path.c_str(), font_size, &fonts_config);
@@ -122,24 +96,83 @@ void ImGuiLayer::init_for_vulkan() {
   pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
   pci.add_static_spirv(imgui_frag, sizeof(imgui_frag) / 4, "imgui.frag");
   ctx.create_named_pipeline("imgui", pci);
+
+  apply_theme();
+  set_style();
 }
 
-void ImGuiLayer::on_detach() {
-  ImGui_ImplGlfw_Shutdown();
-  ImGui::DestroyContext();
-}
-
-void ImGuiLayer::begin() {
+void ImGuiLayer::add_icon_font(float font_size) {
   OX_SCOPED_ZONE;
-  ImGui_ImplGlfw_NewFrame();
+  const ImGuiIO& io = ImGui::GetIO();
+  static constexpr ImWchar ICONS_RANGES[] = {ICON_MIN_MDI, ICON_MAX_MDI, 0};
+  ImFontConfig icons_config;
+  // merge in icons from Font Awesome
+  icons_config.MergeMode = true;
+  icons_config.PixelSnapH = true;
+  icons_config.GlyphOffset.y = 0.5f;
+  icons_config.OversampleH = icons_config.OversampleV = 3;
+  icons_config.GlyphMinAdvanceX = 4.0f;
+  icons_config.SizePixels = font_size;
+
+  io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &icons_config, ICONS_RANGES);
+}
+
+void ImGuiLayer::on_detach() { ImGui::DestroyContext(); }
+
+void ImGuiLayer::begin_frame(const float64 delta_time, const vuk::Extent3D extent) {
+  OX_SCOPED_ZONE;
+
+  const App* app = App::get();
+  auto& imgui = ImGui::GetIO();
+  imgui.DeltaTime = delta_time;
+  imgui.DisplaySize = ImVec2(static_cast<float32>(extent.width), static_cast<float32>(extent.height));
+
+  rendering_images.clear();
+
+  add_image(font_texture->as_attachment_value());
+
   ImGui::NewFrame();
+  ImGuizmo::BeginFrame();
+
+  if (imgui.ConfigFlags & ImGuiConfigFlags_NoMouseCursorChange) {
+    return;
+  }
+
+  const auto imgui_cursor = ImGui::GetMouseCursor();
+  if (imgui.MouseDrawCursor || imgui_cursor == ImGuiMouseCursor_None) {
+    app->get_window().show_cursor(false);
+  } else {
+    auto next_cursor = WindowCursor::Arrow;
+    // clang-format off
+        switch (imgui_cursor) {
+            case ImGuiMouseCursor_Arrow: next_cursor = WindowCursor::Arrow; break;
+            case ImGuiMouseCursor_TextInput: next_cursor = WindowCursor::TextInput; break;
+            case ImGuiMouseCursor_ResizeAll: next_cursor = WindowCursor::ResizeAll; break;
+            case ImGuiMouseCursor_ResizeNS: next_cursor = WindowCursor::ResizeNS; break;
+            case ImGuiMouseCursor_ResizeEW: next_cursor = WindowCursor::ResizeEW; break;
+            case ImGuiMouseCursor_ResizeNESW: next_cursor = WindowCursor::ResizeNESW; break;
+            case ImGuiMouseCursor_ResizeNWSE: next_cursor = WindowCursor::ResizeNWSE; break;
+            case ImGuiMouseCursor_Hand: next_cursor = WindowCursor::Hand; break;
+            case ImGuiMouseCursor_NotAllowed: next_cursor = WindowCursor::NotAllowed; break;
+            default: break;
+        }
+    // clang-format on
+    app->get_window().show_cursor(true);
+
+    if (app->get_window().get_cursor() != next_cursor) {
+      app->get_window().set_cursor(next_cursor);
+    }
+  }
 }
 
-vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& allocator,
-                                                              vuk::Compiler& compiler,
-                                                              vuk::Value<vuk::ImageAttachment> target) {
+vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target) {
   OX_SCOPED_ZONE;
-  auto reset_render_state = [this](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
+
+  ImGui::Render();
+
+  ImDrawData* draw_data = ImGui::GetDrawData();
+
+  auto reset_render_state = [this, draw_data](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
     command_buffer.bind_image(0, 0, *font_texture->get_view()).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
     if (index.size > 0) {
       command_buffer.bind_index_buffer(index, sizeof(ImDrawIdx) == 2 ? vuk::IndexType::eUint16 : vuk::IndexType::eUint32);
@@ -176,23 +209,12 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
     idx_dst += cmd_list->IdxBuffer.Size;
   }
 
-  vuk::SamplerCreateInfo sci;
-  sci.minFilter = sci.magFilter = vuk::Filter::eLinear;
-  sci.mipmapMode = vuk::SamplerMipmapMode::eLinear;
-  sci.addressModeU = sci.addressModeV = sci.addressModeW = vuk::SamplerAddressMode::eRepeat;
-
-  // add rendergraph dependencies to be transitioned
-  ImGui::GetIO().Fonts->TexID = (ImTextureID)(sampled_images.size() + 1);
-  sampled_images.push_back(combine_image_sampler("imgui font",
-                                                 vuk::acquire_ia("imgui font", font_texture->as_attachment(), vuk::Access::eFragmentSampled),
-                                                 vuk::acquire_sampler("font sampler", sci)));
-  // make all rendergraph sampled images available
-  auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(sampled_images));
+  auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(rendering_images));
 
   return vuk::make_pass("imgui",
-                        [this, verts = imvert.get(), inds = imind.get(), reset_render_state](vuk::CommandBuffer& command_buffer,
+                        [this, verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](vuk::CommandBuffer& command_buffer,
                                                                                              VUK_IA(vuk::eColorWrite) color_rt,
-                                                                                             VUK_ARG(vuk::SampledImage[],
+                                                                                             VUK_ARG(vuk::ImageAttachment[],
                                                                                                      vuk::Access::eFragmentSampled) sis) {
     command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
       .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
@@ -210,21 +232,21 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
     for (int n = 0; n < draw_data->CmdListsCount; n++) {
       const ImDrawList* cmd_list = draw_data->CmdLists[n];
       for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
-        const ImDrawCmd* pcmd = &cmd_list->CmdBuffer[cmd_i];
-        if (pcmd->UserCallback != nullptr) {
+        const ImDrawCmd* im_cmd = &cmd_list->CmdBuffer[cmd_i];
+        if (im_cmd->UserCallback != nullptr) {
           // User callback, registered via ImDrawList::AddCallback()
           // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
-          if (pcmd->UserCallback == ImDrawCallback_ResetRenderState)
+          if (im_cmd->UserCallback == ImDrawCallback_ResetRenderState)
             reset_render_state(command_buffer, verts, inds);
           else
-            pcmd->UserCallback(cmd_list, pcmd);
+            im_cmd->UserCallback(cmd_list, im_cmd);
         } else {
           // Project scissor/clipping rectangles into framebuffer space
           ImVec4 clip_rect;
-          clip_rect.x = (pcmd->ClipRect.x - clip_off.x) * clip_scale.x;
-          clip_rect.y = (pcmd->ClipRect.y - clip_off.y) * clip_scale.y;
-          clip_rect.z = (pcmd->ClipRect.z - clip_off.x) * clip_scale.x;
-          clip_rect.w = (pcmd->ClipRect.w - clip_off.y) * clip_scale.y;
+          clip_rect.x = (im_cmd->ClipRect.x - clip_off.x) * clip_scale.x;
+          clip_rect.y = (im_cmd->ClipRect.y - clip_off.y) * clip_scale.y;
+          clip_rect.z = (im_cmd->ClipRect.z - clip_off.x) * clip_scale.x;
+          clip_rect.w = (im_cmd->ClipRect.w - clip_off.y) * clip_scale.y;
 
           const auto fb_width = command_buffer.get_ongoing_render_pass().extent.width;
           const auto fb_height = command_buffer.get_ongoing_render_pass().extent.height;
@@ -235,20 +257,22 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
 
             // Apply scissor/clipping rectangle
             vuk::Rect2D scissor;
-            scissor.offset.x = (int32_t)(clip_rect.x);
-            scissor.offset.y = (int32_t)(clip_rect.y);
+            scissor.offset.x = (int32_t)clip_rect.x;
+            scissor.offset.y = (int32_t)clip_rect.y;
             scissor.extent.width = (uint32_t)(clip_rect.z - clip_rect.x);
             scissor.extent.height = (uint32_t)(clip_rect.w - clip_rect.y);
             command_buffer.set_scissor(0, scissor);
 
-            // Bind texture
-            if (pcmd->TextureId) {
-              auto ia_index = static_cast<size_t>(pcmd->TextureId) - 1;
-
-              command_buffer.bind_image(0, 0, sis[ia_index].ia).bind_sampler(0, 0, sis[ia_index].sci);
+            command_buffer.bind_sampler(0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear});
+            if (im_cmd->TextureId != 0) {
+              const auto index = im_cmd->TextureId - 1;
+              const auto& image = sis[index];
+              command_buffer.bind_image(0, 0, image);
+            } else {
+              command_buffer.bind_image(0, 0, sis[0]);
             }
 
-            command_buffer.draw_indexed(pcmd->ElemCount, 1, pcmd->IdxOffset + global_idx_offset, pcmd->VtxOffset + global_vtx_offset, 0);
+            command_buffer.draw_indexed(im_cmd->ElemCount, 1, im_cmd->IdxOffset + global_idx_offset, im_cmd->VtxOffset + global_vtx_offset, 0);
           }
         }
       }
@@ -256,34 +280,201 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::render_draw_data(vuk::Allocator& al
       global_vtx_offset += cmd_list->VtxBuffer.Size;
     }
 
-    sampled_images.clear();
     return color_rt;
   })(std::move(target), std::move(sampled_images_array));
 }
 
-ImTextureID ImGuiLayer::add_sampled_image(vuk::Value<vuk::SampledImage> sampled_image) {
-  auto idx = sampled_images.size() + 1;
-  sampled_images.emplace_back(std::move(sampled_image));
-  return (ImTextureID)idx;
+ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment> attachment) {
+  rendering_images.emplace_back(std::move(attachment));
+  return rendering_images.size();
 }
 
-ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment> image) {
-  return add_sampled_image(combine_image_sampler("_simg", std::move(image), vuk::acquire_sampler("_default_sampler", {})));
+void ImGuiLayer::on_mouse_pos(glm::vec2 pos) {
+  ZoneScoped;
+
+  auto& imgui = ImGui::GetIO();
+  imgui.AddMousePosEvent(pos.x, pos.y);
 }
 
-void ImGuiLayer::end() {
-  OX_SCOPED_ZONE;
-  ImGui::Render();
+void ImGuiLayer::on_mouse_button(uint8 button, bool down) {
+  ZoneScoped;
 
-  draw_data = ImGui::GetDrawData();
+  int32 imgui_button = 0;
+  // clang-format off
+    switch (button) {
+        case SDL_BUTTON_LEFT: imgui_button = 0; break;
+        case SDL_BUTTON_RIGHT: imgui_button = 1; break;
+        case SDL_BUTTON_MIDDLE: imgui_button = 2; break;
+        case SDL_BUTTON_X1: imgui_button = 3; break;
+        case SDL_BUTTON_X2: imgui_button = 4; break;
+        default: return;
+    }
+  // clang-format on
 
-  const ImGuiIO& io = ImGui::GetIO();
-  if (io.ConfigFlags & ImGuiConfigFlags_ViewportsEnable) {
-    GLFWwindow* backup_current_context = glfwGetCurrentContext();
-    ImGui::UpdatePlatformWindows();
-    ImGui::RenderPlatformWindowsDefault();
-    glfwMakeContextCurrent(backup_current_context);
+  auto& imgui = ImGui::GetIO();
+  imgui.AddMouseButtonEvent(imgui_button, down);
+  imgui.AddMouseSourceEvent(ImGuiMouseSource_Mouse);
+}
+
+void ImGuiLayer::on_mouse_scroll(glm::vec2 offset) {
+  ZoneScoped;
+
+  auto& imgui = ImGui::GetIO();
+  imgui.AddMouseWheelEvent(offset.x, offset.y);
+}
+
+ImGuiKey to_imgui_key(SDL_Keycode keycode, SDL_Scancode scancode);
+void ImGuiLayer::on_key(uint32 key_code, uint32 scan_code, uint16 mods, bool down) {
+  ZoneScoped;
+
+  auto& imgui = ImGui::GetIO();
+  imgui.AddKeyEvent(ImGuiMod_Ctrl, (mods & SDL_KMOD_CTRL) != 0);
+  imgui.AddKeyEvent(ImGuiMod_Shift, (mods & SDL_KMOD_SHIFT) != 0);
+  imgui.AddKeyEvent(ImGuiMod_Alt, (mods & SDL_KMOD_ALT) != 0);
+  imgui.AddKeyEvent(ImGuiMod_Super, (mods & SDL_KMOD_GUI) != 0);
+
+  const auto key = to_imgui_key(static_cast<SDL_Keycode>(key_code), static_cast<SDL_Scancode>(scan_code));
+  imgui.AddKeyEvent(key, down);
+  imgui.SetKeyEventNativeData(key, static_cast<int32>(key_code), static_cast<int32>(scan_code), static_cast<int32>(scan_code));
+}
+
+void ImGuiLayer::on_text_input(const char8* text) {
+  ZoneScoped;
+
+  auto& imgui = ImGui::GetIO();
+  imgui.AddInputCharactersUTF8(text);
+}
+
+ImGuiKey to_imgui_key(SDL_Keycode keycode, SDL_Scancode scancode) {
+  ZoneScoped;
+
+  switch (scancode) {
+    case SDL_SCANCODE_KP_0       : return ImGuiKey_Keypad0;
+    case SDL_SCANCODE_KP_1       : return ImGuiKey_Keypad1;
+    case SDL_SCANCODE_KP_2       : return ImGuiKey_Keypad2;
+    case SDL_SCANCODE_KP_3       : return ImGuiKey_Keypad3;
+    case SDL_SCANCODE_KP_4       : return ImGuiKey_Keypad4;
+    case SDL_SCANCODE_KP_5       : return ImGuiKey_Keypad5;
+    case SDL_SCANCODE_KP_6       : return ImGuiKey_Keypad6;
+    case SDL_SCANCODE_KP_7       : return ImGuiKey_Keypad7;
+    case SDL_SCANCODE_KP_8       : return ImGuiKey_Keypad8;
+    case SDL_SCANCODE_KP_9       : return ImGuiKey_Keypad9;
+    case SDL_SCANCODE_KP_PERIOD  : return ImGuiKey_KeypadDecimal;
+    case SDL_SCANCODE_KP_DIVIDE  : return ImGuiKey_KeypadDivide;
+    case SDL_SCANCODE_KP_MULTIPLY: return ImGuiKey_KeypadMultiply;
+    case SDL_SCANCODE_KP_MINUS   : return ImGuiKey_KeypadSubtract;
+    case SDL_SCANCODE_KP_PLUS    : return ImGuiKey_KeypadAdd;
+    case SDL_SCANCODE_KP_ENTER   : return ImGuiKey_KeypadEnter;
+    case SDL_SCANCODE_KP_EQUALS  : return ImGuiKey_KeypadEqual;
+    default                      : break;
   }
+
+  switch (keycode) {
+    case SDLK_TAB         : return ImGuiKey_Tab;
+    case SDLK_LEFT        : return ImGuiKey_LeftArrow;
+    case SDLK_RIGHT       : return ImGuiKey_RightArrow;
+    case SDLK_UP          : return ImGuiKey_UpArrow;
+    case SDLK_DOWN        : return ImGuiKey_DownArrow;
+    case SDLK_PAGEUP      : return ImGuiKey_PageUp;
+    case SDLK_PAGEDOWN    : return ImGuiKey_PageDown;
+    case SDLK_HOME        : return ImGuiKey_Home;
+    case SDLK_END         : return ImGuiKey_End;
+    case SDLK_INSERT      : return ImGuiKey_Insert;
+    case SDLK_DELETE      : return ImGuiKey_Delete;
+    case SDLK_BACKSPACE   : return ImGuiKey_Backspace;
+    case SDLK_SPACE       : return ImGuiKey_Space;
+    case SDLK_RETURN      : return ImGuiKey_Enter;
+    case SDLK_ESCAPE      : return ImGuiKey_Escape;
+    case SDLK_APOSTROPHE  : return ImGuiKey_Apostrophe;
+    case SDLK_COMMA       : return ImGuiKey_Comma;
+    case SDLK_MINUS       : return ImGuiKey_Minus;
+    case SDLK_PERIOD      : return ImGuiKey_Period;
+    case SDLK_SLASH       : return ImGuiKey_Slash;
+    case SDLK_SEMICOLON   : return ImGuiKey_Semicolon;
+    case SDLK_EQUALS      : return ImGuiKey_Equal;
+    case SDLK_LEFTBRACKET : return ImGuiKey_LeftBracket;
+    case SDLK_BACKSLASH   : return ImGuiKey_Backslash;
+    case SDLK_RIGHTBRACKET: return ImGuiKey_RightBracket;
+    case SDLK_GRAVE       : return ImGuiKey_GraveAccent;
+    case SDLK_CAPSLOCK    : return ImGuiKey_CapsLock;
+    case SDLK_SCROLLLOCK  : return ImGuiKey_ScrollLock;
+    case SDLK_NUMLOCKCLEAR: return ImGuiKey_NumLock;
+    case SDLK_PRINTSCREEN : return ImGuiKey_PrintScreen;
+    case SDLK_PAUSE       : return ImGuiKey_Pause;
+    case SDLK_LCTRL       : return ImGuiKey_LeftCtrl;
+    case SDLK_LSHIFT      : return ImGuiKey_LeftShift;
+    case SDLK_LALT        : return ImGuiKey_LeftAlt;
+    case SDLK_LGUI        : return ImGuiKey_LeftSuper;
+    case SDLK_RCTRL       : return ImGuiKey_RightCtrl;
+    case SDLK_RSHIFT      : return ImGuiKey_RightShift;
+    case SDLK_RALT        : return ImGuiKey_RightAlt;
+    case SDLK_RGUI        : return ImGuiKey_RightSuper;
+    case SDLK_APPLICATION : return ImGuiKey_Menu;
+    case SDLK_0           : return ImGuiKey_0;
+    case SDLK_1           : return ImGuiKey_1;
+    case SDLK_2           : return ImGuiKey_2;
+    case SDLK_3           : return ImGuiKey_3;
+    case SDLK_4           : return ImGuiKey_4;
+    case SDLK_5           : return ImGuiKey_5;
+    case SDLK_6           : return ImGuiKey_6;
+    case SDLK_7           : return ImGuiKey_7;
+    case SDLK_8           : return ImGuiKey_8;
+    case SDLK_9           : return ImGuiKey_9;
+    case SDLK_A           : return ImGuiKey_A;
+    case SDLK_B           : return ImGuiKey_B;
+    case SDLK_C           : return ImGuiKey_C;
+    case SDLK_D           : return ImGuiKey_D;
+    case SDLK_E           : return ImGuiKey_E;
+    case SDLK_F           : return ImGuiKey_F;
+    case SDLK_G           : return ImGuiKey_G;
+    case SDLK_H           : return ImGuiKey_H;
+    case SDLK_I           : return ImGuiKey_I;
+    case SDLK_J           : return ImGuiKey_J;
+    case SDLK_K           : return ImGuiKey_K;
+    case SDLK_L           : return ImGuiKey_L;
+    case SDLK_M           : return ImGuiKey_M;
+    case SDLK_N           : return ImGuiKey_N;
+    case SDLK_O           : return ImGuiKey_O;
+    case SDLK_P           : return ImGuiKey_P;
+    case SDLK_Q           : return ImGuiKey_Q;
+    case SDLK_R           : return ImGuiKey_R;
+    case SDLK_S           : return ImGuiKey_S;
+    case SDLK_T           : return ImGuiKey_T;
+    case SDLK_U           : return ImGuiKey_U;
+    case SDLK_V           : return ImGuiKey_V;
+    case SDLK_W           : return ImGuiKey_W;
+    case SDLK_X           : return ImGuiKey_X;
+    case SDLK_Y           : return ImGuiKey_Y;
+    case SDLK_Z           : return ImGuiKey_Z;
+    case SDLK_F1          : return ImGuiKey_F1;
+    case SDLK_F2          : return ImGuiKey_F2;
+    case SDLK_F3          : return ImGuiKey_F3;
+    case SDLK_F4          : return ImGuiKey_F4;
+    case SDLK_F5          : return ImGuiKey_F5;
+    case SDLK_F6          : return ImGuiKey_F6;
+    case SDLK_F7          : return ImGuiKey_F7;
+    case SDLK_F8          : return ImGuiKey_F8;
+    case SDLK_F9          : return ImGuiKey_F9;
+    case SDLK_F10         : return ImGuiKey_F10;
+    case SDLK_F11         : return ImGuiKey_F11;
+    case SDLK_F12         : return ImGuiKey_F12;
+    case SDLK_F13         : return ImGuiKey_F13;
+    case SDLK_F14         : return ImGuiKey_F14;
+    case SDLK_F15         : return ImGuiKey_F15;
+    case SDLK_F16         : return ImGuiKey_F16;
+    case SDLK_F17         : return ImGuiKey_F17;
+    case SDLK_F18         : return ImGuiKey_F18;
+    case SDLK_F19         : return ImGuiKey_F19;
+    case SDLK_F20         : return ImGuiKey_F20;
+    case SDLK_F21         : return ImGuiKey_F21;
+    case SDLK_F22         : return ImGuiKey_F22;
+    case SDLK_F23         : return ImGuiKey_F23;
+    case SDLK_F24         : return ImGuiKey_F24;
+    case SDLK_AC_BACK     : return ImGuiKey_AppBack;
+    case SDLK_AC_FORWARD  : return ImGuiKey_AppForward;
+    default               : break;
+  }
+  return ImGuiKey_None;
 }
 
 void ImGuiLayer::apply_theme(bool dark) {

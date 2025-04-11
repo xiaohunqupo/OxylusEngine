@@ -41,8 +41,8 @@ private:
 
 class AssetManager : public ESystem {
 public:
-  void init() override {};
-  void deinit() override {};
+  void init() override {}
+  void deinit() override {}
   void set_instance();
 
   static Shared<Texture> get_texture_asset(const TextureLoadInfo& info);

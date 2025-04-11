@@ -8,6 +8,8 @@
 namespace ox {
 /// @brief A lightweight std::filesystem alternative and a safe wrapper for std::filesystem 
 namespace fs {
+/// @return current working dir
+std::string current_path();
 /// @return directory and file
 std::pair<std::string, std::string> split_path(std::string_view full_path);
 /// @return What's left after the last dot in `filepath`

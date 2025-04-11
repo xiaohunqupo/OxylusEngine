@@ -51,17 +51,17 @@ void set_parent(Scene* scene, entt::entity entity, entt::entity parent) {
   scene->registry.get<RelationshipComponent>(parent).children.emplace_back(get_uuid(scene->registry, entity));
 }
 
-Mat4 get_world_transform(Scene* scene, Entity entity) {
+glm::mat4 get_world_transform(Scene* scene, Entity entity) {
   OX_SCOPED_ZONE;
   const auto& transform = scene->registry.get<TransformComponent>(entity);
   const auto& rc = scene->registry.get<RelationshipComponent>(entity);
   const Entity parent = scene->get_entity_by_uuid(rc.parent);
-  const Mat4 parent_transform = parent != entt::null ? get_world_transform(scene, parent) : Mat4(1.0f);
-  return parent_transform * glm::translate(Mat4(1.0f), transform.position) * glm::toMat4(glm::quat(transform.rotation)) *
-         glm::scale(Mat4(1.0f), transform.scale);
+  const glm::mat4 parent_transform = parent != entt::null ? get_world_transform(scene, parent) : glm::mat4(1.0f);
+  return parent_transform * glm::translate(glm::mat4(1.0f), transform.position) * glm::toMat4(glm::quat(transform.rotation)) *
+         glm::scale(glm::mat4(1.0f), transform.scale);
 }
 
-Mat4 get_local_transform(Scene* scene, Entity entity) {
+glm::mat4 get_local_transform(Scene* scene, Entity entity) {
   OX_SCOPED_ZONE;
   const auto& transform = scene->registry.get<TransformComponent>(entity);
   return transform.get_local_transform();

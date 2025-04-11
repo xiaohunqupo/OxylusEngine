@@ -16,6 +16,7 @@
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 
+#include "Core/VFS.hpp"
 #include "Entity.hpp"
 #include "Utils/Archive.hpp"
 

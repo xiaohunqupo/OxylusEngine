@@ -55,14 +55,3 @@ public:
   #define OX_DEBUGBREAK()
 #endif
 
-#define OX_EXPAND_MACRO(x) x
-#define OX_STRINGIFY_MACRO(x) #x
-#define OX_COMBINE_MACRO(a, b) a##b
-#define OX_EXPAND_STRINGIFY(x) OX_STRINGIFY_MACRO(x)
-
-#define TRY(...)                    \
-  try {                             \
-    __VA_ARGS__;                    \
-  } catch (std::exception & exc) {  \
-    OX_LOG_ERROR("{}", exc.what()); \
-  }

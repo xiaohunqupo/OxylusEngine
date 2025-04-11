@@ -51,7 +51,7 @@ PBRMaterial* PBRMaterial::set_emissive_texture(const Shared<Texture>& texture) {
   return this;
 }
 
-PBRMaterial* PBRMaterial::set_color(float4 color) {
+PBRMaterial* PBRMaterial::set_color(glm::vec4 color) {
   parameters.color = color;
   return this;
 }
@@ -71,7 +71,7 @@ PBRMaterial* PBRMaterial::set_reflectance(float reflectance) {
   return this;
 }
 
-PBRMaterial* PBRMaterial::set_emissive(float4 emissive) {
+PBRMaterial* PBRMaterial::set_emissive(glm::vec4 emissive) {
   parameters.emissive = emissive;
   return this;
 }

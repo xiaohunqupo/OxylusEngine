@@ -17,7 +17,7 @@ public:
 
   void init() override;
   void deinit() override;
-  void update() override;
+  void on_update() override;
 
   void set_scene_path(const std::string& path);
 

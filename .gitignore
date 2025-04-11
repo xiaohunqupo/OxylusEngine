@@ -59,3 +59,6 @@ Build
 *.sln.DotSettings.user
 .editorconfig
 CMakeSettings.json
+/logs
+/cmake-build-debug-visual-studio
+/cmake-build-release-visual-studio

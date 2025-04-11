@@ -6,13 +6,11 @@
 
 #include "Core/App.hpp"
 
-#include "Jolt/Physics/Body/Body.h"
-
 #include "Entity.hpp"
 
 #include "Render/DebugRenderer.hpp"
 #include "Render/DefaultRenderPipeline.hpp"
-#include "Render/Renderer.hpp"
+#include "Render/SimpleRenderPipeline.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Scene/Components.hpp"
 #include "Utils/Profiler.hpp"
@@ -21,8 +19,7 @@ namespace ox {
 void SceneRenderer::init(EventDispatcher& dispatcher) {
   OX_SCOPED_ZONE;
   if (!_render_pipeline)
-    _render_pipeline = create_shared<DefaultRenderPipeline>("DefaultRenderPipeline");
-  Renderer::renderer_context.render_pipeline = _render_pipeline;
+    _render_pipeline = create_unique<SimpleRenderPipeline>("SimpleRenderPipeline");
   _render_pipeline->init(*App::get_vkcontext().superframe_allocator);
   _render_pipeline->on_dispatcher_events(dispatcher);
 }
@@ -95,9 +92,9 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       auto& uv_size = mat->parameters.uv_size;
       const auto& uv_offset = mat->parameters.uv_offset;
 
-      auto texture_size = float2(texture->get_extent().width, texture->get_extent().height);
+      auto texture_size = glm::vec2(texture->get_extent().width, texture->get_extent().height);
       uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0], sprite_animation.frame_size[1] * 1.f / texture_size[1]};
-      sprite.current_uv_offset = uv_offset + float2{uv_size.x * frame_x, uv_size.y * frame_y};
+      sprite.current_uv_offset = uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
     }
   }
 
@@ -111,13 +108,13 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
       const auto world_transform = eutil::get_world_transform(_scene, entity);
       sprite.transform = world_transform;
-      sprite.rect = AABB(float3(-0.5, -0.5, -0.5), float3(0.5, 0.5, 0.5));
+      sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(world_transform);
 
       _render_pipeline->submit_sprite(sprite);
 
       if (RendererCVar::cvar_draw_bounding_boxes.get()) {
-        DebugRenderer::draw_aabb(sprite.rect, Vec4(1, 1, 1, 1.0f));
+        DebugRenderer::draw_aabb(sprite.rect, glm::vec4(1, 1, 1, 1.0f));
       }
     }
   }
@@ -139,7 +136,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       // FIXME: don't care about parents for now
       transform.scale = {tilemap.tilemap_size, 1};
       sprite.transform = transform.get_local_transform();
-      sprite.rect = AABB(float3(-0.5, -0.5, -0.5), float3(0.5, 0.5, 0.5));
+      sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(sprite.transform);
 
       _render_pipeline->submit_sprite(sprite);
@@ -163,7 +160,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
         continue;
       lc.position = tc.position;
       lc.rotation = tc.rotation;
-      lc.direction = normalize(math::transform_normal(Vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
+      lc.direction = glm::normalize(math::transform_normal(glm::vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
 
       _render_pipeline->submit_light(lc);
     }

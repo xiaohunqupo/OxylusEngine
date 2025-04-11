@@ -6,7 +6,7 @@
 namespace ox {
 StatisticsPanel::StatisticsPanel() : EditorPanel("Statistics", ICON_MDI_CLIPBOARD_TEXT, false) {}
 
-void StatisticsPanel::on_imgui_render() {
+void StatisticsPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (on_begin()) {
     if (ImGui::BeginTabBar("TabBar")) {
       if (ImGui::BeginTabItem("Memory")) {

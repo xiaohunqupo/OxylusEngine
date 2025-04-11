@@ -7,6 +7,6 @@ namespace ox {
   public:
     EditorSettingsPanel();
     ~EditorSettingsPanel() override = default;
-    void on_imgui_render() override;
+    void on_render(vuk::Extent3D extent, vuk::Format format) override;
   };
 }

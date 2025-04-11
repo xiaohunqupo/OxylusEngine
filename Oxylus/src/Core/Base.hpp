@@ -1,25 +1,56 @@
 #pragma once
 #define BIT(x) (1 << x)
 
-#define DELETE_DEFAULT_CONSTRUCTORS(struct) struct(const struct& other) = delete;\
-                                            struct(struct&& other) = delete;\
-                                            struct& operator=(const struct& other) = delete;\
-                                            struct& operator=(struct&& other) = delete;
+#define DELETE_DEFAULT_CONSTRUCTORS(struct)        \
+  struct(const struct& other) = delete;            \
+  struct(struct && other) = delete;                \
+  struct& operator=(const struct& other) = delete; \
+  struct& operator=(struct&& other) = delete;
 
 #include <memory>
 
+#define OX_CRASH() *(volatile int*)(nullptr) = 0;
+
+#define OX_EXPAND_IMPL(x) x
+#define OX_STRINGIFY_IMPL(x) #x
+#define OX_EXPAND_STRINGIFY(x) OX_STRINGIFY_IMPL(x)
+#define OX_CONCAT_IMPL(a, b) a##b
+#define OX_CONCAT(x, y) OX_CONCAT_IMPL(x, y)
+#define OX_UNIQUE_VAR() OX_CONCAT(_ls_v_, __COUNTER__)
+
+#define TRY(...)                    \
+  try {                             \
+    __VA_ARGS__;                    \
+  } catch (std::exception & exc) {  \
+    OX_LOG_ERROR("{}", exc.what()); \
+  }
+
 namespace ox {
-template <typename T> using Shared = std::shared_ptr<T>;
+template <typename T>
+using Shared = std::shared_ptr<T>;
 
 template <typename T, typename... Args>
 constexpr Shared<T> create_shared(Args&&... args) {
   return std::make_shared<T>(std::forward<Args>(args)...);
 }
 
-template <typename T> using Unique = std::unique_ptr<T>;
+template <typename T>
+using Unique = std::unique_ptr<T>;
 
 template <typename T, typename... Args>
 constexpr Unique<T> create_unique(Args&&... args) {
   return std::make_unique<T>(std::forward<Args>(args)...);
 }
-}
+
+template <typename Fn>
+struct defer {
+  Fn func;
+
+  defer(Fn func_) : func(std::move(func_)) {}
+
+  ~defer() { func(); }
+};
+
+#define OX_DEFER(...) ::ox::defer OX_UNIQUE_VAR() = [__VA_ARGS__]
+
+} // namespace ox

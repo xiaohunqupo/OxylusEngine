@@ -1,10 +1,11 @@
 #pragma once
 
-#include <cstdint>
+#include "Types.hpp"
 
 namespace ox {
+enum class KeyCode : uint16 {
+  None = UINT16_MAX,
 
-enum class KeyCode : uint16_t {
   Space = 32,
   Apostrophe = 39,
   /* ' */
@@ -78,14 +79,9 @@ enum class KeyCode : uint16_t {
   GraveAccent = 96,
   /* ` */
 
-  World1 = 161,
-  /* non-US #1 */
-  World2 = 162,
-  /* non-US #2 */
-
   /* Function keys */
   Escape = 256,
-  Enter = 257,
+  Return = 257,
   Tab = 258,
   Backspace = 259,
   Insert = 260,
@@ -158,8 +154,8 @@ enum class KeyCode : uint16_t {
   Menu = 348
 };
 
-enum class MouseCode : uint16_t {
-  // From glfw3.h
+enum class MouseCode : uint16 {
+  None = UINT16_MAX,
   Button0 = 0,
   Button1 = 1,
   Button2 = 2,
@@ -168,10 +164,11 @@ enum class MouseCode : uint16_t {
   Button5 = 5,
   Button6 = 6,
   Button7 = 7,
-  ButtonLast = Button7,
+  ButtonForward = Button4,
+  ButtonBackward = Button3,
   ButtonLeft = Button0,
   ButtonRight = Button1,
-  ButtonMiddle = Button2
+  ButtonMiddle = Button2,
 };
 
 enum class GamepadButtonCode : uint16_t {

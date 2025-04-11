@@ -2,17 +2,19 @@
 
 #include "Material.hpp"
 
-#include "Core/Types.hpp"
 #include "Texture.hpp"
+
+#include <glm/vec2.hpp>
+#include <glm/vec4.hpp>
 
 namespace ox {
 class SpriteMaterial : public Material {
 public:
   struct Parameters {
-    float4 color = float4(1.f);
+    glm::vec4 color = glm::vec4(1.f);
 
-    float2 uv_size = float2(1.f);
-    float2 uv_offset = float2(0.f);
+    glm::vec2 uv_size = glm::vec2(1.f);
+    glm::vec2 uv_offset = glm::vec2(0.f);
 
     uint32_t albedo_map_id = Asset::INVALID_ID;
   } parameters;

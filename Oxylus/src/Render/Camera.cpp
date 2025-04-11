@@ -1,11 +1,10 @@
 #include "Camera.hpp"
 
+#include "Core/App.hpp"
 #include "Utils/Profiler.hpp"
 
-#include "Renderer.hpp"
-
 namespace ox {
-Camera::Camera(Vec3 position) {
+Camera::Camera(glm::vec3 position) {
   _position = position;
   _yaw = glm::radians(-90.f);
   update();
@@ -15,11 +14,11 @@ void Camera::update() {
   jitter_prev = jitter;
   previous_matrices.projection_matrix = matrices.projection_matrix;
   previous_matrices.view_matrix = matrices.view_matrix;
-  update_projection_matrix();
   update_view_matrix();
+  update_projection_matrix();
 }
 
-void Camera::update(const Vec3& pos, const Vec3& rotation) {
+void Camera::update(const glm::vec3& pos, const glm::vec3& rotation) {
   OX_SCOPED_ZONE;
   set_position(pos);
   set_pitch(rotation.x);
@@ -45,7 +44,11 @@ void Camera::update_view_matrix() {
 
   matrices.view_matrix = glm::lookAt(_position, _position + _forward, _up);
 
-  _aspect = (float)Renderer::get_viewport_width() / (float)Renderer::get_viewport_height();
+  const auto extent = App::get()->get_swapchain_extent();
+  if (extent.x != 0)
+    _aspect = extent.x / extent.y;
+  else
+    _aspect = 1.0f;
 }
 
 void Camera::update_projection_matrix() {
@@ -61,7 +64,7 @@ void Camera::update_projection_matrix() {
 Frustum Camera::get_frustum() {
   const float half_v_side = get_far() * tanf(glm::radians(_fov) * .5f);
   const float half_h_side = half_v_side * get_aspect();
-  const Vec3 forward_far = get_far() * _forward;
+  const glm::vec3 forward_far = get_far() * _forward;
 
   Frustum frustum = {
     .top_face = {_position, cross(_right, forward_far - _up * half_v_side)},
@@ -77,21 +80,23 @@ Frustum Camera::get_frustum() {
   return frustum;
 }
 
-RayCast Camera::get_screen_ray(const Vec2& screen_pos) const {
-  const Mat4 view_proj_inverse = inverse(get_projection_matrix() * get_view_matrix());
+RayCast Camera::get_screen_ray(const glm::vec2& screen_pos) const {
+  const glm::mat4 view_proj_inverse = inverse(get_projection_matrix() * get_view_matrix());
 
-  float screen_x = screen_pos.x / (float)Renderer::get_viewport_width();
-  float screen_y = screen_pos.y / (float)Renderer::get_viewport_height();
+  const auto extent = App::get()->get_swapchain_extent();
+
+  float screen_x = screen_pos.x / extent.x;
+  float screen_y = screen_pos.y / extent.y;
 
   screen_x = 2.0f * screen_x - 1.0f;
   screen_y = 2.0f * screen_y - 1.0f;
 
-  Vec4 n = view_proj_inverse * Vec4(screen_x, screen_y, 0.0f, 1.0f);
+  glm::vec4 n = view_proj_inverse * glm::vec4(screen_x, screen_y, 0.0f, 1.0f);
   n /= n.w;
 
-  Vec4 f = view_proj_inverse * Vec4(screen_x, screen_y, 1.0f, 1.0f);
+  glm::vec4 f = view_proj_inverse * glm::vec4(screen_x, screen_y, 1.0f, 1.0f);
   f /= f.w;
 
-  return {Vec3(n), normalize(Vec3(f) - Vec3(n))};
+  return {glm::vec3(n), glm::normalize(glm::vec3(f) - glm::vec3(n))};
 }
 } // namespace ox

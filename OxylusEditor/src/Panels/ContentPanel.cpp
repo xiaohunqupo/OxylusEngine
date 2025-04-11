@@ -233,11 +233,15 @@ std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std:
 }
 
 ContentPanel::ContentPanel() : EditorPanel("Contents", ICON_MDI_FOLDER_STAR, true) {
-  const auto scale = Window::get_content_scale();
-  thumbnail_max_limit *= scale.x;
-  thumbnail_size_grid_limit *= scale.x;
+  const auto& window = App::get()->get_window();
+  const float32 scale = window.get_content_scale();
+  thumbnail_max_limit *= scale;
+  thumbnail_size_grid_limit *= scale;
 
-  _white_texture = Texture::get_white_texture();
+  _white_texture = create_shared<Texture>();
+  char white_texture_data[16 * 16 * 4];
+  memset(white_texture_data, 0xff, 16 * 16 * 4);
+  _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 
   auto file_icon = create_shared<Texture>(TextureLoadInfo{
     .path = App::get_asset_directory("Icons/FileIcon.png"),
@@ -270,7 +274,7 @@ void ContentPanel::init() {
 
 void ContentPanel::on_update() { m_elapsed_time += (float)App::get_timestep(); }
 
-void ContentPanel::on_imgui_render() {
+void ContentPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
 
   constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_ContextMenuInBody;
@@ -310,12 +314,12 @@ void ContentPanel::render_header() {
   if (ImGui::BeginPopup("SettingsPopup")) {
     ui::begin_properties(ImGuiTableFlags_SizingStretchSame);
     ui::property("Thumbnail Size",
-                   EditorCVar::cvar_file_thumbnail_size.get_ptr(),
-                   thumbnail_size_grid_limit - 0.1f,
-                   thumbnail_max_limit,
-                   nullptr,
-                   0.1f,
-                   "");
+                 EditorCVar::cvar_file_thumbnail_size.get_ptr(),
+                 thumbnail_size_grid_limit - 0.1f,
+                 thumbnail_max_limit,
+                 nullptr,
+                 0.1f,
+                 "");
     ui::property("Show file thumbnails", (bool*)EditorCVar::cvar_file_thumbnails.get_ptr());
     ui::end_properties();
     ImGui::EndPopup();
@@ -610,10 +614,10 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SetCursorPos({cursor_pos.x + padding, cursor_pos.y + padding});
         ImGui::SetItemAllowOverlap();
         ui::image(*_white_texture,
-                    {background_thumbnail_size.x - padding * 2.0f, background_thumbnail_size.y - padding * 2.0f},
-                    {},
-                    {},
-                    ImGuiLayer::window_bg_alternative_color);
+                  {background_thumbnail_size.x - padding * 2.0f, background_thumbnail_size.y - padding * 2.0f},
+                  {},
+                  {},
+                  ImGuiLayer::window_bg_alternative_color);
 
         // Thumbnail Image
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
@@ -624,11 +628,7 @@ void ContentPanel::render_body(bool grid) {
         // Type Color frame
         const ImVec2 type_color_frame_size = {scaled_thumbnail_size_x, scaled_thumbnail_size_x * 0.03f};
         ImGui::SetCursorPosX(cursor_pos.x + padding);
-        ui::image(*_white_texture,
-                    type_color_frame_size,
-                    {0, 0},
-                    {1, 1},
-                    is_dir ? ImVec4(0.0f, 0.0f, 0.0f, 0.0f) : file.file_type_indicator_color);
+        ui::image(*_white_texture, type_color_frame_size, {0, 0}, {1, 1}, is_dir ? ImVec4(0.0f, 0.0f, 0.0f, 0.0f) : file.file_type_indicator_color);
 
         const ImVec2 rect_min = ImGui::GetItemRectMin();
         const ImVec2 rect_size = ImGui::GetItemRectSize();

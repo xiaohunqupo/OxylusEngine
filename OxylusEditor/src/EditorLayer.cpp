@@ -5,6 +5,7 @@
 
 #include <imgui_internal.h>
 #include <imspinner.h>
+#include <ranges>
 
 #include "EditorTheme.hpp"
 
@@ -58,8 +59,6 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   engine_banner = create_shared<Texture>();
   engine_banner->create_texture({EngineBannerWidth, EngineBannerHeight, 1}, EngineBanner, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 
-  Input::set_cursor_state(Input::CursorState::Normal);
-
   add_panel<SceneHierarchyPanel>();
   add_panel<ContentPanel>();
   add_panel<InspectorPanel>();
@@ -74,8 +73,6 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   viewport->m_camera.set_position({-2, 2, 0});
   viewport->m_camera.update();
   viewport->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
-
-  runtime_console.register_command("clear_assets", "Asset cleared.", [] { AssetManager::free_unused_assets(); });
 
   editor_scene = create_shared<Scene>();
   load_default_scene(editor_scene);
@@ -130,7 +127,7 @@ void EditorLayer::on_update(const Timestep& delta_time) {
   }
 }
 
-void EditorLayer::on_imgui_render() {
+void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   if (EditorCVar::cvar_show_style_editor.get())
     ImGui::ShowStyleEditor();
   if (EditorCVar::cvar_show_imgui_demo.get())
@@ -204,15 +201,9 @@ void EditorLayer::on_imgui_render() {
           if (ImGui::MenuItem("Reload project module")) {
             Project::get_active()->load_module();
           }
-          if (ImGui::MenuItem("Free unused assets")) {
-            AssetManager::free_unused_assets();
-          }
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Window")) {
-          if (ImGui::MenuItem("Fullscreen", "F11")) {
-            Window::is_fullscreen_borderless() ? Window::set_windowed() : Window::set_fullscreen_borderless();
-          }
           if (ImGui::MenuItem("Add viewport", nullptr)) {
             viewport_panels.emplace_back(create_unique<ViewportPanel>())->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
           }
@@ -251,7 +242,9 @@ void EditorLayer::on_imgui_render() {
         ImGui::SameLine();
         {
           // Project name text
-          ImGui::SetCursorPos(ImVec2((float)Window::get_width() - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
+          const auto app = App::get();
+          const auto window_width = app->get_window().get_width();
+          ImGui::SetCursorPos(ImVec2((float)window_width - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
           ImGuiScoped::StyleColor b_color1(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGuiScoped::StyleColor b_color2(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGui::Button(Project::get_active()->get_config().name.c_str());
@@ -263,7 +256,15 @@ void EditorLayer::on_imgui_render() {
     }
     ImGui::PopStyleVar();
 
-    draw_panels();
+    for (const auto& panel : viewport_panels)
+      panel->on_render(extent, format);
+
+    for (const auto& panel : editor_panels | std::views::values) {
+      if (panel->visible)
+        panel->on_render(extent, format);
+    }
+
+    runtime_console.on_imgui_render();
 
     // TODO: temporary until scenes are more global and handled in the renderer directly
     if (const auto active_scene = get_active_scene(); active_scene)
@@ -280,10 +281,6 @@ void EditorLayer::on_imgui_render() {
 }
 
 void EditorLayer::editor_shortcuts() {
-  if (Input::get_key_pressed(KeyCode::F11)) {
-    Window::is_fullscreen_borderless() ? Window::set_windowed() : Window::set_fullscreen_borderless();
-  }
-
   if (Input::get_key_held(KeyCode::LeftControl)) {
     if (Input::get_key_pressed(KeyCode::N)) {
       new_scene();
@@ -305,7 +302,7 @@ void EditorLayer::editor_shortcuts() {
       const auto tc = editor_scene->get_registry().get<TransformComponent>(entity);
       auto& camera = viewport_panels[0]->m_camera;
       auto final_pos = tc.position + camera.get_forward();
-      final_pos += (-5.0f * camera.get_forward() * Vec3(1.0f));
+      final_pos += -5.0f * camera.get_forward() * glm::vec3(1.0f);
       camera.set_position(final_pos);
     }
   }
@@ -392,23 +389,6 @@ void EditorLayer::on_scene_simulate() {
   set_scene_state(SceneState::Simulate);
   active_scene = Scene::copy(editor_scene);
   set_editor_context(active_scene);
-}
-
-void EditorLayer::draw_panels() {
-  if (fullscreen_viewport_panel) {
-    fullscreen_viewport_panel->on_imgui_render();
-    return;
-  }
-
-  for (const auto& panel : viewport_panels)
-    panel->on_imgui_render();
-
-  for (const auto& [name, panel] : editor_panels) {
-    if (panel->visible)
-      panel->on_imgui_render();
-  }
-
-  runtime_console.on_imgui_render();
 }
 
 void EditorLayer::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) { mesh_load_indicators.emplace_back(event); }

@@ -77,10 +77,10 @@ int32_t ffxFsr2GetJitterPhaseCount(int32_t render_width, int32_t display_width) 
   return jitter_phase_count;
 }
 
-void SpdSetup(uint2& dispatchThreadGroupCountXY,             // CPU side: dispatch thread group count xy
-              uint2& workGroupOffset,                        // GPU side: pass in as constant
-              uint2& numWorkGroupsAndMips,                   // GPU side: pass in as constant
-              UVec4 rectInfo,                                // left, top, width, height
+void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY,             // CPU side: dispatch thread group count xy
+              glm::uvec2& workGroupOffset,                        // GPU side: pass in as constant
+              glm::uvec2& numWorkGroupsAndMips,                   // GPU side: pass in as constant
+              glm::uvec4 rectInfo,                                // left, top, width, height
               int32_t mips)                                  // optional: if -1, calculate based on rect width and height
 {
   workGroupOffset[0] = rectInfo[0] / 64;                     // rectInfo[0] = left
@@ -103,25 +103,25 @@ void SpdSetup(uint2& dispatchThreadGroupCountXY,             // CPU side: dispat
   }
 }
 
-void SpdSetup(uint2& dispatchThreadGroupCountXY, // CPU side: dispatch thread group count xy
-              uint2& workGroupOffset,            // GPU side: pass in as constant
-              uint2& numWorkGroupsAndMips,       // GPU side: pass in as constant
-              UVec4 rectInfo)                    // left, top, width, height
+void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY, // CPU side: dispatch thread group count xy
+              glm::uvec2& workGroupOffset,            // GPU side: pass in as constant
+              glm::uvec2& numWorkGroupsAndMips,       // GPU side: pass in as constant
+              glm::uvec4 rectInfo)                    // left, top, width, height
 {
   SpdSetup(dispatchThreadGroupCountXY, workGroupOffset, numWorkGroupsAndMips, rectInfo, -1);
 }
 
-void FsrRcasCon(UVec4& con, float sharpness) {
+void FsrRcasCon(glm::uvec4& con, float sharpness) {
   // Transform from stops to linear value.
   sharpness = exp2(-sharpness);
-  Vec2 hSharp = {sharpness, sharpness};
+  glm::vec2 hSharp = {sharpness, sharpness};
   con[0] = uint32_t(sharpness);
-  con[1] = packHalf2x16(hSharp);
+  con[1] = glm::packHalf2x16(hSharp);
   con[2] = 0;
   con[3] = 0;
 }
 
-Vec2 FSR::get_jitter() const {
+glm::vec2 FSR::get_jitter() const {
   const int32_t phase_count = ffxFsr2GetJitterPhaseCount(fsr2_constants.renderSize[0], fsr2_constants.displaySize[0]);
   float x = halton(fsr2_constants.frameIndex % phase_count + 1, 2) - 0.5f;
   float y = halton(fsr2_constants.frameIndex % phase_count + 1, 3) - 0.5f;
@@ -267,7 +267,7 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     uint32_t renderSize[2];
   };
   struct Fsr2RcasConstants {
-    UVec4 rcasConfig;
+    glm::uvec4 rcasConfig;
   };
 
   fsr2_constants.jitterOffset[0] = camera.get_jitter().x * fsr2_constants.renderSize[0] * 0.5f;
@@ -348,10 +348,10 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
   const int32_t dispatch_dst_y = (fsr2_constants.displaySize[1] + (threadGroupWorkRegionDim - 1)) / threadGroupWorkRegionDim;
 
   // Auto exposure
-  uint2 dispatch_thread_group_count_xy;
-  uint2 workGroupOffset;
-  uint2 numWorkGroupsAndMips;
-  UVec4 rectInfo = {0, 0, (uint32_t)fsr2_constants.renderSize[0], (uint32_t)fsr2_constants.renderSize[1]};
+  glm::uvec2 dispatch_thread_group_count_xy;
+  glm::uvec2 workGroupOffset;
+  glm::uvec2 numWorkGroupsAndMips;
+  glm::uvec4 rectInfo = {0, 0, (uint32_t)fsr2_constants.renderSize[0], (uint32_t)fsr2_constants.renderSize[1]};
   SpdSetup(dispatch_thread_group_count_xy, workGroupOffset, numWorkGroupsAndMips, rectInfo);
 
   // downsample
@@ -405,7 +405,7 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     clearValuesLockStatus[LOCK_LIFETIME_REMAINING] = lockInitialLifetime * 2.0f;
     clearValuesLockStatus[LOCK_TEMPORAL_LUMA] = 0.0f;
     clearValuesLockStatus[LOCK_TRUST] = 1.0f;
-    uint32_t clear_lock_pk = glm::packF2x11_1x10(Vec3(clearValuesLockStatus[0], clearValuesLockStatus[1], clearValuesLockStatus[2]));
+    uint32_t clear_lock_pk = glm::packF2x11_1x10(glm::vec3(clearValuesLockStatus[0], clearValuesLockStatus[1], clearValuesLockStatus[2]));
     locks[0] = vuk::clear_image(locks[0], vuk::Clear{vuk::ClearColor(clear_lock_pk, clear_lock_pk, clear_lock_pk, clear_lock_pk)});
     locks[1] = vuk::clear_image(locks[1], vuk::Clear{vuk::ClearColor(clear_lock_pk, clear_lock_pk, clear_lock_pk, clear_lock_pk)});
   }

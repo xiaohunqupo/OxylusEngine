@@ -2,7 +2,6 @@
 
 #include <vuk/Types.hpp>
 #include <vuk/runtime/vk/VkTypes.hpp>
-#include "Utils/Profiler.hpp"
 
 // Profilers
 #define GPU_PROFILER_ENABLED 0
@@ -74,8 +73,8 @@ private:
 #ifdef TRACY_ENABLE
   tracy::VkCtx* tracy_graphics_ctx;
   tracy::VkCtx* tracy_transfer_ctx;
-#endif
   vuk::Unique<vuk::CommandPool> tracy_cpool;
   vuk::Unique<vuk::CommandBufferAllocation> tracy_cbufai;
+#endif
 };
 } // namespace ox

@@ -1,157 +1,277 @@
 #include "Window.hpp"
 
-#include "Core/EmbeddedLogo.hpp"
+#include <GLFW/glfw3.h>
+#include <SDL3/SDL.h>
+#include <SDL3/SDL_vulkan.h>
+#include <array>
+#include <stb_image.h>
+
+#include "Core/Handle.hpp"
 #include "Utils/Log.hpp"
-
-
-#include "stb_image.h"
-
-#include "Core/ApplicationEvents.hpp"
-
-#include "GLFW/glfw3.h"
-
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-Window::WindowData Window::s_window_data;
-GLFWwindow* Window::s_window_handle;
+template <>
+struct Handle<Window>::Impl {
+  uint32 width = {};
+  uint32 height = {};
 
-void Window::init_window(const AppSpec& spec) {
+  WindowCursor current_cursor = WindowCursor::Arrow;
+  glm::uvec2 cursor_position = {};
+
+  SDL_Window* handle = nullptr;
+  uint32 monitor_id = {};
+  std::array<SDL_Cursor*, static_cast<usize>(WindowCursor::Count)> cursors = {};
+  float32 content_scale = {};
+  float32 refresh_rate = {};
+};
+
+Window Window::create(const WindowInfo& info) {
   OX_SCOPED_ZONE;
-  glfwInit();
 
-  const auto monitor_size = get_monitor_size();
-
-  auto window_width = (float)monitor_size.x * 0.8f;
-  auto window_height = (float)monitor_size.y * 0.8f;
-
-  if (spec.default_window_size.x != 0 && spec.default_window_size.y != 0) { 
-    window_width = spec.default_window_size.x;
-    window_height = spec.default_window_size.y;
+  if (!SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO)) {
+    OX_LOG_ERROR("Failed to initialize SDL! {}", SDL_GetError());
+    return Handle(nullptr);
   }
 
-  glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
-  s_window_handle = glfwCreateWindow((int)window_width, (int)window_height, spec.name.c_str(), nullptr, nullptr);
+  const auto display = display_at(info.monitor);
+  if (!display.has_value()) {
+    OX_LOG_ERROR("No available displays!");
+    return Handle(nullptr);
+  }
 
-  // center window
-  const auto center = get_center_pos((int)window_width, (int)window_height);
-  glfwSetWindowPos(s_window_handle, center.x, center.y);
+  int32 new_pos_y = SDL_WINDOWPOS_UNDEFINED;
+  int32 new_pos_x = SDL_WINDOWPOS_UNDEFINED;
+  int32 new_width = static_cast<int32>(info.width);
+  int32 new_height = static_cast<int32>(info.height);
 
-  // Load file icon
-  {
-    int width, height, channels;
-    const auto image_data = stbi_load_from_memory(EngineLogo, (int)EngineLogoLen, &width, &height, &channels, 4);
-    const GLFWimage window_icon{
-      .width = 40,
-      .height = 40,
-      .pixels = image_data,
-    };
-    glfwSetWindowIcon(s_window_handle, 1, &window_icon);
+  if (info.flags & WindowFlag::WorkAreaRelative) {
+    new_pos_x = display->work_area.x;
+    new_pos_y = display->work_area.y;
+    new_width = display->work_area.z;
+    new_height = display->work_area.w;
+  } else if (info.flags & WindowFlag::Centered) {
+    new_pos_x = SDL_WINDOWPOS_CENTERED;
+    new_pos_y = SDL_WINDOWPOS_CENTERED;
+  }
+
+  uint32 window_flags = SDL_WINDOW_VULKAN;
+  if (info.flags & WindowFlag::Resizable) {
+    window_flags |= SDL_WINDOW_RESIZABLE;
+  }
+
+  if (info.flags & WindowFlag::Borderless) {
+    window_flags |= SDL_WINDOW_BORDERLESS;
+  }
+
+  if (info.flags & WindowFlag::Maximized) {
+    window_flags |= SDL_WINDOW_MAXIMIZED;
+  }
+
+  const auto impl = new Impl;
+  impl->width = static_cast<uint32>(new_width);
+  impl->height = static_cast<uint32>(new_height);
+  impl->monitor_id = info.monitor;
+  impl->content_scale = display->content_scale;
+  impl->refresh_rate = display->refresh_rate;
+
+  const auto window_properties = SDL_CreateProperties();
+  SDL_SetStringProperty(window_properties, SDL_PROP_WINDOW_CREATE_TITLE_STRING, info.title.c_str());
+  SDL_SetNumberProperty(window_properties, SDL_PROP_WINDOW_CREATE_X_NUMBER, new_pos_x);
+  SDL_SetNumberProperty(window_properties, SDL_PROP_WINDOW_CREATE_Y_NUMBER, new_pos_y);
+  SDL_SetNumberProperty(window_properties, SDL_PROP_WINDOW_CREATE_WIDTH_NUMBER, new_width);
+  SDL_SetNumberProperty(window_properties, SDL_PROP_WINDOW_CREATE_HEIGHT_NUMBER, new_height);
+  SDL_SetNumberProperty(window_properties, SDL_PROP_WINDOW_CREATE_FLAGS_NUMBER, window_flags);
+  impl->handle = SDL_CreateWindowWithProperties(window_properties);
+  SDL_DestroyProperties(window_properties);
+
+  impl->cursors = {
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED),
+  };
+
+  void* image_data = nullptr;
+  int width, height, channels;
+  if (info.icon.data != nullptr && info.icon.data_length > 0) {
+    image_data = stbi_load_from_memory(info.icon.data, static_cast<int>(info.icon.data_length), &width, &height, &channels, 4);
+  } else if (!info.icon.path.empty()) {
+    image_data = stbi_load(info.icon.path.c_str(), &width, &height, &channels, 4);
+  }
+  if (image_data != nullptr) {
+    const auto surface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA8888, image_data, width * 4);
+    if (!SDL_SetWindowIcon(impl->handle, surface)) {
+      OX_LOG_ERROR("Couldn't set window icon!");
+    }
+    SDL_DestroySurface(surface);
     stbi_image_free(image_data);
   }
-  if (s_window_handle == nullptr) {
-    OX_LOG_ERROR("Failed to create GLFW WindowHandle");
-    glfwTerminate();
+
+  int32 real_width;
+  int32 real_height;
+  SDL_GetWindowSizeInPixels(impl->handle, &real_width, &real_height);
+  SDL_StartTextInput(impl->handle);
+
+  impl->width = real_width;
+  impl->height = real_height;
+
+  const auto self = Window(impl);
+  self.set_cursor(WindowCursor::Arrow);
+  return self;
+}
+
+void Window::destroy() const {
+  OX_SCOPED_ZONE
+
+  SDL_StopTextInput(impl->handle);
+  SDL_DestroyWindow(impl->handle);
+}
+
+void Window::poll(const WindowCallbacks& callbacks) const {
+  OX_SCOPED_ZONE
+
+  SDL_Event e = {};
+  while (SDL_PollEvent(&e) != 0) {
+    switch (e.type) {
+      case SDL_EVENT_WINDOW_RESIZED: {
+        if (callbacks.on_resize) {
+          callbacks.on_resize(callbacks.user_data, {e.window.data1, e.window.data2});
+        }
+      } break;
+      case SDL_EVENT_MOUSE_MOTION: {
+        if (callbacks.on_mouse_pos) {
+          callbacks.on_mouse_pos(callbacks.user_data, {e.motion.x, e.motion.y}, {e.motion.xrel, e.motion.yrel});
+        }
+      } break;
+      case SDL_EVENT_MOUSE_BUTTON_DOWN:
+      case SDL_EVENT_MOUSE_BUTTON_UP  : {
+        if (callbacks.on_mouse_button) {
+          const auto state = e.type == SDL_EVENT_MOUSE_BUTTON_DOWN;
+          callbacks.on_mouse_button(callbacks.user_data, e.button.button, state);
+        }
+      } break;
+      case SDL_EVENT_MOUSE_WHEEL: {
+        if (callbacks.on_mouse_scroll) {
+          callbacks.on_mouse_scroll(callbacks.user_data, {e.wheel.x, e.wheel.y});
+        }
+      } break;
+      case SDL_EVENT_KEY_DOWN:
+      case SDL_EVENT_KEY_UP  : {
+        if (callbacks.on_key) {
+          const auto state = e.type == SDL_EVENT_KEY_DOWN;
+          callbacks.on_key(callbacks.user_data, e.key.key, e.key.scancode, e.key.mod, state, e.key.repeat);
+        }
+      } break;
+      case SDL_EVENT_TEXT_INPUT: {
+        if (callbacks.on_text_input) {
+          callbacks.on_text_input(callbacks.user_data, e.text.text);
+        }
+      } break;
+      case SDL_EVENT_QUIT: {
+        if (callbacks.on_close) {
+          callbacks.on_close(callbacks.user_data);
+        }
+      } break;
+      default:;
+    }
+  }
+}
+
+option<SystemDisplay> Window::display_at(const uint32 monitor_id) {
+  int32 display_count = 0;
+  auto* display_ids = SDL_GetDisplays(&display_count);
+  OX_DEFER(&) { SDL_free(display_ids); };
+
+  if (display_count == 0 || display_ids == nullptr) {
+    return nullopt;
   }
 
-  glfwSetWindowCloseCallback(s_window_handle, close_window);
-}
-
-void Window::poll_events() {
-  OX_SCOPED_ZONE;
-  glfwPollEvents();
-}
-
-void Window::close_window(GLFWwindow*) {
-  App::get()->close();
-  glfwTerminate();
-}
-
-void Window::set_window_user_data(void* data) { glfwSetWindowUserPointer(get_glfw_window(), data); }
-
-GLFWwindow* Window::get_glfw_window() {
-  if (s_window_handle == nullptr) {
-    OX_LOG_ERROR("Glfw WindowHandle is nullptr. Did you call InitWindow() ?");
+  const auto checking_display = display_ids[monitor_id];
+  const char* monitor_name = SDL_GetDisplayName(checking_display);
+  const auto* display_mode = SDL_GetDesktopDisplayMode(checking_display);
+  if (display_mode == nullptr) {
+    return nullopt;
   }
-  return s_window_handle;
+
+  SDL_Rect position_bounds = {};
+  if (!SDL_GetDisplayBounds(checking_display, &position_bounds)) {
+    return nullopt;
+  }
+
+  SDL_Rect work_bounds = {};
+  if (!SDL_GetDisplayUsableBounds(checking_display, &work_bounds)) {
+    return nullopt;
+  }
+
+  const auto scale = SDL_GetDisplayContentScale(display_ids[monitor_id]);
+  if (scale == 0) {
+    OX_LOG_ERROR("{}", SDL_GetError());
+  }
+
+  return SystemDisplay{
+    .name = monitor_name,
+    .position = {position_bounds.x, position_bounds.y},
+    .work_area = {work_bounds.x, work_bounds.y, work_bounds.w, work_bounds.h},
+    .resolution = {display_mode->w, display_mode->h},
+    .refresh_rate = display_mode->refresh_rate,
+    .content_scale = scale,
+  };
 }
 
-uint32_t Window::get_width() {
-  int width, height;
-  glfwGetWindowSize(s_window_handle, &width, &height);
-  return (uint32_t)width;
+void Window::set_cursor(WindowCursor cursor) const {
+  OX_SCOPED_ZONE
+
+  impl->current_cursor = cursor;
+  SDL_SetCursor(impl->cursors[static_cast<usize>(cursor)]);
 }
 
-uint32_t Window::get_height() {
-  int width, height;
-  glfwGetWindowSize(s_window_handle, &width, &height);
-  return (uint32_t)height;
+WindowCursor Window::get_cursor() const {
+  OX_SCOPED_ZONE
+  return impl->current_cursor;
 }
 
-Vec2 Window::get_content_scale(GLFWmonitor* monitor) {
-  float xscale, yscale;
-  glfwGetMonitorContentScale(monitor == nullptr ? glfwGetPrimaryMonitor() : monitor, &xscale, &yscale);
-  return {xscale, yscale};
+void Window::show_cursor(bool show) const {
+  OX_SCOPED_ZONE
+  show ? SDL_ShowCursor() : SDL_HideCursor();
 }
 
-IVec2 Window::get_monitor_size(GLFWmonitor* monitor) {
-  int width, height;
-  glfwGetMonitorWorkarea(monitor == nullptr ? glfwGetPrimaryMonitor() : monitor, nullptr, nullptr, &width, &height);
-  return {width, height};
+VkSurfaceKHR Window::get_surface(VkInstance instance) const {
+  VkSurfaceKHR surface = {};
+  if (!SDL_Vulkan_CreateSurface(impl->handle, instance, nullptr, &surface)) {
+    OX_LOG_ERROR("{}", SDL_GetError());
+    return nullptr;
+  }
+  return surface;
 }
 
-IVec2 Window::get_center_pos(const int width, const int height) {
-  int32_t monitor_width = 0, monitor_height = 0;
-  int32_t monitor_posx = 0, monitor_posy = 0;
-  glfwGetMonitorWorkarea(glfwGetPrimaryMonitor(), &monitor_posx, &monitor_posy, &monitor_width, &monitor_height);
-  const auto video_mode = glfwGetVideoMode(glfwGetPrimaryMonitor());
-
-  return {monitor_posx + (video_mode->width - width) / 2, monitor_posy + (video_mode->height - height) / 2};
+uint32 Window::get_width() const {
+  OX_SCOPED_ZONE
+  return impl->width;
 }
 
-bool Window::is_focused() { return glfwGetWindowAttrib(get_glfw_window(), GLFW_FOCUSED); }
-
-bool Window::is_minimized() { return glfwGetWindowAttrib(get_glfw_window(), GLFW_ICONIFIED); }
-
-void Window::minimize() { glfwIconifyWindow(s_window_handle); }
-
-void Window::maximize() { glfwMaximizeWindow(s_window_handle); }
-
-bool Window::is_maximized() { return glfwGetWindowAttrib(s_window_handle, GLFW_MAXIMIZED); }
-
-void Window::restore() { glfwRestoreWindow(s_window_handle); }
-
-bool Window::is_decorated() { return (bool)glfwGetWindowAttrib(s_window_handle, GLFW_DECORATED); }
-
-void Window::set_undecorated() { glfwSetWindowAttrib(s_window_handle, GLFW_DECORATED, false); }
-
-void Window::set_decorated() { glfwSetWindowAttrib(s_window_handle, GLFW_DECORATED, true); }
-
-bool Window::is_floating() { return (bool)glfwGetWindowAttrib(s_window_handle, GLFW_FLOATING); }
-
-void Window::set_floating() { glfwSetWindowAttrib(s_window_handle, GLFW_FLOATING, true); }
-
-void Window::set_not_floating() { glfwSetWindowAttrib(s_window_handle, GLFW_FLOATING, false); }
-
-bool Window::is_fullscreen_borderless() { return s_window_data.is_fullscreen_borderless; }
-
-void Window::set_fullscreen_borderless() {
-  auto* monitor = glfwGetPrimaryMonitor();
-  const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-  glfwSetWindowMonitor(s_window_handle, monitor, 0, 0, mode->width, mode->height, mode->refreshRate);
-  s_window_data.is_fullscreen_borderless = true;
+uint32 Window::get_height() const {
+  OX_SCOPED_ZONE
+  return impl->height;
 }
 
-void Window::set_windowed() {
-  auto* monitor = glfwGetPrimaryMonitor();
-  const GLFWvidmode* mode = glfwGetVideoMode(monitor);
-  const auto center = get_center_pos(1600, 900); // TODO: why is this harcoded lol
-  glfwSetWindowMonitor(s_window_handle, nullptr, center.x, center.y, 1600, 900, mode->refreshRate);
-  s_window_data.is_fullscreen_borderless = false;
+SDL_Window* Window::get_handle() const {
+  OX_SCOPED_ZONE
+  return impl->handle;
 }
 
-void Window::wait_for_events() {
-  OX_SCOPED_ZONE;
-  glfwWaitEvents();
+float Window::get_content_scale() const {
+  OX_SCOPED_ZONE
+  return impl->content_scale;
+}
+
+float Window::get_refresh_rate() const {
+  OX_SCOPED_ZONE
+  return impl->refresh_rate;
 }
 } // namespace ox

@@ -3,8 +3,9 @@
 #include <string>
 
 #include "Event/Event.hpp"
-#include "Keycodes.hpp"
 #include "Utils/Timestep.hpp"
+
+#include <vuk/Types.hpp>
 
 namespace ox {
 class Layer {
@@ -15,7 +16,7 @@ public:
   virtual void on_attach(EventDispatcher& dispatcher) {}
   virtual void on_detach() {}
   virtual void on_update(const Timestep& delta_time) {}
-  virtual void on_imgui_render() {}
+  virtual void on_render(vuk::Extent3D extent, vuk::Format format) {}
 
   const std::string& get_name() const { return debug_name; }
 

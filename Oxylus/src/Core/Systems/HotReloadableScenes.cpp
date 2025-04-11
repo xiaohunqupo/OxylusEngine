@@ -15,7 +15,7 @@ void HotReloadableScenes::init() {
 
 void HotReloadableScenes::deinit() {}
 
-void HotReloadableScenes::update() {
+void HotReloadableScenes::on_update() {
   using namespace std::filesystem;
   if (last_write_time(scene_path).time_since_epoch().count()
       != m_last_write_time.time_since_epoch().count()) {

@@ -3,6 +3,8 @@
 
 #include "Event/Event.hpp"
 
+#include <vuk/Types.hpp>
+
 namespace ox {
 /// Engine systems interface
 class ESystem {
@@ -14,8 +16,8 @@ public:
   virtual void init() = 0;
   virtual void deinit() = 0;
 
-  virtual void update() {}
-  virtual void imgui_update() {}
+  virtual void on_update() {}
+  virtual void on_render(vuk::Extent3D extent, vuk::Format format) {}
 
   void set_dispatcher(EventDispatcher* dispatcher) { m_dispatcher = dispatcher; }
 

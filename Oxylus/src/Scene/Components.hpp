@@ -51,7 +51,7 @@ struct TagComponent {
 };
 
 struct RelationshipComponent {
-  UUID parent = 0;
+  UUID parent = {};
   std::vector<UUID> children{};
 };
 
@@ -62,26 +62,26 @@ struct PrefabComponent {
 struct TransformComponent {
   static constexpr auto in_place_delete = true;
 
-  Vec3 position = Vec3(0);
-  Vec3 rotation = Vec3(0); // Stored in radians
-  Vec3 scale = Vec3(1);
+  glm::vec3 position = glm::vec3(0);
+  glm::vec3 rotation = glm::vec3(0); // Stored in radians
+  glm::vec3 scale = glm::vec3(1);
 
   TransformComponent() = default;
   TransformComponent(const TransformComponent&) = default;
-  TransformComponent(const Vec3& translation) : position(translation) {}
+  TransformComponent(const glm::vec3& translation) : position(translation) {}
 
-  TransformComponent(const Mat4& transform_matrix) {
+  TransformComponent(const glm::mat4& transform_matrix) {
     OX_SCOPED_ZONE;
     math::decompose_transform(transform_matrix, position, rotation, scale);
   }
 
-  void set_from_matrix(const Mat4& transform_matrix) {
+  void set_from_matrix(const glm::mat4& transform_matrix) {
     OX_SCOPED_ZONE;
     math::decompose_transform(transform_matrix, position, rotation, scale);
   }
 
-  float4x4 get_local_transform() const {
-    return glm::translate(Mat4(1.0f), position) * glm::toMat4(glm::quat(rotation)) * glm::scale(Mat4(1.0f), scale);
+  glm::mat4 get_local_transform() const {
+    return glm::translate(glm::mat4(1.0f), position) * glm::toMat4(glm::quat(rotation)) * glm::scale(glm::mat4(1.0f), scale);
   }
 };
 
@@ -96,9 +96,9 @@ struct MeshComponent {
   // non-serialized data
   uint32_t mesh_id = Asset::INVALID_ID;
   std::vector<Shared<PBRMaterial>> materials = {};
-  Mat4 transform = Mat4{1};
+  glm::mat4 transform = glm::mat4{1};
   std::vector<entt::entity> child_entities = {}; // filled at load
-  std::vector<Mat4> child_transforms = {};       // filled at submit
+  std::vector<glm::mat4> child_transforms = {};       // filled at submit
   AABB aabb = {};
   bool dirty = false;
 
@@ -119,19 +119,19 @@ struct SpriteComponent {
   bool flip_x = false;
 
   // non-serialized data
-  float4x4 transform = {};
+  glm::mat4 transform = {};
   AABB rect = {};
 
   // set if an animation is controlling this sprite
-  std::optional<float2> current_uv_offset = std::nullopt;
+  std::optional<glm::vec2> current_uv_offset = std::nullopt;
 
   SpriteComponent() {
     material = create_shared<SpriteMaterial>();
     material->create();
   }
 
-  float3 get_position() const { return float3(transform[3]); }
-  float2 get_size() const { return {glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1]))}; }
+  glm::vec3 get_position() const { return glm::vec3(transform[3]); }
+  glm::vec2 get_size() const { return {glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1]))}; }
 };
 
 struct SpriteAnimationComponent {
@@ -140,7 +140,7 @@ struct SpriteAnimationComponent {
   bool inverted = false;
   uint32 fps = 0;
   uint32 columns = 1;
-  float2 frame_size = {};
+  glm::vec2 frame_size = {};
 
   // non-serialized data
   float current_time = 0.f;
@@ -178,7 +178,7 @@ struct SpriteAnimationComponent {
 struct TilemapComponent {
   std::string path = {};
   ankerl::unordered_dense::map<std::string, Shared<SpriteMaterial>> layers = {};
-  int2 tilemap_size = {64, 64};
+  glm::ivec2 tilemap_size = {64, 64};
 
   TilemapComponent() {}
 
@@ -207,7 +207,7 @@ struct LightComponent {
   LightType type = Point;
   bool color_temperature_mode = false;
   uint32_t temperature = 6570;
-  Vec3 color = Vec3(1.0f);
+  glm::vec3 color = glm::vec3(1.0f);
   float intensity = 1.0f;
 
   float range = 1.0f;
@@ -221,9 +221,9 @@ struct LightComponent {
   std::vector<float> cascade_distances = {8, 80, 800};
 
   // non-serialized data
-  Vec3 position = {};
-  Vec3 rotation = {};
-  Vec3 direction = {};
+  glm::vec3 position = {};
+  glm::vec3 rotation = {};
+  glm::vec3 direction = {};
   RectPacker::Rect shadow_rect = {};
 };
 
@@ -273,17 +273,17 @@ struct RigidbodyComponent {
   void* runtime_body = nullptr;
 
   // For interpolation/extrapolation
-  Vec3 previous_translation = Vec3(0.0f);
-  glm::quat previous_rotation = Vec3(0.0f);
-  Vec3 translation = Vec3(0.0f);
-  glm::quat rotation = Vec3(0.0f);
+  glm::vec3 previous_translation = glm::vec3(0.0f);
+  glm::quat previous_rotation = glm::vec3(0.0f);
+  glm::vec3 translation = glm::vec3(0.0f);
+  glm::quat rotation = glm::vec3(0.0f);
 
   JPH::Body* get_body() { return static_cast<JPH::Body*>(runtime_body); }
 };
 
 struct BoxColliderComponent {
-  Vec3 size = {0.5f, 0.5f, 0.5f};
-  Vec3 offset = {0.0f, 0.0f, 0.0f};
+  glm::vec3 size = {0.5f, 0.5f, 0.5f};
+  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
   float density = 1.0f;
 
   float friction = 0.5f;
@@ -292,7 +292,7 @@ struct BoxColliderComponent {
 
 struct SphereColliderComponent {
   float radius = 0.5f;
-  Vec3 offset = {0.0f, 0.0f, 0.0f};
+  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
   float density = 1.0f;
 
   float friction = 0.5f;
@@ -302,7 +302,7 @@ struct SphereColliderComponent {
 struct CapsuleColliderComponent {
   float height = 1.0f;
   float radius = 0.5f;
-  Vec3 offset = {0.0f, 0.0f, 0.0f};
+  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
   float density = 1.0f;
 
   float friction = 0.5f;
@@ -313,7 +313,7 @@ struct TaperedCapsuleColliderComponent {
   float height = 1.0f;
   float top_radius = 0.5f;
   float bottom_radius = 0.5f;
-  Vec3 offset = {0.0f, 0.0f, 0.0f};
+  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
   float density = 1.0f;
 
   float friction = 0.5f;
@@ -323,7 +323,7 @@ struct TaperedCapsuleColliderComponent {
 struct CylinderColliderComponent {
   float height = 1.0f;
   float radius = 0.5f;
-  Vec3 offset = {0.0f, 0.0f, 0.0f};
+  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
   float density = 1.0f;
 
   float friction = 0.5f;
@@ -331,7 +331,7 @@ struct CylinderColliderComponent {
 };
 
 struct MeshColliderComponent {
-  Vec3 offset = {0.0f, 0.0f, 0.0f};
+  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
   float friction = 0.5f;
   float restitution = 0.0f;
 };
@@ -369,10 +369,10 @@ struct CharacterControllerComponent {
   float collision_tolerance = 0.05f;
 
   // For interpolation/extrapolation
-  Vec3 previous_translation = Vec3(0.0f);
-  Quat previous_rotation = Vec3(0.0f);
-  Vec3 translation = Vec3(0.0f);
-  Quat rotation = Vec3(0.0f);
+  glm::vec3 previous_translation = glm::vec3(0.0f);
+  glm::quat previous_rotation = glm::vec3(0.0f);
+  glm::vec3 translation = glm::vec3(0.0f);
+  glm::quat rotation = glm::vec3(0.0f);
 
   CharacterControllerComponent() = default;
 };

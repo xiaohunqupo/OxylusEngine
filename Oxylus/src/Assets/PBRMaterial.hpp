@@ -1,5 +1,7 @@
 #pragma once
 
+#include <glm/vec4.hpp>
+
 #include "Material.hpp"
 
 #include "Core/Types.hpp"
@@ -17,8 +19,8 @@ public:
   enum class Sampler : uint32_t { Bilinear = 1, Anisotropy = 2, Nearest = 4 }; // matching the shader
 
   struct Parameters {
-    float4 color = float4(1.0f);
-    float4 emissive = float4(0);
+    glm::vec4 color = glm::vec4(1.0f);
+    glm::vec4 emissive = glm::vec4(0);
 
     float roughness = 1.0f;
     float metallic = 0.0f;
@@ -55,8 +57,8 @@ public:
   PBRMaterial* set_ao_texture(const Shared<Texture>& texture);
   PBRMaterial* set_emissive_texture(const Shared<Texture>& texture);
 
-  PBRMaterial* set_color(float4 color);
-  PBRMaterial* set_emissive(float4 emissive);
+  PBRMaterial* set_color(glm::vec4 color);
+  PBRMaterial* set_emissive(glm::vec4 emissive);
   PBRMaterial* set_roughness(float roughness);
   PBRMaterial* set_metallic(float metallic);
   PBRMaterial* set_reflectance(float reflectance);

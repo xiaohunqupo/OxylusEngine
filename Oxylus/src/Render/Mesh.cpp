@@ -33,7 +33,7 @@ Mesh::Mesh(const std::string_view path) { load_from_file(path.data()); }
 void Mesh::set_transforms() const {
   struct StackElement {
     Node* node;
-    Mat4 parent_global_transform;
+    glm::mat4 parent_global_transform;
   };
   std::stack<StackElement> node_stack;
 
@@ -88,35 +88,35 @@ static std::vector<Vertex> convert_vertex_buffer_format(const fastgltf::Asset& m
                                                         std::optional<std::size_t> texcoord_accessor_index,
                                                         std::optional<std::size_t> color_accessor_index) {
   OX_SCOPED_ZONE;
-  std::vector<float3> positions;
+  std::vector<glm::vec3> positions;
   auto& position_accessor = model.accessors[position_accessor_index];
   positions.resize(position_accessor.count);
-  fastgltf::iterateAccessorWithIndex<float3>(model, position_accessor, [&](float3 position, std::size_t idx) { positions[idx] = position; });
+  fastgltf::iterateAccessorWithIndex<glm::vec3>(model, position_accessor, [&](glm::vec3 position, std::size_t idx) { positions[idx] = position; });
 
-  std::vector<float3> normals;
+  std::vector<glm::vec3> normals;
   auto& normalAccessor = model.accessors[normal_accessor_index];
   normals.resize(normalAccessor.count);
-  fastgltf::iterateAccessorWithIndex<float3>(model, normalAccessor, [&](float3 normal, std::size_t idx) { normals[idx] = normal; });
+  fastgltf::iterateAccessorWithIndex<glm::vec3>(model, normalAccessor, [&](glm::vec3 normal, std::size_t idx) { normals[idx] = normal; });
 
-  std::vector<float2> texcoords;
+  std::vector<glm::vec2> texcoords;
 
   // Textureless meshes will use factors instead of textures
   if (texcoord_accessor_index.has_value()) {
     auto& texcoordAccessor = model.accessors[texcoord_accessor_index.value()];
     texcoords.resize(texcoordAccessor.count);
-    fastgltf::iterateAccessorWithIndex<float2>(model, texcoordAccessor, [&](float2 texcoord, std::size_t idx) { texcoords[idx] = texcoord; });
+    fastgltf::iterateAccessorWithIndex<glm::vec2>(model, texcoordAccessor, [&](glm::vec2 texcoord, std::size_t idx) { texcoords[idx] = texcoord; });
   } else {
     // If no texcoord attribute, fill with empty texcoords to keep everything consistent and happy
     texcoords.resize(positions.size(), {});
   }
 
-  std::vector<float4> colors; // TODO: Unused for now...
+  std::vector<glm::vec4> colors; // TODO: Unused for now...
   if (color_accessor_index.has_value()) {
     auto& color_accessor = model.accessors[color_accessor_index.value()];
     colors.resize(color_accessor.count);
-    fastgltf::iterateAccessorWithIndex<float3>(model, color_accessor, [&](float3 color, std::size_t idx) { colors[idx] = float4(color, 1.0f); });
+    fastgltf::iterateAccessorWithIndex<glm::vec3>(model, color_accessor, [&](glm::vec3 color, std::size_t idx) { colors[idx] = glm::vec4(color, 1.0f); });
   } else {
-    colors.resize(positions.size(), float4(1.0f));
+    colors.resize(positions.size(), glm::vec4(1.0f));
   }
 
   OX_ASSERT(positions.size() == normals.size() && positions.size() == texcoords.size() && positions.size() == colors.size());
@@ -152,7 +152,7 @@ glm::mat4 node_to_mat4(const fastgltf::Node& node) {
     const glm::mat4 rotationMat = glm::mat4_cast(rotation);
 
     // T * R * S
-    transform = glm::translate(Mat4(1.0f), translation) * rotationMat * glm::scale(Mat4(1.0f), scale);
+    transform = glm::translate(glm::mat4(1.0f), translation) * rotationMat * glm::scale(glm::mat4(1.0f), scale);
   }
   // else if (auto* mat = std::get_if<fastgltf::Node::>(&node.transform)) {
   //   transform = glm::make_mat4(mat->data());
@@ -730,7 +730,7 @@ std::vector<Shared<PBRMaterial>> Mesh::load_materials(const fastgltf::Asset& ass
     ma->set_color(glm::make_vec4(material.pbrData.baseColorFactor.data()))
       ->set_metallic(material.pbrData.metallicFactor)
       ->set_roughness(material.pbrData.roughnessFactor)
-      ->set_emissive(float4(glm::make_vec3(material.emissiveFactor.data()), material.emissiveStrength))
+      ->set_emissive(glm::vec4(glm::make_vec3(material.emissiveFactor.data()), material.emissiveStrength))
       ->set_reflectance(0.04f)
       ->set_double_sided(material.doubleSided)
       ->set_alpha_mode((PBRMaterial::AlphaMode)(uint32)material.alphaMode)

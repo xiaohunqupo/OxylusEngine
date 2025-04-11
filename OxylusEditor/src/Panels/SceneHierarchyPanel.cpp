@@ -428,7 +428,7 @@ void SceneHierarchyPanel::on_update() {
   }
 }
 
-void SceneHierarchyPanel::on_imgui_render() {
+void SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   ImGuiScoped::StyleVar cellpad(ImGuiStyleVar_CellPadding, {0, 0});
 
   if (on_begin(ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar)) {

@@ -3,10 +3,12 @@
 #include <plf_colony.h>
 #include <vuk/Value.hpp>
 
+#include <glm/vec2.hpp>
 #include <imgui.h>
 
 #include "Assets/Texture.hpp"
 #include "Core/Layer.hpp"
+#include "Core/Types.hpp"
 
 namespace ox {
 class ImGuiLayer : public Layer {
@@ -19,7 +21,7 @@ public:
   };
 
   Shared<Texture> font_texture = nullptr;
-  std::vector<vuk::Value<vuk::SampledImage>> sampled_images;
+  std::vector<vuk::Value<vuk::ImageAttachment>> rendering_images;
 
   static ImFont* bold_font;
   static ImFont* regular_font;
@@ -42,22 +44,20 @@ public:
   void on_attach(EventDispatcher& dispatcher) override;
   void on_detach() override;
 
-  void begin();
-  void end();
+  void begin_frame(float64 delta_time, vuk::Extent3D extent);
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> end_frame(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target);
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> render_draw_data(vuk::Allocator& allocator,
-                                                                  vuk::Compiler& compiler,
-                                                                  vuk::Value<vuk::ImageAttachment> target);
+  ImTextureID add_image(vuk::Value<vuk::ImageAttachment> attachment);
 
-  ImTextureID add_sampled_image(vuk::Value<vuk::SampledImage> sampled_image);
-  ImTextureID add_image(vuk::Value<vuk::ImageAttachment>);
+  void on_mouse_pos(glm::vec2 pos);
+  void on_mouse_button(uint8 button, bool down);
+  void on_mouse_scroll(glm::vec2 offset);
+  void on_key(uint32 key_code, uint32 scan_code, uint16 mods, bool down);
+  void on_text_input(const char8 *text);
 
   static void apply_theme(bool dark = true);
   static void set_style();
 private:
-  ImDrawData* draw_data = nullptr;
-
-  void init_for_vulkan();
   void add_icon_font(float font_size);
 };
 } // namespace ox

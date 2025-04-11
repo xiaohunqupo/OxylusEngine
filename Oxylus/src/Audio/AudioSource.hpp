@@ -1,10 +1,11 @@
 #pragma once
 
+#include <glm/trigonometric.hpp>
+#include <glm/vec3.hpp>
 #include <string>
 
 #include "Assets/Asset.hpp"
 #include "Core/Base.hpp"
-#include "Core/Types.hpp"
 
 struct ma_sound;
 
@@ -62,9 +63,9 @@ public:
   void set_max_distance(float maxDistance) const;
   void set_cone(float innerAngle, float outerAngle, float outerGain) const;
   void set_doppler_factor(float factor) const;
-  void set_position(const Vec3& position) const;
-  void set_direction(const Vec3& forward) const;
-  void set_velocity(const Vec3& velocity) const;
+  void set_position(const glm::vec3& position) const;
+  void set_direction(const glm::vec3& forward) const;
+  void set_velocity(const glm::vec3& velocity) const;
 
 private:
   Unique<ma_sound> m_sound;

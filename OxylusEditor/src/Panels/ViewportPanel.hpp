@@ -22,7 +22,7 @@ public:
   ViewportPanel();
   ~ViewportPanel() override = default;
 
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   void set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel);
 
@@ -36,21 +36,21 @@ private:
                             const float height,
                             const float xpos,
                             const float ypos,
-                            const Mat4& view_proj,
+                            const glm::mat4& view_proj,
                             const Frustum& frustum,
                             Scene* scene) {
     if (gizmo_image_map[typeid(T).hash_code()]) {
       auto view = scene->registry.view<TransformComponent, T>();
 
       for (const auto&& [entity, transform, component] : view.each()) {
-        Vec3 pos = eutil::get_world_transform(scene, entity)[3];
+        glm::vec3 pos = eutil::get_world_transform(scene, entity)[3];
 
         const auto inside = frustum.is_inside(pos);
 
         if (inside == (uint32_t)Intersection::Outside)
           continue;
 
-        const Vec2 screen_pos = math::world_to_screen(pos, view_proj, width, height, xpos, ypos);
+        const glm::vec2 screen_pos = math::world_to_screen(pos, view_proj, width, height, xpos, ypos);
         ImGui::SetCursorPos({screen_pos.x - ImGui::GetFontSize() * 0.5f, screen_pos.y - ImGui::GetFontSize() * 0.5f});
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
@@ -72,12 +72,12 @@ private:
   Entity hovered_entity = {};
   SceneHierarchyPanel* m_scene_hierarchy_panel = nullptr;
 
-  Vec2 m_viewport_size = {};
-  Vec2 viewport_bounds[2] = {};
-  Vec2 viewport_panel_size = {};
-  Vec2 viewport_position = {};
-  Vec2 viewport_offset = {};
-  Vec2 m_gizmo_position = Vec2(1.0f, 1.0f);
+  glm::vec2 m_viewport_size = {};
+  glm::vec2 viewport_bounds[2] = {};
+  glm::vec2 viewport_panel_size = {};
+  glm::vec2 viewport_position = {};
+  glm::vec2 viewport_offset = {};
+  glm::vec2 m_gizmo_position = glm::vec2(1.0f, 1.0f);
   int m_gizmo_type = -1;
   int m_gizmo_mode = 0;
 
@@ -91,8 +91,8 @@ private:
   float m_rotation_dampening = 0.3f;
   bool m_use_editor_camera = true;
   bool m_using_editor_camera = false;
-  Vec2 m_locked_mouse_position = Vec2(0.0f);
-  Vec3 m_translation_velocity = Vec3(0);
-  Vec2 m_rotation_velocity = Vec2(0);
+  glm::vec2 m_locked_mouse_position = glm::vec2(0.0f);
+  glm::vec3 m_translation_velocity = glm::vec3(0);
+  glm::vec2 m_rotation_velocity = glm::vec2(0);
 };
 } // namespace ox

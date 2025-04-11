@@ -10,7 +10,7 @@ class InspectorPanel : public EditorPanel {
 public:
   InspectorPanel();
 
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   static void draw_pbr_material_properties(Shared<PBRMaterial>& material);
   static void draw_sprite_material_properties(Shared<SpriteMaterial>& material);

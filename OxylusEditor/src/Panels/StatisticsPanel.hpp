@@ -7,7 +7,7 @@ namespace ox {
 class StatisticsPanel : public EditorPanel {
 public:
   StatisticsPanel();
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
 private:
   float fps_values[50] = {};

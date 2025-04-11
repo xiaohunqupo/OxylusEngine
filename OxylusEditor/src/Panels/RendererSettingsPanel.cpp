@@ -2,17 +2,17 @@
 
 #include <icons/IconsMaterialDesignIcons.h>
 
+#include "Core/App.hpp"
 #include "imgui.h"
 
-#include "Render/Renderer.hpp"
+#include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "UI/OxUI.hpp"
-#include "Render/RendererConfig.hpp"
 
 namespace ox {
 RendererSettingsPanel::RendererSettingsPanel() : EditorPanel("Renderer Settings", ICON_MDI_GPU, true) {}
 
-void RendererSettingsPanel::on_imgui_render() {
+void RendererSettingsPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (on_begin()) {
     float avg = 0.0;
 
@@ -30,7 +30,6 @@ void RendererSettingsPanel::on_imgui_render() {
     const double fps = 1.0 / static_cast<double>(avg) * 1000.0;
     ImGui::Text("FPS: %lf / (ms): %lf", static_cast<double>(avg), fps);
     ImGui::Text("GPU: %s", App::get_vkcontext().device_name.c_str());
-    ImGui::Text("Internal Render Size: [ %u, %u ]", Renderer::get_viewport_width(), Renderer::get_viewport_height());
     ui::tooltip_hover("Current viewport resolution");
 
     ImGui::Separator();

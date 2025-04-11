@@ -2,9 +2,9 @@
 
 #include <ankerl/unordered_dense.h>
 
-#include "SceneEvents.hpp"
 #include "Components.hpp"
 #include "EntitySerializer.hpp"
+#include "SceneEvents.hpp"
 
 #include <entt/entity/registry.hpp>
 #include "Core/Systems/System.hpp"
@@ -16,6 +16,7 @@ namespace ox {
 class RenderPipeline;
 class SceneRenderer;
 
+enum class SceneID : uint64 { Invalid = ~0_u64 };
 class Scene {
 public:
   std::string scene_name = "Untitled";
@@ -26,11 +27,12 @@ public:
   EventDispatcher dispatcher;
 
   Scene();
-  Scene(std::string name);
-  Scene(const Shared<RenderPipeline>& render_pipeline);
+  Scene(const std::string& name);
   Scene(const Scene&);
 
   ~Scene();
+
+  void init(const std::string& name);
 
   Entity create_entity(const std::string& name = "New Entity");
   Entity create_entity_with_uuid(UUID uuid, const std::string& name = std::string());
@@ -68,7 +70,7 @@ public:
   Entity get_entity_by_uuid(UUID uuid);
 
   // Renderer
-  Shared<SceneRenderer> get_renderer() { return scene_renderer; }
+  const Unique<SceneRenderer>& get_renderer() { return scene_renderer; }
 
   entt::registry& get_registry() { return registry; }
 
@@ -79,14 +81,12 @@ private:
   bool running = false;
 
   // Renderer
-  Shared<SceneRenderer> scene_renderer;
+  Unique<SceneRenderer> scene_renderer;
 
   // Physics
   Physics3DContactListener* contact_listener_3d = nullptr;
   Physics3DBodyActivationListener* body_activation_listener_3d = nullptr;
   float physics_frame_accumulator = 0.0f;
-
-  void init(const Shared<RenderPipeline>& render_pipeline = nullptr);
 
   void rigidbody_component_ctor(entt::registry& reg, Entity entity);
   void collider_component_ctor(entt::registry& reg, Entity entity);

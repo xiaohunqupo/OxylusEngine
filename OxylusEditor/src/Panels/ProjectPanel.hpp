@@ -9,7 +9,7 @@ public:
   ~ProjectPanel() override = default;
 
   void on_update() override;
-  void on_imgui_render() override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   void load_project_for_editor(const std::string& filepath);
 

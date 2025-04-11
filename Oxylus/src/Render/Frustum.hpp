@@ -1,17 +1,21 @@
 ﻿#pragma once
-#include "Core/Types.hpp"
+
+#include <glm/ext/scalar_constants.hpp>
+#include <glm/mat4x4.hpp>
+#include <glm/geometric.hpp>
+#include <glm/vec3.hpp>
 
 namespace ox {
 struct Plane {
-  Vec3 normal = {0.f, 1.f, 0.f}; // unit vector
+  glm::vec3 normal = {0.f, 1.f, 0.f}; // unit vector
   float distance = 0.f;          // Distance with origin
 
   Plane() = default;
-  Plane(Vec3 norm) : normal(normalize(norm)) {}
+  Plane(glm::vec3 norm) : normal(glm::normalize(norm)) {}
 
-  Plane(const Vec3& p1, const Vec3& norm) : normal(normalize(norm)), distance(dot(normal, p1)) {}
+  Plane(const glm::vec3& p1, const glm::vec3& norm) : normal(normalize(norm)), distance(dot(normal, p1)) {}
 
-  float get_distance(const Vec3& point) const { return dot(normal, point) - distance; }
+  float get_distance(const glm::vec3& point) const { return dot(normal, point) - distance; }
 
   bool intersect(const Plane other) const {
     const auto d = glm::cross(normal, other.normal);
@@ -40,7 +44,7 @@ struct Frustum {
     planes[5] = &near_face;
   }
 
-  bool is_inside(const Vec3& point) const {
+  bool is_inside(const glm::vec3& point) const {
     for (const auto plane : planes) {
       if (plane->get_distance(point) < 0.0f) {
         return false;
@@ -59,7 +63,7 @@ struct Frustum {
     return false;
   }
 
-  static Frustum from_matrix(const Mat4& view_projection) {
+  static Frustum from_matrix(const glm::mat4& view_projection) {
     Frustum frustum = {};
 
     frustum.near_face = Plane(view_projection[2]);

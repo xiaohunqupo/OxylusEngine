@@ -32,11 +32,11 @@ inline uint32 pack_u16(uint16 low, uint16 high) {
 inline uint16 unpack_u32_low(uint32 packed) { return packed & 0xFFFF; }
 inline uint16 unpack_u32_high(uint32 packed) { return (packed >> 16) & 0xFFFF; }
 
-inline float2 sign_not_zero(float2 v) { return {(v.x >= 0.0f) ? +1.0f : -1.0f, (v.y >= 0.0f) ? +1.0f : -1.0f}; }
+inline glm::vec2 sign_not_zero(glm::vec2 v) { return {(v.x >= 0.0f) ? +1.0f : -1.0f, (v.y >= 0.0f) ? +1.0f : -1.0f}; }
 
-inline float2 float32x3_to_oct(float3 v) {
-  const float2 p = float2{v.x, v.y} * (1.0f / (glm::abs(v.x) + glm::abs(v.y) + glm::abs(v.z)));
-  return (v.z <= 0.0f) ? ((1.0f - glm::abs(float2{p.y, p.x})) * sign_not_zero(p)) : p;
+inline glm::vec2 float32x3_to_oct(glm::vec3 v) {
+  const glm::vec2 p = glm::vec2{v.x, v.y} * (1.0f / (glm::abs(v.x) + glm::abs(v.y) + glm::abs(v.z)));
+  return (v.z <= 0.0f) ? ((1.0f - glm::abs(glm::vec2{p.y, p.x})) * sign_not_zero(p)) : p;
 }
 
 constexpr uint32_t previous_power2(uint32_t x) {
@@ -47,13 +47,13 @@ constexpr uint32_t previous_power2(uint32_t x) {
   return v;
 }
 
-inline float3 unproject_uv_zo(float depth, float2 uv, const float4x4& invXProj) {
-  float4 ndc = float4(uv * 2.0f - 1.0f, depth, 1.0f);
-  float4 world = invXProj * ndc;
-  return float3(world) / world.w;
+inline glm::vec3 unproject_uv_zo(float depth, glm::vec2 uv, const glm::mat4& invXProj) {
+  glm::vec4 ndc = glm::vec4(uv * 2.0f - 1.0f, depth, 1.0f);
+  glm::vec4 world = invXProj * ndc;
+  return glm::vec3(world) / world.w;
 }
 
-bool decompose_transform(const float4x4& transform, float3& translation, float3& rotation, float3& scale);
+bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale);
 
 template <typename T>
 static T smooth_damp(const T& current, const T& target, T& current_velocity, float smooth_time, const float max_speed, float delta_time) {
@@ -99,15 +99,15 @@ static T smooth_damp(const T& current, const T& target, T& current_velocity, flo
 float lerp(float a, float b, float t);
 float inverse_lerp(float a, float b, float value);
 float inverse_lerp_clamped(float a, float b, float value);
-float2 world_to_screen(const float3& world_pos, const float4x4& mvp, float width, float height, float win_pos_x, float win_pos_y);
+glm::vec2 world_to_screen(const glm::vec3& world_pos, const glm::mat4& mvp, float width, float height, float win_pos_x, float win_pos_y);
 
-float4 transform(const float4& vec, const float4x4& view);
-float4 transform_normal(const float4& vec, const float4x4& mat);
-float4 transform_coord(const float4& vec, const float4x4& view);
+glm::vec4 transform(const glm::vec4& vec, const glm::mat4& view);
+glm::vec4 transform_normal(const glm::vec4& vec, const glm::mat4& mat);
+glm::vec4 transform_coord(const glm::vec4& vec, const glm::mat4& view);
 
-float3 from_jolt(const JPH::Vec3& vec);
-JPH::Vec3 to_jolt(const float3& vec);
-float4 from_jolt(const JPH::Vec4& vec);
-JPH::Vec4 to_jolt(const float4& vec);
+glm::vec3 from_jolt(const JPH::Vec3& vec);
+JPH::Vec3 to_jolt(const glm::vec3& vec);
+glm::vec4 from_jolt(const JPH::Vec4& vec);
+JPH::Vec4 to_jolt(const glm::vec4& vec);
 AABB from_jolt(const JPH::AABox& aabb);
 } // namespace ox::math

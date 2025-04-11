@@ -39,7 +39,7 @@ public:
 
   void init() override;
   void deinit() override;
-  void set_instance();
+  static void set_instance();
   void step(float physicsTs);
   void debug_draw();
 

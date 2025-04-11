@@ -3,6 +3,7 @@
 #include "Assets/Texture.hpp"
 #include "Audio/AudioSource.hpp"
 #include "Core/App.hpp"
+#include "Core/VFS.hpp"
 #include "Render/Mesh.hpp"
 
 #include "Utils/Log.hpp"
