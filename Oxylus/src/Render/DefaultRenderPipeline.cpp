@@ -9,6 +9,7 @@
 #include <vuk/runtime/vk/Pipeline.hpp>
 #include <vuk/vsl/Core.hpp>
 
+#include "Camera.hpp"
 #include "DebugRenderer.hpp"
 #include "MeshVertex.hpp"
 #include "RendererCommon.hpp"
@@ -342,36 +343,36 @@ void DefaultRenderPipeline::bind_camera_buffer(vuk::CommandBuffer& command_buffe
 }
 
 DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data(const bool use_frozen_camera) {
-  auto* cam = use_frozen_camera ? &frozen_camera : current_camera;
+  auto cam = use_frozen_camera ? frozen_camera : current_camera;
 
   CameraData camera_data{
-    .position = glm::vec4(cam->get_position(), 0.0f),
-    .projection = cam->get_projection_matrix(),
-    .inv_projection = cam->get_inv_projection_matrix(),
-    .view = cam->get_view_matrix(),
-    .inv_view = cam->get_inv_view_matrix(),
-    .projection_view = cam->get_projection_matrix() * cam->get_view_matrix(),
-    .inv_projection_view = cam->get_inverse_projection_view(),
-    .previous_projection = cam->get_projection_matrix(),
-    .previous_inv_projection = cam->get_inv_projection_matrix(),
-    .previous_view = cam->get_view_matrix(),
-    .previous_inv_view = cam->get_inv_view_matrix(),
-    .previous_projection_view = cam->get_projection_matrix() * cam->get_view_matrix(),
-    .previous_inv_projection_view = cam->get_inverse_projection_view(),
-    .near_clip = cam->get_near(),
-    .far_clip = cam->get_far(),
-    .fov = cam->get_fov(),
+    .position = glm::vec4(cam.position, 0.0f),
+    .projection = cam.get_projection_matrix(),
+    .inv_projection = cam.get_inv_projection_matrix(),
+    .view = cam.get_view_matrix(),
+    .inv_view = cam.get_inv_view_matrix(),
+    .projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
+    .inv_projection_view = cam.get_inverse_projection_view(),
+    .previous_projection = cam.get_projection_matrix(),
+    .previous_inv_projection = cam.get_inv_projection_matrix(),
+    .previous_view = cam.get_view_matrix(),
+    .previous_inv_view = cam.get_inv_view_matrix(),
+    .previous_projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
+    .previous_inv_projection_view = cam.get_inverse_projection_view(),
+    .near_clip = cam.near_clip,
+    .far_clip = cam.far_clip,
+    .fov = cam.fov,
     .output_index = 0,
   };
 
   // if (RendererCVar::cvar_fsr_enable.get())
   // cam->set_jitter(fsr.get_jitter());
 
-  camera_data.temporalaa_jitter = cam->get_jitter();
-  camera_data.temporalaa_jitter_prev = cam->get_previous_jitter();
+  camera_data.temporalaa_jitter = cam.jitter;
+  camera_data.temporalaa_jitter_prev = cam.jitter_prev;
 
   for (uint32 i = 0; i < 6; i++) {
-    const auto* plane = cam->get_frustum().planes[i];
+    const auto* plane = Camera::get_frustum(cam, cam.position).planes[i];
     camera_data.frustum_planes[i] = {plane->normal, plane->distance};
   }
 
@@ -379,7 +380,7 @@ DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data(co
 }
 
 void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light,
-                                                     Camera& camera,
+                                                     const CameraComponent& camera,
                                                      std::vector<CameraSH>& camera_data,
                                                      uint32_t cascade_count) {
   OX_SCOPED_ZONE;
@@ -405,7 +406,7 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
   // Compute shadow cameras:
   for (uint32_t cascade = 0; cascade < cascade_count; ++cascade) {
     // Compute cascade bounds in light-view-space from the main frustum corners:
-    const float farPlane = camera.get_far();
+    const float farPlane = camera.far_clip;
     const float split_near = cascade == 0 ? 0 : light.cascade_distances[cascade - 1] / farPlane;
     const float split_far = light.cascade_distances[cascade] / farPlane;
 
@@ -662,7 +663,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
           case LightComponent::Directional: {
             auto cascade_count = (uint32)lc.cascade_distances.size();
             auto sh_cameras = std::vector<CameraSH>(cascade_count);
-            create_dir_light_cameras(lc, *current_camera, sh_cameras, cascade_count);
+            create_dir_light_cameras(lc, current_camera, sh_cameras, cascade_count);
 
             light.matrix_index = (uint32)shader_entities.size();
             for (uint32 cascade = 0; cascade < cascade_count; ++cascade) {
@@ -881,7 +882,7 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
         if (!light.cast_shadows)
           continue;
 
-        const float dist = distance(current_camera->get_position(), light.position);
+        const float dist = distance(current_camera.position, light.position);
         const float range = light.range;
         const float amount = std::min(1.0f, range / std::max(0.001f, dist)) * iterative_scaling;
 
@@ -1002,9 +1003,6 @@ void DefaultRenderPipeline::on_dispatcher_events(EventDispatcher& dispatcher) {
 void DefaultRenderPipeline::submit_mesh_component(const MeshComponent& render_object) {
   OX_SCOPED_ZONE;
 
-  if (!current_camera)
-    return;
-
   mesh_component_list.emplace_back(render_object);
 }
 
@@ -1019,21 +1017,21 @@ void DefaultRenderPipeline::submit_sprite(const SpriteComponent& sprite) {
   OX_SCOPED_ZONE;
   sprite_component_list.emplace_back(sprite);
 
-  const auto distance = glm::distance(glm::vec3(0.f, 0.f, current_camera->get_position().z), glm::vec3(0.f, 0.f, sprite.get_position().z));
+  const auto distance = glm::distance(glm::vec3(0.f, 0.f, current_camera.position.z), glm::vec3(0.f, 0.f, sprite.get_position().z));
   render_queue_2d.add(sprite, distance);
 }
 
-void DefaultRenderPipeline::submit_camera(Camera* camera) {
+void DefaultRenderPipeline::submit_camera(const CameraComponent& camera) {
   OX_SCOPED_ZONE;
 
-  if ((bool)RendererCVar::cvar_freeze_culling_frustum.get() && !saved_camera) {
+  if (static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get()) && !saved_camera) {
     saved_camera = true;
-    frozen_camera = *current_camera;
-  } else if (!(bool)RendererCVar::cvar_freeze_culling_frustum.get() && saved_camera) {
+    frozen_camera = current_camera;
+  } else if (!static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get()) && saved_camera) {
     saved_camera = false;
   }
 
-  if ((bool)RendererCVar::cvar_freeze_culling_frustum.get() && (bool)RendererCVar::cvar_draw_camera_frustum.get()) {
+  if (static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get()) && static_cast<bool>(RendererCVar::cvar_draw_camera_frustum.get())) {
     const auto proj = frozen_camera.get_projection_matrix() * frozen_camera.get_view_matrix();
     DebugRenderer::draw_frustum(proj, glm::vec4(0, 1, 0, 1), 1.0f, 0.0f); // reversed-z
   }
@@ -1045,14 +1043,6 @@ void DefaultRenderPipeline::shutdown() {}
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator& frame_allocator, vuk::Extent3D ext, vuk::Format format) {
   OX_SCOPED_ZONE;
-  if (!current_camera) {
-    OX_LOG_ERROR("No camera is set for rendering!");
-    // set a temporary one
-    if (!default_camera)
-      default_camera = create_shared<Camera>();
-    current_camera = default_camera.get();
-  }
-
   auto& vk_context = App::get_vkcontext();
 
   glm::vec3 sun_direction = {0, 1, 0};

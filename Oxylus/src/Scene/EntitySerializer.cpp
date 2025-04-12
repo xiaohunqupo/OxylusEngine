@@ -231,19 +231,19 @@ void EntitySerializer::serialize_entity(rapidjson::PrettyWriter<rapidjson::Strin
                                        writer,
                                        [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, CameraComponent& c) {
     wr.String("projection");
-    wr.Uint(static_cast<uint32>(c.camera->get_projection()));
+    wr.Uint(static_cast<uint32>(c.projection));
 
     wr.String("fov");
-    wr.Double(c.camera->get_fov());
+    wr.Double(c.fov);
 
     wr.String("near");
-    wr.Double(c.camera->get_near());
+    wr.Double(c.near_clip);
 
     wr.String("far");
-    wr.Double(c.camera->get_far());
+    wr.Double(c.far_clip);
 
     wr.String("zoom");
-    wr.Double(c.camera->get_zoom());
+    wr.Double(c.zoom);
   });
 
   serialize_component<RigidbodyComponent>("RigidbodyComponent",
@@ -625,11 +625,11 @@ UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene
   if (entity.HasMember("CameraComponent")) {
     for (const auto& cc : entity["CameraComponent"].GetArray()) {
       auto& c_component = registry.emplace<CameraComponent>(deserialized_entity);
-      c_component.camera->set_projection(static_cast<Camera::Projection>(cc["projection"].GetUint()));
-      c_component.camera->set_fov(cc["fov"].GetFloat());
-      c_component.camera->set_near(cc["near"].GetFloat());
-      c_component.camera->set_far(cc["far"].GetFloat());
-      c_component.camera->set_zoom(cc["zoom"].GetFloat());
+      c_component.projection = static_cast<CameraComponent::Projection>(cc["projection"].GetUint());
+      c_component.fov = cc["fov"].GetFloat();
+      c_component.near_clip = cc["near"].GetFloat();
+      c_component.far_clip = cc["far"].GetFloat();
+      c_component.zoom = cc["zoom"].GetFloat();
     }
   }
 

@@ -2,9 +2,9 @@
 
 #include <sol/state.hpp>
 
-#include "Scene/Components.hpp"
 #include "Assets/PBRMaterial.hpp"
 #include "LuaHelpers.hpp"
+#include "Scene/Components.hpp"
 
 namespace ox {
 void LuaBindings::bind_components(const Shared<sol::state>& state) {
@@ -45,22 +45,17 @@ void LuaBindings::bind_mesh_component(const Shared<sol::state>& state) {
 }
 
 void LuaBindings::bind_camera_component(const Shared<sol::state>& state) {
-  auto camera_type = state->new_usertype<Camera>("Camera");
-  SET_TYPE_FIELD(camera_type, Camera, set_yaw);
-  SET_TYPE_FIELD(camera_type, Camera, set_pitch);
-  SET_TYPE_FIELD(camera_type, Camera, get_yaw);
-  SET_TYPE_FIELD(camera_type, Camera, get_pitch);
-  SET_TYPE_FIELD(camera_type, Camera, set_near);
-  SET_TYPE_FIELD(camera_type, Camera, set_far);
-  SET_TYPE_FIELD(camera_type, Camera, get_near);
-  SET_TYPE_FIELD(camera_type, Camera, get_far);
-  SET_TYPE_FIELD(camera_type, Camera, get_fov);
-  SET_TYPE_FIELD(camera_type, Camera, set_fov);
-  SET_TYPE_FIELD(camera_type, Camera, get_aspect);
-  SET_TYPE_FIELD(camera_type, Camera, get_forward);
-  SET_TYPE_FIELD(camera_type, Camera, get_right);
-  SET_TYPE_FIELD(camera_type, Camera, get_screen_ray);
+  auto camera_type = state->new_usertype<CameraComponent>("Camera");
 
-  REGISTER_COMPONENT(state, CameraComponent, FIELD(CameraComponent, camera));
+  REGISTER_COMPONENT(state,
+                     CameraComponent,
+                     FIELD(CameraComponent, yaw),
+                     FIELD(CameraComponent, pitch),
+                     FIELD(CameraComponent, near_clip),
+                     FIELD(CameraComponent, far_clip),
+                     FIELD(CameraComponent, fov),
+                     FIELD(CameraComponent, aspect),
+                     FIELD(CameraComponent, forward),
+                     FIELD(CameraComponent, right));
 }
 } // namespace ox

@@ -722,14 +722,19 @@ void Scene::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) {
 void Scene::on_runtime_update(const Timestep& delta_time) {
   OX_SCOPED_ZONE;
 
+  const auto screen_extent = App::get()->get_swapchain_extent();
+
   // Camera
   {
     OX_SCOPED_ZONE_N("Camera System");
     const auto camera_view = registry.view<TransformComponent, CameraComponent>();
     for (const auto entity : camera_view) {
       auto [transform, camera] = camera_view.get<TransformComponent, CameraComponent>(entity);
-      camera.camera->update(transform.position, transform.rotation);
-      scene_renderer->get_render_pipeline()->submit_camera(camera.camera.get());
+      camera.position = transform.position;
+      camera.pitch = transform.rotation.x;
+      camera.yaw = transform.rotation.y;
+      Camera::update(camera, screen_extent);
+      scene_renderer->get_render_pipeline()->submit_camera(camera);
     }
   }
 
@@ -834,9 +839,9 @@ void Scene::on_imgui_render(const Timestep& delta_time) {
   }
 }
 
-void Scene::on_editor_update(const Timestep& delta_time, Camera& camera) {
+void Scene::on_editor_update(const Timestep& delta_time, CameraComponent& camera) const {
   OX_SCOPED_ZONE;
-  scene_renderer->get_render_pipeline()->submit_camera(&camera);
+  scene_renderer->get_render_pipeline()->submit_camera(camera);
   scene_renderer->update(delta_time);
 }
 } // namespace ox

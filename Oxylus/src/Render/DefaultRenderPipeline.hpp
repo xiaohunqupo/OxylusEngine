@@ -5,6 +5,7 @@
 #include <glm/gtc/packing.hpp>
 #include <vuk/Value.hpp>
 
+#include "Frustum.hpp"
 #include "Passes/FSR.hpp"
 #include "RenderPipeline.hpp"
 #include "RendererConfig.hpp"
@@ -34,12 +35,12 @@ public:
   void on_dispatcher_events(EventDispatcher& dispatcher) override;
   void submit_mesh_component(const MeshComponent& render_object) override;
   void submit_light(const LightComponent& light) override;
-  void submit_camera(Camera* camera) override;
+  void submit_camera(const CameraComponent& camera) override;
   void submit_sprite(const SpriteComponent& sprite) override;
 
 private:
-  Camera* current_camera = nullptr;
-  Camera frozen_camera = {};
+  CameraComponent current_camera = {};
+  CameraComponent frozen_camera = {};
 
   bool initalized = false;
   bool first_pass = true;
@@ -508,7 +509,6 @@ private:
   std::vector<SpriteComponent> sprite_component_list;
   Shared<Mesh> m_quad = nullptr;
   Shared<Mesh> m_cube = nullptr;
-  Shared<Camera> default_camera;
 
   std::vector<LightComponent> scene_lights = {};
   LightComponent* dir_light_data = nullptr;
@@ -516,7 +516,7 @@ private:
   void clear();
   void bind_camera_buffer(vuk::CommandBuffer& command_buffer);
   CameraData get_main_camera_data(bool use_frozen_camera = false);
-  void create_dir_light_cameras(const LightComponent& light, Camera& camera, std::vector<CameraSH>& camera_data, uint32_t cascade_count);
+  void create_dir_light_cameras(const LightComponent& light, const CameraComponent& camera, std::vector<CameraSH>& camera_data, uint32_t cascade_count);
   void create_cubemap_cameras(std::vector<CameraSH>& camera_data, glm::vec3 pos = {}, float near = 0.1f, float far = 90.0f);
   void update_frame_data(vuk::Allocator& allocator);
   void create_static_resources();

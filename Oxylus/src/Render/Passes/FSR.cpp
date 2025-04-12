@@ -256,7 +256,7 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                vuk::Value<vuk::ImageAttachment>& output,
                                                vuk::Value<vuk::ImageAttachment>& input_depth,
                                                vuk::Value<vuk::ImageAttachment>& input_velocity,
-                                               Camera& camera,
+                                               CameraComponent& camera,
                                                double dt,
                                                float sharpness,
                                                uint32_t frame_index) {
@@ -270,12 +270,12 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     glm::uvec4 rcasConfig;
   };
 
-  fsr2_constants.jitterOffset[0] = camera.get_jitter().x * fsr2_constants.renderSize[0] * 0.5f;
-  fsr2_constants.jitterOffset[1] = camera.get_jitter().y * fsr2_constants.renderSize[1] * -0.5f;
+  fsr2_constants.jitterOffset[0] = camera.jitter.x * fsr2_constants.renderSize[0] * 0.5f;
+  fsr2_constants.jitterOffset[1] = camera.jitter.y * fsr2_constants.renderSize[1] * -0.5f;
 
   // compute the horizontal FOV for the shader from the vertical one.
   const float aspectRatio = (float)fsr2_constants.renderSize[0] / (float)fsr2_constants.renderSize[1];
-  const float cameraAngleHorizontal = atan(tan(camera.get_fov() / 2) * aspectRatio) * 2;
+  const float cameraAngleHorizontal = atan(tan(camera.fov / 2) * aspectRatio) * 2;
   fsr2_constants.tanHalfFOV = tanf(cameraAngleHorizontal * 0.5f);
 
   // reversed depth

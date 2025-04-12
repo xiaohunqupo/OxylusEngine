@@ -7,7 +7,6 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "Assets/AssetManager.hpp"
-#include "Assets/TilemapSerializer.hpp"
 
 #include "Core/Systems/SystemManager.hpp"
 #include "Scene/Components.hpp"
@@ -215,8 +214,6 @@ void InspectorPanel::draw_components(Entity entity) {
   TagComponent* tag_component = context->registry.try_get<TagComponent>(entity);
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.75f);
   if (tag_component) {
-    auto& tag = tag_component->tag;
-
     if (s_rename_entity)
       ImGui::SetKeyboardFocusHere();
     ui::input_text("##Tag", &tag_component->tag, ImGuiInputTextFlags_EnterReturnsTrue);
@@ -768,32 +765,20 @@ void InspectorPanel::draw_components(Entity entity) {
   });
 
   draw_component<CameraComponent>("Camera Component", context->registry, entity, [](CameraComponent& component, entt::entity e) {
-    const auto is_perspective = component.camera->get_projection() == Camera::Projection::Perspective;
+    const auto is_perspective = component.projection == CameraComponent::Projection::Perspective;
     ui::begin_properties();
 
     const char* proj_strs[] = {"Perspective", "Orthographic"};
-    int proj = static_cast<int>(component.camera->get_projection());
+    int proj = static_cast<int>(component.projection);
     if (ui::property("Projection", &proj, proj_strs, 2))
-      component.camera->set_projection(static_cast<Camera::Projection>(proj));
+      component.projection = static_cast<CameraComponent::Projection>(proj);
 
     if (is_perspective) {
-      float fov = component.camera->get_fov();
-      if (ui::property("FOV", &fov)) {
-        component.camera->set_fov(fov);
-      }
-      float near_clip = component.camera->get_near();
-      if (ui::property("Near Clip", &near_clip)) {
-        component.camera->set_near(near_clip);
-      }
-      float far_clip = component.camera->get_far();
-      if (ui::property("Far Clip", &far_clip)) {
-        component.camera->set_far(far_clip);
-      }
+      ui::property("FOV", &component.fov);
+      ui::property("Near Clip", &component.near_clip);
+      ui::property("Far Clip", &component.far_clip);
     } else {
-      float zoom = component.camera->get_zoom();
-      if (ui::property("Zoom", &zoom)) {
-        component.camera->set_zoom(zoom);
-      }
+      ui::property("Zoom", &component.zoom);
     }
 
     ui::end_properties();

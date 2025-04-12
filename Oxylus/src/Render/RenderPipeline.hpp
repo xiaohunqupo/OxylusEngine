@@ -32,7 +32,7 @@ public:
   virtual void on_submit() {} // TODO: Not called anymore!! Old Code!!
   virtual void submit_mesh_component(const MeshComponent& render_object) {}
   virtual void submit_light(const LightComponent& light) {}
-  virtual void submit_camera(Camera* camera) {}
+  virtual void submit_camera(const CameraComponent& camera) {}
   virtual void submit_sprite(const SpriteComponent& sprite) {}
 
   virtual const std::string& get_name() { return _name; }

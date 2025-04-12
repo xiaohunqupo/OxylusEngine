@@ -4,7 +4,7 @@
 #include "Core/Types.hpp"
 
 namespace ox {
-class Camera;
+struct CameraComponent;
 
 // Global consts that need to be visible from both shader and cpp side
 #define XE_GTAO_DEPTH_MIP_LEVELS 5 // this one is hard-coded to 5 for now
@@ -78,6 +78,6 @@ void gtao_update_constants(GTAOConstants& consts,
                            int viewport_width,
                            int viewport_height,
                            const GTAOSettings& settings,
-                           const ox::Camera* camera,
+                           const ox::CameraComponent& camera,
                            unsigned int frameCounter);
 } // namespace ox

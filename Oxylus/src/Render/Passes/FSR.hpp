@@ -11,7 +11,7 @@ struct PipelineBaseCreateInfo;
 class Context;
 } // namespace vuk
 namespace ox {
-class Camera;
+class CameraComponent;
 class FSR {
 public:
   FSR() = default;
@@ -28,7 +28,7 @@ public:
                                             vuk::Value<vuk::ImageAttachment>& output,
                                             vuk::Value<vuk::ImageAttachment>& depth,
                                             vuk::Value<vuk::ImageAttachment>& velocity,
-                                            Camera& camera,
+                                            CameraComponent& camera,
                                             double dt,
                                             float sharpness,
                                             uint32 frame_index);

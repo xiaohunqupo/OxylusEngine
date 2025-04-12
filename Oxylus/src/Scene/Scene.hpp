@@ -49,7 +49,7 @@ public:
   bool is_running() const { return running; }
 
   void on_runtime_update(const Timestep& delta_time);
-  void on_editor_update(const Timestep& delta_time, Camera& camera);
+  void on_editor_update(const Timestep& delta_time, CameraComponent& camera) const;
 
   void on_imgui_render(const Timestep& delta_time);
 

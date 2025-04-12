@@ -1,7 +1,6 @@
 #include "EditorLayer.hpp"
 
 #include <filesystem>
-#include <icons/IconsMaterialDesignIcons.h>
 
 #include <imgui_internal.h>
 #include <imspinner.h>
@@ -68,8 +67,7 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   add_panel<RenderGraphPanel>();
 
   const auto& viewport = viewport_panels.emplace_back(create_unique<ViewportPanel>());
-  viewport->m_camera.set_position({-2, 2, 0});
-  viewport->m_camera.update();
+  viewport->editor_camera.position = {-2, 2, 0};
   viewport->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
 
   editor_scene = create_shared<Scene>();
@@ -111,7 +109,7 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 
   switch (scene_state) {
     case SceneState::Edit: {
-      editor_scene->on_editor_update(delta_time, viewport_panels[0]->m_camera);
+      editor_scene->on_editor_update(delta_time, viewport_panels[0]->editor_camera);
       break;
     }
     case SceneState::Play: {
@@ -119,7 +117,7 @@ void EditorLayer::on_update(const Timestep& delta_time) {
       break;
     }
     case SceneState::Simulate: {
-      active_scene->on_editor_update(delta_time, viewport_panels[0]->m_camera);
+      active_scene->on_editor_update(delta_time, viewport_panels[0]->editor_camera);
       break;
     }
   }
@@ -238,11 +236,10 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
           ImGui::EndMenu();
         }
         ImGui::SameLine();
+        
         {
           // Project name text
-          const auto app = App::get();
-          const auto window_width = app->get_window().get_width();
-          ImGui::SetCursorPos(ImVec2((float)window_width - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
+          ImGui::SetCursorPos(ImVec2(ImGui::GetMainViewport()->Size.x - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
           ImGuiScoped::StyleColor b_color1(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGuiScoped::StyleColor b_color2(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGui::Button(Project::get_active()->get_config().name.c_str());
@@ -298,10 +295,10 @@ void EditorLayer::editor_shortcuts() {
     const auto entity = get_selected_entity();
     if (entity != entt::null) {
       const auto tc = editor_scene->get_registry().get<TransformComponent>(entity);
-      auto& camera = viewport_panels[0]->m_camera;
-      auto final_pos = tc.position + camera.get_forward();
-      final_pos += -5.0f * camera.get_forward() * glm::vec3(1.0f);
-      camera.set_position(final_pos);
+      auto& camera = viewport_panels[0]->editor_camera;
+      auto final_pos = tc.position + camera.forward;
+      final_pos += -5.0f * camera.forward * glm::vec3(1.0f);
+      camera.position = final_pos;
     }
   }
 }

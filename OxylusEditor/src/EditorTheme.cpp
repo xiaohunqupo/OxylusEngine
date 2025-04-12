@@ -10,7 +10,7 @@ ankerl::unordered_dense::map<size_t, const char8_t*> EditorTheme::component_icon
 void EditorTheme::init() {
   component_icon_map[typeid(RelationshipComponent).hash_code()] = ICON_MDI_LIBRARY_SHELVES;
   component_icon_map[typeid(LightComponent).hash_code()] = ICON_MDI_LIGHTBULB;
-  component_icon_map[typeid(Camera).hash_code()] = ICON_MDI_CAMERA;
+  component_icon_map[typeid(CameraComponent).hash_code()] = ICON_MDI_CAMERA;
   component_icon_map[typeid(AudioSourceComponent).hash_code()] = ICON_MDI_VOLUME_HIGH;
   component_icon_map[typeid(TransformComponent).hash_code()] = ICON_MDI_VECTOR_LINE;
   component_icon_map[typeid(MeshComponent).hash_code()] = ICON_MDI_VECTOR_SQUARE;

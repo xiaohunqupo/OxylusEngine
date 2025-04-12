@@ -13,7 +13,6 @@
 #include "Audio/AudioSource.hpp"
 
 #include "Assets/SpriteMaterial.hpp"
-#include "Render/Camera.hpp"
 #include "Render/Mesh.hpp"
 #include "Render/ParticleSystem.hpp"
 #include "Render/Utils/RectPacker.hpp"
@@ -98,7 +97,7 @@ struct MeshComponent {
   std::vector<Shared<PBRMaterial>> materials = {};
   glm::mat4 transform = glm::mat4{1};
   std::vector<entt::entity> child_entities = {}; // filled at load
-  std::vector<glm::mat4> child_transforms = {};       // filled at submit
+  std::vector<glm::mat4> child_transforms = {};  // filled at submit
   AABB aabb = {};
   bool dirty = false;
 
@@ -190,9 +189,50 @@ struct TilemapComponent {
 };
 
 struct CameraComponent {
-  Shared<Camera> camera = nullptr;
+  enum class Projection {
+    Perspective = 0,
+    Orthographic = 1,
+  } projection = Projection::Perspective;
 
-  CameraComponent() { camera = create_shared<Camera>(); }
+  float32 fov = 60.0f;
+  float32 aspect = 16.0f / 9.0f;
+  float far_clip = 1000.f;
+  float near_clip = 0.01f;
+
+  float yaw = -1.5708f; // - 90
+  float pitch = 0.0f;
+  float tilt = 0.0f;
+  float zoom = 1.0f;
+
+  // --- non-serialized data ---
+  glm::vec2 jitter = {};
+  glm::vec2 jitter_prev = {};
+
+  struct Matrices {
+    glm::mat4 view_matrix = {};
+    glm::mat4 projection_matrix = {};
+  };
+
+  Matrices matrices = {};
+  Matrices matrices_prev = {};
+
+  glm::vec3 position = {};
+  glm::vec3 forward = {};
+  glm::vec3 up = {};
+  glm::vec3 right = {};
+  // ------
+
+  glm::mat4 get_projection_matrix() const { return matrices.projection_matrix; }
+  glm::mat4 get_inv_projection_matrix() const { return glm::inverse(matrices.projection_matrix); }
+  glm::mat4 get_view_matrix() const { return matrices.view_matrix; }
+  glm::mat4 get_inv_view_matrix() const { return glm::inverse(matrices.view_matrix); }
+  glm::mat4 get_inverse_projection_view() const { return glm::inverse(matrices.projection_matrix * matrices.view_matrix); }
+
+  glm::mat4 get_previous_projection_matrix() const { return matrices_prev.projection_matrix; }
+  glm::mat4 get_previous_inv_projection_matrix() const { return glm::inverse(matrices_prev.projection_matrix); }
+  glm::mat4 get_previous_view_matrix() const { return matrices_prev.view_matrix; }
+  glm::mat4 get_previous_inv_view_matrix() const { return glm::inverse(matrices_prev.view_matrix); }
+  glm::mat4 get_previous_inverse_projection_view() const { return glm::inverse(matrices_prev.projection_matrix * matrices_prev.view_matrix); }
 };
 
 struct ParticleSystemComponent {

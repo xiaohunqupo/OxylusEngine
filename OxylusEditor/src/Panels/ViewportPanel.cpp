@@ -11,15 +11,11 @@
 #include "Utils/EditorConfig.hpp"
 #include "glm/gtc/type_ptr.hpp"
 
-#include "Render/DebugRenderer.hpp"
 #include "Render/RenderPipeline.hpp"
 #include "Render/RendererConfig.hpp"
-#include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 
 #include "Scene/SceneRenderer.hpp"
-
-#include "Thread/TaskScheduler.hpp"
 
 #include "UI/OxUI.hpp"
 
@@ -105,7 +101,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     viewport_offset = {viewport_bounds[0].x + off * 0.5f, viewport_bounds[0].y};
 
     const auto* app = App::get();
-    const auto& scene_renderer = context->get_renderer();
+    const auto& scene_renderer = scene->get_renderer();
     auto& frame_allocator = app->get_vkcontext().get_frame_allocator();
     if (scene_renderer != nullptr && frame_allocator != nullopt) {
       const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), extent, format);
@@ -121,20 +117,19 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     if (m_scene_hierarchy_panel)
       m_scene_hierarchy_panel->drag_drop_target();
 
-    if (!context->is_running()) {
-      auto projection = m_camera.get_projection_matrix();
+    if (!scene->is_running()) {
+      auto projection = editor_camera.get_projection_matrix();
       projection[1][1] *= -1;
-      glm::mat4 view_proj = projection * m_camera.get_view_matrix();
-      const Frustum& frustum = m_camera.get_frustum();
+      glm::mat4 view_proj = projection * editor_camera.get_view_matrix();
+      const Frustum& frustum = Camera::get_frustum(editor_camera, editor_camera.position);
 
-      show_component_gizmo<LightComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
-      show_component_gizmo<AudioSourceComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
-      show_component_gizmo<AudioListenerComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
-      show_component_gizmo<CameraComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, context.get());
+      show_component_gizmo<LightComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
+      show_component_gizmo<AudioSourceComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
+      show_component_gizmo<AudioListenerComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
+      show_component_gizmo<CameraComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
 
       draw_gizmos();
     }
-
     {
       // Transform Gizmos Button Group
       const float frame_height = 1.3f * ImGui::GetFrameHeight();
@@ -193,18 +188,18 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID), RendererCVar::cvar_draw_grid.get(), button_size, alpha, alpha))
           RendererCVar::cvar_draw_grid.toggle();
         if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
-                              m_camera.get_projection() == Camera::Projection::Orthographic,
+                              editor_camera.projection == CameraComponent::Projection::Orthographic,
                               button_size,
                               alpha,
                               alpha))
-          m_camera.set_projection(m_camera.get_projection() == Camera::Projection::Orthographic ? Camera::Projection::Perspective
-                                                                                                : Camera::Projection::Orthographic);
+          editor_camera.projection = editor_camera.projection == CameraComponent::Projection::Orthographic
+                                     ? CameraComponent::Projection::Perspective
+                                     : CameraComponent::Projection::Orthographic;
 
         ImGui::PopStyleVar(2);
       }
       ImGui::EndGroup();
     }
-
     {
       // Scene Button Group
       constexpr float button_count = 3.0f;
@@ -251,17 +246,17 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
 void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel) {
   m_scene_hierarchy_panel = &scene_hierarchy_panel;
-  context = scene;
+  this->scene = scene;
 }
 
 void ViewportPanel::on_update() {
-  if (is_viewport_hovered && !context->is_running() && m_use_editor_camera) {
-    const glm::vec3& position = m_camera.get_position();
-    const glm::vec2 yaw_pitch = glm::vec2(m_camera.get_yaw(), m_camera.get_pitch());
+  if (is_viewport_hovered && !scene->is_running() && m_use_editor_camera) {
+    const glm::vec3& position = editor_camera.position;
+    const glm::vec2 yaw_pitch = glm::vec2(editor_camera.yaw, editor_camera.pitch);
     glm::vec3 final_position = position;
     glm::vec2 final_yaw_pitch = yaw_pitch;
 
-    const auto is_ortho = m_camera.get_projection() == Camera::Projection::Orthographic;
+    const auto is_ortho = editor_camera.projection == CameraComponent::Projection::Orthographic;
     if (is_ortho) {
       final_position = {0.0f, 0.0f, 0.0f};
       final_yaw_pitch = {glm::radians(-90.f), 0.f};
@@ -286,13 +281,13 @@ void ViewportPanel::on_update() {
 
       const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
       if (ImGui::IsKeyDown(ImGuiKey_W))
-        final_position += m_camera.get_forward() * max_move_speed;
+        final_position += editor_camera.forward * max_move_speed;
       else if (ImGui::IsKeyDown(ImGuiKey_S))
-        final_position -= m_camera.get_forward() * max_move_speed;
+        final_position -= editor_camera.forward * max_move_speed;
       if (ImGui::IsKeyDown(ImGuiKey_D))
-        final_position += m_camera.get_right() * max_move_speed;
+        final_position += editor_camera.right * max_move_speed;
       else if (ImGui::IsKeyDown(ImGuiKey_A))
-        final_position -= m_camera.get_right() * max_move_speed;
+        final_position -= editor_camera.right * max_move_speed;
 
       if (ImGui::IsKeyDown(ImGuiKey_Q)) {
         final_position.y -= max_move_speed;
@@ -315,8 +310,8 @@ void ViewportPanel::on_update() {
       const glm::vec2 change = (new_mouse_position - m_locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
 
       const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
-      final_position += m_camera.get_forward() * change.y * max_move_speed;
-      final_position += m_camera.get_right() * change.x * max_move_speed;
+      final_position += editor_camera.forward * change.y * max_move_speed;
+      final_position += editor_camera.right * change.x * max_move_speed;
     } else {
       const auto* app = App::get();
       app->get_window().set_cursor(WindowCursor::Arrow);
@@ -336,12 +331,14 @@ void ViewportPanel::on_update() {
                                                          1000.0f,
                                                          (float)App::get_timestep().get_seconds());
 
-    m_camera.set_position(EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position);
-    m_camera.set_yaw(EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x);
-    m_camera.set_pitch(EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y);
-    m_camera.set_zoom(EditorCVar::cvar_camera_zoom.get());
+    editor_camera.position = EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position;
 
-    m_camera.update();
+    editor_camera.yaw = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x;
+    editor_camera.pitch = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y;
+    editor_camera.zoom = EditorCVar::cvar_camera_zoom.get();
+
+    auto screen_extent = App::get()->get_swapchain_extent();
+    Camera::update(editor_camera, screen_extent);
   }
 }
 
@@ -356,7 +353,7 @@ void ViewportPanel::draw_performance_overlay() {
 
 void ViewportPanel::draw_gizmos() {
   const Entity selected_entity = m_scene_hierarchy_panel->get_selected_entity();
-  auto tc = context->registry.try_get<TransformComponent>(selected_entity);
+  auto tc = scene->registry.try_get<TransformComponent>(selected_entity);
   if (selected_entity != entt::null && m_gizmo_type != -1 && tc) {
     ImGuizmo::SetOrthographic(false);
     ImGuizmo::SetDrawlist();
@@ -365,12 +362,12 @@ void ViewportPanel::draw_gizmos() {
                       viewport_bounds[1].x - viewport_bounds[0].x,
                       viewport_bounds[1].y - viewport_bounds[0].y);
 
-    auto camera_projection = m_camera.get_projection_matrix();
+    auto camera_projection = editor_camera.get_projection_matrix();
     camera_projection[1][1] *= -1;
 
-    const glm::mat4& camera_view = m_camera.get_view_matrix();
+    const glm::mat4& camera_view = editor_camera.get_view_matrix();
 
-    glm::mat4 transform = eutil::get_world_transform(context.get(), selected_entity);
+    glm::mat4 transform = eutil::get_world_transform(scene.get(), selected_entity);
 
     // Snapping
     const bool snap = Input::get_key_held(KeyCode::LeftControl);
@@ -381,7 +378,7 @@ void ViewportPanel::draw_gizmos() {
 
     const float snap_values[3] = {snap_value, snap_value, snap_value};
 
-    const auto is_ortho = m_camera.get_projection() == Camera::Projection::Orthographic;
+    const auto is_ortho = editor_camera.projection == CameraComponent::Projection::Orthographic;
     ImGuizmo::SetOrthographic(is_ortho);
     if (m_gizmo_mode == ImGuizmo::OPERATION::TRANSLATE && is_ortho)
       m_gizmo_mode = ImGuizmo::OPERATION::TRANSLATE_X | ImGuizmo::OPERATION::TRANSLATE_Y;
@@ -395,8 +392,8 @@ void ViewportPanel::draw_gizmos() {
                          snap ? snap_values : nullptr);
 
     if (ImGuizmo::IsUsing()) {
-      const Entity parent = eutil::get_parent(context.get(), selected_entity);
-      const glm::mat4& parent_world_transform = parent != entt::null ? eutil::get_world_transform(context.get(), parent) : glm::mat4(1.0f);
+      const Entity parent = eutil::get_parent(scene.get(), selected_entity);
+      const glm::mat4& parent_world_transform = parent != entt::null ? eutil::get_world_transform(scene.get(), parent) : glm::mat4(1.0f);
       glm::vec3 translation, rotation, scale;
       if (math::decompose_transform(inverse(parent_world_transform) * transform, translation, rotation, scale)) {
         tc->position = translation;

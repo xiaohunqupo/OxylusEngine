@@ -13,7 +13,8 @@
 namespace ox {
 class ViewportPanel : public EditorPanel {
 public:
-  Camera m_camera;
+  CameraComponent editor_camera = {};
+
   bool performance_overlay_visible = true;
   bool fullscreen_viewport = false;
   bool is_viewport_focused = {};
@@ -68,7 +69,7 @@ private:
     }
   }
 
-  Shared<Scene> context = {};
+  Shared<Scene> scene = {};
   Entity hovered_entity = {};
   SceneHierarchyPanel* m_scene_hierarchy_panel = nullptr;
 

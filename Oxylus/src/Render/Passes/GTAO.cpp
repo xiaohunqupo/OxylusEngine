@@ -1,19 +1,19 @@
 ﻿#include "GTAO.hpp"
 
 #include <glm/gtc/type_ptr.hpp>
-#include "Render/Camera.hpp"
+#include "Scene/Components.hpp"
 
 namespace ox {
 void gtao_update_constants(GTAOConstants& consts,
                            const int viewport_width,
                            const int viewport_height,
                            const GTAOSettings& settings,
-                           const Camera* camera,
+                           const CameraComponent& camera,
                            const unsigned frameCounter) {
   consts.viewport_size = {viewport_width, viewport_height};
   consts.viewport_pixel_size = {1.0f / (float)viewport_width, 1.0f / (float)viewport_height};
 
-  auto p = camera->get_projection_matrix();
+  auto p = camera.get_projection_matrix();
   const auto proj_matrix = glm::value_ptr(p);
 
   constexpr auto row_major = true;
