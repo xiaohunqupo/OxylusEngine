@@ -388,7 +388,7 @@ void InspectorPanel::draw_components(Entity entity) {
         dst_path = std::string(first_path_cstr, first_path_len);
       },
         .title = "Load exported png and json file from ldtk",
-        .spawn_path = fs::current_path(),
+        .default_path = fs::current_path(),
         .filters = dialog_filters,
         .multi_select = false,
       });
@@ -469,7 +469,7 @@ void InspectorPanel::draw_components(Entity entity) {
         dst_path = std::string(first_path_cstr, first_path_len);
       },
         .title = "Open audio file...",
-        .spawn_path = fs::current_path(),
+        .default_path = fs::current_path(),
         .filters = dialog_filters,
         .multi_select = false,
       });
@@ -862,7 +862,7 @@ void InspectorPanel::draw_components(Entity entity) {
         dst_path = std::string(first_path_cstr, first_path_len);
       },
         .title = "Open lua file...",
-        .spawn_path = fs::current_path(),
+        .default_path = fs::current_path(),
         .filters = dialog_filters,
         .multi_select = false,
       });

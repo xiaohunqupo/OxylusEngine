@@ -231,7 +231,7 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
       dst_path = std::string(first_path_cstr, first_path_len);
     },
       .title = "Texture file",
-      .spawn_path = fs::current_path(),
+      .default_path = fs::current_path(),
       .filters = dialog_filters,
       .multi_select = false,
     });

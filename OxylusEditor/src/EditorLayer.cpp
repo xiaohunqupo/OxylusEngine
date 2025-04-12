@@ -332,7 +332,7 @@ void EditorLayer::open_scene_file_dialog() {
     dst_path = std::string(first_path_cstr, first_path_len);
   },
     .title = "Oxylus scene file...",
-    .spawn_path = fs::current_path(),
+    .default_path = fs::current_path(),
     .filters = dialog_filters,
     .multi_select = false,
   });
@@ -379,33 +379,32 @@ void EditorLayer::save_scene() {
 }
 
 void EditorLayer::save_scene_as() {
-  std::string path = {};
   const auto& window = App::get()->get_window();
   FileDialogFilter dialog_filters[] = {{.name = "Oxylus Scene(.oxscene)", .pattern = "oxscene"}};
   window.show_dialog({
     .kind = DialogKind::SaveFile,
-    .user_data = &path,
+    .user_data = this,
     .callback =
       [](void* user_data, const char8* const* files, int32) {
-    auto& dst_path = *static_cast<std::string*>(user_data);
+    const auto layer = static_cast<EditorLayer*>(user_data);
     if (!files || !*files) {
       return;
     }
 
     const auto first_path_cstr = *files;
     const auto first_path_len = std::strlen(first_path_cstr);
-    dst_path = std::string(first_path_cstr, first_path_len);
+    const auto path = std::string(first_path_cstr, first_path_len);
+
+    if (!path.empty()) {
+      SceneSerializer(layer->editor_scene).serialize(path);
+      layer->last_save_scene_path = path;
+    }
   },
     .title = "New Scene...",
-    .spawn_path = fs::current_path(),
+    .default_path = "NewScene.oxscene",
     .filters = dialog_filters,
     .multi_select = false,
   });
-
-  if (!path.empty()) {
-    ThreadManager::get()->asset_thread.queue_job([this, path] { SceneSerializer(editor_scene).serialize(path); });
-    last_save_scene_path = path;
-  }
 }
 
 void EditorLayer::on_scene_play() {

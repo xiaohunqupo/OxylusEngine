@@ -83,7 +83,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
             dst_path = std::string(first_path_cstr, first_path_len);
           },
             .title = "Project dir...",
-            .spawn_path = fs::current_path(),
+            .default_path = fs::current_path(),
             .filters = dialog_filters,
             .multi_select = false,
           });
@@ -138,7 +138,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
           dst_path = std::string(first_path_cstr, first_path_len);
         },
           .title = "Open project...",
-          .spawn_path = fs::current_path(),
+          .default_path = fs::current_path(),
           .filters = dialog_filters,
           .multi_select = false,
         });

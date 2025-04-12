@@ -75,7 +75,7 @@ struct ShowDialogInfo {
   void* user_data = nullptr;
   void (*callback)(void* user_data, const char8* const* files, int32 filter) = nullptr;
   std::string_view title = {};
-  std::string spawn_path = {};
+  std::string default_path = {};
   std::span<FileDialogFilter> filters = {};
   bool multi_select = false;
 };
