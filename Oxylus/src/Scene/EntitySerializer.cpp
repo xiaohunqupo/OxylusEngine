@@ -1,320 +1,535 @@
 #include "EntitySerializer.hpp"
 
 #include <filesystem>
-#include <fstream>
 
 #include "Core/Base.hpp"
 #include "Core/FileSystem.hpp"
-#include "Core/Project.hpp"
 #include "Core/Systems/SystemManager.hpp"
 #include "Scene.hpp"
 #include "Scene/Components.hpp"
-#include "SceneRenderer.hpp"
 
 #include "Assets/AssetManager.hpp"
 
 #include "Core/App.hpp"
-#include "Core/FileSystem.hpp"
 
 #include "Core/VFS.hpp"
 #include "Entity.hpp"
 #include "Utils/Archive.hpp"
 
 #include "Utils/Log.hpp"
-#include "Utils/Toml.hpp"
 
 namespace ox {
-#define GET_STRING(node, component, name) component.name = node->as_table()->get(#name)->as_string()->get()
-#define GET_STRING2(node, name) node->as_table()->get(name)->as_string()->get()
-#define GET_FLOAT(node, component, name) component.name = (float)node->as_table()->get(#name)->as_floating_point()->get()
-#define GET_FLOAT2(node, name) (float)node->as_table()->get(name)->as_floating_point()->get()
-#define GET_UINT32(node, component, name) component.name = (uint32_t)node->as_table()->get(#name)->as_integer()->get()
-#define GET_UINT322(node, name) (uint32_t) node->as_table()->get(name)->as_integer()->get()
-#define GET_BOOL(node, component, name) component.name = node->as_table()->get(#name)->as_boolean()->get()
-#define GET_BOOL2(node, name) node->as_table()->get(name)->as_boolean()->get()
-#define GET_ARRAY(node, name) node->as_table()->get(name)->as_array()
+template <typename Component, typename WriterFunc>
+void serialize_component(const std::string_view name,
+                         entt::registry& registry,
+                         entt::entity entity,
+                         rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                         WriterFunc serializeFunc) {
+  if (!registry.all_of<Component>(entity))
+    return;
 
-#define TBL_FIELD(c, field) {#field, c.field}
-#define TBL_FIELD_ARR(c, field) {#field, get_toml_array(c.field)}
-
-void EntitySerializer::serialize_entity(toml::array* entities, Scene* scene, Entity entity) {
-  entities->push_back(toml::table{{"uuid", std::to_string((uint64_t)eutil::get_uuid(scene->registry, entity))}});
-
-  if (scene->registry.all_of<TagComponent>(entity)) {
-    const auto& tag = scene->registry.get<TagComponent>(entity);
-
-    const auto table = toml::table{
-      TBL_FIELD(tag, tag),
-      TBL_FIELD(tag, enabled),
-    };
-
-    entities->push_back(toml::table{{"tag_component", table}});
+  writer.String(name.data());
+  writer.StartArray();
+  for (auto&& [e, tc] : registry.view<Component>().each()) {
+    writer.StartObject();
+    serializeFunc(writer, tc);
+    writer.EndObject();
   }
+  writer.EndArray();
+}
 
-  if (scene->registry.all_of<RelationshipComponent>(entity)) {
-    const auto& [parent, children] = scene->registry.get<RelationshipComponent>(entity);
+void serialize_vec2(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, const glm::vec2& vec) {
+  writer.StartArray();
+  writer.Double(vec.x);
+  writer.Double(vec.y);
+  writer.EndArray();
+}
 
-    toml::array children_array = {};
-    for (auto child : children)
-      children_array.push_back(std::to_string((uint64_t)child));
+void serialize_vec3(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, const glm::vec3& vec) {
+  writer.StartArray();
+  writer.Double(vec.x);
+  writer.Double(vec.y);
+  writer.Double(vec.z);
+  writer.EndArray();
+}
 
-    const auto table = toml::table{
-      {"parent", std::to_string((uint64_t)parent)},
-      {"children", children_array},
-    };
+void serialize_vec4(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, const glm::vec4& vec) {
+  writer.StartArray();
+  writer.Double(vec.x);
+  writer.Double(vec.y);
+  writer.Double(vec.z);
+  writer.Double(vec.w);
+  writer.EndArray();
+}
 
-    entities->push_back(toml::table{{"relationship_component", table}});
-  }
+glm::vec2 deserialize_vec2(const rapidjson::GenericArray<true, rapidjson::GenericValue<rapidjson::UTF8<>>>& array) {
+  return glm::vec2{
+    array[0].GetDouble(),
+    array[1].GetDouble(),
+  };
+}
 
-  if (scene->registry.all_of<TransformComponent>(entity)) {
-    const auto& tc = scene->registry.get<TransformComponent>(entity);
+glm::vec3 deserialize_vec3(const rapidjson::GenericArray<true, rapidjson::GenericValue<rapidjson::UTF8<>>>& array) {
+  return glm::vec3{
+    array[0].GetDouble(),
+    array[1].GetDouble(),
+    array[2].GetDouble(),
+  };
+}
 
-    const auto table = toml::table{
-      TBL_FIELD_ARR(tc, position),
-      TBL_FIELD_ARR(tc, rotation),
-      TBL_FIELD_ARR(tc, scale),
-    };
+glm::vec4 deserialize_vec4(const rapidjson::GenericArray<true, rapidjson::GenericValue<rapidjson::UTF8<>>>& array) {
+  return glm::vec4{
+    array[0].GetDouble(),
+    array[1].GetDouble(),
+    array[2].GetDouble(),
+    array[3].GetDouble(),
+  };
+}
 
-    entities->push_back(toml::table{{"transform_component", table}});
-  }
+void EntitySerializer::serialize_entity(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, Scene* scene, Entity entity) {
+  OX_SCOPED_ZONE;
 
-  if (scene->registry.all_of<MeshComponent>(entity)) {
-    const auto& mrc = scene->registry.get<MeshComponent>(entity);
+  writer.StartObject(); // top
 
-    const auto table = toml::table{{"mesh_path", mrc.mesh_base->get_path()}, TBL_FIELD(mrc, stationary), TBL_FIELD(mrc, cast_shadows)};
+  // uuid
+  writer.String("uuid");
+  writer.Uint64(eutil::get_uuid(scene->registry, entity));
 
-    entities->push_back(toml::table{{"mesh_component", table}});
-  }
+  serialize_component<TagComponent>("TagComponent",
+                                    scene->registry,
+                                    entity,
+                                    writer,
+                                    [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, const TagComponent& c) {
+    wr.String("tag");
+    wr.String(c.tag.c_str());
 
-  if (scene->registry.all_of<LightComponent>(entity)) {
-    const auto& light = scene->registry.get<LightComponent>(entity);
+    wr.String("enabled");
+    wr.Bool(c.enabled);
+  });
 
-    const auto table = toml::table{
-      {"type", (int)light.type},
-      TBL_FIELD(light, color_temperature_mode),
-      TBL_FIELD(light, temperature),
-      TBL_FIELD_ARR(light, color),
-      TBL_FIELD(light, intensity),
-      TBL_FIELD(light, range),
-      TBL_FIELD(light, radius),
-      TBL_FIELD(light, length),
-      TBL_FIELD(light, outer_cone_angle),
-      TBL_FIELD(light, inner_cone_angle),
-      TBL_FIELD(light, cast_shadows),
-      TBL_FIELD(light, shadow_map_res),
-    };
+  serialize_component<RelationshipComponent>("RelationshipComponent",
+                                             scene->registry,
+                                             entity,
+                                             writer,
+                                             [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, const RelationshipComponent& c) {
+    wr.String("parent");
+    wr.Uint64(c.parent);
 
-    entities->push_back(toml::table{{"light_component", table}});
-  }
-
-  if (scene->registry.all_of<PostProcessProbe>(entity)) {
-    const auto& probe = scene->registry.get<PostProcessProbe>(entity);
-
-    const auto table = toml::table{
-      TBL_FIELD(probe, vignette_enabled),
-      TBL_FIELD(probe, vignette_intensity),
-      TBL_FIELD(probe, film_grain_enabled),
-      TBL_FIELD(probe, film_grain_intensity),
-      TBL_FIELD(probe, chromatic_aberration_enabled),
-      TBL_FIELD(probe, chromatic_aberration_intensity),
-      TBL_FIELD(probe, sharpen_enabled),
-      TBL_FIELD(probe, sharpen_intensity),
-    };
-
-    entities->push_back(toml::table{{"post_process_probe", table}});
-  }
-
-  if (scene->registry.all_of<CameraComponent>(entity)) {
-    const auto& camera = scene->registry.get<CameraComponent>(entity);
-
-    // TODO: serialize the rest
-    const auto table = toml::table{
-      {"projection", (uint32)camera.camera->get_projection()},
-      {"fov", camera.camera->get_fov()},
-      {"near", camera.camera->get_near()},
-      {"far", camera.camera->get_far()},
-      {"zoom", camera.camera->get_zoom()},
-    };
-
-    entities->push_back(toml::table{{"camera_component", table}});
-  }
-
-  // Physics
-  if (scene->registry.all_of<RigidbodyComponent>(entity)) {
-    const auto& rb = scene->registry.get<RigidbodyComponent>(entity);
-
-    const auto table = toml::table{
-      {"allowed_dofs", (int)rb.allowed_dofs},
-      {"type", (int)rb.type},
-      TBL_FIELD(rb, mass),
-      TBL_FIELD(rb, linear_drag),
-      TBL_FIELD(rb, angular_drag),
-      TBL_FIELD(rb, gravity_scale),
-      TBL_FIELD(rb, allow_sleep),
-      TBL_FIELD(rb, awake),
-      TBL_FIELD(rb, continuous),
-      TBL_FIELD(rb, interpolation),
-      TBL_FIELD(rb, is_sensor),
-    };
-
-    entities->push_back(toml::table{{"rigidbody_component", table}});
-  }
-
-  if (scene->registry.all_of<BoxColliderComponent>(entity)) {
-    const auto& bc = scene->registry.get<BoxColliderComponent>(entity);
-
-    const auto table = toml::table{
-      TBL_FIELD_ARR(bc, size),
-      TBL_FIELD_ARR(bc, offset),
-      TBL_FIELD(bc, density),
-      TBL_FIELD(bc, friction),
-      TBL_FIELD(bc, restitution),
-    };
-
-    entities->push_back(toml::table{{"box_collider_component", table}});
-  }
-
-  if (scene->registry.all_of<SphereColliderComponent>(entity)) {
-    const auto& sc = scene->registry.get<SphereColliderComponent>(entity);
-
-    const auto table = toml::table{
-      TBL_FIELD(sc, radius),
-      TBL_FIELD_ARR(sc, offset),
-      TBL_FIELD(sc, density),
-      TBL_FIELD(sc, friction),
-      TBL_FIELD(sc, restitution),
-    };
-
-    entities->push_back(toml::table{{"sphere_collider_component", table}});
-  }
-
-  if (scene->registry.all_of<CapsuleColliderComponent>(entity)) {
-    const auto& cc = scene->registry.get<CapsuleColliderComponent>(entity);
-    const auto table = toml::table{
-      TBL_FIELD(cc, height),
-      TBL_FIELD(cc, radius),
-      TBL_FIELD_ARR(cc, offset),
-      TBL_FIELD(cc, density),
-      TBL_FIELD(cc, friction),
-      TBL_FIELD(cc, restitution),
-    };
-
-    entities->push_back(toml::table{{"capsule_collider_component", table}});
-  }
-
-  if (scene->registry.all_of<TaperedCapsuleColliderComponent>(entity)) {
-    const auto& tcc = scene->registry.get<TaperedCapsuleColliderComponent>(entity);
-
-    const auto table = toml::table{
-      TBL_FIELD(tcc, height),
-      TBL_FIELD(tcc, top_radius),
-      TBL_FIELD_ARR(tcc, offset),
-      TBL_FIELD(tcc, density),
-      TBL_FIELD(tcc, friction),
-      TBL_FIELD(tcc, restitution),
-    };
-
-    entities->push_back(toml::table{{"tapered_capsule_collider_component", table}});
-  }
-
-  if (scene->registry.all_of<CylinderColliderComponent>(entity)) {
-    const auto& cc = scene->registry.get<CylinderColliderComponent>(entity);
-    const auto table = toml::table{
-      TBL_FIELD(cc, height),
-      TBL_FIELD(cc, radius),
-      TBL_FIELD_ARR(cc, offset),
-      TBL_FIELD(cc, density),
-      TBL_FIELD(cc, friction),
-      TBL_FIELD(cc, restitution),
-    };
-
-    entities->push_back(toml::table{{"cylinder_collider_component", table}});
-  }
-
-  if (scene->registry.all_of<MeshColliderComponent>(entity)) {
-    const auto& mc = scene->registry.get<MeshColliderComponent>(entity);
-    const auto table = toml::table{
-      TBL_FIELD_ARR(mc, offset),
-      TBL_FIELD(mc, friction),
-      TBL_FIELD(mc, restitution),
-    };
-
-    entities->push_back(toml::table{{"mesh_collider_component", table}});
-  }
-
-  if (scene->registry.all_of<CharacterControllerComponent>(entity)) {
-    const auto& component = scene->registry.get<CharacterControllerComponent>(entity);
-    const auto table = toml::table{
-      TBL_FIELD(component, character_height_standing),
-      TBL_FIELD(component, character_radius_standing),
-      TBL_FIELD(component, character_radius_crouching),
-      TBL_FIELD(component, character_height_crouching),
-      TBL_FIELD(component, control_movement_during_jump),
-      TBL_FIELD(component, jump_force),
-      TBL_FIELD(component, friction),
-      TBL_FIELD(component, collision_tolerance),
-    };
-
-    entities->push_back(toml::table{{"character_controller_component", table}});
-  }
-
-  if (scene->registry.all_of<LuaScriptComponent>(entity)) {
-    const auto& component = scene->registry.get<LuaScriptComponent>(entity);
-    const auto& systems = component.lua_systems;
-
-    toml::array path_array = {};
-    for (const auto& system : systems)
-      path_array.push_back(system->get_path());
-
-    const auto table = toml::table{{"paths", path_array}};
-
-    entities->push_back(toml::table{{"lua_script_component", table}});
-  }
-
-  if (scene->registry.all_of<CPPScriptComponent>(entity)) {
-    const auto& component = scene->registry.get<CPPScriptComponent>(entity);
-    toml::array hash_array = {};
-    for (const auto& system : component.systems) {
-      hash_array.push_back(std::to_string(system->hash_code));
+    wr.String("childs");
+    wr.StartArray();
+    for (auto child : c.children) {
+      wr.Uint64(child);
     }
-    const auto table = toml::table{{"system_hashes", hash_array}};
-    entities->push_back(toml::table{{"cpp_script_component", table}});
-  }
+    wr.EndArray();
+  });
 
-  if (scene->registry.all_of<SpriteComponent>(entity)) {
-    const auto& component = scene->registry.get<SpriteComponent>(entity);
-    const auto path = component.material->get_albedo_texture() ? component.material->get_albedo_texture()->get_path() : "";
-    const auto table = toml::table{
-      TBL_FIELD(component, layer),
-      TBL_FIELD(component, sort_y),
-      {"color", get_toml_array(component.material->parameters.color)},
-      {"uv_size", get_toml_array(component.material->parameters.uv_size)},
-      {"uv_offset", get_toml_array(component.material->parameters.uv_offset)},
-      {"texture_path", path},
-    };
-    entities->push_back(toml::table{{"sprite_component", table}});
-  }
+  serialize_component<TransformComponent>("TransformComponent",
+                                          scene->registry,
+                                          entity,
+                                          writer,
+                                          [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, const TransformComponent& c) {
+    wr.String("position");
+    serialize_vec3(wr, c.position);
 
-  if (scene->registry.all_of<SpriteAnimationComponent>(entity)) {
-    const auto& component = scene->registry.get<SpriteAnimationComponent>(entity);
-    const auto table = toml::table{
-      TBL_FIELD(component, num_frames),
-      TBL_FIELD(component, loop),
-      TBL_FIELD(component, inverted),
-      TBL_FIELD(component, fps),
-      TBL_FIELD(component, columns),
-      {"frame_size", get_toml_array(component.frame_size)},
-    };
-    entities->push_back(toml::table{{"sprite_animation_component", table}});
-  }
+    wr.String("rotation");
+    serialize_vec3(wr, c.rotation);
 
-  if (scene->registry.all_of<TilemapComponent>(entity)) {
-    const auto& component = scene->registry.get<TilemapComponent>(entity);
-    const auto table = toml::table{
-      {"path", component.path},
-    };
-    entities->push_back(toml::table{{"tilemap_component", table}});
-  }
+    wr.String("scale");
+    serialize_vec3(wr, c.scale);
+  });
+
+  serialize_component<MeshComponent>("MeshComponent",
+                                     scene->registry,
+                                     entity,
+                                     writer,
+                                     [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, MeshComponent& c) {
+    wr.String("mesh_path");
+    wr.String(c.mesh_base->get_path().c_str());
+
+    wr.String("stationary");
+    wr.Bool(c.stationary);
+
+    wr.String("cast_shadows");
+    wr.Bool(c.cast_shadows);
+  });
+
+  serialize_component<LightComponent>("LightComponent",
+                                      scene->registry,
+                                      entity,
+                                      writer,
+                                      [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, LightComponent& c) {
+    wr.String("type");
+    wr.Int(c.type);
+
+    wr.String("color_temperature_mode");
+    wr.Bool(c.color_temperature_mode);
+
+    wr.String("temperature");
+    wr.Uint(c.temperature);
+
+    wr.String("color");
+    serialize_vec3(wr, c.color);
+
+    wr.String("intensity");
+    wr.Double(c.intensity);
+
+    wr.String("range");
+    wr.Double(c.range);
+
+    wr.String("radius");
+    wr.Double(c.radius);
+
+    wr.String("length");
+    wr.Double(c.length);
+
+    wr.String("outer_cone_angle");
+    wr.Double(c.outer_cone_angle);
+
+    wr.String("inner_cone_angle");
+    wr.Double(c.inner_cone_angle);
+
+    wr.String("cast_shadows");
+    wr.Bool(c.cast_shadows);
+
+    wr.String("shadow_map_res");
+    wr.Uint(c.shadow_map_res);
+  });
+
+  serialize_component<PostProcessProbe>("PostProcessProbe",
+                                        scene->registry,
+                                        entity,
+                                        writer,
+                                        [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, PostProcessProbe& c) {
+    wr.String("vignette_enabled");
+    wr.Bool(c.vignette_enabled);
+
+    wr.String("vignette_intensity");
+    wr.Double(c.vignette_intensity);
+
+    wr.String("film_grain_enabled");
+    wr.Bool(c.film_grain_enabled);
+
+    wr.String("film_grain_intensity");
+    wr.Double(c.film_grain_intensity);
+
+    wr.String("chromatic_aberration_enabled");
+    wr.Bool(c.chromatic_aberration_enabled);
+
+    wr.String("chromatic_aberration_intensity");
+    wr.Double(c.chromatic_aberration_intensity);
+
+    wr.String("sharpen_enabled");
+    wr.Bool(c.sharpen_enabled);
+
+    wr.String("sharpen_intensity");
+    wr.Double(c.sharpen_intensity);
+  });
+
+  serialize_component<CameraComponent>("CameraComponent",
+                                       scene->registry,
+                                       entity,
+                                       writer,
+                                       [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, CameraComponent& c) {
+    wr.String("projection");
+    wr.Uint(static_cast<uint32>(c.camera->get_projection()));
+
+    wr.String("fov");
+    wr.Double(c.camera->get_fov());
+
+    wr.String("near");
+    wr.Double(c.camera->get_near());
+
+    wr.String("far");
+    wr.Double(c.camera->get_far());
+
+    wr.String("zoom");
+    wr.Double(c.camera->get_zoom());
+  });
+
+  serialize_component<RigidbodyComponent>("RigidbodyComponent",
+                                          scene->registry,
+                                          entity,
+                                          writer,
+                                          [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, RigidbodyComponent& rb) {
+    wr.String("allowed_dofs");
+    wr.Int(static_cast<int>(rb.allowed_dofs));
+
+    wr.String("type");
+    wr.Int(static_cast<int>(rb.type));
+
+    wr.String("mass");
+    wr.Double(rb.mass);
+
+    wr.String("linear_drag");
+    wr.Double(rb.linear_drag);
+
+    wr.String("angular_drag");
+    wr.Double(rb.angular_drag);
+
+    wr.String("gravity_scale");
+    wr.Double(rb.gravity_scale);
+
+    wr.String("allow_sleep");
+    wr.Bool(rb.allow_sleep);
+
+    wr.String("awake");
+    wr.Bool(rb.awake);
+
+    wr.String("continuous");
+    wr.Bool(rb.continuous);
+
+    wr.String("interpolation");
+    wr.Bool(rb.interpolation);
+
+    wr.String("is_sensor");
+    wr.Bool(rb.is_sensor);
+  });
+
+  serialize_component<BoxColliderComponent>("BoxColliderComponent",
+                                            scene->registry,
+                                            entity,
+                                            writer,
+                                            [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, BoxColliderComponent& bc) {
+    wr.String("size");
+    serialize_vec3(wr, bc.size);
+
+    wr.String("offset");
+    serialize_vec3(wr, bc.offset);
+
+    wr.String("density");
+    wr.Double(bc.density);
+
+    wr.String("friction");
+    wr.Double(bc.friction);
+
+    wr.String("restitution");
+    wr.Double(bc.restitution);
+  });
+
+  serialize_component<SphereColliderComponent>("SphereColliderComponent",
+                                               scene->registry,
+                                               entity,
+                                               writer,
+                                               [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, SphereColliderComponent& sc) {
+    wr.String("radius");
+    wr.Double(sc.radius);
+
+    wr.String("offset");
+    serialize_vec3(wr, sc.offset);
+
+    wr.String("density");
+    wr.Double(sc.density);
+
+    wr.String("friction");
+    wr.Double(sc.friction);
+
+    wr.String("restitution");
+    wr.Double(sc.restitution);
+  });
+
+  serialize_component<CapsuleColliderComponent>("CapsuleColliderComponent",
+                                                scene->registry,
+                                                entity,
+                                                writer,
+                                                [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, CapsuleColliderComponent& cc) {
+    wr.String("height");
+    wr.Double(cc.height);
+
+    wr.String("radius");
+    wr.Double(cc.radius);
+
+    wr.String("offset");
+    serialize_vec3(wr, cc.offset);
+
+    wr.String("density");
+    wr.Double(cc.density);
+
+    wr.String("friction");
+    wr.Double(cc.friction);
+
+    wr.String("restitution");
+    wr.Double(cc.restitution);
+  });
+
+  serialize_component<TaperedCapsuleColliderComponent>("TaperedCapsuleColliderComponent",
+                                                       scene->registry,
+                                                       entity,
+                                                       writer,
+                                                       [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr,
+                                                          TaperedCapsuleColliderComponent& tcc) {
+    wr.String("height");
+    wr.Double(tcc.height);
+
+    wr.String("top_radius");
+    wr.Double(tcc.top_radius);
+
+    wr.String("offset");
+    serialize_vec3(wr, tcc.offset);
+
+    wr.String("density");
+    wr.Double(tcc.density);
+
+    wr.String("friction");
+    wr.Double(tcc.friction);
+
+    wr.String("restitution");
+    wr.Double(tcc.restitution);
+  });
+
+  serialize_component<CylinderColliderComponent>("CylinderColliderComponent",
+                                                 scene->registry,
+                                                 entity,
+                                                 writer,
+                                                 [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, CylinderColliderComponent& cc) {
+    wr.String("height");
+    wr.Double(cc.height);
+
+    wr.String("radius");
+    wr.Double(cc.radius);
+
+    wr.String("offset");
+    serialize_vec3(wr, cc.offset);
+
+    wr.String("density");
+    wr.Double(cc.density);
+
+    wr.String("friction");
+    wr.Double(cc.friction);
+
+    wr.String("restitution");
+    wr.Double(cc.restitution);
+  });
+
+  serialize_component<MeshColliderComponent>("MeshColliderComponent",
+                                             scene->registry,
+                                             entity,
+                                             writer,
+                                             [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, MeshColliderComponent& mc) {
+    wr.String("offset");
+    serialize_vec3(wr, mc.offset);
+
+    wr.String("friction");
+    wr.Double(mc.friction);
+
+    wr.String("restitution");
+    wr.Double(mc.restitution);
+  });
+
+  serialize_component<CharacterControllerComponent>("CharacterControllerComponent",
+                                                    scene->registry,
+                                                    entity,
+                                                    writer,
+                                                    [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, CharacterControllerComponent& c) {
+    wr.String("character_height_standing");
+    wr.Double(c.character_height_standing);
+
+    wr.String("character_radius_standing");
+    wr.Double(c.character_radius_standing);
+
+    wr.String("character_radius_crouching");
+    wr.Double(c.character_radius_crouching);
+
+    wr.String("character_height_crouching");
+    wr.Double(c.character_height_crouching);
+
+    wr.String("control_movement_during_jump");
+    wr.Bool(c.control_movement_during_jump);
+
+    wr.String("jump_force");
+    wr.Double(c.jump_force);
+
+    wr.String("friction");
+    wr.Double(c.friction);
+
+    wr.String("collision_tolerance");
+    wr.Double(c.collision_tolerance);
+  });
+
+  serialize_component<LuaScriptComponent>("LuaScriptComponent",
+                                          scene->registry,
+                                          entity,
+                                          writer,
+                                          [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, LuaScriptComponent& c) {
+    wr.String("systems");
+    wr.StartArray();
+    for (const auto& system : c.lua_systems)
+      wr.String(system->get_path().c_str());
+    wr.EndArray();
+  });
+
+  serialize_component<CPPScriptComponent>("CPPScriptComponent",
+                                          scene->registry,
+                                          entity,
+                                          writer,
+                                          [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, CPPScriptComponent& c) {
+    wr.String("system_hashes");
+    wr.StartArray();
+    for (const auto& system : c.systems) {
+      const auto hash_str = std::to_string(system->hash_code);
+      wr.String(hash_str.c_str());
+    }
+    wr.EndArray();
+  });
+
+  serialize_component<SpriteComponent>("SpriteComponent",
+                                       scene->registry,
+                                       entity,
+                                       writer,
+                                       [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, SpriteComponent& c) {
+    wr.String("layer");
+    wr.Uint(c.layer);
+
+    wr.String("sort_y");
+    wr.Bool(c.sort_y);
+
+    wr.String("color");
+    serialize_vec4(wr, c.material->parameters.color);
+
+    wr.String("uv_size");
+    serialize_vec2(wr, c.material->parameters.uv_size);
+
+    wr.String("uv_offset");
+    serialize_vec2(wr, c.material->parameters.uv_offset);
+
+    const auto path = c.material->get_albedo_texture() ? c.material->get_albedo_texture()->get_path() : "";
+    wr.String("texture_path");
+    wr.String(path.c_str());
+  });
+
+  serialize_component<SpriteAnimationComponent>("SpriteAnimationComponent",
+                                                scene->registry,
+                                                entity,
+                                                writer,
+                                                [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, SpriteAnimationComponent& c) {
+    wr.String("num_frames");
+    wr.Uint(c.num_frames);
+
+    wr.String("loop");
+    wr.Bool(c.loop);
+
+    wr.String("inverted");
+    wr.Bool(c.inverted);
+
+    wr.String("fps");
+    wr.Uint(c.fps);
+
+    wr.String("columns");
+    wr.Uint(c.columns);
+
+    wr.String("frame_size");
+    serialize_vec2(wr, c.frame_size);
+  });
+
+  serialize_component<TilemapComponent>("TilemapComponent",
+                                        scene->registry,
+                                        entity,
+                                        writer,
+                                        [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, TilemapComponent& c) {
+    wr.String("path");
+    wr.String(c.path.c_str());
+  });
+
+  writer.EndObject(); // top
 }
 
 void EntitySerializer::serialize_entity_binary(Archive& archive, Scene* scene, Entity entity) {
@@ -328,181 +543,255 @@ void EntitySerializer::serialize_entity_binary(Archive& archive, Scene* scene, E
   }
 }
 
-UUID EntitySerializer::deserialize_entity(toml::array* entity_arr, Scene* scene, bool preserve_uuid) {
-  // these values are always present
-  const uint64_t uuid = std::stoull(entity_arr->get(0)->as_table()->get("uuid")->as_string()->get());
-  const auto tag_node = entity_arr->get(1)->as_table()->get("tag_component")->as_table();
-  std::string name = tag_node->get("tag")->as_string()->get();
-
+UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene, bool preserve_uuid) {
+  OX_SCOPED_ZONE;
+  auto& registry = scene->registry;
   entt::entity deserialized_entity = {};
+
+  const uint64 uuid = entity["uuid"].GetUint64();
+  std::string name = {};
+  bool enabled = true;
+  for (const auto& tc : entity["TagComponent"].GetArray()) {
+    name = tc["tag"].GetString();
+    enabled = tc["enabled"].GetBool();
+  }
+
   if (preserve_uuid)
     deserialized_entity = scene->create_entity_with_uuid(uuid, name);
   else
     deserialized_entity = scene->create_entity(name);
 
-  auto& reg = scene->registry;
-
-  auto& tag_component = reg.get_or_emplace<TagComponent>(deserialized_entity);
+  auto& tag_component = registry.get_or_emplace<TagComponent>(deserialized_entity);
   tag_component.tag = name;
-  tag_component.enabled = tag_node->get("enabled")->as_boolean()->get();
+  tag_component.enabled = enabled;
 
-  for (auto& ent : *entity_arr) {
-    if (const auto relation_node = ent.as_table()->get("relationship_component")) {
-      auto& rc = reg.get_or_emplace<RelationshipComponent>(deserialized_entity);
-      rc.parent = std::stoull(GET_STRING2(relation_node, "parent"));
-      const auto children_node = relation_node->as_table()->get("children")->as_array();
-      for (auto& child : *children_node)
-        rc.children.emplace_back(std::stoull(child.as_string()->get()));
-    } else if (const auto transform_node = ent.as_table()->get("transform_component")) {
-      auto& tc = reg.get_or_emplace<TransformComponent>(deserialized_entity);
-      tc.position = get_vec3_toml_array(GET_ARRAY(transform_node, "position"));
-      tc.rotation = get_vec3_toml_array(GET_ARRAY(transform_node, "rotation"));
-      tc.scale = get_vec3_toml_array(GET_ARRAY(transform_node, "scale"));
-    } else if (const auto mesh_node = ent.as_table()->get("mesh_component")) {
-      const auto path = GET_STRING2(mesh_node, "mesh_path");
-      auto mesh = AssetManager::get_mesh_asset(path);
-      auto& mc = reg.emplace<MeshComponent>(deserialized_entity, mesh);
-      GET_BOOL(mesh_node, mc, cast_shadows);
-      GET_BOOL(mesh_node, mc, stationary);
-    } else if (const auto light_node = ent.as_table()->get("light_component")) {
-      auto& lc = reg.emplace<LightComponent>(deserialized_entity);
-      lc.type = (LightComponent::LightType)GET_UINT322(light_node, "type");
-      GET_BOOL(light_node, lc, color_temperature_mode);
-      GET_UINT32(light_node, lc, temperature);
-      lc.color = get_vec3_toml_array(GET_ARRAY(light_node, "color"));
-      GET_FLOAT(light_node, lc, intensity);
-      GET_FLOAT(light_node, lc, range);
-      GET_FLOAT(light_node, lc, radius);
-      GET_FLOAT(light_node, lc, length);
-      GET_FLOAT(light_node, lc, outer_cone_angle);
-      GET_FLOAT(light_node, lc, inner_cone_angle);
-      GET_BOOL(light_node, lc, cast_shadows);
-      GET_UINT32(light_node, lc, shadow_map_res);
-    } else if (const auto pp_node = ent.as_table()->get("post_process_probe")) {
-      auto& pp = reg.emplace<PostProcessProbe>(deserialized_entity);
-      GET_BOOL(pp_node, pp, vignette_enabled);
-      GET_FLOAT(pp_node, pp, vignette_intensity);
-      GET_BOOL(pp_node, pp, film_grain_enabled);
-      GET_FLOAT(pp_node, pp, film_grain_intensity);
-      GET_BOOL(pp_node, pp, chromatic_aberration_enabled);
-      GET_FLOAT(pp_node, pp, chromatic_aberration_intensity);
-      GET_BOOL(pp_node, pp, sharpen_enabled);
-      GET_FLOAT(pp_node, pp, sharpen_intensity);
-    } else if (const auto camera_node = ent.as_table()->get("camera_component")) {
-      auto& cc = reg.emplace<CameraComponent>(deserialized_entity);
-      cc.camera->set_projection((Camera::Projection)GET_UINT322(camera_node, "projection"));
-      cc.camera->set_fov(GET_FLOAT2(camera_node, "fov"));
-      cc.camera->set_near(GET_FLOAT2(camera_node, "near"));
-      cc.camera->set_far(GET_FLOAT2(camera_node, "far"));
-      cc.camera->set_zoom(GET_FLOAT2(camera_node, "zoom"));
-    } else if (const auto rb_node = ent.as_table()->get("rigidbody_component")) {
-      auto& rb = reg.emplace<RigidbodyComponent>(deserialized_entity);
-      rb.allowed_dofs = (RigidbodyComponent::AllowedDOFs)GET_UINT322(rb_node, "allowed_dofs");
-      rb.type = (RigidbodyComponent::BodyType)GET_UINT322(rb_node, "type");
-      GET_FLOAT(rb_node, rb, mass);
-      GET_FLOAT(rb_node, rb, linear_drag);
-      GET_FLOAT(rb_node, rb, angular_drag);
-      GET_FLOAT(rb_node, rb, gravity_scale);
-      GET_BOOL(rb_node, rb, allow_sleep);
-      GET_BOOL(rb_node, rb, awake);
-      GET_BOOL(rb_node, rb, continuous);
-      GET_BOOL(rb_node, rb, interpolation);
-      GET_BOOL(rb_node, rb, is_sensor);
-    } else if (const auto bc_node = ent.as_table()->get("box_collider_component")) {
-      auto& bc = reg.emplace<BoxColliderComponent>(deserialized_entity);
-      bc.size = get_vec3_toml_array(GET_ARRAY(bc_node, "size"));
-      bc.offset = get_vec3_toml_array(GET_ARRAY(bc_node, "offset"));
-      GET_FLOAT(bc_node, bc, density);
-      GET_FLOAT(bc_node, bc, friction);
-      GET_FLOAT(bc_node, bc, restitution);
-    } else if (const auto sc_node = ent.as_table()->get("sphere_collider_component")) {
-      auto& sc = reg.emplace<SphereColliderComponent>(deserialized_entity);
-      GET_FLOAT(sc_node, sc, radius);
-      sc.offset = get_vec3_toml_array(GET_ARRAY(sc_node, "offset"));
-      GET_FLOAT(sc_node, sc, density);
-      GET_FLOAT(sc_node, sc, friction);
-      GET_FLOAT(sc_node, sc, restitution);
-    } else if (const auto cc_node = ent.as_table()->get("capsule_collider_component")) {
-      auto& cc = reg.emplace<CapsuleColliderComponent>(deserialized_entity);
-      GET_FLOAT(cc_node, cc, height);
-      GET_FLOAT(cc_node, cc, radius);
-      cc.offset = get_vec3_toml_array(GET_ARRAY(cc_node, "offset"));
-      GET_FLOAT(cc_node, cc, density);
-      GET_FLOAT(cc_node, cc, friction);
-      GET_FLOAT(cc_node, cc, restitution);
-    } else if (const auto tcc_node = ent.as_table()->get("tapered_capsule_collider_component")) {
-      auto& tcc = reg.emplace<TaperedCapsuleColliderComponent>(deserialized_entity);
-      GET_FLOAT(tcc_node, tcc, height);
-      GET_FLOAT(tcc_node, tcc, top_radius);
-      GET_FLOAT(tcc_node, tcc, bottom_radius);
-      tcc.offset = get_vec3_toml_array(GET_ARRAY(tcc_node, "offset"));
-      GET_FLOAT(tcc_node, tcc, density);
-      GET_FLOAT(tcc_node, tcc, friction);
-      GET_FLOAT(tcc_node, tcc, restitution);
-    } else if (const auto ccc_node = ent.as_table()->get("cylinder_collider_component")) {
-      auto& ccc = reg.emplace<CylinderColliderComponent>(deserialized_entity);
-      GET_FLOAT(ccc_node, ccc, height);
-      GET_FLOAT(ccc_node, ccc, radius);
-      ccc.offset = get_vec3_toml_array(GET_ARRAY(ccc_node, "offset"));
-      GET_FLOAT(ccc_node, ccc, density);
-      GET_FLOAT(ccc_node, ccc, friction);
-      GET_FLOAT(ccc_node, ccc, restitution);
-    } else if (const auto mc_node = ent.as_table()->get("mesh_collider_component")) {
-      auto& mc = reg.emplace<MeshColliderComponent>(deserialized_entity);
-      mc.offset = get_vec3_toml_array(GET_ARRAY(mc_node, "offset"));
-      GET_FLOAT(mc_node, mc, friction);
-      GET_FLOAT(mc_node, mc, restitution);
-    } else if (const auto chc_node = ent.as_table()->get("character_controller_component")) {
-      auto& chc = reg.emplace<CharacterControllerComponent>(deserialized_entity);
-      GET_FLOAT(chc_node, chc, character_height_standing);
-      GET_FLOAT(chc_node, chc, character_radius_standing);
-      GET_FLOAT(chc_node, chc, character_height_crouching);
-      GET_FLOAT(chc_node, chc, character_radius_crouching);
-      GET_BOOL(chc_node, chc, control_movement_during_jump);
-      GET_FLOAT(chc_node, chc, jump_force);
-      GET_FLOAT(chc_node, chc, friction);
-      GET_FLOAT(chc_node, chc, collision_tolerance);
-    } else if (const auto lua_node = ent.as_table()->get("lua_script_component")) {
-      auto& lsc = reg.emplace<LuaScriptComponent>(deserialized_entity);
-      auto paths = GET_ARRAY(lua_node, "paths");
-      for (auto& path : *paths) {
-        auto ab = App::get_system<VFS>()->resolve_physical_dir(path.as_string()->get());
-        lsc.lua_systems.emplace_back(create_shared<LuaSystem>(ab));
-      }
-    } else if (const auto cpp_node = ent.as_table()->get("cpp_script_component")) {
-      auto& csc = reg.emplace<CPPScriptComponent>(deserialized_entity);
-      auto system_hashes = GET_ARRAY(cpp_node, "system_hashes");
-      for (auto& hash : *system_hashes) {
-        auto* system_manager = App::get_system<SystemManager>();
-        csc.systems.emplace_back(system_manager->get_system(std::stoull(hash.as_string()->get())));
-      }
-    } else if (const auto sprite_node = ent.as_table()->get("sprite_component")) {
-      auto& sc = reg.emplace<SpriteComponent>(deserialized_entity);
-      GET_UINT32(sprite_node, sc, layer);
-      GET_BOOL(sprite_node, sc, sort_y);
-      sc.material = create_shared<SpriteMaterial>();
-      sc.material->parameters.color = get_vec4_toml_array(GET_ARRAY(sprite_node, "color"));
-      sc.material->parameters.uv_offset = get_vec2_toml_array(GET_ARRAY(sprite_node, "uv_offset"));
-      sc.material->parameters.uv_size = get_vec2_toml_array(GET_ARRAY(sprite_node, "uv_size"));
-
-      const auto path = GET_STRING2(sprite_node, "texture_path");
-      if (!path.empty())
-        sc.material->set_albedo_texture(AssetManager::get_texture_asset({.path = path}));
-    } else if (const auto sprite_anim_node = ent.as_table()->get("sprite_animation_component")) {
-      auto& sac = reg.emplace<SpriteAnimationComponent>(deserialized_entity);
-      GET_UINT32(sprite_anim_node, sac, num_frames);
-      GET_BOOL(sprite_anim_node, sac, loop);
-      GET_BOOL(sprite_anim_node, sac, inverted);
-      GET_UINT32(sprite_anim_node, sac, fps);
-      GET_UINT32(sprite_anim_node, sac, columns);
-      sac.frame_size = get_vec2_toml_array(GET_ARRAY(sprite_anim_node, "frame_size"));
-    } else if (const auto tilemap_node = ent.as_table()->get("tilemap_component")) {
-      auto& tmc = reg.emplace<TilemapComponent>(deserialized_entity);
-      const auto path = App::get_system<VFS>()->resolve_physical_dir(GET_STRING2(tilemap_node, "path"));
-      tmc.load(path);
+  for (const auto& rc : entity["RelationshipComponent"].GetArray()) {
+    auto& [parent, children] = registry.get_or_emplace<RelationshipComponent>(deserialized_entity);
+    parent = rc["parent"].GetUint64();
+    for (const auto& child : rc["childs"].GetArray()) {
+      children.emplace_back(child.GetUint64());
     }
   }
-  return eutil::get_uuid(reg, deserialized_entity);
+
+  for (const auto& tc : entity["TransformComponent"].GetArray()) {
+    auto& transform_component = registry.get_or_emplace<TransformComponent>(deserialized_entity);
+    transform_component.position = deserialize_vec3(tc["position"].GetArray());
+    transform_component.rotation = deserialize_vec3(tc["rotation"].GetArray());
+    transform_component.scale = deserialize_vec3(tc["scale"].GetArray());
+  }
+
+  if (entity.HasMember("MeshComponent")) {
+    for (const auto& mc : entity["MeshComponent"].GetArray()) {
+      const auto mesh_path = mc["mesh_path"].GetString();
+      auto mesh = AssetManager::get_mesh_asset(mesh_path);
+      auto& mesh_component = registry.get_or_emplace<MeshComponent>(deserialized_entity, mesh);
+      mesh_component.cast_shadows = mc["cast_shadows"].GetBool();
+      mesh_component.stationary = mc["stationary"].GetBool();
+    }
+  }
+
+  if (entity.HasMember("LightComponent")) {
+    for (const auto& lc : entity["LightComponent"].GetArray()) {
+      auto& light_component = registry.emplace<LightComponent>(deserialized_entity);
+      light_component.type = static_cast<LightComponent::LightType>(lc["type"].GetUint());
+      light_component.color_temperature_mode = lc["color_temperature_mode"].GetBool();
+      light_component.temperature = lc["temperature"].GetUint();
+      light_component.color = deserialize_vec3(lc["color"].GetArray());
+      light_component.intensity = lc["intensity"].GetFloat();
+      light_component.range = lc["range"].GetFloat();
+      light_component.radius = lc["radius"].GetFloat();
+      light_component.length = lc["length"].GetFloat();
+      light_component.outer_cone_angle = lc["outer_cone_angle"].GetFloat();
+      light_component.inner_cone_angle = lc["inner_cone_angle"].GetFloat();
+      light_component.cast_shadows = lc["cast_shadows"].GetBool();
+      light_component.shadow_map_res = lc["shadow_map_res"].GetUint();
+    }
+  }
+
+  if (entity.HasMember("PostProcessProbe")) {
+    for (const auto& ppp : entity["PostProcessProbe"].GetArray()) {
+      auto& ppp_component = registry.emplace<PostProcessProbe>(deserialized_entity);
+      ppp_component.vignette_enabled = ppp["vignette_enabled"].GetBool();
+      ppp_component.vignette_intensity = ppp["vignette_intensity"].GetFloat();
+      ppp_component.film_grain_enabled = ppp["film_grain_enabled"].GetBool();
+      ppp_component.film_grain_intensity = ppp["film_grain_intensity"].GetFloat();
+      ppp_component.chromatic_aberration_enabled = ppp["chromatic_aberration_enabled"].GetBool();
+      ppp_component.chromatic_aberration_intensity = ppp["chromatic_aberration_intensity"].GetFloat();
+      ppp_component.sharpen_enabled = ppp["sharpen_enabled"].GetBool();
+      ppp_component.sharpen_intensity = ppp["sharpen_intensity"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("CameraComponent")) {
+    for (const auto& cc : entity["CameraComponent"].GetArray()) {
+      auto& c_component = registry.emplace<CameraComponent>(deserialized_entity);
+      c_component.camera->set_projection(static_cast<Camera::Projection>(cc["projection"].GetUint()));
+      c_component.camera->set_fov(cc["fov"].GetFloat());
+      c_component.camera->set_near(cc["near"].GetFloat());
+      c_component.camera->set_far(cc["far"].GetFloat());
+      c_component.camera->set_zoom(cc["zoom"].GetFloat());
+    }
+  }
+
+  if (entity.HasMember("RigidbodyComponent")) {
+    for (const auto& rc : entity["RigidbodyComponent"].GetArray()) {
+      auto& rb_component = registry.emplace<RigidbodyComponent>(deserialized_entity);
+      rb_component.allowed_dofs = static_cast<RigidbodyComponent::AllowedDOFs>(rc["allowed_dofs"].GetUint());
+      rb_component.type = static_cast<RigidbodyComponent::BodyType>(rc["type"].GetUint());
+
+      rb_component.mass = rc["mass"].GetFloat();
+      rb_component.linear_drag = rc["linear_drag"].GetFloat();
+      rb_component.angular_drag = rc["angular_drag"].GetFloat();
+      rb_component.gravity_scale = rc["gravity_scale"].GetFloat();
+      rb_component.allow_sleep = rc["allow_sleep"].GetBool();
+      rb_component.awake = rc["awake"].GetBool();
+      rb_component.continuous = rc["continuous"].GetBool();
+      rb_component.interpolation = rc["interpolation"].GetBool();
+      rb_component.is_sensor = rc["is_sensor"].GetBool();
+    }
+  }
+
+  if (entity.HasMember("BoxColliderComponent")) {
+    for (const auto& bc : entity["BoxColliderComponent"].GetArray()) {
+      auto& bc_component = registry.emplace<BoxColliderComponent>(deserialized_entity);
+      bc_component.size = deserialize_vec3(bc["size"].GetArray());
+      bc_component.offset = deserialize_vec3(bc["offset"].GetArray());
+
+      bc_component.density = bc["density"].GetFloat();
+      bc_component.friction = bc["friction"].GetFloat();
+      bc_component.restitution = bc["restitution"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("SphereColliderComponent")) {
+    for (const auto& scc : entity["SphereColliderComponent"].GetArray()) {
+      auto& scc_component = registry.emplace<SphereColliderComponent>(deserialized_entity);
+      scc_component.offset = deserialize_vec3(scc["offset"].GetArray());
+      scc_component.radius = scc["radius"].GetFloat();
+      scc_component.density = scc["density"].GetFloat();
+      scc_component.friction = scc["friction"].GetFloat();
+      scc_component.restitution = scc["restitution"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("CapsuleColliderComponent")) {
+    for (const auto& ccc : entity["CapsuleColliderComponent"].GetArray()) {
+      auto& cc_component = registry.emplace<CapsuleColliderComponent>(deserialized_entity);
+      cc_component.offset = deserialize_vec3(ccc["offset"].GetArray());
+      cc_component.height = ccc["height"].GetFloat();
+      cc_component.radius = ccc["radius"].GetFloat();
+      cc_component.density = ccc["density"].GetFloat();
+      cc_component.friction = ccc["friction"].GetFloat();
+      cc_component.restitution = ccc["restitution"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("TaperedCapsuleColliderComponent")) {
+    for (const auto& tcc : entity["TaperedCapsuleColliderComponent"].GetArray()) {
+      auto& tcc_component = registry.emplace<TaperedCapsuleColliderComponent>(deserialized_entity);
+      tcc_component.offset = deserialize_vec3(tcc["offset"].GetArray());
+      tcc_component.height = tcc["height"].GetFloat();
+      tcc_component.top_radius = tcc["top_radius"].GetFloat();
+      tcc_component.bottom_radius = tcc["bottom_radius"].GetFloat();
+      tcc_component.density = tcc["density"].GetFloat();
+      tcc_component.friction = tcc["friction"].GetFloat();
+      tcc_component.restitution = tcc["restitution"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("CylinderColliderComponent")) {
+    for (const auto& ccc : entity["CylinderColliderComponent"].GetArray()) {
+      auto& ccc_component = registry.emplace<CylinderColliderComponent>(deserialized_entity);
+      ccc_component.offset = deserialize_vec3(ccc["offset"].GetArray());
+
+      ccc_component.height = ccc["height"].GetFloat();
+      ccc_component.radius = ccc["radius"].GetFloat();
+      ccc_component.density = ccc["density"].GetFloat();
+      ccc_component.friction = ccc["friction"].GetFloat();
+      ccc_component.restitution = ccc["restitution"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("MeshColliderComponent")) {
+    for (const auto& mcc : entity["MeshColliderComponent"].GetArray()) {
+      auto& mcc_component = registry.emplace<MeshColliderComponent>(deserialized_entity);
+      mcc_component.offset = deserialize_vec3(mcc["offset"].GetArray());
+      mcc_component.friction = mcc["friction"].GetFloat();
+      mcc_component.restitution = mcc["restitution"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("CharacterControllerComponent")) {
+    for (const auto& ccc : entity["CharacterControllerComponent"].GetArray()) {
+      auto& ccc_component = registry.emplace<CharacterControllerComponent>(deserialized_entity);
+      ccc_component.character_height_standing = ccc["character_height_standing"].GetFloat();
+      ccc_component.character_radius_standing = ccc["character_radius_standing"].GetFloat();
+      ccc_component.character_height_crouching = ccc["character_height_crouching"].GetFloat();
+      ccc_component.character_radius_crouching = ccc["character_radius_crouching"].GetFloat();
+      ccc_component.control_movement_during_jump = ccc["control_movement_during_jump"].GetBool();
+      ccc_component.jump_force = ccc["jump_force"].GetFloat();
+      ccc_component.friction = ccc["friction"].GetFloat();
+      ccc_component.collision_tolerance = ccc["collision_tolerance"].GetFloat();
+    }
+  }
+
+  if (entity.HasMember("LuaScriptComponent")) {
+    for (const auto& lcc : entity["LuaScriptComponent"].GetArray()) {
+      auto& lcc_component = registry.emplace<LuaScriptComponent>(deserialized_entity);
+      for (const auto& path : lcc["systems"].GetArray()) {
+        auto ab = App::get_system<VFS>()->resolve_physical_dir(path.GetString());
+        lcc_component.lua_systems.emplace_back(create_shared<LuaSystem>(ab));
+      }
+    }
+  }
+
+  if (entity.HasMember("CPPScriptComponent")) {
+    for (const auto& cpp : entity["CPPScriptComponent"].GetArray()) {
+      auto& cpp_component = registry.emplace<CPPScriptComponent>(deserialized_entity);
+      for (const auto& hash : cpp["system_hashes"].GetArray()) {
+        auto* system_manager = App::get_system<SystemManager>();
+        cpp_component.systems.emplace_back(system_manager->get_system(std::stoull(hash.GetString())));
+      }
+    }
+  }
+
+  if (entity.HasMember("SpriteComponent")) {
+    for (const auto& sc : entity["SpriteComponent"].GetArray()) {
+      auto& sc_component = registry.emplace<SpriteComponent>(deserialized_entity);
+      sc_component.layer = sc["layer"].GetInt();
+      sc_component.sort_y = sc["sort_y"].GetInt();
+      sc_component.material = create_shared<SpriteMaterial>();
+      sc_component.material->parameters.color = deserialize_vec4(sc["color"].GetArray());
+      sc_component.material->parameters.uv_offset = deserialize_vec3(sc["offset"].GetArray());
+      sc_component.material->parameters.uv_size = deserialize_vec3(sc["size"].GetArray());
+
+      const auto path = std::string(sc["texture_path"].GetString());
+      if (!path.empty())
+        sc_component.material->set_albedo_texture(AssetManager::get_texture_asset({.path = path}));
+    }
+  }
+
+  if (entity.HasMember("SpriteAnimationComponent")) {
+    for (const auto& sac : entity["SpriteAnimationComponent"].GetArray()) {
+      auto& sa_component = registry.emplace<SpriteAnimationComponent>(deserialized_entity);
+      sa_component.num_frames = sac["num_frames"].GetUint();
+      sa_component.loop = sac["loop"].GetBool();
+      sa_component.inverted = sac["inverted"].GetBool();
+      sa_component.fps = sac["fps"].GetUint();
+      sa_component.columns = sac["columns"].GetUint();
+      sa_component.frame_size = deserialize_vec2(sac["frame_size"].GetArray());
+    }
+  }
+
+  if (entity.HasMember("TilemapComponent")) {
+    for (const auto& tc : entity["TilemapComponent"].GetArray()) {
+      auto& t_component = registry.emplace<TilemapComponent>(deserialized_entity);
+      const auto path = App::get_system<VFS>()->resolve_physical_dir(tc["path"].GetString());
+      t_component.load(path);
+    }
+  }
+
+  return eutil::get_uuid(registry, deserialized_entity);
 }
 
 void EntitySerializer::serialize_entity_as_prefab(const char* filepath, Entity entity) {
@@ -598,7 +887,7 @@ Entity EntitySerializer::deserialize_entity_as_prefab(const char* filepath, Scen
   }
 
 #endif
-  OX_LOG_ERROR("There are not entities in the prefab to deserialize! {0}", fs::get_file_name(filepath));
+  OX_LOG_ERROR("There are no entities in the prefab to deserialize! {0}", fs::get_file_name(filepath));
   return {};
 }
 } // namespace ox

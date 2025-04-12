@@ -1,62 +1,68 @@
 #include "SceneSerializer.hpp"
 
-#include "Utils/Profiler.hpp"
 #include "Assets/AssetManager.hpp"
 #include "Core/Project.hpp"
 #include "EntitySerializer.hpp"
+#include "Utils/Profiler.hpp"
 
 #include <fstream>
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
+#include <rapidjson/prettywriter.h>
 
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 
 namespace ox {
-SceneSerializer::SceneSerializer(const Shared<Scene>& scene) : m_scene(scene) {}
+SceneSerializer::SceneSerializer(const Shared<Scene>& scene) : _scene(scene) {}
 
 void SceneSerializer::serialize(const std::string& filePath) const {
-  auto tbl = toml::table{{{"entities", toml::array{}}}};
-  auto entities = tbl.find("entities")->second.as_array();
+  rapidjson::StringBuffer sb;
 
-  tbl.emplace("name", m_scene->scene_name);
+  rapidjson::PrettyWriter writer(sb);
+  writer.StartObject(); // root
 
-  for (const auto [e] : m_scene->registry.storage<entt::entity>().each()) {
-    toml::array entity_array = {};
-    EntitySerializer::serialize_entity(&entity_array, m_scene.get(), e);
-    entities->emplace_back(toml::table{{"entity", entity_array}});
+  writer.String("name");
+  writer.String(_scene->scene_name.c_str());
+
+  writer.String("entities");
+  writer.StartArray(); // entities
+  for (const auto [e] : _scene->registry.storage<entt::entity>().each()) {
+    EntitySerializer::serialize_entity(writer, _scene.get(), e);
   }
+  writer.EndArray(); // entities
 
-  std::stringstream ss;
-  ss << "# Oxylus scene file \n";
-  ss << toml::default_formatter{tbl, toml::default_formatter::default_flags & ~toml::format_flags::indent_sub_tables};
+  writer.EndObject(); // root
+
   std::ofstream filestream(filePath);
-  filestream << ss.str();
+  filestream << sb.GetString();
 
-  OX_LOG_INFO("Saved scene {0}.", m_scene->scene_name);
+  OX_LOG_INFO("Saved scene {0}.", _scene->scene_name);
 }
 
-bool SceneSerializer::deserialize(const std::string& filePath) const {
-  const auto content = fs::read_file(filePath);
+bool SceneSerializer::deserialize(const std::string& file_path) const {
+  const auto content = fs::read_file(file_path);
   if (content.empty()) {
-    OX_ASSERT(!content.empty(), fmt::format("Couldn't read scene file: {0}", filePath).c_str());
+    OX_ASSERT(!content.empty(), fmt::format("Couldn't read scene file: {0}", file_path).c_str());
   }
 
-  toml::table table = toml::parse(content);
+  rapidjson::Document doc;
+  doc.Parse(content.data());
 
-  if (table.empty()) {
-    OX_LOG_ERROR("Scene was unable to load from TOML file {0}", filePath);
-    return false;
+  rapidjson::ParseResult parse_result = doc.Parse(content.c_str());
+
+  if (doc.HasParseError())
+    OX_LOG_ERROR("Json parser error for: {0} {1}", file_path, rapidjson::GetParseError_En(parse_result.Code()));
+
+  _scene->scene_name = doc["name"].GetString();
+
+  auto entities_array = doc["entities"].GetArray();
+
+  for (auto& entity : entities_array) {
+    EntitySerializer::deserialize_entity(entity.GetObject(), _scene.get(), true);
   }
 
-  m_scene->scene_name = table["name"].as_string()->get();
-
-  auto entities = table["entities"].as_array();
-
-  for (auto& entity : *entities) {
-    auto entity_arr = entity.as_table()->get("entity")->as_array();
-    EntitySerializer::deserialize_entity(entity_arr, m_scene.get(), true);
-  }
-
-  OX_LOG_INFO("Scene loaded : {0}", fs::get_file_name(m_scene->scene_name));
+  OX_LOG_INFO("Scene loaded : {0}", fs::get_file_name(_scene->scene_name));
   return true;
 }
-}
+} // namespace ox

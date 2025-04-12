@@ -314,31 +314,29 @@ void EditorLayer::new_scene() {
 }
 
 void EditorLayer::open_scene_file_dialog() {
-  std::string path = {};
   const auto& window = App::get()->get_window();
   FileDialogFilter dialog_filters[] = {{.name = "Oxylus scene file(.oxscene)", .pattern = "oxscene"}};
   window.show_dialog({
     .kind = DialogKind::OpenFile,
-    .user_data = &path,
+    .user_data = this,
     .callback =
       [](void* user_data, const char8* const* files, int32) {
-    auto& dst_path = *static_cast<std::string*>(user_data);
+    auto* layer = static_cast<EditorLayer*>(user_data);
     if (!files || !*files) {
       return;
     }
 
     const auto first_path_cstr = *files;
     const auto first_path_len = std::strlen(first_path_cstr);
-    dst_path = std::string(first_path_cstr, first_path_len);
+    const auto path = std::string(first_path_cstr, first_path_len);
+    if (!path.empty())
+      layer->open_scene(path);
   },
     .title = "Oxylus scene file...",
     .default_path = fs::current_path(),
     .filters = dialog_filters,
     .multi_select = false,
   });
-
-  if (!path.empty())
-    open_scene(path);
 }
 
 bool EditorLayer::open_scene(const std::filesystem::path& path) {

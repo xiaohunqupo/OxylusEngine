@@ -13,6 +13,6 @@ public:
   bool deserialize(const std::string& filePath) const;
   //bool DeserializeRuntime(const std::string& filePath);
 private:
-  Shared<Scene> m_scene;
+  Shared<Scene> _scene;
 };
 }

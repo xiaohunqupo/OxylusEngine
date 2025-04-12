@@ -1,6 +1,7 @@
 #include "TilemapSerializer.hpp"
 
 #include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
 
 #include "Assets/AssetManager.hpp"
 #include "Assets/SpriteMaterial.hpp"
@@ -14,11 +15,10 @@ void TilemapSerializer::serialize(const std::string& path) {}
 void TilemapSerializer::deserialize(const std::string& path) {
   auto json = fs::read_file(path);
   rapidjson::Document doc;
-  doc.Parse(json.c_str());
+  rapidjson::ParseResult parse_result = doc.Parse(json.c_str());
 
-  // TODO: figure out how to actually convert rapidjson errors into strings
-  // if (doc.HasParseError())
-  // OX_LOG_ERROR(rapidjson::ParseError(doc.GetParseError()));
+  if (doc.HasParseError())
+    OX_LOG_ERROR("Json parser error for: {0} {1}", path, rapidjson::GetParseError_En(parse_result.Code()));
 
   auto identifier = doc["identifier"].GetString();
   auto uniqueIdentifer = doc["uniqueIdentifer"].GetString();

@@ -288,6 +288,9 @@ CPMAddPackage(
   GIT_TAG master
   DOWNLOAD_ONLY YES
   GIT_SHALLOW ON
+  OPTIONS
+  "RAPIDJSON_HAS_STDSTRING 1"
+  "RAPIDJSON_SIMD"
 )
 target_include_directories(${PROJECT_NAME} PUBLIC ${rapidjson_SOURCE_DIR}/include)
 
