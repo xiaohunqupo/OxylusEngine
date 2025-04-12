@@ -10,7 +10,6 @@
 
 #include "UI/OxUI.hpp"
 #include "Utils/EditorConfig.hpp"
-#include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
@@ -68,7 +67,26 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
         ImGui::InputText("##Directory", &project_dir, flags);
         ImGui::SameLine();
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FOLDER), {ImGui::GetContentRegionAvail().x, 0})) {
-          project_dir = App::get_system<FileDialogs>()->open_dir();
+          FileDialogFilter dialog_filters[] = {{.name = "Project dir", .pattern = ""}};
+          window.show_dialog({
+            .kind = DialogKind::OpenFolder,
+            .user_data = &project_dir,
+            .callback =
+              [](void* user_data, const char8* const* files, int32) {
+            auto& dst_path = *static_cast<std::string*>(user_data);
+            if (!files || !*files) {
+              return;
+            }
+
+            const auto first_path_cstr = *files;
+            const auto first_path_len = std::strlen(first_path_cstr);
+            dst_path = std::string(first_path_cstr, first_path_len);
+          },
+            .title = "Project dir...",
+            .spawn_path = fs::current_path(),
+            .filters = dialog_filters,
+            .multi_select = false,
+          });
           project_dir = fs::append_paths(project_dir, project_name);
         }
         ui::end_property_grid();
@@ -103,9 +121,29 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
       }
       ImGui::SetNextItemWidth(x);
       if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_UPLOAD " Load Project"), {x, y})) {
-        const std::string filepath = App::get_system<FileDialogs>()->open_file({{"Oxylus Project", "oxproj"}});
-        if (!filepath.empty()) {
-          load_project_for_editor(filepath);
+        std::string path = {};
+        FileDialogFilter dialog_filters[] = {{.name = "Oxylus Project", .pattern = "oxproj"}};
+        window.show_dialog({
+          .kind = DialogKind::OpenFile,
+          .user_data = &path,
+          .callback =
+            [](void* user_data, const char8* const* files, int32) {
+          auto& dst_path = *static_cast<std::string*>(user_data);
+          if (!files || !*files) {
+            return;
+          }
+
+          const auto first_path_cstr = *files;
+          const auto first_path_len = std::strlen(first_path_cstr);
+          dst_path = std::string(first_path_cstr, first_path_len);
+        },
+          .title = "Open project...",
+          .spawn_path = fs::current_path(),
+          .filters = dialog_filters,
+          .multi_select = false,
+        });
+        if (!path.empty()) {
+          load_project_for_editor(path);
         }
       }
       ui::align_right(ImVec2(120, 0).x);

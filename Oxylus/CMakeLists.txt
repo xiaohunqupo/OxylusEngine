@@ -18,6 +18,13 @@ file(GLOB_RECURSE Modules "src/Modules/*.h" "src/Modules/*.hpp" "src/Modules/*.c
 source_group("src/Modules" FILES ${Modules})
 file(GLOB_RECURSE Memory "src/Memory/*.h" "src/Memory/*.hpp" "src/Memory/*.cpp")
 source_group("src/Memory" FILES ${Memory})
+if (WIN32)
+  file(GLOB_RECURSE OS "src/OS/*.h" "src/OS/*.hpp" "src/OS/Win32.cpp")
+endif ()
+if (UNIX)
+  file(GLOB_RECURSE OS "src/OS/*.h" "src/OS/*.hpp" "src/OS/Linux.cpp")
+endif ()
+source_group("src/OS" FILES ${OS})
 
 file(GLOB Render "src/Render/*.h" "src/Render/*.hpp" "src/Render/*.cpp")
 source_group("src/Render" FILES ${Render})
@@ -39,7 +46,7 @@ source_group("src/UI" FILES ${UI})
 file(GLOB_RECURSE Utils "src/Utils/*.h" "src/Utils/*.hpp" "src/Utils/*.cpp")
 source_group("src/Utils" FILES ${Utils})
 
-set(SOURCE_FILES ${src} ${Core} ${Assets} ${Audio} ${Event} ${Physics} ${Modules} ${Memory}
+set(SOURCE_FILES ${src} ${Core} ${Assets} ${Audio} ${Event} ${Physics} ${Modules} ${Memory} ${OS}
   ${RENDERER_FILES} ${Scene} ${Thread} ${UI} ${Utils} ${Scripting})
 
 set(vendor_ImGuizmo "vendor/ImGuizmo/ImGuizmo.cpp" "vendor/ImGuizmo/ImGuizmo.h")
@@ -242,11 +249,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC vuk)
 target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/src)
 target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/include)
 
-# NFD
-CPMAddPackage("gh:btzy/nativefiledialog-extended#master")
-target_link_libraries(${PROJECT_NAME} PUBLIC nfd)
-target_include_directories(${PROJECT_NAME} PUBLIC ${NFD_SOURCE_DIR}/src/include)
-
 # GLFW
 CPMAddPackage(
   NAME GLFW
@@ -391,4 +393,18 @@ target_link_libraries(${PROJECT_NAME} PUBLIC ktx)
 CPMAddPackage("gh:dalerank/imspinner#master")
 target_include_directories(${PROJECT_NAME} PUBLIC ${imspinner_SOURCE_DIR})
 
-
+# simdutf
+CPMAddPackage(
+  NAME simdutf
+  GITHUB_REPOSITORY simdutf/simdutf
+  GIT_TAG master
+  GIT_SHALLOW ON
+  GIT_MODULES ""
+  OPTIONS
+  "SIMDUTF_TESTS OFF"
+  "SIMDUTF_BENCHMARKS OFF"
+  "SIMDUTF_TOOLS OFF"
+  "SIMDUTF_ICONV OFF"
+)
+target_include_directories(${PROJECT_NAME} PUBLIC ${simdutf}/include)
+target_link_libraries(${PROJECT_NAME} PUBLIC simdutf)

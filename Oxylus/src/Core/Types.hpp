@@ -43,6 +43,26 @@ constexpr char8 operator""_c8(const unsigned long long n) { return static_cast<c
 constexpr char16 operator""_c16(const unsigned long long n) { return static_cast<char16>(n); }
 constexpr char32 operator""_c32(const unsigned long long n) { return static_cast<char32>(n); }
 
+template<typename T>
+constexpr T align_up(T size, uint64 alignment) {
+    return T((uint64(size) + (alignment - 1)) & ~(alignment - 1));
+}
+
+template<typename T>
+constexpr T align_down(T size, uint64 alignment) {
+    return T(uint64(size) & ~(alignment - 1));
+}
+
+template<typename T>
+constexpr T kib_to_bytes(const T x) {
+    return x << static_cast<T>(10);
+}
+
+template<typename T>
+constexpr T mib_to_bytes(const T x) {
+    return x << static_cast<T>(20);
+}
+
 template <class... T>
 struct match : T... {
   using T::operator()...;

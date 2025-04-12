@@ -4,9 +4,11 @@
 #include <SDL3/SDL.h>
 #include <SDL3/SDL_vulkan.h>
 #include <array>
+#include <ranges>
 #include <stb_image.h>
 
 #include "Core/Handle.hpp"
+#include "Memory/Stack.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 
@@ -222,6 +224,32 @@ option<SystemDisplay> Window::display_at(const uint32 monitor_id) {
     .refresh_rate = display_mode->refresh_rate,
     .content_scale = scale,
   };
+}
+
+void Window::show_dialog(const ShowDialogInfo& info) const {
+  memory::ScopedStack stack;
+
+  auto sdl_filters = stack.alloc<SDL_DialogFileFilter>(info.filters.size());
+  for (const auto& [filter, sdl_filter] : std::views::zip(info.filters, sdl_filters)) {
+    sdl_filter.name = stack.null_terminate_cstr(filter.name);
+    sdl_filter.pattern = stack.null_terminate_cstr(filter.pattern);
+  }
+
+  const auto props = SDL_CreateProperties();
+  OX_DEFER(&) { SDL_DestroyProperties(props); };
+
+  SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_FILTERS_POINTER, sdl_filters.data());
+  SDL_SetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, static_cast<int32>(sdl_filters.size()));
+  SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, impl->handle);
+  SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_LOCATION_STRING, info.spawn_path.c_str());
+  SDL_SetBooleanProperty(props, SDL_PROP_FILE_DIALOG_MANY_BOOLEAN, info.multi_select);
+  SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING, stack.null_terminate_cstr(info.title));
+
+  switch (info.kind) {
+    case DialogKind::OpenFile  : SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFILE, info.callback, info.user_data, props); break;
+    case DialogKind::SaveFile  : SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_SAVEFILE, info.callback, info.user_data, props); break;
+    case DialogKind::OpenFolder: SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFOLDER, info.callback, info.user_data, props); break;
+  }
 }
 
 void Window::set_cursor(WindowCursor cursor) const {

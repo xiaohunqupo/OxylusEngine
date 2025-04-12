@@ -1,10 +1,11 @@
 #pragma once
+#include <span>
 #include <string>
 
+#include "Core/Enum.hpp"
 #include "Core/Handle.hpp"
 #include "Core/Input.hpp"
 #include "Core/Option.hpp"
-#include "Core/Enum.hpp"
 
 #include <SDL3/SDL_keycode.h>
 #include <glm/vec4.hpp>
@@ -48,14 +49,35 @@ struct SystemDisplay {
 };
 
 struct WindowCallbacks {
-    void *user_data = nullptr;
-    void (*on_resize)(void *user_data, glm::uvec2 size) = nullptr;
-    void (*on_mouse_pos)(void *user_data, glm::vec2 position, glm::vec2 relative) = nullptr;
-    void (*on_mouse_button)(void *user_data, uint8 button, bool down) = nullptr;
-    void (*on_mouse_scroll)(void *user_data, glm::vec2 offset) = nullptr;
-    void (*on_text_input)(void *user_data, const char8 *text) = nullptr;
-    void (*on_key)(void *user_data, SDL_Keycode key_code, SDL_Scancode scan_code, uint16 mods, bool down, bool repeat) = nullptr;
-    void (*on_close)(void *user_data) = nullptr;
+  void* user_data = nullptr;
+  void (*on_resize)(void* user_data, glm::uvec2 size) = nullptr;
+  void (*on_mouse_pos)(void* user_data, glm::vec2 position, glm::vec2 relative) = nullptr;
+  void (*on_mouse_button)(void* user_data, uint8 button, bool down) = nullptr;
+  void (*on_mouse_scroll)(void* user_data, glm::vec2 offset) = nullptr;
+  void (*on_text_input)(void* user_data, const char8* text) = nullptr;
+  void (*on_key)(void* user_data, SDL_Keycode key_code, SDL_Scancode scan_code, uint16 mods, bool down, bool repeat) = nullptr;
+  void (*on_close)(void* user_data) = nullptr;
+};
+
+enum class DialogKind : uint32 {
+  OpenFile = 0,
+  SaveFile,
+  OpenFolder,
+};
+
+struct FileDialogFilter {
+  std::string_view name = {};
+  std::string_view pattern = {};
+};
+
+struct ShowDialogInfo {
+  DialogKind kind = DialogKind::OpenFile;
+  void* user_data = nullptr;
+  void (*callback)(void* user_data, const char8* const* files, int32 filter) = nullptr;
+  std::string_view title = {};
+  std::string spawn_path = {};
+  std::span<FileDialogFilter> filters = {};
+  bool multi_select = false;
 };
 
 struct WindowInfo {
@@ -84,6 +106,8 @@ struct Window : Handle<Window> {
   void poll(const WindowCallbacks& callbacks) const;
 
   static option<SystemDisplay> display_at(uint32 monitor_id = WindowInfo::USE_PRIMARY_MONITOR);
+
+  void show_dialog(const ShowDialogInfo& info) const;
 
   void set_cursor(WindowCursor cursor) const;
   WindowCursor get_cursor() const;

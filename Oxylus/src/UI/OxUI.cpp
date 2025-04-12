@@ -1,7 +1,6 @@
 #include "OxUI.hpp"
 
 #include "Assets/AssetManager.hpp"
-#include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
 
 #include <fmt/format.h>
@@ -12,6 +11,7 @@
 
 #include "Assets/Texture.hpp"
 #include "Core/App.hpp"
+#include "Core/FileSystem.hpp"
 #include "imgui.h"
 
 namespace ox {
@@ -213,7 +213,28 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.25f, 0.25f, 0.25f, 1.0f});
 
   auto texture_load_func = [](Shared<Texture>& texture, bool& changed) {
-    const auto& path = App::get_system<FileDialogs>()->open_file({{"Texture file", "png,jpg"}});
+    std::string path = {};
+    const auto& window = App::get()->get_window();
+    FileDialogFilter dialog_filters[] = {{.name = "Texture file", .pattern = "png"}};
+    window.show_dialog({
+      .kind = DialogKind::OpenFile,
+      .user_data = &path,
+      .callback =
+        [](void* user_data, const char8* const* files, int32) {
+      auto& dst_path = *static_cast<std::string*>(user_data);
+      if (!files || !*files) {
+        return;
+      }
+
+      const auto first_path_cstr = *files;
+      const auto first_path_len = std::strlen(first_path_cstr);
+      dst_path = std::string(first_path_cstr, first_path_len);
+    },
+      .title = "Texture file",
+      .spawn_path = fs::current_path(),
+      .filters = dialog_filters,
+      .multi_select = false,
+    });
     if (!path.empty()) {
       texture = AssetManager::get_texture_asset({path});
       changed = true;

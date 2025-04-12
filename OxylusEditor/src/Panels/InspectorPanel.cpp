@@ -18,10 +18,7 @@
 #include "EditorTheme.hpp"
 #include "Scene/Entity.hpp"
 #include "UI/OxUI.hpp"
-#include "Utils/FileDialogs.hpp"
 #include "Utils/StringUtils.hpp"
-
-#include "Scene/SceneRenderer.hpp"
 
 namespace ox {
 static bool s_rename_entity = false;
@@ -373,7 +370,28 @@ void InspectorPanel::draw_components(Entity entity) {
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
     if (ui::button("Load tilemap", {x, y}, "Load exported png and json file from ldtk")) {
-      auto path = App::get_system<FileDialogs>()->open_file({{"json file", "json"}});
+      std::string path = {};
+      const auto& window = App::get()->get_window();
+      FileDialogFilter dialog_filters[] = {{.name = "ldtk file(.json)", .pattern = "json"}};
+      window.show_dialog({
+        .kind = DialogKind::OpenFile,
+        .user_data = &path,
+        .callback =
+          [](void* user_data, const char8* const* files, int32) {
+        auto& dst_path = *static_cast<std::string*>(user_data);
+        if (!files || !*files) {
+          return;
+        }
+
+        const auto first_path_cstr = *files;
+        const auto first_path_len = std::strlen(first_path_cstr);
+        dst_path = std::string(first_path_cstr, first_path_len);
+      },
+        .title = "Load exported png and json file from ldtk",
+        .spawn_path = fs::current_path(),
+        .filters = dialog_filters,
+        .multi_select = false,
+      });
       component.load(path);
     }
     ImGui::Separator();
@@ -433,8 +451,29 @@ void InspectorPanel::draw_components(Entity entity) {
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
     if (ui::button(filepath.c_str(), {x, y})) {
-      const std::string file_path = App::get_system<FileDialogs>()->open_file({{"Audio file", "mp3, wav, flac"}});
-      load_file(file_path, component);
+      std::string path = {};
+      const auto& window = App::get()->get_window();
+      FileDialogFilter dialog_filters[] = {{.name = "Audio file(.mp3, .wav, .flac)", .pattern = "mp3;wav;flac"}};
+      window.show_dialog({
+        .kind = DialogKind::OpenFile,
+        .user_data = &path,
+        .callback =
+          [](void* user_data, const char8* const* files, int32) {
+        auto& dst_path = *static_cast<std::string*>(user_data);
+        if (!files || !*files) {
+          return;
+        }
+
+        const auto first_path_cstr = *files;
+        const auto first_path_len = std::strlen(first_path_cstr);
+        dst_path = std::string(first_path_cstr, first_path_len);
+      },
+        .title = "Open audio file...",
+        .spawn_path = fs::current_path(),
+        .filters = dialog_filters,
+        .multi_select = false,
+      });
+      load_file(path, component);
     }
     if (ImGui::BeginDragDropTarget()) {
       if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
@@ -805,8 +844,29 @@ void InspectorPanel::draw_components(Entity entity) {
     const float y = ImGui::GetFrameHeight();
     const auto btn = fmt::format("{} Drop a script file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
     if (ui::button(btn.c_str(), {x, y})) {
-      const std::string file_path = App::get_system<FileDialogs>()->open_file({{"Lua file", "lua"}});
-      load_script(file_path, component);
+      std::string path = {};
+      const auto& window = App::get()->get_window();
+      FileDialogFilter dialog_filters[] = {{.name = "Lua file(.lua)", .pattern = "lua"}};
+      window.show_dialog({
+        .kind = DialogKind::OpenFile,
+        .user_data = &path,
+        .callback =
+          [](void* user_data, const char8* const* files, int32) {
+        auto& dst_path = *static_cast<std::string*>(user_data);
+        if (!files || !*files) {
+          return;
+        }
+
+        const auto first_path_cstr = *files;
+        const auto first_path_len = std::strlen(first_path_cstr);
+        dst_path = std::string(first_path_cstr, first_path_len);
+      },
+        .title = "Open lua file...",
+        .spawn_path = fs::current_path(),
+        .filters = dialog_filters,
+        .multi_select = false,
+      });
+      load_script(path, component);
     }
     if (ImGui::BeginDragDropTarget()) {
       if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {

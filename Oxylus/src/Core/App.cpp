@@ -27,7 +27,6 @@
 
 #include "UI/ImGuiLayer.hpp"
 
-#include "Utils/FileDialogs.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/Random.hpp"
 
@@ -54,7 +53,6 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   register_system<VFS>();
   register_system<Random>();
   register_system<TaskScheduler>();
-  register_system<FileDialogs>();
   register_system<AudioEngine>();
   register_system<LuaManager>();
   register_system<ModuleRegistry>();
