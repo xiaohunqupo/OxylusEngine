@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <mutex>
 #include <vuk/Value.hpp>
 
 #include "Event/Event.hpp"
@@ -17,7 +16,7 @@ class Scene;
 
 class RenderPipeline {
 public:
-  RenderPipeline(std::string name) : _name(std::move(name)), attach_swapchain(true) {}
+  RenderPipeline(std::string name) : _name(std::move(name)) {}
 
   virtual ~RenderPipeline() = default;
 
@@ -30,6 +29,7 @@ public:
 
   virtual void on_update(Scene* scene) {}
   virtual void on_submit() {} // TODO: Not called anymore!! Old Code!!
+
   virtual void submit_mesh_component(const MeshComponent& render_object) {}
   virtual void submit_light(const LightComponent& light) {}
   virtual void submit_camera(const CameraComponent& camera) {}
@@ -39,11 +39,5 @@ public:
 
 protected:
   std::string _name = {};
-  bool attach_swapchain = false;
-  vuk::Extent3D _extent = {};
-  vuk::Value<vuk::ImageAttachment>* final_image = nullptr;
-  vuk::Allocator* _frame_allocator;
-  vuk::Compiler _compiler = {};
-  std::mutex setup_lock;
 };
 } // namespace ox

@@ -3,6 +3,7 @@
 #include <plf_colony.h>
 #include <vuk/Value.hpp>
 
+#include <ankerl/unordered_dense.h>
 #include <glm/vec2.hpp>
 #include <imgui.h>
 
@@ -22,6 +23,7 @@ public:
 
   Shared<Texture> font_texture = nullptr;
   std::vector<vuk::Value<vuk::ImageAttachment>> rendering_images;
+  ankerl::unordered_dense::map<uint64, ImTextureID> acquired_images;
 
   static ImFont* bold_font;
   static ImFont* regular_font;
@@ -48,6 +50,7 @@ public:
   [[nodiscard]] vuk::Value<vuk::ImageAttachment> end_frame(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target);
 
   ImTextureID add_image(vuk::Value<vuk::ImageAttachment> attachment);
+  ImTextureID add_image(const Texture& texture);
 
   void on_mouse_pos(glm::vec2 pos);
   void on_mouse_button(uint8 button, bool down);

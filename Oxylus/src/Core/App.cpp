@@ -50,6 +50,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   else
     std::filesystem::current_path(app_spec.working_directory);
 
+  register_system<AssetManager>();
   register_system<VFS>();
   register_system<Random>();
   register_system<TaskScheduler>();
@@ -65,6 +66,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   register_system<Input>();
 
   // Shortcut for commonly used Systems
+  AssetManager::set_instance();
   Input::set_instance();
   Physics::set_instance();
 
@@ -86,6 +88,7 @@ App::~App() { close(); }
 
 void App::set_instance(App* instance) {
   _instance = instance;
+  get_system<AssetManager>()->set_instance();
   get_system<Input>()->set_instance();
   get_system<Physics>()->set_instance();
 }
@@ -155,7 +158,7 @@ void App::run() {
     const auto input_system = get_system<Input>();
     const auto ox_key_code = Input::to_keycode(key_code, scan_code);
     if (down) {
-      input_system->set_key_pressed(ox_key_code, repeat);
+      input_system->set_key_pressed(ox_key_code, !repeat);
       input_system->set_key_released(ox_key_code, false);
       input_system->set_key_held(ox_key_code, true);
     } else {

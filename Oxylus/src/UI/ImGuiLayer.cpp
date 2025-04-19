@@ -87,7 +87,7 @@ void ImGuiLayer::on_attach(EventDispatcher&) {
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
 
   font_texture = create_shared<Texture>();
-  font_texture->create_texture({.width = (unsigned)width, .height = (unsigned)height, .depth = 1},
+  font_texture->create_texture({.width = static_cast<unsigned>(width), .height = static_cast<unsigned>(height), .depth = 1},
                                pixels,
                                vuk::Format::eR8G8B8A8Srgb,
                                Preset::eRTT2DUnmipped);
@@ -124,10 +124,11 @@ void ImGuiLayer::begin_frame(const float64 delta_time, const vuk::Extent3D exten
 
   const App* app = App::get();
   auto& imgui = ImGui::GetIO();
-  imgui.DeltaTime = delta_time;
+  imgui.DeltaTime = static_cast<float32>(delta_time);
   imgui.DisplaySize = ImVec2(static_cast<float32>(extent.width), static_cast<float32>(extent.height));
 
   rendering_images.clear();
+  acquired_images.clear();
 
   add_image(font_texture->acquire());
 
@@ -257,10 +258,10 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 
             // Apply scissor/clipping rectangle
             vuk::Rect2D scissor;
-            scissor.offset.x = (int32_t)clip_rect.x;
-            scissor.offset.y = (int32_t)clip_rect.y;
-            scissor.extent.width = (uint32_t)(clip_rect.z - clip_rect.x);
-            scissor.extent.height = (uint32_t)(clip_rect.w - clip_rect.y);
+            scissor.offset.x = static_cast<int32_t>(clip_rect.x);
+            scissor.offset.y = static_cast<int32_t>(clip_rect.y);
+            scissor.extent.width = static_cast<uint32_t>(clip_rect.z - clip_rect.x);
+            scissor.extent.height = static_cast<uint32_t>(clip_rect.w - clip_rect.y);
             command_buffer.set_scissor(0, scissor);
 
             command_buffer.bind_sampler(0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear});
@@ -287,6 +288,18 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment> attachment) {
   rendering_images.emplace_back(std::move(attachment));
   return rendering_images.size();
+}
+
+ImTextureID ImGuiLayer::add_image(const Texture& texture) {
+  if (this->acquired_images.contains(texture.get_view_id())) {
+    return this->acquired_images[texture.get_view_id()];
+  }
+
+  const auto attachment = texture.acquire();
+  const auto texture_id = this->add_image(attachment);
+  this->acquired_images.emplace(texture.get_view_id(), texture_id);
+
+  return texture_id;
 }
 
 void ImGuiLayer::on_mouse_pos(glm::vec2 pos) {

@@ -212,50 +212,51 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.35f, 0.35f, 0.35f, 1.0f});
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.25f, 0.25f, 0.25f, 1.0f});
 
-  auto texture_load_func = [](Shared<Texture>& texture, bool& changed) {
-    std::string path = {};
+  auto texture_load_func = [](Shared<Texture>& t) {
     const auto& window = App::get()->get_window();
     FileDialogFilter dialog_filters[] = {{.name = "Texture file", .pattern = "png"}};
     window.show_dialog({
       .kind = DialogKind::OpenFile,
-      .user_data = &path,
+      .user_data = &t,
       .callback =
         [](void* user_data, const char8* const* files, int32) {
-      auto& dst_path = *static_cast<std::string*>(user_data);
+      auto* usr_d = static_cast<Shared<Texture>*>(user_data);
       if (!files || !*files) {
         return;
       }
 
       const auto first_path_cstr = *files;
       const auto first_path_len = std::strlen(first_path_cstr);
-      dst_path = std::string(first_path_cstr, first_path_len);
+      const auto path = std::string(first_path_cstr, first_path_len);
+
+      if (!path.empty()) {
+        *usr_d = AssetManager::get_texture_asset({path});
+      }
     },
       .title = "Texture file",
       .default_path = fs::current_path(),
       .filters = dialog_filters,
       .multi_select = false,
     });
-    if (!path.empty()) {
-      texture = AssetManager::get_texture_asset({path});
-      changed = true;
-    }
   };
 
   if (texture) {
-    if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(texture->acquire()), {button_size, button_size})) {
-      texture_load_func(texture, changed);
+    if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(*texture), {button_size, button_size})) {
+      texture_load_func(texture);
+      changed = true;
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
       ImGui::BeginTooltip();
       ImGui::TextUnformatted(texture->get_path().c_str());
       ImGui::Spacing();
-      ImGui::Image(App::get()->get_imgui_layer()->add_image(texture->acquire()), {tooltip_size, tooltip_size});
+      ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture), {tooltip_size, tooltip_size});
       ImGui::EndTooltip();
     }
   } else {
     ImGui::PushFont(ImGuiLayer::bold_font);
     if (ImGui::Button("NO\nTEXTURE", {button_size, button_size})) {
-      texture_load_func(texture, changed);
+      texture_load_func(texture);
+      changed = true;
     }
     ImGui::PopFont();
   }
@@ -285,7 +286,7 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
 }
 
 void ui::image(const Texture& texture, ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col) {
-  ImGui::Image(App::get()->get_imgui_layer()->add_image(texture.acquire()), size, uv0, uv1, tint_col, border_col);
+  ImGui::Image(App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, tint_col, border_col);
 }
 
 void ui::image(const vuk::Value<vuk::ImageAttachment>& attch,
@@ -304,7 +305,7 @@ bool ui::image_button(const char* id,
                       const ImVec2& uv1,
                       const ImVec4& tint_col,
                       const ImVec4& bg_col) {
-  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture.acquire()), size, uv0, uv1, bg_col, tint_col);
+  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, bg_col, tint_col);
 }
 
 bool ui::draw_vec2_control(const char* label, glm::vec2& values, const char* tooltip, const float reset_value) {

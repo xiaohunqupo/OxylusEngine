@@ -115,4 +115,24 @@ inline vuk::Unique<Buffer> allocate_gpu_buffer(Allocator& allocator, uint64_t si
 }
 
 vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment> image, uint32_t mip_count);
+
+inline VkDescriptorSetLayoutBinding ds_layout_binding(uint32_t binding, vuk::DescriptorType descriptor_type, const uint32_t count = 1024) {
+  return {
+    .binding = binding,
+    .descriptorType = static_cast<VkDescriptorType>(descriptor_type),
+    .descriptorCount = count,
+    .stageFlags = static_cast<VkShaderStageFlags>(vuk::ShaderStageFlagBits::eAll),
+  };
+}
+
+inline vuk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(const std::vector<VkDescriptorSetLayoutBinding>& bindings,
+                                                                            const uint32_t index) {
+  vuk::DescriptorSetLayoutCreateInfo ci = {};
+  ci.bindings = bindings;
+  ci.index = index;
+  for (int i = 0; i < bindings.size(); i++)
+    ci.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
+  return ci;
+}
+
 } // namespace vuk

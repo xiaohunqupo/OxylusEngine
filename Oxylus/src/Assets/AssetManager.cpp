@@ -12,6 +12,10 @@
 namespace ox {
 AssetManager* AssetManager::_instance = nullptr;
 
+void AssetManager::init() {}
+
+void AssetManager::deinit() {}
+
 void AssetManager::set_instance() {
   if (_instance == nullptr)
     _instance = App::get_system<AssetManager>();

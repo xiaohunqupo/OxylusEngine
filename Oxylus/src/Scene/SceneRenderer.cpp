@@ -10,7 +10,7 @@
 
 #include "Render/DebugRenderer.hpp"
 #include "Render/DefaultRenderPipeline.hpp"
-#include "Render/SimpleRenderPipeline.hpp"
+#include "Render/EasyRenderPipeline.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Scene/Components.hpp"
 #include "Utils/Profiler.hpp"
@@ -19,7 +19,7 @@ namespace ox {
 void SceneRenderer::init(EventDispatcher& dispatcher) {
   OX_SCOPED_ZONE;
   if (!_render_pipeline)
-    _render_pipeline = create_unique<SimpleRenderPipeline>("SimpleRenderPipeline");
+    _render_pipeline = create_unique<EasyRenderPipeline>("SimpleRenderPipeline");
   _render_pipeline->init(*App::get_vkcontext().superframe_allocator);
   _render_pipeline->on_dispatcher_events(dispatcher);
 }
@@ -27,7 +27,6 @@ void SceneRenderer::init(EventDispatcher& dispatcher) {
 void SceneRenderer::update(const Timestep& delta_time) const {
   OX_SCOPED_ZONE;
 
-  // Mesh System
   {
     OX_SCOPED_ZONE_N("Mesh System");
     const auto mesh_view = _scene->registry.view<TransformComponent, MeshComponent, TagComponent>();
@@ -49,7 +48,6 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     }
   }
 
-  // Sprite animation system
   {
     OX_SCOPED_ZONE_N("Sprite Animation System");
     const auto sprite_view = _scene->registry.view<TransformComponent, SpriteComponent, SpriteAnimationComponent, TagComponent>();
@@ -98,7 +96,6 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     }
   }
 
-  // Sprite System
   {
     OX_SCOPED_ZONE_N("Sprite System");
     const auto sprite_view = _scene->registry.view<TransformComponent, SpriteComponent, TagComponent>();
@@ -119,7 +116,6 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     }
   }
 
-  // Tilemaps
   {
     OX_SCOPED_ZONE_N("Tilemap System");
     const auto tilemap_view = _scene->registry.view<TransformComponent, TilemapComponent, TagComponent>();
@@ -143,15 +139,14 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     }
   }
 
-  // Physics debug renderer
   {
+    OX_SCOPED_ZONE_N("Physics Debug Renderer");
     if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
       auto physics = App::get_system<Physics>();
       physics->debug_draw();
     }
   }
 
-  // Lighting
   {
     OX_SCOPED_ZONE_N("Lighting System");
     const auto lighting_view = _scene->registry.view<TransformComponent, LightComponent>();
@@ -166,12 +161,16 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     }
   }
 
-  // TODO: (very outdated, currently not working)
-  // Particle system
-  const auto particle_system_view = _scene->registry.view<TransformComponent, ParticleSystemComponent>();
-  for (auto&& [e, tc, psc] : particle_system_view.each()) {
-    psc.system->on_update((float)App::get_timestep(), tc.position);
-    psc.system->on_render();
+  {
+    OX_SCOPED_ZONE_N("Particle System");
+    // TODO: (very outdated, currently not working)
+    const auto particle_system_view = _scene->registry.view<TransformComponent, ParticleSystemComponent>();
+    for (auto&& [e, tc, psc] : particle_system_view.each()) {
+      psc.system->on_update((float)App::get_timestep(), tc.position);
+      psc.system->on_render();
+    }
   }
+
+  _render_pipeline->on_update(_scene);
 }
 } // namespace ox

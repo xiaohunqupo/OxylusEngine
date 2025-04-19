@@ -1,4 +1,5 @@
 ﻿#pragma once
+#include <Jolt/Core/Core.h>
 #include <source_location>
 #include <string>
 #include <vuk/ImageAttachment.hpp>
@@ -6,6 +7,7 @@
 
 #include "Asset.hpp"
 #include "Core/Base.hpp"
+#include "Core/Types.hpp"
 
 using Preset = vuk::ImageAttachment::Preset;
 
@@ -37,7 +39,8 @@ public:
                       std::source_location loc = std::source_location::current());
   void load(const TextureLoadInfo& load_info, std::source_location loc = std::source_location::current());
   vuk::ImageAttachment as_attachment() const { return _attachment; }
-  vuk::Value<vuk::ImageAttachment> acquire() const;
+  vuk::Value<vuk::ImageAttachment> acquire(vuk::Name name = {}, vuk::Access last_access = vuk::Access::eFragmentSampled) const;
+  vuk::Value<vuk::ImageAttachment> discard(vuk::Name name = {}) const;
 
   const vuk::Unique<vuk::Image>& get_image() const { return _image; }
   const vuk::Unique<vuk::ImageView>& get_view() const { return _view; }
@@ -45,7 +48,7 @@ public:
 
   void set_name(std::string_view name, const std::source_location& loc = std::source_location::current());
 
-  explicit operator uint64_t() { return _view->id; }
+  uint64 get_view_id() const { return _view->id; }
 
   static uint32_t get_mip_count(vuk::Extent3D extent) {
     return (uint32_t)log2f((float)std::max(std::max(extent.width, extent.height), extent.depth)) + 1;

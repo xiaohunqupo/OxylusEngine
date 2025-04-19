@@ -121,30 +121,29 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
       }
       ImGui::SetNextItemWidth(x);
       if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_UPLOAD " Load Project"), {x, y})) {
-        std::string path = {};
         FileDialogFilter dialog_filters[] = {{.name = "Oxylus Project", .pattern = "oxproj"}};
         window.show_dialog({
           .kind = DialogKind::OpenFile,
-          .user_data = &path,
+          .user_data = this,
           .callback =
             [](void* user_data, const char8* const* files, int32) {
-          auto& dst_path = *static_cast<std::string*>(user_data);
+          auto* usr_data = static_cast<ProjectPanel*>(user_data);
           if (!files || !*files) {
             return;
           }
 
           const auto first_path_cstr = *files;
           const auto first_path_len = std::strlen(first_path_cstr);
-          dst_path = std::string(first_path_cstr, first_path_len);
+          const auto path = std::string(first_path_cstr, first_path_len);
+          if (!path.empty()) {
+            usr_data->load_project_for_editor(path);
+          }
         },
           .title = "Open project...",
           .default_path = fs::current_path(),
           .filters = dialog_filters,
           .multi_select = false,
         });
-        if (!path.empty()) {
-          load_project_for_editor(path);
-        }
       }
       ui::align_right(ImVec2(120, 0).x);
       if (ImGui::Button("Skip", ImVec2(120, 0))) {

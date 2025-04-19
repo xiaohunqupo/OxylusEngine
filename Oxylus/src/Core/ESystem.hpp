@@ -24,4 +24,4 @@ public:
 protected:
   EventDispatcher* m_dispatcher = nullptr;
 };
-}
+} // namespace ox

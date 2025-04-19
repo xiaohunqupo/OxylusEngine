@@ -19,7 +19,7 @@ public:
   void init() override;
   void deinit() override;
 
-  Unique<enki::TaskScheduler>& get() { return task_scheduler; }
+  Unique<enki::TaskScheduler>& get_underlying() { return task_scheduler; }
 
   template <typename func>
   void add_task(func function) {

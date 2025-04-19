@@ -1073,8 +1073,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   auto hiz_ia = first_pass || resized ? vuk::declare_ia("hiz_image", hiz_texture.as_attachment())
                                       : vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), vuk::eFragmentSampled | vuk::eComputeSampled);
-  auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) {
-    return output; })(hiz_ia);
+  auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) { return output; })(hiz_ia);
 
   if (first_pass || resized) {
     run_static_passes(*vk_context.superframe_allocator);

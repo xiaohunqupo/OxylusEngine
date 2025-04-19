@@ -9,7 +9,6 @@
 #include "Core/Types.hpp"
 #include "ESystem.hpp"
 #include "Render/Window.hpp"
-#include "UUID.hpp"
 
 #include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Log.hpp"
@@ -112,28 +111,28 @@ public:
 
   template <typename T, typename... Args>
   static void register_system(Args&&... args) {
-    auto typeName = typeid(T).hash_code();
-    OX_ASSERT(!_instance->system_registry.contains(typeName), "Registering system more than once.");
+    auto type_name = typeid(T).hash_code();
+    OX_ASSERT(!_instance->system_registry.contains(type_name), "Registering system more than once.");
 
     Shared<T> system = create_shared<T>(std::forward<Args>(args)...);
-    _instance->system_registry.emplace(typeName, std::move(system));
+    _instance->system_registry.emplace(type_name, std::move(system));
   }
 
   template <typename T>
   static void unregister_system() {
-    const auto typeName = typeid(T).hash_code();
+    const auto type_name = typeid(T).hash_code();
 
-    if (_instance->system_registry.contains(typeName)) {
-      _instance->system_registry.erase(typeName);
+    if (_instance->system_registry.contains(type_name)) {
+      _instance->system_registry.erase(type_name);
     }
   }
 
   template <typename T>
   static T* get_system() {
-    const auto typeName = typeid(T).hash_code();
+    const auto type_name = typeid(T).hash_code();
 
-    if (_instance->system_registry.contains(typeName)) {
-      return dynamic_cast<T*>(_instance->system_registry[typeName].get());
+    if (_instance->system_registry.contains(type_name)) {
+      return dynamic_cast<T*>(_instance->system_registry[type_name].get());
     }
 
     return nullptr;
@@ -141,8 +140,8 @@ public:
 
   template <typename T>
   static bool has_system() {
-    const auto typeName = typeid(T).hash_code();
-    return _instance->system_registry.contains(typeName);
+    const auto type_name = typeid(T).hash_code();
+    return _instance->system_registry.contains(type_name);
   }
 
 private:

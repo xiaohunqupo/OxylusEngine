@@ -116,15 +116,19 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
       }
     } else {
       // Use the format that the image is already in
-      format_ktx = vuk::Format(VkFormat(ktx->vkFormat));
+      format_ktx = static_cast<vuk::Format>(static_cast<VkFormat>(ktx->vkFormat));
     }
 
     create_texture({ktx->baseWidth, ktx->baseHeight}, ktx->kvData, format_ktx, load_info.preset, loc);
   }
 }
 
-vuk::Value<vuk::ImageAttachment> Texture::acquire() const {
-  return vuk::acquire_ia(vuk::Name(_name), as_attachment(), vuk::Access::eFragmentSampled);
+vuk::Value<vuk::ImageAttachment> Texture::acquire(const vuk::Name name, const vuk::Access last_access) const {
+  return vuk::acquire_ia(name.is_invalid() ? vuk::Name(_name) : name, as_attachment(), last_access);
+}
+
+vuk::Value<vuk::ImageAttachment> Texture::discard(vuk::Name name) const {
+  return vuk::discard_ia(name.is_invalid() ? vuk::Name(_name) : name, as_attachment());
 }
 
 void Texture::set_name(std::string_view name, const std::source_location& loc) {

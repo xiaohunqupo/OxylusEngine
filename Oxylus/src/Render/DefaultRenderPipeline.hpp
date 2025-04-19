@@ -39,6 +39,8 @@ public:
   void submit_sprite(const SpriteComponent& sprite) override;
 
 private:
+  vuk::Compiler _compiler = {};
+
   CameraComponent current_camera = {};
   CameraComponent frozen_camera = {};
 
