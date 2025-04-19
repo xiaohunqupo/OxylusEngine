@@ -242,14 +242,14 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
   };
 
   if (texture) {
-    if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(texture->as_attachment_value()), {button_size, button_size})) {
+    if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(texture->acquire()), {button_size, button_size})) {
       texture_load_func(texture, changed);
     }
     if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
       ImGui::BeginTooltip();
       ImGui::TextUnformatted(texture->get_path().c_str());
       ImGui::Spacing();
-      ImGui::Image(App::get()->get_imgui_layer()->add_image(texture->as_attachment_value()), {tooltip_size, tooltip_size});
+      ImGui::Image(App::get()->get_imgui_layer()->add_image(texture->acquire()), {tooltip_size, tooltip_size});
       ImGui::EndTooltip();
     }
   } else {
@@ -285,7 +285,7 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
 }
 
 void ui::image(const Texture& texture, ImVec2 size, const ImVec2& uv0, const ImVec2& uv1, const ImVec4& tint_col, const ImVec4& border_col) {
-  ImGui::Image(App::get()->get_imgui_layer()->add_image(texture.as_attachment_value()), size, uv0, uv1, tint_col, border_col);
+  ImGui::Image(App::get()->get_imgui_layer()->add_image(texture.acquire()), size, uv0, uv1, tint_col, border_col);
 }
 
 void ui::image(const vuk::Value<vuk::ImageAttachment>& attch,
@@ -304,7 +304,7 @@ bool ui::image_button(const char* id,
                       const ImVec2& uv1,
                       const ImVec4& tint_col,
                       const ImVec4& bg_col) {
-  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture.as_attachment_value()), size, uv0, uv1, bg_col, tint_col);
+  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture.acquire()), size, uv0, uv1, bg_col, tint_col);
 }
 
 bool ui::draw_vec2_control(const char* label, glm::vec2& values, const char* tooltip, const float reset_value) {

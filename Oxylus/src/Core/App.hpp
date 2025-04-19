@@ -77,7 +77,7 @@ using SystemRegistry = ankerl::unordered_dense::map<size_t, Shared<ESystem>>;
 
 class App {
 public:
-  App(AppSpec spec);
+  App(const AppSpec& spec);
   virtual ~App();
 
   static App* get() { return _instance; }

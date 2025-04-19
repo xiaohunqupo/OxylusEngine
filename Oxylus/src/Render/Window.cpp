@@ -107,7 +107,7 @@ Window Window::create(const WindowInfo& info) {
     image_data = stbi_load(info.icon.path.c_str(), &width, &height, &channels, 4);
   }
   if (image_data != nullptr) {
-    const auto surface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_RGBA8888, image_data, width * 4);
+    const auto surface = SDL_CreateSurfaceFrom(width, height, SDL_PIXELFORMAT_ABGR8888, image_data, width * 4);
     if (!SDL_SetWindowIcon(impl->handle, surface)) {
       OX_LOG_ERROR("Couldn't set window icon!");
     }

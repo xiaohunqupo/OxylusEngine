@@ -11,7 +11,7 @@ struct PipelineBaseCreateInfo;
 class Context;
 } // namespace vuk
 namespace ox {
-class CameraComponent;
+struct CameraComponent;
 class FSR {
 public:
   FSR() = default;

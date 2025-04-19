@@ -21,7 +21,7 @@ void EmbedAsset::EmbedTexture(const std::string& texFilePath, const std::string&
   file << "static constexpr unsigned char " << arrayName << "[] = {" << "\n";
   size_t j = 1;
   for (size_t i = 0; i < psize; ++i) {
-    file << (int)texture[i];
+    file << static_cast<int>(texture[i]);
     if (i != psize - 1)
       file << ",";
     if (i == 100 * j) {
@@ -34,6 +34,5 @@ void EmbedAsset::EmbedTexture(const std::string& texFilePath, const std::string&
   OX_LOG_INFO("Successfully embedded texture {0} into: {1}", texFilePath, outPath);
 
   file.close();
-  delete texture;
 }
 }

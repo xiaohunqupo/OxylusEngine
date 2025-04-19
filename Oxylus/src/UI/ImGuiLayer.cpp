@@ -129,7 +129,7 @@ void ImGuiLayer::begin_frame(const float64 delta_time, const vuk::Extent3D exten
 
   rendering_images.clear();
 
-  add_image(font_texture->as_attachment_value());
+  add_image(font_texture->acquire());
 
   ImGui::NewFrame();
   ImGuizmo::BeginFrame();
@@ -212,10 +212,10 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
   auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(rendering_images));
 
   return vuk::make_pass("imgui",
-                        [this, verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](vuk::CommandBuffer& command_buffer,
-                                                                                             VUK_IA(vuk::eColorWrite) color_rt,
-                                                                                             VUK_ARG(vuk::ImageAttachment[],
-                                                                                                     vuk::Access::eFragmentSampled) sis) {
+                        [verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](vuk::CommandBuffer& command_buffer,
+                                                                                                  VUK_IA(vuk::eColorWrite) color_rt,
+                                                                                                  VUK_ARG(vuk::ImageAttachment[],
+                                                                                                          vuk::Access::eFragmentSampled) sis) {
     command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
       .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
       .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);

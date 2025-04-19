@@ -5,7 +5,6 @@
 #include <vuk/Value.hpp>
 
 #include "Asset.hpp"
-
 #include "Core/Base.hpp"
 
 using Preset = vuk::ImageAttachment::Preset;
@@ -38,7 +37,7 @@ public:
                       std::source_location loc = std::source_location::current());
   void load(const TextureLoadInfo& load_info, std::source_location loc = std::source_location::current());
   vuk::ImageAttachment as_attachment() const { return _attachment; }
-  vuk::Value<vuk::ImageAttachment> as_attachment_value() const;
+  vuk::Value<vuk::ImageAttachment> acquire() const;
 
   const vuk::Unique<vuk::Image>& get_image() const { return _image; }
   const vuk::Unique<vuk::ImageView>& get_view() const { return _view; }
@@ -52,19 +51,18 @@ public:
     return (uint32_t)log2f((float)std::max(std::max(extent.width, extent.height), extent.depth)) + 1;
   }
 
-  /// Loads the given file using stb. Returned data must be freed manually.
-  static uint8_t* load_stb_image(const std::string& filename,
-                                 uint32_t* width = nullptr,
-                                 uint32_t* height = nullptr,
-                                 uint32_t* bits = nullptr,
-                                 bool srgb = true);
-  static uint8_t* load_stb_image_from_memory(void* buffer,
-                                             size_t len,
-                                             uint32_t* width = nullptr,
-                                             uint32_t* height = nullptr,
-                                             uint32_t* bits = nullptr,
-                                             bool flipY = false,
-                                             bool srgb = true);
+  static Unique<uint8_t[]> load_stb_image(const std::string& filename,
+                                          uint32_t* width = nullptr,
+                                          uint32_t* height = nullptr,
+                                          uint32_t* bits = nullptr,
+                                          bool srgb = true);
+  static Unique<unsigned char[]> load_stb_image_from_memory(void* buffer,
+                                                            size_t len,
+                                                            uint32_t* width = nullptr,
+                                                            uint32_t* height = nullptr,
+                                                            uint32_t* bits = nullptr,
+                                                            bool flipY = false,
+                                                            bool srgb = true);
 
   static uint8_t* get_magenta_texture(uint32_t width, uint32_t height, uint32_t channels);
 

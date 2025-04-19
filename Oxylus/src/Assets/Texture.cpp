@@ -80,14 +80,14 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
 
   if (load_info.mime == TextureLoadInfo::MimeType::Generic) {
     uint32_t width, height, chans;
-    const uint8_t* data = load_stb_image(load_info.path, &width, &height, &chans);
+    const auto data = load_stb_image(load_info.path, &width, &height, &chans);
 
     if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
-      create_texture({width, height, 1}, data, load_info.format, load_info.preset, loc);
+      create_texture({width, height, 1}, data.get(), load_info.format, load_info.preset, loc);
     } else {
       auto ia = vuk::ImageAttachment::from_preset(load_info.preset, load_info.format, {width, height, 1}, vuk::Samples::e1);
       ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-      auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
+      auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data.get());
 
       auto fut = RendererCommon::generate_cubemap_from_equirectangular(hdr_image);
       auto val = fut.get(*allocator, _compiler);
@@ -97,8 +97,6 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
       _attachment.format = val->format;
       _attachment.extent = val->extent;
     }
-
-    delete[] data;
   } else {
     const auto file_data = fs::read_file_binary(load_info.path);
     ktxTexture2* ktx{};
@@ -125,7 +123,7 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
   }
 }
 
-vuk::Value<vuk::ImageAttachment> Texture::as_attachment_value() const {
+vuk::Value<vuk::ImageAttachment> Texture::acquire() const {
   return vuk::acquire_ia(vuk::Name(_name), as_attachment(), vuk::Access::eFragmentSampled);
 }
 
@@ -144,7 +142,7 @@ void Texture::set_name(std::string_view name, const std::source_location& loc) {
   }
 }
 
-uint8_t* Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* height, uint32_t* bits, bool srgb) {
+Unique<uint8_t[]> Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* height, uint32_t* bits, bool srgb) {
   const auto filePath = std::filesystem::path(filename);
 
   if (!exists(filePath))
@@ -166,14 +164,20 @@ uint8_t* Texture::load_stb_image(const std::string& filename, uint32_t* width, u
     *bits = tex_channels * size_of_channel;
 
   const int32_t size = tex_width * tex_height * tex_channels * size_of_channel / 8;
-  auto* result = new uint8_t[size];
-  memcpy(result, pixels, size);
+  auto result = create_unique<uint8_t[]>(size);
+  memcpy(result.get(), pixels, size);
   stbi_image_free(pixels);
 
   return result;
 }
 
-uint8_t* Texture::load_stb_image_from_memory(void* buffer, size_t len, uint32_t* width, uint32_t* height, uint32_t* bits, bool flipY, bool srgb) {
+Unique<unsigned char[]> Texture::load_stb_image_from_memory(void* buffer,
+                                                            size_t len,
+                                                            uint32_t* width,
+                                                            uint32_t* height,
+                                                            uint32_t* bits,
+                                                            bool flipY,
+                                                            bool srgb) {
   int tex_width = 0, tex_height = 0, tex_channels = 0;
   int size_of_channel = 8;
   const auto pixels = stbi_load_from_memory((stbi_uc*)buffer, (int)len, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
@@ -193,8 +197,8 @@ uint8_t* Texture::load_stb_image_from_memory(void* buffer, size_t len, uint32_t*
     *bits = tex_channels * size_of_channel;
 
   const int32_t size = tex_width * tex_height * tex_channels * size_of_channel / 8;
-  auto* result = new uint8_t[size];
-  memcpy(result, pixels, size);
+  auto result = create_unique<uint8_t[]>(size);
+  memcpy(result.get(), pixels, size);
 
   stbi_image_free(pixels);
   return result;

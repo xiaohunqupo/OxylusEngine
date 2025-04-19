@@ -33,7 +33,7 @@
 namespace ox {
 App* App::_instance = nullptr;
 
-App::App(AppSpec spec) : app_spec(std::move(spec)) {
+App::App(const AppSpec& spec) : app_spec(spec) {
   OX_SCOPED_ZONE;
   if (_instance) {
     OX_LOG_ERROR("Application already exists!");
@@ -60,7 +60,7 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
   register_system<SystemManager>();
   register_system<Physics>();
 
-  window = Window::create(spec.window_info);
+  window = Window::create(app_spec.window_info);
 
   register_system<Input>();
 
@@ -73,7 +73,7 @@ App::App(AppSpec spec) : app_spec(std::move(spec)) {
     system->init();
   }
 
-  const bool enable_validation = spec.command_line_args.contains("vulkan-validation");
+  const bool enable_validation = app_spec.command_line_args.contains("vulkan-validation");
   vk_context.create_context(window, enable_validation);
 
   DebugRenderer::init();
