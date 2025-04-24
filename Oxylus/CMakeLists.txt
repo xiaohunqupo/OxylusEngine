@@ -126,7 +126,7 @@ endif ()
 # Dependencies
 #-------------
 if (NOT EXISTS ${CMAKE_SOURCE_DIR}/cpm.cmake)
-  file(DOWNLOAD https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.38.7/CPM.cmake ${CMAKE_SOURCE_DIR}/cpm.cmake SHOW_PROGRESS)
+  file(DOWNLOAD https://github.com/cpm-cmake/CPM.cmake/releases/download/v0.40.8/CPM.cmake ${CMAKE_SOURCE_DIR}/cpm.cmake SHOW_PROGRESS)
 endif ()
 
 include(${CMAKE_SOURCE_DIR}/cpm.cmake)
@@ -157,15 +157,6 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${imgui_SOURCE_DIR})
 file(GLOB ImGuiFiles "${imgui_SOURCE_DIR}/*.h" "${imgui_SOURCE_DIR}/*.cpp")
 target_sources(${PROJECT_NAME} PRIVATE "${ImGuiFiles}")
 source_group("vendor/ImGui" FILES ${ImGuiFiles})
-
-set(ImGui_Backends
-  "${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.cpp"
-  "${imgui_SOURCE_DIR}/backends/imgui_impl_vulkan.h"
-
-
-)
-target_sources(${PROJECT_NAME} PRIVATE "${ImGui_Backends}")
-source_group("vendor/ImGui" FILES ${ImGui_Backends})
 
 set(ImGui_Misc "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp" "${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.h")
 target_sources(${PROJECT_NAME} PRIVATE "${ImGui_Misc}")
@@ -216,7 +207,7 @@ target_link_libraries(${PROJECT_NAME} PUBLIC meshoptimizer)
 CPMAddPackage("gh:fmtlib/fmt#11.1.4")
 target_link_libraries(${PROJECT_NAME} PUBLIC fmt::fmt)
 
-# fmtlog
+# loguru
 CPMAddPackage(
   NAME loguru
   GITHUB_REPOSITORY emilk/loguru
@@ -298,7 +289,7 @@ target_include_directories(${PROJECT_NAME} PUBLIC ${rapidjson_SOURCE_DIR}/includ
 CPMAddPackage(
   NAME JoltPhysics
   GITHUB_REPOSITORY jrouwe/JoltPhysics
-  VERSION 5.0.0
+  VERSION 5.3.0
   SOURCE_SUBDIR Build
   GIT_SHALLOW ON
   OPTIONS
@@ -349,7 +340,7 @@ CPMAddPackage(
   "SOL2_TESTS_SINGLE OFF"
 )
 target_include_directories(${PROJECT_NAME} PUBLIC ${sol2_SOURCE_DIR}/include)
-target_link_libraries(sol2 INTERFACE $<BUILD_INTERFACE:${lua_static}>)
+#target_link_libraries(sol2 INTERFACE $<BUILD_INTERFACE:${lua_static}>)
 target_link_libraries(${PROJECT_NAME} PUBLIC sol2 lua_static)
 
 # enkiTS
