@@ -51,7 +51,7 @@ public:
   void on_runtime_update(const Timestep& delta_time);
   void on_editor_update(const Timestep& delta_time, CameraComponent& camera) const;
 
-  void on_imgui_render(const Timestep& delta_time);
+  void on_render(vuk::Extent3D extent, vuk::Format format);
 
   Entity find_entity(const std::string_view& name);
   bool has_entity(UUID uuid) const;

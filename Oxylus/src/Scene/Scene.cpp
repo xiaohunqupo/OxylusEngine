@@ -799,7 +799,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
   }
 }
 
-void Scene::on_imgui_render(const Timestep& delta_time) {
+void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   OX_SCOPED_ZONE;
 
   {
@@ -807,7 +807,7 @@ void Scene::on_imgui_render(const Timestep& delta_time) {
     const auto script_view = registry.view<CPPScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
       for (const auto& system : script_component.systems) {
-        system->on_imgui_render(delta_time);
+        system->on_render(extent, format);
       }
     }
   }
@@ -817,7 +817,7 @@ void Scene::on_imgui_render(const Timestep& delta_time) {
     const auto script_view = registry.view<LuaScriptComponent>();
     for (auto&& [e, script_component] : script_view.each()) {
       for (const auto& script : script_component.lua_systems) {
-        script->on_imgui_render(delta_time);
+        script->on_render(extent, format);
       }
     }
   }

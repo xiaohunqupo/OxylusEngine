@@ -3,7 +3,7 @@
 #include <filesystem>
 
 #include <imgui_internal.h>
-//#include <imspinner.h>
+// #include <imspinner.h>
 #include <ranges>
 
 #include "EditorTheme.hpp"
@@ -123,6 +123,9 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 }
 
 void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format) {
+  if (const auto active_scene = get_active_scene(); active_scene)
+    active_scene->on_render(extent, format);
+
   if (EditorCVar::cvar_show_style_editor.get())
     ImGui::ShowStyleEditor();
   if (EditorCVar::cvar_show_imgui_demo.get())
@@ -235,10 +238,11 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
           ImGui::EndMenu();
         }
         ImGui::SameLine();
-        
+
         {
           // Project name text
-          ImGui::SetCursorPos(ImVec2(ImGui::GetMainViewport()->Size.x - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
+          ImGui::SetCursorPos(ImVec2(ImGui::GetMainViewport()->Size.x - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x,
+                                     0));
           ImGuiScoped::StyleColor b_color1(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGuiScoped::StyleColor b_color2(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGui::Button(Project::get_active()->get_config().name.c_str());
@@ -259,10 +263,6 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
     }
 
     runtime_console.on_imgui_render();
-
-    // TODO: temporary until scenes are more global and handled in the renderer directly
-    if (const auto active_scene = get_active_scene(); active_scene)
-      active_scene->on_imgui_render(App::get_timestep());
 
     static bool dock_layout_initalized = false;
     if (!dock_layout_initalized) {
@@ -450,7 +450,7 @@ void EditorLayer::render_load_indicators() {
 
         for (int column = 0; column < 1; column++) {
           ImGui::TableSetColumnIndex(column);
-          //ImSpinner::SpinnerFadeDots("##", 16.0f, 6.0f, ImVec4(1, 1, 1, 1), 8.0f, 8);
+          // ImSpinner::SpinnerFadeDots("##", 16.0f, 6.0f, ImVec4(1, 1, 1, 1), 8.0f, 8);
           ImGui::SameLine();
           auto fmt = fmt::format(" Loading asset: {}", load_indicator.name);
           ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);

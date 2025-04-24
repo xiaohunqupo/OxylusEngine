@@ -31,8 +31,8 @@ public:
   /// Called every fixed frame-rate frame with the frequency of the physics system
   virtual void on_fixed_update(float delta_time) {}
 
-  /// Called in the main imgui loop which is right after `App::on_update`
-  virtual void on_imgui_render(const Timestep& delta_time) {}
+  /// Called after on_update
+  virtual void on_render(vuk::Extent3D extent, vuk::Format format) {}
 
   /// Called right after main loop is finished before the core shutdown process.
   virtual void on_shutdown() {}

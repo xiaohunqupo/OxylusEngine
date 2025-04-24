@@ -14,9 +14,7 @@
 #include "Utils/Log.hpp"
 
 namespace ox {
-LuaSystem::LuaSystem(std::string path) : file_path(std::move(path)) {
-  init_script(file_path);
-}
+LuaSystem::LuaSystem(std::string path) : file_path(std::move(path)) { init_script(file_path); }
 
 void LuaSystem::check_result(const sol::protected_function_result& result, const char* func_name) {
   if (!result.valid()) {
@@ -65,9 +63,9 @@ void LuaSystem::init_script(const std::string& path) {
   if (!on_update_func->valid())
     on_update_func.reset();
 
-  on_imgui_render_func = create_unique<sol::protected_function>((*environment)["on_imgui_render"]);
-  if (!on_imgui_render_func->valid())
-    on_imgui_render_func.reset();
+  on_render_func = create_unique<sol::protected_function>((*environment)["on_render"]);
+  if (!on_render_func->valid())
+    on_render_func.reset();
 
   on_release_func = create_unique<sol::protected_function>((*environment)["on_release"]);
   if (!on_release_func->valid())
@@ -108,11 +106,11 @@ void LuaSystem::on_release(Scene* scene, entt::entity entity) {
   App::get_system<LuaManager>()->get_state()->collect_gc();
 }
 
-void LuaSystem::on_imgui_render(const Timestep& delta_time) {
+void LuaSystem::on_render(vuk::Extent3D extent, vuk::Format format) {
   OX_SCOPED_ZONE;
-  if (on_imgui_render_func) {
-    const auto result = on_imgui_render_func->call(delta_time.get_millis());
-    check_result(result, "on_imgui_render");
+  if (on_render_func) {
+    const auto result = on_render_func->call(extent, format);
+    check_result(result, "on_render");
   }
 }
 
@@ -140,4 +138,4 @@ void LuaSystem::bind_globals(Scene* scene, entt::entity entity, const Timestep& 
   (*environment)["this"] = entity;
   (*environment)["current_time"] = timestep.get_elapsed_seconds();
 }
-}
+} // namespace ox
