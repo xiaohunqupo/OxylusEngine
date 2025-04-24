@@ -112,7 +112,8 @@ void bind_registry(sol::table& entt_module) {
     },
     "alive",
     [](const entt::registry& self) {
-      return self.storage<entt::entity>()->in_use();
+      return true;
+      //return self.storage<entt::entity>()->in_use();
     },
 
     "valid",

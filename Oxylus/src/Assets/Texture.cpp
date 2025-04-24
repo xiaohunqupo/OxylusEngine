@@ -1,4 +1,6 @@
-﻿#include "Texture.hpp"
+﻿#define STB_IMAGE_STATIC
+
+#include "Texture.hpp"
 
 #include <filesystem>
 #include <ktx.h>
