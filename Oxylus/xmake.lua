@@ -39,7 +39,7 @@ target("Oxylus")
     on_config(function (target)
         if (target:has_tool("cxx", "msvc", "cl")) then
             target:add("defines", "OX_COMPILER_MSVC=1", { force = true, public = true })
-            target:add("cxflags", "/permissive- /EHsc /std:c++latest", { public = false })
+            target:add("cxflags", "/permissive- /EHsc /std:c++latest /bigobj", { public = false })
         elseif(target:has_tool("cxx", "clang", "clangxx")) then
             target:add("defines", "OX_COMPILER_CLANG=1", { force = true, public = true })
         elseif target:has_tool("cxx", "gcc", "gxx") then
@@ -72,6 +72,7 @@ target("Oxylus")
         "ktx-software",
         "simdutf",
         "plf_colony",
+        "shader-slang",
         { public = true })
 
 target_end()
