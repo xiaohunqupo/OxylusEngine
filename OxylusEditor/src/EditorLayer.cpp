@@ -3,7 +3,7 @@
 #include <filesystem>
 
 #include <imgui_internal.h>
-#include <imspinner.h>
+//#include <imspinner.h>
 #include <ranges>
 
 #include "EditorTheme.hpp"
@@ -450,7 +450,7 @@ void EditorLayer::render_load_indicators() {
 
         for (int column = 0; column < 1; column++) {
           ImGui::TableSetColumnIndex(column);
-          ImSpinner::SpinnerFadeDots("##", 16.0f, 6.0f, ImVec4(1, 1, 1, 1), 8.0f, 8);
+          //ImSpinner::SpinnerFadeDots("##", 16.0f, 6.0f, ImVec4(1, 1, 1, 1), 8.0f, 8);
           ImGui::SameLine();
           auto fmt = fmt::format(" Loading asset: {}", load_indicator.name);
           ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
