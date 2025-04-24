@@ -31,9 +31,9 @@ add_requires("vk-bootstrap v1.4.307", { system = false })
 
 add_requires("vuk 2025.04.22", { configs = {
     debug_allocations = false,
-    dxc = true,
-    shaderc = true,
 }, debug = is_mode("debug") or is_mode("asan") })
+
+add_requires("shader-slang v2025.6.3", { system = false })
 
 add_requires("libsdl3 3.2.8", { configs = {
     wayland = true,
