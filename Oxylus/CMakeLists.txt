@@ -240,20 +240,6 @@ target_link_libraries(${PROJECT_NAME} PUBLIC vuk)
 target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/src)
 target_include_directories(${PROJECT_NAME} PUBLIC ${vuk_SOURCE_DIR}/include)
 
-# GLFW
-CPMAddPackage(
-  NAME GLFW
-  GITHUB_REPOSITORY glfw/glfw
-  GIT_TAG 3.4
-  GIT_SHALLOW ON
-  OPTIONS
-  "GLFW_BUILD_TESTS OFF"
-  "GLFW_BUILD_EXAMPLES OFF"
-  "GLFW_BULID_DOCS OFF"
-  "GLFW_INSTALL OFF"
-)
-target_link_libraries(${PROJECT_NAME} PUBLIC glfw)
-
 # sdl3
 CPMAddPackage(
   NAME sdl3
