@@ -28,7 +28,7 @@ public:
   void load_pipelines(vuk::Allocator& allocator);
   void shutdown() override;
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, vuk::Extent3D ext, vuk::Format) override;
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) override;
   void on_update(Scene* scene) override;
   void on_submit() override;
 

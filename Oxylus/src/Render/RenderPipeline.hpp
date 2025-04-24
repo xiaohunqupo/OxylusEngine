@@ -16,6 +16,12 @@ class Scene;
 
 class RenderPipeline {
 public:
+  struct RenderInfo {
+    vuk::Extent3D extent;
+    vuk::Format format;
+    option<glm::uvec2> picking_texel = nullopt;
+  };
+
   RenderPipeline(std::string name) : _name(std::move(name)) {}
 
   virtual ~RenderPipeline() = default;
@@ -23,7 +29,7 @@ public:
   virtual void init(vuk::Allocator& allocator) = 0;
   virtual void shutdown() = 0;
 
-  [[nodiscard]] virtual vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, vuk::Extent3D ext, vuk::Format format) = 0;
+  [[nodiscard]] virtual vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) = 0;
 
   virtual void on_dispatcher_events(EventDispatcher& dispatcher) {}
 

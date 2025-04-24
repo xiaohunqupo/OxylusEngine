@@ -80,7 +80,7 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
 
 void EasyRenderPipeline::shutdown() {}
 
-vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& frame_allocator, const vuk::Extent3D ext, const vuk::Format format) {
+vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) {
   OX_SCOPED_ZONE;
 
   const bool freeze_culling = static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get());
@@ -113,10 +113,10 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
     camera_data.frustum_planes[i] = {plane->normal, plane->distance};
   }
 
-  SceneData scene_data = {
+  const SceneData scene_data = {
     .num_lights = {},
     .grid_max_distance = RendererCVar::cvar_draw_grid_distance.get(),
-    .screen_size = {ext.width, ext.height},
+    .screen_size = {render_info.extent.width, render_info.extent.height},
     .draw_meshlet_aabbs = RendererCVar::cvar_draw_meshlet_aabbs.get(),
     .screen_size_rcp = {1.0f / static_cast<float>(std::max(1u, scene_data.screen_size.x)),
                         1.0f / static_cast<float>(std::max(1u, scene_data.screen_size.y))},
@@ -191,8 +191,8 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
   std::memcpy(vertex_buffer_2d.mapped_ptr, render_queue_2d.sprite_data.data(), sizeof(SpriteGPUData) * render_queue_2d.sprite_data.size());
 
   const auto final_ia = vuk::ImageAttachment{
-    .extent = ext,
-    .format = format,
+    .extent = render_info.extent,
+    .format = render_info.format,
     .sample_count = vuk::SampleCountFlagBits::e1,
     .level_count = 1,
     .layer_count = 1,
@@ -200,7 +200,7 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
   auto final_image = vuk::clear_image(vuk::declare_ia("final_image", final_ia), vuk::Black<float>);
 
   const auto depth_ia = vuk::ImageAttachment{
-    .extent = ext,
+    .extent = render_info.extent,
     .format = vuk::Format::eD32Sfloat,
     .sample_count = vuk::SampleCountFlagBits::e1,
     .level_count = 1,

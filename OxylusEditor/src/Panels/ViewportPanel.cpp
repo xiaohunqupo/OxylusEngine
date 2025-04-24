@@ -104,7 +104,12 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     const auto& scene_renderer = scene->get_renderer();
     auto& frame_allocator = app->get_vkcontext().get_frame_allocator();
     if (scene_renderer != nullptr && frame_allocator != nullopt) {
-      const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), extent, format);
+      const RenderPipeline::RenderInfo render_info = {
+        .extent = extent,
+        .format = format,
+        .picking_texel = {},
+      };
+      const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), render_info);
       ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)), ImVec2{fixed_width, viewport_panel_size.y});
     } else {
       const auto warning_text = "No scene render output!";

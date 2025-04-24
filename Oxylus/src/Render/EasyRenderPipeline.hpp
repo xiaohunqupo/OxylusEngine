@@ -14,7 +14,7 @@ public:
   void init(vuk::Allocator& allocator) override;
   void shutdown() override;
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, vuk::Extent3D ext, vuk::Format format) override;
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) override;
 
   void on_update(Scene* scene) override;
   void submit_sprite(const SpriteComponent& sprite) override;

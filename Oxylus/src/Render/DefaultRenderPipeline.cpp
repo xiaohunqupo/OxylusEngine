@@ -1041,7 +1041,7 @@ void DefaultRenderPipeline::submit_camera(const CameraComponent& camera) {
 
 void DefaultRenderPipeline::shutdown() {}
 
-vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator& frame_allocator, vuk::Extent3D ext, vuk::Format format) {
+vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) {
   OX_SCOPED_ZONE;
   auto& vk_context = App::get_vkcontext();
 
@@ -1056,15 +1056,15 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   scene_data.sun_direction = sun_direction;
   scene_data.sun_color = glm::vec4(sun_color, 1.0f);
 
-  create_dynamic_textures(ext);
+  create_dynamic_textures(render_info.extent);
 
   std::swap(depth_texture, depth_texture_prev);
 
   update_frame_data(frame_allocator);
 
   const auto final_ia = vuk::ImageAttachment{
-    .extent = ext,
-    .format = format,
+    .extent = render_info.extent,
+    .format = render_info.format,
     .sample_count = vuk::SampleCountFlagBits::e1,
     .level_count = 1,
     .layer_count = 1,
