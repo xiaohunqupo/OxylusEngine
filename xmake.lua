@@ -9,6 +9,9 @@ set_version("1.0.0")
 -- GLOBAL COMPILER FLAGS --
 set_encodings("utf-8")
 add_cxxflags("clang::-fexperimental-library")
+-- Disable RTTI
+add_cxxflags("clang::-fno-rtti")
+add_cxxflags("cl::/GR-")
 
 -- WARNINGS --
 set_warnings("allextra", "pedantic")

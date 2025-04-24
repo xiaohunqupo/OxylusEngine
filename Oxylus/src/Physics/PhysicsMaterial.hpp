@@ -1,5 +1,7 @@
 ﻿#pragma once
-#include "Jolt/Physics/Collision/PhysicsMaterialSimple.h"
+
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Collision/PhysicsMaterialSimple.h>
 
 class PhysicsMaterial3D : public JPH::PhysicsMaterialSimple {
 public:
