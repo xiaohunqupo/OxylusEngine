@@ -106,7 +106,7 @@ void SPD::init(vuk::Allocator& allocator, Config config) {
   if (config.view_type == vuk::ImageViewType::e2DArray)
     pci.define("TEXTURE_ARRAY", "");
   if (!allocator.get_context().is_pipeline_available(pipeline_name.c_str())) {
-    pci.add_hlsl(fs::read_shader_file(shader_path), fs::get_shader_path(shader_path), vuk::HlslShaderStage::eCompute);
+    // pci.add_hlsl(fs::read_shader_file(shader_path), fs::get_shader_path(shader_path), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline(pipeline_name.c_str(), pci))
   }
 

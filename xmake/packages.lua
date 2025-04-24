@@ -44,7 +44,9 @@ add_requires("toml++ v3.4.0", { system = false })
 
 add_requires("rapidjson 2025.02.05", { system = false })
 
-add_requires("joltphysics v5.3.0", { system = false })
+add_requires("joltphysics v5.3.0", { configs = {
+    debug_renderer = true,
+}, system = false })
 
 add_requires("tracy v0.11.1", { configs = {
     on_demand = true,

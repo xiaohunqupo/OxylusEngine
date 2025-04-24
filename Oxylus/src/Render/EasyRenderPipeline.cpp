@@ -43,8 +43,8 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
   auto* task_scheduler = App::get_system<TaskScheduler>();
 
   task_scheduler->add_task([=]() mutable {
-    bindless_pci.add_hlsl(fs::read_shader_file("2DForward.hlsl"), fs::get_shader_path("2DForward.hlsl"), vuk::HlslShaderStage::eVertex, "VSmain");
-    bindless_pci.add_hlsl(fs::read_shader_file("2DForward.hlsl"), fs::get_shader_path("2DForward.hlsl"), vuk::HlslShaderStage::ePixel, "PSmain");
+    // bindless_pci.add_hlsl(fs::read_shader_file("2DForward.hlsl"), fs::get_shader_path("2DForward.hlsl"), vuk::HlslShaderStage::eVertex, "VSmain");
+    // bindless_pci.add_hlsl(fs::read_shader_file("2DForward.hlsl"), fs::get_shader_path("2DForward.hlsl"), vuk::HlslShaderStage::ePixel, "PSmain");
     TRY(allocator.get_context().create_named_pipeline("2d_forward_pipeline", bindless_pci))
   });
 
