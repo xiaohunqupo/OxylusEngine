@@ -7,6 +7,7 @@
 #include "DebugRenderer.hpp"
 #include "DefaultRenderPipeline.hpp"
 #include "RendererConfig.hpp"
+#include "Slang/Slang.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Utils/VukCommon.hpp"
 
@@ -43,8 +44,7 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
   auto* task_scheduler = App::get_system<TaskScheduler>();
 
   task_scheduler->add_task([=]() mutable {
-    // bindless_pci.add_hlsl(fs::read_shader_file("2DForward.hlsl"), fs::get_shader_path("2DForward.hlsl"), vuk::HlslShaderStage::eVertex, "VSmain");
-    // bindless_pci.add_hlsl(fs::read_shader_file("2DForward.hlsl"), fs::get_shader_path("2DForward.hlsl"), vuk::HlslShaderStage::ePixel, "PSmain");
+    Slang::add_shader(bindless_pci, {.path = "2DForward.slang", .entry_points = {"VSmain", "PSmain"}, .definitions = {}});
     TRY(allocator.get_context().create_named_pipeline("2d_forward_pipeline", bindless_pci))
   });
 

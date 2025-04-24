@@ -21,8 +21,6 @@
 #include "imgui_frag.hpp"
 #include "imgui_vert.hpp"
 
-#include "GLFW/glfw3.h"
-
 #include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"

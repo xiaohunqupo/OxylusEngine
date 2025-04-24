@@ -14,6 +14,8 @@
 #include "Core/Types.hpp"
 #include "Utils/Profiler.hpp"
 
+#include <Render/Slang/Compiler.hpp>
+
 namespace ox {
 struct Window;
 
@@ -42,6 +44,7 @@ public:
   Shared<TracyProfiler> tracy_profiler = {};
   vuk::Compiler compiler = {};
   option<vuk::Allocator> frame_allocator = nullopt;
+  SlangCompiler shader_compiler = {};
 
   std::string device_name = {};
 

@@ -68,5 +68,10 @@ struct match : T... {
   using T::operator()...;
 };
 
+template<typename T, usize N>
+constexpr usize count_of(T (&)[N]) {
+    return N;
+}
+
 constexpr void hash_combine(usize& seed, const usize v) noexcept { seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2); }
 } // namespace ox

@@ -1,7 +1,7 @@
 #pragma once
 
 #include <cstddef>
-#include <Utils/Log.hpp>
+#include "Utils/Log.hpp"
 
 namespace ox {
 template <typename T>
