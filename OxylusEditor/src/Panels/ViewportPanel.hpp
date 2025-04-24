@@ -90,9 +90,7 @@ private:
   bool m_lock_aspect_ratio = true;
   float m_translation_dampening = 0.6f;
   float m_rotation_dampening = 0.3f;
-  bool m_use_editor_camera = true;
-  bool m_using_editor_camera = false;
-  glm::vec2 m_locked_mouse_position = glm::vec2(0.0f);
+  glm::vec2 _locked_mouse_position = glm::vec2(0.0f);
   glm::vec3 m_translation_velocity = glm::vec3(0);
   glm::vec2 m_rotation_velocity = glm::vec2(0);
 };

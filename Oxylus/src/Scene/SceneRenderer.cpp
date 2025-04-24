@@ -7,6 +7,7 @@
 #include "Core/App.hpp"
 
 #include "Entity.hpp"
+#include "Render/Camera.hpp"
 
 #include "Render/DebugRenderer.hpp"
 #include "Render/DefaultRenderPipeline.hpp"
@@ -26,6 +27,22 @@ void SceneRenderer::init(EventDispatcher& dispatcher) {
 
 void SceneRenderer::update(const Timestep& delta_time) const {
   OX_SCOPED_ZONE;
+
+  const auto screen_extent = App::get()->get_swapchain_extent();
+
+  // Camera
+  {
+    OX_SCOPED_ZONE_N("Camera System");
+    const auto camera_view = _scene->registry.view<TransformComponent, CameraComponent>();
+    for (const auto entity : camera_view) {
+      auto [transform, camera] = camera_view.get<TransformComponent, CameraComponent>(entity);
+      camera.position = transform.position;
+      camera.pitch = transform.rotation.x;
+      camera.yaw = transform.rotation.y;
+      Camera::update(camera, screen_extent);
+      _render_pipeline->submit_camera(camera);
+    }
+  }
 
   {
     OX_SCOPED_ZONE_N("Mesh System");

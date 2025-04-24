@@ -722,22 +722,6 @@ void Scene::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) {
 void Scene::on_runtime_update(const Timestep& delta_time) {
   OX_SCOPED_ZONE;
 
-  const auto screen_extent = App::get()->get_swapchain_extent();
-
-  // Camera
-  {
-    OX_SCOPED_ZONE_N("Camera System");
-    const auto camera_view = registry.view<TransformComponent, CameraComponent>();
-    for (const auto entity : camera_view) {
-      auto [transform, camera] = camera_view.get<TransformComponent, CameraComponent>(entity);
-      camera.position = transform.position;
-      camera.pitch = transform.rotation.x;
-      camera.yaw = transform.rotation.y;
-      Camera::update(camera, screen_extent);
-      scene_renderer->get_render_pipeline()->submit_camera(camera);
-    }
-  }
-
   // TODO: maybe bindings should be done once at entity creation...
   //       we can do it with entt on_create etc. callbacks...
   // scripting binds

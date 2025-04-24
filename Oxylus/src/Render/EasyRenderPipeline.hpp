@@ -3,6 +3,7 @@
 #include <vuk/runtime/vk/Descriptor.hpp>
 
 #include "RenderPipeline.hpp"
+#include "RendererConfig.hpp"
 
 namespace ox {
 class EasyRenderPipeline : public RenderPipeline {
@@ -24,7 +25,7 @@ private:
   static constexpr auto ALBEDO_IMAGE_INDEX = 0;
   static constexpr auto NORMAL_IMAGE_INDEX = 1;
   static constexpr auto DEPTH_IMAGE_INDEX = 2;
-  static constexpr auto SHADOW_ATLAS_INDEX = 3;
+  static constexpr auto SHADOW_ARRAY_INDEX = 3;
   static constexpr auto SKY_TRANSMITTANCE_LUT_INDEX = 4;
   static constexpr auto SKY_MULTISCATTER_LUT_INDEX = 5;
   static constexpr auto VELOCITY_IMAGE_INDEX = 6;
@@ -202,6 +203,62 @@ private:
 
   struct CameraConstantBuffer {
     CameraData camera_data[16] = {};
+  };
+
+  struct SceneData {
+    uint32 num_lights = {};
+    float32 grid_max_distance = {};
+    glm::uvec2 screen_size = {};
+    int32 draw_meshlet_aabbs = {};
+
+    glm::vec2 screen_size_rcp = {};
+    glm::uvec2 shadow_atlas_res = {};
+
+    glm::vec3 sun_direction = {};
+    uint32 meshlet_count = {};
+
+    glm::vec4 sun_color = {}; // pre-multipled with intensity
+
+    static constexpr int32 INVALID_INDEX = -1;
+    struct Indices {
+      int32 albedo_image_index = INVALID_INDEX;
+      int32 normal_image_index = INVALID_INDEX;
+      int32 normal_vertex_image_index = INVALID_INDEX;
+      int32 depth_image_index = INVALID_INDEX;
+      int32 bloom_image_index = INVALID_INDEX;
+      int32 mesh_instance_buffer_index = INVALID_INDEX;
+      int32 entites_buffer_index = INVALID_INDEX;
+      int32 materials_buffer_index = INVALID_INDEX;
+      int32 lights_buffer_index = INVALID_INDEX;
+      int32 sky_env_map_index = INVALID_INDEX;
+      int32 sky_transmittance_lut_index = INVALID_INDEX;
+      int32 sky_multiscatter_lut_index = INVALID_INDEX;
+      int32 velocity_image_index = INVALID_INDEX;
+      int32 shadow_array_index = INVALID_INDEX;
+      int32 gtao_buffer_image_index = INVALID_INDEX;
+      int32 hiz_image_index = INVALID_INDEX;
+      int32 vis_image_index = INVALID_INDEX;
+      int32 emission_image_index = INVALID_INDEX;
+      int32 metallic_roughness_ao_image_index = INVALID_INDEX;
+      int32 transforms_buffer_index = INVALID_INDEX;
+      int32 sprite_materials_buffer_index = INVALID_INDEX;
+    } indices = {};
+
+    struct PostProcessingData {
+      int32 tonemapper = RendererConfig::TONEMAP_ACES;
+      float32 exposure = 1.0f;
+      float32 gamma = 2.5f;
+
+      int32 enable_bloom = 1;
+      int32 enable_ssr = 1;
+      int32 enable_gtao = 1;
+
+      glm::vec4 vignette_color = glm::vec4(0.0f, 0.0f, 0.0f, 0.25f); // rgb: color, a: intensity
+      glm::vec4 vignette_offset = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // xy: offset, z: useMask, w: enable effect
+      glm::vec2 film_grain = {};                                     // x: enable, y: amount
+      glm::vec2 chromatic_aberration = {};                           // x: enable, y: amount
+      glm::vec2 sharpen = {};                                        // x: enable, y: amount
+    } post_processing_data = {};
   };
 };
 } // namespace ox

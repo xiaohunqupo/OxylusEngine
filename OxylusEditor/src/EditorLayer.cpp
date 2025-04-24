@@ -67,7 +67,6 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   add_panel<RenderGraphPanel>();
 
   const auto& viewport = viewport_panels.emplace_back(create_unique<ViewportPanel>());
-  viewport->editor_camera.position = {-2, 2, 0};
   viewport->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
 
   editor_scene = create_shared<Scene>();

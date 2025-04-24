@@ -24,6 +24,7 @@ enum class WindowCursor {
   ResizeNWSE,
   Hand,
   NotAllowed,
+  Crosshair,
 
   Count,
 };
@@ -123,5 +124,7 @@ struct Window : Handle<Window> {
   float get_content_scale() const;
 
   float get_refresh_rate() const;
+
+  void set_mouse_position(glm::vec2 position) const;
 };
 } // namespace ox

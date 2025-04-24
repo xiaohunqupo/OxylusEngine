@@ -5,6 +5,7 @@
 #include "Camera.hpp"
 #include "Core/FileSystem.hpp"
 #include "DebugRenderer.hpp"
+#include "DefaultRenderPipeline.hpp"
 #include "RendererConfig.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Utils/VukCommon.hpp"
@@ -112,6 +113,47 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
     camera_data.frustum_planes[i] = {plane->normal, plane->distance};
   }
 
+  SceneData scene_data = {
+    .num_lights = {},
+    .grid_max_distance = RendererCVar::cvar_draw_grid_distance.get(),
+    .screen_size = {ext.width, ext.height},
+    .draw_meshlet_aabbs = RendererCVar::cvar_draw_meshlet_aabbs.get(),
+    .screen_size_rcp = {1.0f / static_cast<float>(std::max(1u, scene_data.screen_size.x)),
+                        1.0f / static_cast<float>(std::max(1u, scene_data.screen_size.y))},
+    .shadow_atlas_res = {},
+    .sun_direction = {},
+    .meshlet_count = {},
+    .sun_color = {},
+    .indices =
+      {
+        .albedo_image_index = ALBEDO_IMAGE_INDEX,
+        .normal_image_index = NORMAL_IMAGE_INDEX,
+        .normal_vertex_image_index = NORMAL_VERTEX_IMAGE_INDEX,
+        .depth_image_index = DEPTH_IMAGE_INDEX,
+        .bloom_image_index = BLOOM_IMAGE_INDEX,
+        .mesh_instance_buffer_index = MESH_INSTANCES_BUFFER_INDEX,
+        .entites_buffer_index = ENTITIES_BUFFER_INDEX,
+        .materials_buffer_index = MATERIALS_BUFFER_INDEX,
+        .lights_buffer_index = LIGHTS_BUFFER_INDEX,
+        .sky_env_map_index = {},
+        .sky_transmittance_lut_index = SKY_TRANSMITTANCE_LUT_INDEX,
+        .sky_multiscatter_lut_index = SKY_MULTISCATTER_LUT_INDEX,
+        .velocity_image_index = VELOCITY_IMAGE_INDEX,
+        .shadow_array_index = SHADOW_ARRAY_INDEX,
+        .gtao_buffer_image_index = GTAO_BUFFER_IMAGE_INDEX,
+        .hiz_image_index = HIZ_IMAGE_INDEX,
+        .vis_image_index = VIS_IMAGE_INDEX,
+        .emission_image_index = EMISSION_IMAGE_INDEX,
+        .metallic_roughness_ao_image_index = METALROUGHAO_IMAGE_INDEX,
+        .transforms_buffer_index = TRANSFORMS_BUFFER_INDEX,
+        .sprite_materials_buffer_index = SPRITE_MATERIALS_BUFFER_INDEX,
+      },
+    .post_processing_data = {},
+  };
+
+  auto [scene_buffer, scene_buff_fut] = vuk::create_cpu_buffer(frame_allocator, std::span(&scene_data, 1));
+  this->descriptor_set_00->update_storage_buffer(0, 0, *scene_buffer);
+
   RenderQueue2D render_queue_2d = {};
 
   render_queue_2d.init();
@@ -127,7 +169,7 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
     const auto& albedo = material->get_albedo_texture();
 
     if (albedo && albedo->is_valid_id())
-      descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+      this->descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
 
     SpriteMaterial::Parameters par = material->parameters;
     par.uv_offset = sprite_component.current_uv_offset.value_or(material->parameters.uv_offset);
@@ -143,6 +185,8 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
   auto [sprite_mat_buffer, sprite_mat_buff_fut] = vuk::create_cpu_buffer(frame_allocator, std::span(sprite_material_parameters));
   this->descriptor_set_00->update_storage_buffer(1, SPRITE_MATERIALS_BUFFER_INDEX, *sprite_mat_buffer);
 
+  this->descriptor_set_00->commit(frame_allocator.get_context());
+
   const auto vertex_buffer_2d = *vuk::allocate_cpu_buffer(frame_allocator, sizeof(SpriteGPUData) * 3000);
   std::memcpy(vertex_buffer_2d.mapped_ptr, render_queue_2d.sprite_data.data(), sizeof(SpriteGPUData) * render_queue_2d.sprite_data.size());
 
@@ -155,12 +199,22 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
   };
   auto final_image = vuk::clear_image(vuk::declare_ia("final_image", final_ia), vuk::Black<float>);
 
+  const auto depth_ia = vuk::ImageAttachment{
+    .extent = ext,
+    .format = vuk::Format::eD32Sfloat,
+    .sample_count = vuk::SampleCountFlagBits::e1,
+    .level_count = 1,
+    .layer_count = 1,
+  };
+  auto depth_image = vuk::clear_image(vuk::declare_ia("depth_image", depth_ia), vuk::DepthZero);
+
   auto color_output_w2d = vuk::make_pass("2d_forward_pass",
                                          [camera_data,
                                           render_queue_2d,
                                           &descriptor_set = *this->descriptor_set_00,
-                                          vertex_buffer_2d](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) target
-                                                            /*VUK_IA(vuk::eDepthStencilRW) depth*/) {
+                                          vertex_buffer_2d](vuk::CommandBuffer& command_buffer,
+                                                            VUK_IA(vuk::eColorWrite) target,
+                                                            VUK_IA(vuk::eDepthStencilRW) depth) {
     const auto vertex_pack_2d = vuk::Packed{
       vuk::Format::eR32G32B32A32Sfloat, // 16 row
       vuk::Format::eR32G32B32A32Sfloat, // 16 row
@@ -174,13 +228,12 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
       if (batch.count < 1)
         continue;
 
-      command_buffer
-        .bind_graphics_pipeline(batch.pipeline_name)
-        //.set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
-        //  .depthTestEnable = true,
-        //  .depthWriteEnable = false,
-        //  .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
-        //})
+      command_buffer.bind_graphics_pipeline(batch.pipeline_name)
+        .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
+          .depthTestEnable = true,
+          .depthWriteEnable = false,
+          .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
+        })
         .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
         .set_viewport(0, vuk::Rect2D::framebuffer())
         .set_scissor(0, vuk::Rect2D::framebuffer())
@@ -198,7 +251,7 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
     }
 
     return target;
-  })(final_image /*, depth_output*/);
+  })(final_image, depth_image);
 
   return color_output_w2d;
 }

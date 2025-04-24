@@ -27,15 +27,18 @@ public:
   static bool get_key_pressed(const KeyCode key) { return _instance->input_data.key_pressed[int(key)]; }
   static bool get_key_released(const KeyCode key) { return _instance->input_data.key_released[int(key)]; }
   static bool get_key_held(const KeyCode key) { return _instance->input_data.key_held[int(key)]; }
-  static bool get_mouse_clicked(const SDL_MouseButtonFlags key) { return _instance->input_data.mouse_clicked[int(key)]; }
-  static bool get_mouse_held(const SDL_MouseButtonFlags key) { return _instance->input_data.mouse_held[int(key)]; }
+  static bool get_mouse_clicked(const MouseCode key) { return _instance->input_data.mouse_clicked[int(key)]; }
+  static bool get_mouse_held(const MouseCode key) { return _instance->input_data.mouse_held[int(key)]; }
+  // TODO: get_mouse_released()
 
   /// Mouse
   static glm::vec2 get_mouse_position();
+  static glm::vec2 get_mouse_position_rel();
   static void set_mouse_position(float x, float y);
   static float get_mouse_offset_x();
   static float get_mouse_offset_y();
   static float get_mouse_scroll_offset_y();
+  static bool get_mouse_moved();
 
 private:
 #define MAX_KEYS 512
@@ -51,10 +54,12 @@ private:
     bool mouse_held[MAX_BUTTONS] = {};
     bool mouse_clicked[MAX_BUTTONS] = {};
 
-    float mouse_offset_x;
-    float mouse_offset_y;
-    float scroll_offset_y;
-    glm::vec2 mouse_pos;
+    float mouse_offset_x = {};
+    float mouse_offset_y = {};
+    float scroll_offset_y = {};
+    glm::vec2 mouse_pos = {};
+    glm::vec2 mouse_pos_rel = {};
+    bool mouse_moved = false;
   } input_data = {};
 
   CursorState cursor_state = CursorState::Normal;

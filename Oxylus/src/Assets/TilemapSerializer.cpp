@@ -17,8 +17,10 @@ void TilemapSerializer::deserialize(const std::string& path) {
   rapidjson::Document doc;
   rapidjson::ParseResult parse_result = doc.Parse(json.c_str());
 
-  if (doc.HasParseError())
+  if (doc.HasParseError()) {
     OX_LOG_ERROR("Json parser error for: {0} {1}", path, rapidjson::GetParseError_En(parse_result.Code()));
+    return;
+  }
 
   auto identifier = doc["identifier"].GetString();
   auto uniqueIdentifer = doc["uniqueIdentifer"].GetString();

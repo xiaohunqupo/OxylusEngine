@@ -128,6 +128,8 @@ void App::run() {
     input_system->input_data.mouse_offset_x = input_system->input_data.mouse_pos.x - position.x;
     input_system->input_data.mouse_offset_y = input_system->input_data.mouse_pos.y - position.y;
     input_system->input_data.mouse_pos = position;
+    input_system->input_data.mouse_pos_rel = relative;
+    input_system->input_data.mouse_moved = true;
   };
   window_callbacks.on_mouse_button = [](void* user_data, const uint8 button, const bool down) {
     const auto* app = static_cast<App*>(user_data);

@@ -250,7 +250,7 @@ void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel&
 }
 
 void ViewportPanel::on_update() {
-  if (is_viewport_hovered && !scene->is_running() && m_use_editor_camera) {
+  if (is_viewport_hovered && !scene->is_running()) {
     const glm::vec3& position = editor_camera.position;
     const glm::vec2 yaw_pitch = glm::vec2(editor_camera.yaw, editor_camera.pitch);
     glm::vec3 final_position = position;
@@ -262,60 +262,48 @@ void ViewportPanel::on_update() {
       final_yaw_pitch = {glm::radians(-90.f), 0.f};
     }
 
-    if (ImGui::IsMouseDown(ImGuiMouseButton_Right) && !is_ortho) {
-      const glm::vec2 new_mouse_position = Input::get_mouse_position();
+    const auto& window = App::get()->get_window();
 
-      if (!m_using_editor_camera) {
-        m_using_editor_camera = true;
-        m_locked_mouse_position = new_mouse_position;
-        const auto* app = App::get();
-        app->get_window().set_cursor(WindowCursor::Hand);
+    if (Input::get_mouse_held(MouseCode::ButtonRight) && !is_ortho) {
+      const glm::vec2 new_mouse_position = Input::get_mouse_position_rel();
+      window.set_cursor(WindowCursor::Crosshair);
+
+      if (Input::get_mouse_moved()) {
+        const glm::vec2 change = new_mouse_position * EditorCVar::cvar_camera_sens.get();
+        final_yaw_pitch.x += change.x;
+        final_yaw_pitch.y = glm::clamp(final_yaw_pitch.y - change.y, glm::radians(-89.9f), glm::radians(89.9f));
       }
 
-      Input::set_mouse_position(m_locked_mouse_position.x, m_locked_mouse_position.y);
-      // Input::SetCursorIcon(EditorLayer::Get()->m_CrosshairCursor);
-
-      const glm::vec2 change = (new_mouse_position - m_locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
-      final_yaw_pitch.x += change.x;
-      final_yaw_pitch.y = glm::clamp(final_yaw_pitch.y - change.y, glm::radians(-89.9f), glm::radians(89.9f));
-
       const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
-      if (ImGui::IsKeyDown(ImGuiKey_W))
+      if (Input::get_key_held(KeyCode::W))
         final_position += editor_camera.forward * max_move_speed;
-      else if (ImGui::IsKeyDown(ImGuiKey_S))
+      else if (Input::get_key_held(KeyCode::S))
         final_position -= editor_camera.forward * max_move_speed;
-      if (ImGui::IsKeyDown(ImGuiKey_D))
+      if (Input::get_key_held(KeyCode::D))
         final_position += editor_camera.right * max_move_speed;
-      else if (ImGui::IsKeyDown(ImGuiKey_A))
+      else if (Input::get_key_held(KeyCode::A))
         final_position -= editor_camera.right * max_move_speed;
 
-      if (ImGui::IsKeyDown(ImGuiKey_Q)) {
+      if (Input::get_key_held(KeyCode::Q)) {
         final_position.y -= max_move_speed;
-      } else if (ImGui::IsKeyDown(ImGuiKey_E)) {
+      } else if (Input::get_key_held(KeyCode::E)) {
         final_position.y += max_move_speed;
       }
     }
     // Panning
     else if (ImGui::IsMouseDown(ImGuiMouseButton_Middle)) {
-      const glm::vec2 new_mouse_position = Input::get_mouse_position();
+      const glm::vec2 new_mouse_position = Input::get_mouse_position_rel();
+      window.set_cursor(WindowCursor::ResizeAll);
 
-      if (!m_using_editor_camera) {
-        m_using_editor_camera = true;
-        m_locked_mouse_position = new_mouse_position;
+      const glm::vec2 change = (new_mouse_position - _locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
+
+      if (Input::get_mouse_moved()) {
+        const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
+        final_position += editor_camera.forward * change.y * max_move_speed;
+        final_position += editor_camera.right * change.x * max_move_speed;
       }
-
-      Input::set_mouse_position(m_locked_mouse_position.x, m_locked_mouse_position.y);
-      // Input::SetCursorIcon(EditorLayer::Get()->m_CrosshairCursor);
-
-      const glm::vec2 change = (new_mouse_position - m_locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
-
-      const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
-      final_position += editor_camera.forward * change.y * max_move_speed;
-      final_position += editor_camera.right * change.x * max_move_speed;
     } else {
-      const auto* app = App::get();
-      app->get_window().set_cursor(WindowCursor::Arrow);
-      m_using_editor_camera = false;
+      window.set_cursor(WindowCursor::Arrow);
     }
 
     const glm::vec3 damped_position = math::smooth_damp(position,
@@ -323,13 +311,13 @@ void ViewportPanel::on_update() {
                                                         m_translation_velocity,
                                                         m_translation_dampening,
                                                         10000.0f,
-                                                        (float)App::get_timestep().get_seconds());
+                                                        static_cast<float>(App::get_timestep().get_seconds()));
     const glm::vec2 damped_yaw_pitch = math::smooth_damp(yaw_pitch,
                                                          final_yaw_pitch,
                                                          m_rotation_velocity,
                                                          m_rotation_dampening,
                                                          1000.0f,
-                                                         (float)App::get_timestep().get_seconds());
+                                                         static_cast<float>(App::get_timestep().get_seconds()));
 
     editor_camera.position = EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position;
 
@@ -340,6 +328,8 @@ void ViewportPanel::on_update() {
     auto screen_extent = App::get()->get_swapchain_extent();
     Camera::update(editor_camera, screen_extent);
   }
+
+  scene->get_renderer()->get_render_pipeline()->submit_camera(editor_camera);
 }
 
 void ViewportPanel::draw_performance_overlay() {

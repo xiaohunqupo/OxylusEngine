@@ -44,6 +44,7 @@ void Camera::update(::ox::CameraComponent& component, const glm::vec2& screen_si
                                                       100.0f,
                                                       -100.0f); // reversed-z
   }
+
   component.matrices.projection_matrix[1][1] *= -1.0f;
 }
 

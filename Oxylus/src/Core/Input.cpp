@@ -19,6 +19,7 @@ void Input::reset_pressed() {
   memset(input_data.key_pressed, 0, MAX_KEYS);
   memset(input_data.mouse_clicked, 0, MAX_BUTTONS);
   input_data.scroll_offset_y = 0;
+  input_data.mouse_moved = false;
 }
 
 void Input::reset() {
@@ -28,15 +29,20 @@ void Input::reset() {
   memset(input_data.mouse_held, 0, MAX_BUTTONS);
 
   input_data.scroll_offset_y = 0;
+  input_data.mouse_moved = false;
 }
 
 glm::vec2 Input::get_mouse_position() { return _instance->input_data.mouse_pos; }
+
+glm::vec2 Input::get_mouse_position_rel() { return _instance->input_data.mouse_pos_rel; }
 
 float Input::get_mouse_offset_x() { return _instance->input_data.mouse_offset_x; }
 
 float Input::get_mouse_offset_y() { return _instance->input_data.mouse_offset_y; }
 
 float Input::get_mouse_scroll_offset_y() { return _instance->input_data.scroll_offset_y; }
+
+bool Input::get_mouse_moved() { return _instance->input_data.mouse_moved; }
 
 void Input::set_mouse_position(const float x, const float y) { SDL_WarpMouseGlobal(x, y); }
 

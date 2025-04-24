@@ -97,6 +97,7 @@ Window Window::create(const WindowInfo& info) {
     SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE),
     SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER),
     SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED),
+    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR),
   };
 
   void* image_data = nullptr;
@@ -301,5 +302,9 @@ float Window::get_content_scale() const {
 float Window::get_refresh_rate() const {
   OX_SCOPED_ZONE
   return impl->refresh_rate;
+}
+
+void Window::set_mouse_position(const glm::vec2 position) const {
+  SDL_WarpMouseInWindow(impl->handle, position.x, position.y);
 }
 } // namespace ox
