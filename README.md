@@ -1,6 +1,6 @@
 # Oxylus Engine
 ![Logo](https://i.imgur.com/4JpO3vl.png)     
-[![CI](https://img.shields.io/github/actions/workflow/status/Hatrickek/OxylusEngine/cmake.yml?&style=for-the-badge&logo=cmake&logoColor=orange&labelColor=black)](https://github.com/Hatrickek/OxylusEngine/actions/workflows/cmake.yml)
+[![CI](https://img.shields.io/github/actions/workflow/status/Hatrickek/OxylusEngine/xmake.yaml?&style=for-the-badge&logo=cmake&logoColor=orange&labelColor=black)](https://github.com/Hatrickek/OxylusEngine/actions/workflows/xmake.yaml)
 ## About   
 This is my hobby project that I work on in my spare time to learn more about graphics programming and engine architectures. Especially Vulkan and C++.
 Also to produce some games including my dream game in the future.
