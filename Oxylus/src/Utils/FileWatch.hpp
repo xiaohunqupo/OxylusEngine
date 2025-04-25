@@ -34,6 +34,8 @@
 #include <tchar.h>
 #include <Pathcch.h>
 #include <shlwapi.h>
+
+#include <iostream>
 #endif // WIN32
 
 #if __unix__
