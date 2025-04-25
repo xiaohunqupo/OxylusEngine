@@ -98,7 +98,7 @@ Shared<Project> Project::load(const std::string& path) {
     project->project_file_path = std::filesystem::absolute(path).string();
 
     const auto asset_dir_path = fs::append_paths(fs::get_directory(project->project_file_path), project->project_config.asset_directory);
-    App::get_system<VFS>(EngineSystems::VFS)->mount_dir("project", asset_dir_path);
+    App::get_system<VFS>(EngineSystems::VFS)->mount_dir(VFS::PROJECT_DIR, asset_dir_path);
 
     active_project = project;
     active_project->load_module();

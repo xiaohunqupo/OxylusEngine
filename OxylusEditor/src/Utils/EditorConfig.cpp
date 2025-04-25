@@ -71,7 +71,7 @@ void EditorConfig::save_config() const {
 
 void EditorConfig::add_recent_project(const Project* path) {
   for (auto& project : recent_projects) {
-    if (project == path->get_project_file_path()) {
+    if (fs::get_file_name(project) == fs::get_file_name(path->get_project_file_path())) {
       return;
     }
   }

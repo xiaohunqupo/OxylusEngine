@@ -30,11 +30,10 @@ void serialize_component(const std::string_view name,
 
   writer.String(name.data());
   writer.StartArray();
-  for (auto&& [e, tc] : registry.view<Component>().each()) {
-    writer.StartObject();
-    serializeFunc(writer, tc);
-    writer.EndObject();
-  }
+  auto& component = registry.get<Component>(entity);
+  writer.StartObject();
+  serializeFunc(writer, component);
+  writer.EndObject();
   writer.EndArray();
 }
 
@@ -759,11 +758,11 @@ UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene
     for (const auto& sc : entity["SpriteComponent"].GetArray()) {
       auto& sc_component = registry.emplace<SpriteComponent>(deserialized_entity);
       sc_component.layer = sc["layer"].GetInt();
-      sc_component.sort_y = sc["sort_y"].GetInt();
+      sc_component.sort_y = sc["sort_y"].GetBool();
       sc_component.material = create_shared<SpriteMaterial>();
       sc_component.material->parameters.color = deserialize_vec4(sc["color"].GetArray());
-      sc_component.material->parameters.uv_offset = deserialize_vec3(sc["offset"].GetArray());
-      sc_component.material->parameters.uv_size = deserialize_vec3(sc["size"].GetArray());
+      sc_component.material->parameters.uv_offset = deserialize_vec2(sc["uv_offset"].GetArray());
+      sc_component.material->parameters.uv_size = deserialize_vec2(sc["uv_size"].GetArray());
 
       const auto path = std::string(sc["texture_path"].GetString());
       if (!path.empty())
