@@ -31,6 +31,8 @@ void remove(std::string_view path);
 bool exists(std::string_view path);
 /// @brief absolute physical path
 std::string absolute(std::string_view path);
+/// @brief returns last directory/file from the path without slashes
+std::string get_last_component(std::string_view path);
 
 std::string read_file(std::string_view file_path);
 std::vector<uint8_t> read_file_binary(std::string_view file_path);

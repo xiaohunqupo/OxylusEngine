@@ -136,8 +136,9 @@ void EntitySerializer::serialize_entity(rapidjson::PrettyWriter<rapidjson::Strin
                                      entity,
                                      writer,
                                      [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, MeshComponent& c) {
+    const auto virtual_dir = App::get_system<VFS>(EngineSystems::VFS)->resolve_virtual_dir(c.mesh_base->get_path());
     wr.String("mesh_path");
-    wr.String(c.mesh_base->get_path().c_str());
+    wr.String(virtual_dir.c_str());
 
     wr.String("stationary");
     wr.Bool(c.stationary);
@@ -445,8 +446,10 @@ void EntitySerializer::serialize_entity(rapidjson::PrettyWriter<rapidjson::Strin
                                           [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, LuaScriptComponent& c) {
     wr.String("systems");
     wr.StartArray();
-    for (const auto& system : c.lua_systems)
-      wr.String(system->get_path().c_str());
+    for (const auto& system : c.lua_systems) {
+      const auto virtual_dir = App::get_system<VFS>(EngineSystems::VFS)->resolve_virtual_dir(system->get_path());
+      wr.String(virtual_dir.c_str());
+    }
     wr.EndArray();
   });
 
@@ -485,8 +488,9 @@ void EntitySerializer::serialize_entity(rapidjson::PrettyWriter<rapidjson::Strin
     serialize_vec2(wr, c.material->parameters.uv_offset);
 
     const auto path = c.material->get_albedo_texture() ? c.material->get_albedo_texture()->get_path() : "";
+    const auto virtual_dir = App::get_system<VFS>(EngineSystems::VFS)->resolve_virtual_dir(path);
     wr.String("texture_path");
-    wr.String(path.c_str());
+    wr.String(virtual_dir.c_str());
   });
 
   serialize_component<SpriteAnimationComponent>("SpriteAnimationComponent",
@@ -518,8 +522,9 @@ void EntitySerializer::serialize_entity(rapidjson::PrettyWriter<rapidjson::Strin
                                         entity,
                                         writer,
                                         [](rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr, TilemapComponent& c) {
+    const auto virtual_dir = App::get_system<VFS>(EngineSystems::VFS)->resolve_virtual_dir(c.path);
     wr.String("path");
-    wr.String(c.path.c_str());
+    wr.String(virtual_dir.c_str());
   });
 
   writer.EndObject(); // top

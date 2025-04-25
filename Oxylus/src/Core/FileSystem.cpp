@@ -9,9 +9,9 @@
 #endif
 
 namespace ox {
-std::string fs::current_path() { return std::filesystem::current_path().string(); }
+std::string fs::current_path() { return std::filesystem::current_path().generic_string(); }
 
-std::pair<std::string, std::string> fs::split_path(std::string_view full_path) {
+std::pair<std::string, std::string> fs::split_path(const std::string_view full_path) {
   const size_t found = full_path.find_last_of("/\\");
   return {
     std::string(full_path.substr(0, found + 1)), // directory
@@ -32,12 +32,12 @@ std::string fs::get_file_name(const std::string_view filepath) {
 
 std::string fs::get_name_with_extension(const std::string_view filepath) { return split_path(filepath).second; }
 
-std::string fs::get_directory(std::string_view path) {
+std::string fs::get_directory(const std::string_view path) {
   if (path.empty()) {
     return std::string(path);
   }
 
-  return std::filesystem::path(path).parent_path().string();
+  return std::filesystem::path(path).parent_path().generic_string();
 }
 
 std::string fs::append_paths(const std::string_view path, const std::string_view second_path) {
@@ -50,12 +50,13 @@ std::string fs::append_paths(const std::string_view path, const std::string_view
 }
 
 std::string fs::preferred_path(const std::string_view path) {
+  return std::filesystem::path(path).make_preferred().generic_string();
   std::string new_path(path);
   StringUtils::replace_string(new_path, "\\", "/");
   return new_path;
 }
 
-void fs::open_folder_select_file(std::string_view path) {
+void fs::open_folder_select_file(const std::string_view path) {
 #ifdef OX_PLATFORM_WINDOWS
   std::string p_str(path);
   StringUtils::replace_string(p_str, "/", "\\");
@@ -69,7 +70,7 @@ void fs::open_folder_select_file(std::string_view path) {
 #endif
 }
 
-void fs::open_file_externally(std::string_view path) {
+void fs::open_file_externally(const std::string_view path) {
 #ifdef OX_PLATFORM_WINDOWS
   const _bstr_t widePath(path.data());
   ShellExecute(nullptr, L"open", widePath, nullptr, nullptr, SW_RESTORE);
@@ -78,7 +79,7 @@ void fs::open_file_externally(std::string_view path) {
 #endif
 }
 
-void fs::copy_file(std::string_view from, std::string_view to) {
+void fs::copy_file(const std::string_view from, const std::string_view to) {
   try {
     std::filesystem::copy(from, to);
   } catch (std::exception& exception) {
@@ -86,7 +87,7 @@ void fs::copy_file(std::string_view from, std::string_view to) {
   }
 }
 
-void fs::remove(std::string_view path) {
+void fs::remove(const std::string_view path) {
   try {
     std::filesystem::remove(path);
   } catch (std::exception& exception) {
@@ -94,14 +95,19 @@ void fs::remove(std::string_view path) {
   }
 }
 
-bool fs::exists(std::string_view path) { return std::filesystem::exists(path); }
+bool fs::exists(const std::string_view path) { return std::filesystem::exists(path); }
 
-std::string fs::absolute(std::string_view path) {
+std::string fs::absolute(const std::string_view path) {
   const auto p = std::filesystem::absolute(path);
-  return p.string();
+  return p.generic_string();
 }
 
-std::string fs::read_file(std::string_view file_path) {
+std::string fs::get_last_component(const std::string_view path) {
+  auto last = std::filesystem::path(path).filename().generic_string();
+  return last;
+}
+
+std::string fs::read_file(const std::string_view file_path) {
   OX_SCOPED_ZONE;
   std::ostringstream buf;
   const std::ifstream input(file_path.data());
@@ -124,7 +130,7 @@ std::vector<uint8_t> fs::read_file_binary(const std::string_view file_path) {
   return data;
 }
 
-bool fs::write_file_binary(std::string_view file_path, const std::vector<uint8_t>& data) {
+bool fs::write_file_binary(const std::string_view file_path, const std::vector<uint8_t>& data) {
   std::ofstream file(file_path.data(), std::ios::binary | std::ios::trunc);
   if (file.is_open()) {
     file.write(reinterpret_cast<const char*>(data.data()), (std::streamsize)data.size());
@@ -134,7 +140,7 @@ bool fs::write_file_binary(std::string_view file_path, const std::vector<uint8_t
   return false;
 }
 
-bool fs::binary_to_header(std::string_view file_path, std::string_view data_name, const std::vector<uint8_t>& data) {
+bool fs::binary_to_header(const std::string_view file_path, const std::string_view data_name, const std::vector<uint8_t>& data) {
   std::string ss;
   ss += "const uint8_t ";
   ss += data_name;

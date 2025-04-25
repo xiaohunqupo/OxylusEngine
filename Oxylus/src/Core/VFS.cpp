@@ -3,14 +3,6 @@
 #include "Core/FileSystem.hpp"
 
 namespace ox {
-std::pair<std::string, std::string> split_path(std::string_view full_path) {
-  const size_t found = full_path.find_first_of("/\\");
-  return {
-    std::string(full_path.substr(0, found + 1)), // virtual
-    std::string(full_path.substr(found + 1)),    // rest
-  };
-}
-
 void VFS::init() {}
 
 void VFS::deinit() {}
@@ -37,8 +29,17 @@ std::string VFS::resolve_physical_dir(const std::string& virtual_dir, const std:
   return fs::append_paths(physical_dir, file_path);
 }
 
-std::string VFS::get_virtual_dir(const std::string& file_path) {
+std::string VFS::resolve_virtual_dir(const std::string& file_path) {
   OX_SCOPED_ZONE;
+
+  for (const auto& [virtual_dir, physical_dir] : mapped_dirs) {
+    if (file_path.starts_with(physical_dir)) {
+      const std::string relative_path = file_path.substr(physical_dir.length() + 1);
+      return fs::preferred_path(fs::append_paths(fs::get_last_component(physical_dir), relative_path));
+    }
+  }
+
+  OX_LOG_ERROR("Could not resolve virtual dir for: {}", file_path);
   return {};
 }
 } // namespace ox

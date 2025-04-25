@@ -17,7 +17,7 @@ public:
   void unmount_dir(const std::string& virtual_dir);
 
   std::string resolve_physical_dir(const std::string& virtual_dir, const std::string& file_path);
-  std::string get_virtual_dir(const std::string& file_path);
+  std::string resolve_virtual_dir(const std::string& file_path);
 
 private:
   ankerl::unordered_dense::map<std::string, std::string> mapped_dirs = {};
