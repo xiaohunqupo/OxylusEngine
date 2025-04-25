@@ -22,6 +22,12 @@ public:
 } // namespace ox
 
 // log macros
+#ifdef OX_DEBUG
+  #define OX_LOG_DEBUG(...) DLOG_F(MAX, __VA_ARGS__)
+#else
+  #define OX_LOG_DEBUG(...)
+#endif
+#define OX_LOG_TRACE(...) LOG_F(MAX, __VA_ARGS__)
 #define OX_LOG_INFO(...) LOG_F(INFO, __VA_ARGS__)
 #define OX_LOG_WARN(...) LOG_F(WARNING, __VA_ARGS__)
 #define OX_LOG_ERROR(...) LOG_F(ERROR, __VA_ARGS__)
@@ -54,4 +60,3 @@ public:
 #else
   #define OX_DEBUGBREAK()
 #endif
-
