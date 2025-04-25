@@ -25,7 +25,7 @@ App* create_application(const AppCommandLineArgs& args) {
   spec.window_info = {
     .title = spec.name,
     .icon = icon,
-    .width = 1600,
+    .width = 1720,
     .height = 900,
 #ifdef OX_PLATFORM_LINUX
     .flags = WindowFlag::Centered,

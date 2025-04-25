@@ -40,15 +40,24 @@ target("Oxylus")
     on_config(function (target)
         if (target:has_tool("cxx", "msvc", "cl")) then
             target:add("defines", "OX_COMPILER_MSVC=1", { force = true, public = true })
-            target:add("cxflags", "/wd4100 /permissive- /EHsc /std:c++latest /bigobj", { public = false })
         elseif(target:has_tool("cxx", "clang", "clangxx")) then
             target:add("defines", "OX_COMPILER_CLANG=1", { force = true, public = true })
-            target:add("cxflags", "-Wno-unused-parameter -Wno-unused-variable", { public = true })
         elseif target:has_tool("cxx", "gcc", "gxx") then
             target:add("defines", "OX_COMPILER_GCC=1", { force = true, public = true })
-            target:add("cxflags", "-Wno-unused-parameter -Wno-unused-variable", { public = true })
         end
     end)
+
+    add_cxxflags(
+        "/permissive-",
+        "/EHsc",
+        "/bigobj",
+        "-wd4100",
+        { force = true, public = true, tools = { "msvc", "cl", "clang_cl", "clang-cl" } })
+
+    add_cxxflags(
+        "-Wno-unused-parameter",
+        "-Wno-unused-variable",
+        { force = true, public = true, tools = { "clang", "gcc" } })
 
     add_packages(
         "stb",
