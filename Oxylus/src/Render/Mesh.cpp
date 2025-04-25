@@ -2,9 +2,9 @@
 
 #include <fastgltf/core.hpp>
 #include <fastgltf/glm_element_traits.hpp>
+#include <fastgltf/math.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
-#include <fastgltf/math.hpp>
 #include <glm/gtc/type_ptr.hpp>
 #include <ktx.h>
 #include <meshoptimizer.h>
@@ -12,7 +12,6 @@
 #include <vuk/Types.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include <execution>
 #include <ranges>
 #include <stack>
 
@@ -114,7 +113,9 @@ static std::vector<Vertex> convert_vertex_buffer_format(const fastgltf::Asset& m
   if (color_accessor_index.has_value()) {
     auto& color_accessor = model.accessors[color_accessor_index.value()];
     colors.resize(color_accessor.count);
-    fastgltf::iterateAccessorWithIndex<glm::vec3>(model, color_accessor, [&](glm::vec3 color, std::size_t idx) { colors[idx] = glm::vec4(color, 1.0f); });
+    fastgltf::iterateAccessorWithIndex<glm::vec3>(model, color_accessor, [&](glm::vec3 color, std::size_t idx) {
+      colors[idx] = glm::vec4(color, 1.0f);
+    });
   } else {
     colors.resize(positions.size(), glm::vec4(1.0f));
   }
@@ -328,8 +329,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
   std::vector<RawMesh> raw_meshes = {};
   raw_meshes.resize(unique_accessor_combinations.size());
 
-  std::transform(std::execution::par,
-                 unique_accessor_combinations.begin(),
+  std::transform(unique_accessor_combinations.begin(),
                  unique_accessor_combinations.end(),
                  raw_meshes.begin(),
                  [&](const std::pair<AccessorIndices, std::size_t>& keyValue) -> RawMesh {
@@ -385,7 +385,7 @@ void Mesh::load_from_file(const std::string& file_path, glm::mat4 rootTransform)
 
   std::vector<MeshletInfo> meshlet_infos(raw_meshes.size());
 
-  std::transform(std::execution::par, raw_meshes.begin(), raw_meshes.end(), meshlet_infos.begin(), [](const RawMesh& mesh) -> MeshletInfo {
+  std::transform(raw_meshes.begin(), raw_meshes.end(), meshlet_infos.begin(), [](const RawMesh& mesh) -> MeshletInfo {
     OX_SCOPED_ZONE_N("Create meshlets for mesh");
 
     const auto max_meshlets = meshopt_buildMeshletsBound(mesh.indices.size(), MAX_MESHLET_INDICES, MAX_MESHLET_PRIMITIVES);
@@ -554,7 +554,7 @@ std::vector<Shared<Texture>> Mesh::load_images(const fastgltf::Asset& asset) {
   // Load and decode image data locally, in parallel
   auto raw_image_datas = std::vector<RawImageData>(asset.images.size());
 
-  std::transform(std::execution::par, indices.begin(), indices.end(), raw_image_datas.begin(), [&](size_t index) {
+  std::transform(indices.begin(), indices.end(), raw_image_datas.begin(), [&](size_t index) {
     OX_SCOPED_ZONE_N("Load Image");
     const fastgltf::Image& image = asset.images[index];
     OX_ZONE_NAME(image.name.c_str(), image.name.size());
