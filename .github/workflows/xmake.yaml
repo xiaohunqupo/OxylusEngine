@@ -54,12 +54,6 @@ jobs:
           sudo apt install -y clang-${{ env.LLVM_VERSION }} lld-${{ env.LLVM_VERSION }} llvm-${{ env.LLVM_VERSION }} libllvm${{ env.LLVM_VERSION }} llvm-${{ env.LLVM_VERSION }}-runtime libclang-common-${{ env.LLVM_VERSION }}-dev libclang-${{ env.LLVM_VERSION }}-dev libclang1-${{ env.LLVM_VERSION }} libclang-rt-${{ env.LLVM_VERSION }}-dev libc++-${{ env.LLVM_VERSION }}-dev libc++abi-${{ env.LLVM_VERSION }}-dev libunwind-${{ env.LLVM_VERSION }}-dev libllvmlibc-${{ env.LLVM_VERSION }}-dev
           sudo apt install libx11-dev libxext-dev libxrandr-dev libxrender-dev libxfixes-dev libxi-dev libxinerama-dev libxkbcommon-dev
 
-      - name: Install Vulkan SDK
-        uses: humbletim/install-vulkan-sdk@v1.2
-        with:
-          version: ${{env.VULKAN_VERSION}}
-          cache: true
-
       # Install xmake
       - name: Setup xmake
         uses: xmake-io/github-action-setup-xmake@v1
