@@ -115,13 +115,7 @@ public:
 
   static const Timestep& get_timestep() { return _instance->timestep; }
 
-  static bool asset_directory_exists();
-
-  // TODO: Get rid off these
-  static std::string get_asset_directory();
-  static std::string get_asset_directory(std::string_view asset_path); // appends the asset_path at the end
-  static std::string get_asset_directory_absolute();
-  static std::string get_absolute(const std::string& path);
+  bool asset_directory_exists() const;
 
   static SystemRegistry& get_system_registry() { return _instance->system_registry; }
 

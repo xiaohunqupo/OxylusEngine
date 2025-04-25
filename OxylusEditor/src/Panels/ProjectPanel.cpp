@@ -6,6 +6,7 @@
 
 #include "Core/FileSystem.hpp"
 #include "Core/Project.hpp"
+#include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
 
 #include "UI/OxUI.hpp"
@@ -19,8 +20,9 @@ void ProjectPanel::on_update() {}
 
 void ProjectPanel::load_project_for_editor(const std::string& filepath) {
   if (Project::load(filepath)) {
-    const auto startScene = App::get_absolute(Project::get_active()->get_config().start_scene);
-    EditorLayer::get()->open_scene(startScene);
+    auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
+    const auto start_scene = vfs->resolve_physical_dir(VFS::PROJECT_DIR, Project::get_active()->get_config().start_scene);
+    EditorLayer::get()->open_scene(start_scene);
     EditorConfig::get()->add_recent_project(Project::get_active().get());
     EditorLayer::get()->get_panel<ContentPanel>()->invalidate();
     visible = false;

@@ -63,8 +63,8 @@ Shared<Project> Project::create_new() {
 
 Shared<Project> Project::new_project(const std::string& project_dir, const std::string& project_name, const std::string& project_asset_dir) {
   auto project = create_shared<Project>();
-  project->get_config().name = project_name;
-  project->get_config().asset_directory = project_asset_dir;
+  project->project_config.name = project_name;
+  project->project_config.asset_directory = project_asset_dir;
 
   project->set_project_dir(project_dir);
 
@@ -76,8 +76,13 @@ Shared<Project> Project::new_project(const std::string& project_dir, const std::
   const auto asset_folder_dir = fs::append_paths(project_dir, project_asset_dir);
   std::filesystem::create_directory(asset_folder_dir);
 
+  project->project_file_path = fs::append_paths(project_dir, project_name + ".oxproj");
+
   const ProjectSerializer serializer(project);
   serializer.serialize(fs::append_paths(project_dir, project_name + ".oxproj"));
+
+  const auto asset_dir_path = fs::append_paths(fs::get_directory(project->project_file_path), project->project_config.asset_directory);
+  App::get_system<VFS>(EngineSystems::VFS)->mount_dir(VFS::PROJECT_DIR, asset_dir_path);
 
   set_active(project);
 
@@ -93,7 +98,7 @@ Shared<Project> Project::load(const std::string& path) {
     project->project_file_path = std::filesystem::absolute(path).string();
 
     const auto asset_dir_path = fs::append_paths(fs::get_directory(project->project_file_path), project->project_config.asset_directory);
-    App::get_system<VFS>(EngineSystems::VFS)->mount_dir("Assets/", asset_dir_path);
+    App::get_system<VFS>(EngineSystems::VFS)->mount_dir("project", asset_dir_path);
 
     active_project = project;
     active_project->load_module();

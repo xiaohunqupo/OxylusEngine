@@ -243,20 +243,15 @@ auto SlangSession::load_module(const SlangModuleInfo& info) -> option<SlangModul
   slang::IModule* slang_module = {};
   Slang::ComPtr<slang::IBlob> diagnostics_blob;
   const auto& path_str = info.path;
-  if (info.source.has_value()) {
-    auto source = stack.null_terminate_cstr(info.source.value());
-    slang_module = impl->session->loadModuleFromSourceString(info.module_name.c_str(), path_str.c_str(), source, diagnostics_blob.writeRef());
-  } else {
-    auto source_data = fs::read_file(info.path);
-    if (source_data.empty()) {
-      OX_LOG_ERROR("Failed to read shader file '{}'!", path_str.c_str());
-      return nullopt;
-    }
-    slang_module = impl->session->loadModuleFromSourceString(info.module_name.c_str(),
-                                                             path_str.c_str(),
-                                                             source_data.c_str(),
-                                                             diagnostics_blob.writeRef());
+  const auto source_data = fs::read_file(info.path);
+  if (source_data.empty()) {
+    OX_LOG_ERROR("Failed to read shader file '{}'!", path_str.c_str());
+    return nullopt;
   }
+  slang_module = impl->session->loadModuleFromSourceString(info.module_name.c_str(),
+                                                           path_str.c_str(),
+                                                           source_data.c_str(),
+                                                           diagnostics_blob.writeRef());
 
   if (diagnostics_blob) {
     OX_LOG_INFO("{}", (const char*)diagnostics_blob->getBufferPointer());

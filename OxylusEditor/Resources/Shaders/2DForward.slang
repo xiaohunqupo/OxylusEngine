@@ -39,7 +39,7 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   output.uv_alpha.xy = (output.uv_alpha.xy * uv_size_offset.xy) + (uv_size_offset.zw);
 
   const int flip = flags & RENDER_FLAGS_2D_FLIP_X;
-  float4 world_position = float4(float2(positions[vertex_index].xy * float2((float)flip ? -1 : 1, 1)), 0, 1);
+  float4 world_position = float4(float2(positions[vertex_index].xy * float2((float)((bool)flip ? -1 : 1), 1)), 0, 1);
   world_position = mul(unpacked_transform, world_position);
 
   output.position = mul(get_camera(0).projection_view, float4(world_position.xyz, 1.0f));

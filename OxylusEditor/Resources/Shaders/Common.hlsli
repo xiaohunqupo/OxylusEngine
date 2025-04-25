@@ -18,9 +18,12 @@ typedef uint32_t uint32;
 // typedef uint8_t uint8; - not even supported in dxc
 
 struct PackedFloat2 {
-  float x, y;
+  float x;
+  float y;
 
   float2 unpack() { return float2(x, y); }
+
+  [mutating]
   void pack(float2 v) {
     x = v.x;
     y = v.y;
@@ -31,6 +34,8 @@ struct PackedUint2 {
   uint32 x, y;
 
   uint2 unpack() { return uint2(x, y); }
+
+  [mutating]
   void pack(uint2 v) {
     x = v.x;
     y = v.y;
@@ -41,6 +46,8 @@ struct PackedFloat3 {
   float x, y, z;
 
   float3 unpack() { return float3(x, y, z); }
+
+  [mutating]
   void pack(float3 v) {
     x = v.x;
     y = v.y;
@@ -52,6 +59,8 @@ struct PackedFloat4 {
   float x, y, z, w;
 
   float4 unpack() { return float4(x, y, z, w); }
+
+  [mutating]
   void pack(float4 v) {
     x = v.x;
     y = v.y;
@@ -64,7 +73,9 @@ struct PackedFloat4x4 {
   float4 r1, r2, r3, r4;
 
   float4x4 unpack() { return float4x4(r1, r2, r3, r4); }
-  void pack(float4x4 m) { 
+
+  [mutating]
+  void pack(float4x4 m) {
     r1 = m[0];
     r2 = m[1];
     r3 = m[2];
@@ -115,7 +126,10 @@ struct PushConst {
 struct MeshInstancePointer {
   uint data;
 
+  [mutating]
   void init() { data = 0; }
+
+  [mutating]
   void create(uint instance_index, uint camera_index = 0, float dither = 0) {
     data = 0;
     data |= instance_index & 0xFFFFFF;
@@ -348,15 +362,15 @@ float3 closest_point_on_segment(float3 a, float3 b, float3 c) {
 
 inline float sphere_volume(const float radius) { return 4.0 / 3.0 * PI * radius * radius * radius; }
 
-float2x2 inverse(float2x2 mat) {
-  float2x2 m;
-  m[0][0] = mat[1][1];
-  m[0][1] = -mat[0][1];
-  m[1][0] = -mat[1][0];
-  m[1][1] = mat[0][0];
-
-  return mul((1.0f / mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0]), m);
-}
+// float2x2 inverse(float2x2 mat) {
+//   float2x2 m;
+//   m[0][0] = mat[1][1];
+//   m[0][1] = -mat[0][1];
+//   m[1][0] = -mat[1][0];
+//   m[1][1] = mat[0][0];
+//
+//   return mul((1.0f / mat[0][0] * mat[1][1] - mat[0][1] * mat[1][0]), m);
+// }
 
 // zero-to-one depth
 float3 unproject_uv_zo(float depth, float2 uv, float4x4 invXProj) {
@@ -372,7 +386,7 @@ float3 hsv_to_rgb(const float3 hsv) {
 
 float3 create_cube(in uint vertexID) {
   const uint b = 1u << vertexID;
-  return float3((0x287au & b) != 0u, (0x02afu & b) != 0u, (0x31e3u & b) != 0u);
+  return float3(float((0x287au & b) != 0u), float((0x02afu & b) != 0u), float((0x31e3u & b) != 0u));
 }
 
 float3 oct_to_vec3(float2 e) {

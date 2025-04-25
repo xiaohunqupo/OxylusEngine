@@ -82,6 +82,9 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   imgui_layer = new ImGuiLayer();
   push_overlay(imgui_layer);
+
+  auto* vfs = get_system<VFS>(EngineSystems::VFS);
+  vfs->mount_dir(VFS::APP_DIR, fs::absolute(app_spec.assets_path));
 }
 
 App::~App() { close(); }
@@ -226,24 +229,5 @@ void App::close() { is_running = false; }
 
 glm::vec2 App::get_swapchain_extent() const { return this->swapchain_extent; }
 
-bool App::asset_directory_exists() { return std::filesystem::exists(get_asset_directory()); }
-
-std::string App::get_asset_directory() {
-  if (Project::get_active() && !Project::get_active()->get_config().asset_directory.empty())
-    return Project::get_asset_directory();
-  return _instance->app_spec.assets_path;
-}
-
-std::string App::get_asset_directory(const std::string_view asset_path) { return fs::append_paths(get_asset_directory(), asset_path); }
-
-std::string App::get_asset_directory_absolute() {
-  if (Project::get_active()) {
-    const auto p = std::filesystem::absolute(Project::get_asset_directory());
-    return p.string();
-  }
-  const auto p = absolute(std::filesystem::path(_instance->app_spec.assets_path));
-  return p.string();
-}
-
-std::string App::get_absolute(const std::string& path) { return fs::append_paths(fs::preferred_path(get_asset_directory_absolute()), path); }
+bool App::asset_directory_exists() const { return std::filesystem::exists(app_spec.assets_path); }
 } // namespace ox

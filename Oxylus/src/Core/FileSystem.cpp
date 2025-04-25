@@ -18,9 +18,7 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-std::string fs::current_path() {
-  return std::filesystem::current_path().string();
-}
+std::string fs::current_path() { return std::filesystem::current_path().string(); }
 
 std::pair<std::string, std::string> fs::split_path(std::string_view full_path) {
   const size_t found = full_path.find_last_of("/\\");
@@ -107,6 +105,11 @@ void fs::remove(std::string_view path) {
 
 bool fs::exists(std::string_view path) { return std::filesystem::exists(path); }
 
+std::string fs::absolute(std::string_view path) {
+  const auto p = std::filesystem::absolute(path);
+  return p.string();
+}
+
 std::string fs::read_file(std::string_view file_path) {
   OX_SCOPED_ZONE;
   std::ostringstream buf;
@@ -128,21 +131,6 @@ std::vector<uint8_t> fs::read_file_binary(const std::string_view file_path) {
   file.close();
 
   return data;
-}
-
-std::string fs::read_shader_file(const std::string& shader_file_name) {
-  OX_SCOPED_ZONE;
-  const auto path = get_shader_path(shader_file_name);
-  auto value = read_file(path);
-  OX_ASSERT(!value.empty(), "Shader file doesn't exist: {0}", shader_file_name);
-  return value;
-}
-
-std::string fs::get_shader_path(const std::string& shader_file_name) {
-  OX_SCOPED_ZONE;
-  const auto path_str = std::filesystem::path(App::get()->get_asset_directory_absolute()) / "Shaders";
-  const auto path = std::filesystem::path(path_str) / shader_file_name;
-  return path.string();
 }
 
 bool fs::write_file_binary(std::string_view file_path, const std::vector<uint8_t>& data) {

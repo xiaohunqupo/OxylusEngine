@@ -99,7 +99,7 @@ bool try_push_debug_aabb(DebugAabb aabb) {
   uint index = 0;
   BuffersRW[0].InterlockedAdd(sizeof(uint32), 1, index);
 
-#if TODO
+#if 0 // TODO
   // Check if buffer is full
   if (index >= debugAabbBuffer.aabbs.length()) {
     atomicAdd(debugAabbBuffer.drawCommand.instanceCount, -1);

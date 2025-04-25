@@ -1,5 +1,6 @@
 #include "EasyRenderPipeline.hpp"
 
+#include <Core/VFS.hpp>
 #include <vuk/vsl/Core.hpp>
 
 #include "Camera.hpp"
@@ -43,8 +44,13 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
 
   auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
 
+  const auto shader_path = [](const std::string& path) -> std::string {
+    auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
+    return vfs->resolve_physical_dir(VFS::APP_DIR, path);
+  };
+
   task_scheduler->add_task([=]() mutable {
-    Slang::add_shader(bindless_pci, {.path = "2DForward.slang", .entry_points = {"VSmain", "PSmain"}, .definitions = {}});
+    Slang::add_shader(bindless_pci, {.path = shader_path("Shaders/2DForward.slang"), .entry_points = {"VSmain", "PSmain"}, .definitions = {}});
     TRY(allocator.get_context().create_named_pipeline("2d_forward_pipeline", bindless_pci))
   });
 

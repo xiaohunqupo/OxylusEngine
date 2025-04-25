@@ -34,11 +34,11 @@ void copy_file(std::string_view from, std::string_view to);
 void remove(std::string_view path);
 /// @brief dir/file exists
 bool exists(std::string_view path);
+/// @brief absolute physical path
+std::string absolute(std::string_view path);
 
 std::string read_file(std::string_view file_path);
 std::vector<uint8_t> read_file_binary(std::string_view file_path);
-std::string read_shader_file(const std::string& shader_file_name);
-std::string get_shader_path(const std::string& shader_file_name);
 
 template <typename T>
 bool write_file(const std::string_view file_path, const T& data, const std::string& comment = {}) {

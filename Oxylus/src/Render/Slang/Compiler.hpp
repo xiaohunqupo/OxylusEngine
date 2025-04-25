@@ -17,7 +17,6 @@ struct SlangSessionInfo {
 struct SlangModuleInfo {
   std::string path = {};
   std::string module_name = {};
-  option<std::string_view> source = nullopt;
 };
 
 struct SlangEntryPoint {

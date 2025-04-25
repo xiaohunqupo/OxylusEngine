@@ -56,7 +56,6 @@ private:
 
   void draw_context_menu_items(const std::filesystem::path& context, bool isDir);
 
-private:
   struct File {
     std::string name;
     std::string file_path;

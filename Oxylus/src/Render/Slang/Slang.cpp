@@ -1,5 +1,7 @@
 #include "Slang.hpp"
 
+#include <Core/VFS.hpp>
+
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Utils/Profiler.hpp"
@@ -10,16 +12,14 @@ void Slang::add_shader(vuk::PipelineBaseCreateInfo& pipeline_ci, const CompileIn
 
   auto& ctx = App::get()->get_vkcontext();
 
-  const auto shader_path = fs::get_shader_path(compile_info.path);
-  const auto root_directory = fs::get_directory(shader_path);
+  const auto root_directory = fs::get_directory(compile_info.path);
   const auto module_name = fs::get_file_name(compile_info.path);
 
   auto slang_session = ctx.shader_compiler.new_session({.definitions = pipeline_ci.defines, .root_directory = root_directory});
 
   auto slang_module = slang_session->load_module({
-    .path = shader_path,
+    .path = compile_info.path,
     .module_name = module_name,
-    .source = {}, // TODO: useless
   });
 
   for (auto& v : compile_info.entry_points) {

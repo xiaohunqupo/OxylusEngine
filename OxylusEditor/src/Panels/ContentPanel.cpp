@@ -1,5 +1,6 @@
 #include "ContentPanel.hpp"
 
+#include <Core/VFS.hpp>
 #include <icons/IconsMaterialDesignIcons.h>
 
 #include "Assets/AssetManager.hpp"
@@ -243,20 +244,22 @@ ContentPanel::ContentPanel() : EditorPanel("Contents", ICON_MDI_FOLDER_STAR, tru
   memset(white_texture_data, 0xff, 16 * 16 * 4);
   _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
 
+  auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
+
   auto file_icon = create_shared<Texture>(TextureLoadInfo{
-    .path = App::get_asset_directory("Icons/FileIcon.png"),
+    .path = vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FileIcon.png"),
     .preset = Preset::eRTT2DUnmipped,
   });
   thumbnail_cache.emplace("file_icon", file_icon);
 
   auto directory_icon = create_shared<Texture>(TextureLoadInfo{
-    .path = App::get_asset_directory("Icons/FolderIcon.png"),
+    .path = vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FolderIcon.png"),
     .preset = Preset::eRTT2DUnmipped,
   });
   thumbnail_cache.emplace("folder_icon", directory_icon);
 
   auto mesh_icon = create_shared<Texture>(TextureLoadInfo{
-    .path = App::get_asset_directory("Icons/MeshFileIcon.png"),
+    .path = vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/MeshFileIcon.png"),
     .preset = Preset::eRTT2DUnmipped,
   });
   thumbnail_cache.emplace("mesh_icon", mesh_icon);
