@@ -59,47 +59,44 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
     ui::spacing(2);
 
     if (draw_new_project_panel) {
-      static std::string project_dir = {};
-      static std::string project_name = "New Project";
-      static std::string project_asset_dir = "Assets";
       ui::begin_properties();
       {
         ui::begin_property_grid("Directory", nullptr, false);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.8f);
-        ImGui::InputText("##Directory", &project_dir, flags);
+        ImGui::InputText("##Directory", &new_project_dir, flags);
         ImGui::SameLine();
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FOLDER), {ImGui::GetContentRegionAvail().x, 0})) {
           FileDialogFilter dialog_filters[] = {{.name = "Project dir", .pattern = ""}};
           window.show_dialog({
             .kind = DialogKind::OpenFolder,
-            .user_data = &project_dir,
+            .user_data = this,
             .callback =
               [](void* user_data, const char8* const* files, int32) {
-            auto& dst_path = *static_cast<std::string*>(user_data);
+            auto* panel = static_cast<ProjectPanel*>(user_data);
             if (!files || !*files) {
               return;
             }
 
             const auto first_path_cstr = *files;
             const auto first_path_len = std::strlen(first_path_cstr);
-            dst_path = std::string(first_path_cstr, first_path_len);
+            panel->new_project_dir = std::string(first_path_cstr, first_path_len);
+            panel->new_project_dir = fs::append_paths(panel->new_project_dir, panel->new_project_name);
           },
             .title = "Project dir...",
             .default_path = fs::current_path(),
             .filters = dialog_filters,
             .multi_select = false,
           });
-          project_dir = fs::append_paths(project_dir, project_name);
         }
         ui::end_property_grid();
       }
-      ui::property("Name", &project_name);
-      ui::property("Asset Directory", &project_asset_dir);
+      ui::property("Name", &new_project_name);
+      ui::property("Asset Directory", &new_project_asset_dir);
       ui::end_properties();
       ImGui::Separator();
       ImGui::SetNextItemWidth(-1);
       if (ImGui::Button("Create", ImVec2(120, 0))) {
-        new_project(project_dir, project_name, project_asset_dir);
+        new_project(new_project_dir, new_project_name, new_project_asset_dir);
         visible = false;
         ImGui::CloseCurrentPopup();
       }
