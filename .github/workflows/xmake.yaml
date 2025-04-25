@@ -17,11 +17,17 @@ jobs:
       fail-fast: false
       matrix:
         platform:
-          - { runner: windows-latest, os: windows, arch: x64,    toolchain: msvc,     runtime: MT }
-          - { runner: windows-latest, os: windows, arch: x64,    toolchain: clang-cl, runtime: MT }
-          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: clang-19, runtime: c++_static }
-          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: gcc-14,   runtime: stdc++_static }
-        mode: [ debug, release ]
+          - { runner: windows-latest, os: windows, arch: x64,    toolchain: msvc,     mode: release, runtime: MT }
+          - { runner: windows-latest, os: windows, arch: x64,    toolchain: msvc,     mode: debug,   runtime: MTd }
+
+          - { runner: windows-latest, os: windows, arch: x64,    toolchain: clang-cl, mode: release, runtime: MT }
+          - { runner: windows-latest, os: windows, arch: x64,    toolchain: clang-cl, mode: debug,   runtime: MTd }
+
+          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: clang-19, mode: release, runtime: c++_static }
+          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: clang-19, mode: debug,   runtime: c++_static }
+
+          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: gcc-14,   mode: release, runtime: stdc++_static }
+          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: gcc-14,   mode: debug,   runtime: stdc++_static }
 
     runs-on: ${{ matrix.platform.runner }}
     steps:
@@ -31,7 +37,7 @@ jobs:
         shell: bash
 
       - name: "Set OUTPUT_FILE variable"
-        run: echo "OUTPUT_FILE=${{ matrix.platform.os }}_${{ matrix.platform.arch }}_${{ matrix.mode }}_${{ matrix.platform.toolchain }}_${{ matrix.platform.runtime }}${{ matrix.platform.archive_ext }}" >> $GITHUB_ENV
+        run: echo "OUTPUT_FILE=${{ matrix.platform.os }}_${{ matrix.platform.arch }}_${{ matrix.platform.mode }}_${{ matrix.platform.toolchain }}_${{ matrix.platform.runtime }}${{ matrix.platform.archive_ext }}" >> $GITHUB_ENV
         shell: bash
 
       # Force xmake to a specific folder (for cache)
@@ -77,10 +83,10 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: ${{ env.XMAKE_GLOBALDIR }}/.xmake/packages
-          key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.mode }}-${{ matrix.platform.runtime }}-${{ matrix.platform.toolchain }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
+          key: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.platform.mode }}-${{ matrix.platform.runtime }}-${{ matrix.platform.toolchain }}-${{ steps.dep_hash.outputs.hash }}-W${{ steps.cache_key.outputs.key }}
 
       - name: Configure xmake and install dependencies
-        run: xmake config -v --toolchain=${{ matrix.platform.toolchain }} --arch=${{ matrix.platform.arch }} --mode=${{ matrix.mode }} --runtimes=${{ matrix.platform.runtime }} --yes --policies=package.precompiled:n
+        run: xmake config -v --toolchain=${{ matrix.platform.toolchain }} --arch=${{ matrix.platform.arch }} --mode=${{ matrix.platform.mode }} --runtimes=${{ matrix.platform.runtime }} --yes --policies=package.precompiled:n
 
       # Save dependencies
       - name: Save cached xmake dependencies
@@ -99,6 +105,6 @@ jobs:
       - name: Archive production artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.mode }}-${{ matrix.platform.toolchain }}-${{ matrix.platform.runtime }}
+          name: ${{ matrix.platform.os }}-${{ matrix.platform.arch }}-${{ matrix.platform.mode }}-${{ matrix.platform.toolchain }}-${{ matrix.platform.runtime }}
           path: |
             dest
