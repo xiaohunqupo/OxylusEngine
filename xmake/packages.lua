@@ -64,7 +64,7 @@ add_requires("tracy v0.11.1", { configs = {
     system_tracing = true,
 }, system = false })
 
-add_requires("sol2 v3.3.1", { system = false })
+add_requires("sol2 c1f95a773c6f8f4fde8ca3efe872e7286afe4444", { system = false })
 
 add_requires("enkits v1.11", { system = false })
 
