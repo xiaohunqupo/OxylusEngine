@@ -441,7 +441,7 @@ struct CPPScriptComponent {
 
   template <typename T>
   void add_system() {
-    auto system = App::get_system<SystemManager>()->register_system<T>();
+    auto system = App::get_system<SystemManager>(EngineSystems::SystemManager)->register_system<T>();
     systems.emplace(system);
   }
 };

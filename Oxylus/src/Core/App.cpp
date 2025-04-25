@@ -65,15 +65,15 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   register_system<Input>(EngineSystems::Input);
 
-  // Shortcut for commonly used Systems
-  AssetManager::set_instance();
-  Input::set_instance();
-  Physics::set_instance();
-
   for (const auto& system : system_registry | std::views::values) {
     system->set_dispatcher(&dispatcher);
     system->init();
   }
+
+  // Shortcut for commonly used Systems
+  AssetManager::set_instance();
+  Input::set_instance();
+  Physics::set_instance();
 
   const bool enable_validation = app_spec.command_line_args.contains("vulkan-validation");
   vk_context.create_context(window, enable_validation);

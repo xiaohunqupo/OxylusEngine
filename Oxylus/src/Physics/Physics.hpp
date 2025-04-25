@@ -1,13 +1,12 @@
 #pragma once
-#include <map>
-
 #include "Core/ESystem.hpp"
 #include "PhysicsInterfaces.hpp"
-
-#include "Jolt/Core/JobSystemThreadPool.h"
-#include "Jolt/Physics/Collision/CollisionCollectorImpl.h"
-#include "Jolt/Physics/PhysicsSystem.h"
 #include "Render/DebugRenderer.hpp"
+
+#include <Jolt/Core/JobSystemThreadPool.h>
+#include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
+#include <Jolt/Physics/PhysicsSystem.h>
+#include <map>
 
 namespace ox {
 class RayCast;
@@ -44,7 +43,7 @@ public:
   void debug_draw();
 
   static JPH::PhysicsSystem* get_physics_system();
-  static JPH::BodyInterface& get_body_interface()  { return _instance->physics_system->GetBodyInterface(); }
+  static JPH::BodyInterface& get_body_interface() { return _instance->physics_system->GetBodyInterface(); }
   static const JPH::BroadPhaseQuery& get_broad_phase_query() { return _instance->physics_system->GetBroadPhaseQuery(); }
   static const JPH::BodyLockInterface& get_body_interface_lock() { return _instance->physics_system->GetBodyLockInterface(); }
   static PhysicsDebugRenderer* get_debug_renderer() { return _instance->debug_renderer; }
@@ -54,9 +53,9 @@ public:
 private:
   static Physics* _instance;
 
-  JPH::PhysicsSystem* physics_system;
-  JPH::TempAllocatorImpl* temp_allocator;
-  JPH::JobSystemThreadPool* job_system;
-  PhysicsDebugRenderer* debug_renderer;
+  JPH::PhysicsSystem* physics_system = nullptr;
+  JPH::TempAllocatorImpl* temp_allocator = nullptr;
+  JPH::JobSystemThreadPool* job_system = nullptr;
+  PhysicsDebugRenderer* debug_renderer = nullptr;
 };
 } // namespace ox
