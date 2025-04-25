@@ -10,7 +10,12 @@ void Log::init(int argc, char** argv) {
   if (!std::filesystem::exists("logs"))
     std::filesystem::create_directory("logs");
 
+#ifdef OX_RELEASE
   loguru::g_stderr_verbosity = loguru::Verbosity_INFO;
+#else
+  loguru::g_stderr_verbosity = loguru::Verbosity_MAX;
+#endif
+
   loguru::g_preamble_date = false;
 
   loguru::init(argc, argv, {});
@@ -21,9 +26,7 @@ void Log::init(int argc, char** argv) {
   // Only log INFO, WARNING, ERROR and FATAL to "latest_readable.log":
   loguru::add_file("logs/latest.log", loguru::Truncate, loguru::Verbosity_INFO);
 }
-void Log::shutdown() {
-  loguru::shutdown();
-}
+void Log::shutdown() { loguru::shutdown(); }
 
 void Log::add_callback(const char* id,
                        loguru::log_handler_t callback,
@@ -34,7 +37,5 @@ void Log::add_callback(const char* id,
   loguru::add_callback(id, callback, user_data, verbosity, on_close, on_flush);
 }
 
-void Log::remove_callback(const char* id) {
-  loguru::remove_callback(id);
-}
+void Log::remove_callback(const char* id) { loguru::remove_callback(id); }
 } // namespace ox
