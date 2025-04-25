@@ -14,12 +14,14 @@ add_cxxflags("clang::-fexperimental-library")
 set_warnings("allextra", "pedantic")
 add_cxxflags(
     "-Wshadow",
+    "-Wno-missing-braces",
+    { tools = { "clang", "gcc" } })
+add_cxxflags(
+    "-Wshadow-all",
     "-Wno-gnu-line-marker",
     "-Wno-gnu-anonymous-struct",
     "-Wno-gnu-zero-variadic-macro-arguments",
-    "-Wno-missing-braces",
-    { tools = { "clang", "gcc" } })
-add_cxxflags("clang::-Wshadow-all")
+    { tools = { "clang" } })
 
 includes("xmake/rules.lua")
 includes("xmake/packages.lua")
