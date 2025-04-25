@@ -4,7 +4,7 @@
 #include "FileSystem.hpp"
 
 namespace ox {
-ProjectSerializer::ProjectSerializer(Shared<Project> project) : project(std::move(project)) {}
+ProjectSerializer::ProjectSerializer(Shared<Project> project_) : project(std::move(project_)) {}
 
 bool ProjectSerializer::serialize(const std::string& file_path) const {
   const auto& config = project->get_config();

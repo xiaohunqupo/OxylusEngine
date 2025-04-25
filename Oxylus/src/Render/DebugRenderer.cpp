@@ -299,8 +299,8 @@ std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_lines(
 
   for (const auto& line : lines) {
     // store color in normals for simplicity
-    vertices.emplace_back(Vertex{.position = line.p1, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col))});
-    vertices.emplace_back(Vertex{.position = line.p2, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col))});
+    vertices.emplace_back(Vertex{.position = line.p1, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col)), .uv = {}});
+    vertices.emplace_back(Vertex{.position = line.p2, .normal = glm::packSnorm2x16(math::float32x3_to_oct(line.col)), .uv = {}});
 
     indices += 2;
   }
@@ -315,9 +315,9 @@ std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_triang
 
   for (const auto& tri : triangles) {
     // store color in normals for simplicity
-    vertices.emplace_back(Vertex{.position = tri.p1, .normal = glm::packSnorm2x16(math::float32x3_to_oct(tri.col))});
-    vertices.emplace_back(Vertex{.position = tri.p2, .normal = glm::packSnorm2x16(math::float32x3_to_oct(tri.col))});
-    vertices.emplace_back(Vertex{.position = tri.p3, .normal = glm::packSnorm2x16(math::float32x3_to_oct(tri.col))});
+    vertices.emplace_back(Vertex{.position = tri.p1, .normal = glm::packSnorm2x16(math::float32x3_to_oct(tri.col)), .uv = {}});
+    vertices.emplace_back(Vertex{.position = tri.p2, .normal = glm::packSnorm2x16(math::float32x3_to_oct(tri.col)), .uv = {}});
+    vertices.emplace_back(Vertex{.position = tri.p3, .normal = glm::packSnorm2x16(math::float32x3_to_oct(tri.col)), .uv = {}});
 
     indices += 3;
   }

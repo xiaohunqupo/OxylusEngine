@@ -21,6 +21,7 @@ template <typename T>
   switch (obj.get_type()) {
     case sol::type::number: return obj.template as<entt::id_type>();
     case sol::type::table: return get_type_id(obj);
+    default:;
   }
   OX_ASSERT(false, "probably not registered the component");
   return -1;
@@ -226,8 +227,8 @@ void bind_dispatcher(const Shared<sol::state>& state, sol::basic_table_core<fals
         callback(self);
     }
 
-    const uintptr_t key;
-    const sol::function callback;
+    uintptr_t key;
+    sol::function callback;
     entt::connection connection;
   };
 

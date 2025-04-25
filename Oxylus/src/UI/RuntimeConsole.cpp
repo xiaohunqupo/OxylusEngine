@@ -169,16 +169,16 @@ void RuntimeConsole::on_imgui_render() {
   }
 }
 
-void RuntimeConsole::render_console_text(const std::string& text, const int32_t id, loguru::Verbosity verb) {
-  ImGui::PushStyleColor(ImGuiCol_Text, get_color(verb));
-  const auto level_icon = get_level_icon(verb);
-  ImGui::TextWrapped("%s %s", StringUtils::from_char8_t(level_icon), text.c_str());
+void RuntimeConsole::render_console_text(const std::string& text_, const int32_t id_, loguru::Verbosity verb_) {
+  ImGui::PushStyleColor(ImGuiCol_Text, get_color(verb_));
+  const auto level_icon = get_level_icon(verb_);
+  ImGui::TextWrapped("%s %s", StringUtils::from_char8_t(level_icon), text_.c_str());
   ImGui::PopStyleColor();
 
-  const auto sid = fmt::format("{}", id);
+  const auto sid = fmt::format("{}", id_);
   if (ImGui::BeginPopupContextItem(sid.c_str(), ImGuiPopupFlags_MouseButtonRight)) {
     if (ImGui::MenuItem("Copy"))
-      ImGui::SetClipboardText(text.c_str());
+      ImGui::SetClipboardText(text_.c_str());
 
     ImGui::EndPopup();
   }

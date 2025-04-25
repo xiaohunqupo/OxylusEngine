@@ -70,7 +70,6 @@ private:
   }
 
   Shared<Scene> m_scene = {};
-  Entity m_hovered_entity = {};
   SceneHierarchyPanel* m_scene_hierarchy_panel = nullptr;
 
   glm::vec2 m_viewport_size = {};
@@ -87,7 +86,6 @@ private:
   std::vector<vuk::Unique<vuk::Buffer>> id_buffers = {};
 
   // Camera
-  bool m_lock_aspect_ratio = true;
   float m_translation_dampening = 0.6f;
   float m_rotation_dampening = 0.3f;
   glm::vec2 _locked_mouse_position = glm::vec2(0.0f);

@@ -325,7 +325,7 @@ void InspectorPanel::draw_components(Entity entity) {
     }
   });
 
-  draw_component<SpriteComponent>(" Sprite Component", context->registry, entity, [this](SpriteComponent& component, entt::entity e) {
+  draw_component<SpriteComponent>(" Sprite Component", context->registry, entity, [](SpriteComponent& component, entt::entity e) {
     ui::begin_properties();
     ui::property("Layer", &component.layer);
     ui::property("SortY", &component.sort_y);
@@ -363,7 +363,7 @@ void InspectorPanel::draw_components(Entity entity) {
     ui::end_properties();
   });
 
-  draw_component<TilemapComponent>(" Tilemap Component", context->registry, entity, [this](TilemapComponent& component, entt::entity e) {
+  draw_component<TilemapComponent>(" Tilemap Component", context->registry, entity, [](TilemapComponent& component, entt::entity e) {
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
     if (ui::button("Load tilemap", {x, y}, "Load exported png and json file from ldtk")) {
@@ -402,7 +402,7 @@ void InspectorPanel::draw_components(Entity entity) {
     ui::end_properties();
   });
 
-  draw_component<PostProcessProbe>(" PostProcess Probe Component", context->registry, entity, [this](PostProcessProbe& component, entt::entity e) {
+  draw_component<PostProcessProbe>(" PostProcess Probe Component", context->registry, entity, [](PostProcessProbe& component, entt::entity e) {
     ImGui::Text("Vignette");
     ui::begin_properties();
     ui::property("Enable", &component.vignette_enabled);
@@ -601,7 +601,7 @@ void InspectorPanel::draw_components(Entity entity) {
     ui::end_properties();
   });
 
-  draw_component<RigidbodyComponent>(" Rigidbody Component", context->registry, entity, [this](RigidbodyComponent& component, entt::entity e) {
+  draw_component<RigidbodyComponent>(" Rigidbody Component", context->registry, entity, [](RigidbodyComponent& component, entt::entity e) {
     ui::begin_properties();
 
     const char* dofs_strings[] = {

@@ -24,7 +24,6 @@
 #define FILEWATCHER_H
 
 #include <cstdio>
-#include <fstream>
 #ifdef _WIN32
 #ifndef NOMINMAX
 #define NOMINMAX
@@ -70,9 +69,6 @@
 #include <condition_variable>
 #include <utility>
 #include <vector>
-#include <array>
-#include <unordered_map>
-#include <unordered_set>
 #include <system_error>
 #include <string>
 #include <algorithm>
@@ -84,7 +80,6 @@
 #include <cwchar>
 #include <cassert>
 #include <cstdlib>
-#include <iostream>
 
 #ifdef FILEWATCH_PLATFORM_MAC
 extern "C" int __getdirentries64(int, char *, int, long *);
@@ -205,7 +200,7 @@ private:
   static constexpr C _this_directory[] = {'.', '/', '\0'};
 
   struct PathParts {
-    PathParts(StringType directory, StringType filename) : directory(directory), filename(filename) {}
+    PathParts(StringType directory_, StringType filename_) : directory(directory_), filename(filename_) {}
     StringType directory;
     StringType filename;
   };

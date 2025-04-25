@@ -123,8 +123,8 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 }
 
 void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format) {
-  if (const auto active_scene = get_active_scene(); active_scene)
-    active_scene->on_render(extent, format);
+  if (const auto scene = get_active_scene(); active_scene)
+    scene->on_render(extent, format);
 
   if (EditorCVar::cvar_show_style_editor.get())
     ImGui::ShowStyleEditor();
@@ -455,7 +455,7 @@ void EditorLayer::render_load_indicators() {
           auto fmt = fmt::format(" Loading asset: {}", load_indicator.name);
           ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
           ImGui::PushFont(ImGuiLayer::bold_font);
-          ImGui::Text(fmt.c_str());
+          ImGui::TextUnformatted(fmt.c_str());
           ImGui::PopFont();
         }
       }

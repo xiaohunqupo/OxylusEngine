@@ -11,7 +11,7 @@ class HotReloadableScenes : public ESystem {
 public:
   float update_interval = 1.0f;
 
-  HotReloadableScenes(std::string scene_path) : scene_path(std::move(scene_path)) {}
+  HotReloadableScenes(std::string scene_path_) : scene_path(std::move(scene_path_)) {}
 
   void init() override;
   void deinit() override;
