@@ -22,7 +22,17 @@ App* create_application(const AppCommandLineArgs& args) {
   spec.working_directory = std::filesystem::current_path().string();
   spec.command_line_args = args;
   const WindowInfo::Icon icon = {.data = EngineLogo, .data_length = EngineLogoLen};
-  spec.window_info = {.title = spec.name, .icon = icon, .width = 1600, .height = 900, .flags = WindowFlag::Centered | WindowFlag::Resizable};
+  spec.window_info = {
+    .title = spec.name,
+    .icon = icon,
+    .width = 1600,
+    .height = 900,
+#ifdef OX_PLATFORM_LINUX
+    .flags = WindowFlag::Centered,
+#else
+    .flags = WindowFlag::Centered | WindowFlag::Resizable,
+#endif
+  };
 
   const auto app = new OxylusEditor(spec);
   app->push_layer(new EditorLayer());
