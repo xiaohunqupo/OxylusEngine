@@ -21,6 +21,7 @@ static float3 positions[6] =
   {float3(-0.5, -0.5, 0), float3(0.5, -0.5, 0), float3(0.5, 0.5, 0), float3(0.5, 0.5, 0), float3(-0.5, 0.5, 0), float3(-0.5, -0.5, 0)};
 static float2 uvs[6] = {float2(0.0, 1.0), float2(1.0, 1.0), float2(1.0, 0.0), float2(1.0, 0.0), float2(0.0, 0.0), float2(0.0, 1.0)};
 
+[[shader("vertex")]]
 VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   VOutput output = (VOutput)0;
 
@@ -48,6 +49,7 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
   return output;
 }
 
+[[shader("fragment")]]
 float4 PSmain(VOutput input) : SV_Target0 {
   SpriteMaterial material = get_sprite_material(input.material_index);
   const SamplerState material_sampler = NEAREST_REPEATED_SAMPLER;
