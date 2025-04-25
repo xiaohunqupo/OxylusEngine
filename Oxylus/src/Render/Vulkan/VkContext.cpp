@@ -142,7 +142,8 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
     .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
     .add_required_extension(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
 
-  VkPhysicalDeviceFeatures2 vk10features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2};
+  VkPhysicalDeviceFeatures2 vk10features{};
+  vk10features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
   vk10features.features.geometryShader = true;
   vk10features.features.shaderInt64 = true;
   vk10features.features.shaderStorageImageWriteWithoutFormat = true;
@@ -156,11 +157,13 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   vk10features.features.shaderClipDistance = true;
   selector.set_required_features(vk10features.features);
 
-  VkPhysicalDeviceVulkan11Features vk11features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES};
+  VkPhysicalDeviceVulkan11Features vk11features{};
+  vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
   vk11features.shaderDrawParameters = true;
   selector.set_required_features_11(vk11features);
 
-  VkPhysicalDeviceVulkan12Features vk12features{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES};
+  VkPhysicalDeviceVulkan12Features vk12features{};
+  vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
   vk12features.shaderInt8 = true;
   vk12features.uniformAndStorageBuffer8BitAccess = true;
   vk12features.storageBuffer8BitAccess = true;
@@ -184,8 +187,9 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   vk12features.shaderOutputViewportIndex = true;
   selector.set_required_features_12(vk12features);
 
-  VkPhysicalDeviceSynchronization2FeaturesKHR sync_feat{.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR,
-                                                        .synchronization2 = true};
+  VkPhysicalDeviceSynchronization2FeaturesKHR sync_feat{};
+  sync_feat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
+  sync_feat.synchronization2 = true;
 
   selector.add_required_extension_features<>(sync_feat);
 
@@ -255,17 +259,15 @@ vuk::Value<vuk::ImageAttachment> VkContext::new_frame() {
   return acquired_image;
 }
 
-void VkContext::end_frame(vuk::Allocator& frame_allocator, vuk::Value<vuk::ImageAttachment> target) {
-  auto entire_thing = vuk::enqueue_presentation(std::move(target));
+void VkContext::end_frame(vuk::Allocator& frame_allocator_, vuk::Value<vuk::ImageAttachment> target_) {
+  auto entire_thing = vuk::enqueue_presentation(std::move(target_));
   vuk::ProfilingCallbacks cbs = tracy_profiler->setup_vuk_callback();
-  entire_thing.submit(frame_allocator, compiler, {.callbacks = cbs});
+  entire_thing.submit(frame_allocator_, compiler, {.graph_label = {}, .callbacks = cbs});
 
   current_frame = (current_frame + 1) % num_inflight_frames;
   num_frames = runtime->get_frame_count();
 }
 
-option<vuk::Allocator>& VkContext::get_frame_allocator() {
-  return this->frame_allocator;
-}
+option<vuk::Allocator>& VkContext::get_frame_allocator() { return this->frame_allocator; }
 
 } // namespace ox

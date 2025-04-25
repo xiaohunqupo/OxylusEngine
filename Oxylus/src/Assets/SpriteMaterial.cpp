@@ -2,7 +2,7 @@
 #include "Assets/Material.hpp"
 
 namespace ox {
-SpriteMaterial::SpriteMaterial(std::string name) : Material(name) {
+SpriteMaterial::SpriteMaterial(std::string name_) : Material(name_) {
   parameters = {};
   albedo_texture = nullptr;
   parameters.albedo_map_id = Asset::INVALID_ID;

@@ -541,6 +541,7 @@ std::vector<Shared<Texture>> Mesh::load_images(const fastgltf::Asset& asset) {
       .encoded_pixel_data = std::move(data_copy),
       .encoded_pixel_size = data_size,
       .is_ktx = mime_type == fastgltf::MimeType::KTX2,
+      .format_ktx = {},
       .name = std::string(name),
     };
   };

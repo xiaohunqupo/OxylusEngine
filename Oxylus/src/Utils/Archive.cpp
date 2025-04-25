@@ -7,7 +7,7 @@ static constexpr uint64_t ARCHIVE_VERSION = 0;
 
 Archive::Archive() { create_empty(); }
 
-Archive::Archive(const std::string& file_name, bool read_mode) : read_mode(read_mode), file_name(file_name) {
+Archive::Archive(const std::string& file_name_, bool read_mode_) : read_mode(read_mode_), file_name(file_name_) {
   if (!file_name.empty()) {
     directory = fs::get_directory(file_name);
     if (read_mode) {

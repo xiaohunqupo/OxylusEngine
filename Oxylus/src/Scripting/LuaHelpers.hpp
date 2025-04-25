@@ -52,7 +52,7 @@ template <typename Component>
 void register_meta_component() {
   using namespace entt::literals;
 
-  entt::meta<Component>()
+  entt::meta_factory<Component>()
    .template func<&is_valid<Component>>("valid"_hs)
    .template func<&emplace_component<Component>>("emplace"_hs)
    .template func<&get_component<Component>>("get"_hs)
@@ -124,7 +124,7 @@ template <typename Event>
 void register_meta_event() {
   using namespace entt::literals;
 
-  entt::meta<Event>()
+  entt::meta_factory<Event>()
    .template func<&connect_listener<Event>>("connect_listener"_hs)
    .template func<&trigger_event<Event>>("trigger_event"_hs)
    .template func<&enqueue_event<Event>>("enqueue_event"_hs)

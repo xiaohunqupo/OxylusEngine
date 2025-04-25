@@ -1,7 +1,7 @@
 #include "PBRMaterial.hpp"
 
 namespace ox {
-PBRMaterial::PBRMaterial(std::string name) : Material(name) {
+PBRMaterial::PBRMaterial(std::string name_) : Material(name_) {
   parameters = {};
   albedo_texture = nullptr;
   parameters.albedo_map_id = Asset::INVALID_ID;

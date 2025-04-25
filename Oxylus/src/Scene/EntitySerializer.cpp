@@ -2,6 +2,7 @@
 
 #include "Core/FileSystem.hpp"
 #include "Core/Systems/SystemManager.hpp"
+#include "Core/VFS.hpp"
 #include "Scene.hpp"
 #include "Scene/Components.hpp"
 
