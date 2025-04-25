@@ -254,7 +254,7 @@ void InspectorPanel::draw_components(Entity entity) {
   ui::checkbox(StringUtils::from_char8_t(ICON_MDI_BUG), &debug_mode);
 
   const auto uuidstr = fmt::format("UUID: {}", (uint64_t)context->registry.get<IDComponent>(entity).uuid);
-  ImGui::Text(uuidstr.c_str());
+  ImGui::TextUnformatted(uuidstr.c_str());
 
   if (debug_mode) {
     draw_component<RelationshipComponent>("Relationship Component",
@@ -262,14 +262,14 @@ void InspectorPanel::draw_components(Entity entity) {
                                           entity,
                                           [](const RelationshipComponent& component, entt::entity e) {
       const auto p_fmt = fmt::format("Parent: {}", (uint64_t)component.parent);
-      ImGui::Text(p_fmt.c_str());
+      ImGui::TextUnformatted(p_fmt.c_str());
       ImGui::Text("Childrens:");
       if (ImGui::BeginTable("Children", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_SizingFixedFit)) {
         for (const auto& child : component.children) {
           ImGui::TableNextRow();
           ImGui::TableNextColumn();
           const auto c_fmt = fmt::format("UUID: {}", (uint64_t)child);
-          ImGui::Text(c_fmt.c_str());
+          ImGui::TextUnformatted(c_fmt.c_str());
         }
         ImGui::EndTable();
       }

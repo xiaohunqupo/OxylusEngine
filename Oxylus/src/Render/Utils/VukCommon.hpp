@@ -121,6 +121,7 @@ inline VkDescriptorSetLayoutBinding ds_layout_binding(uint32_t binding, vuk::Des
     .descriptorType = static_cast<VkDescriptorType>(descriptor_type),
     .descriptorCount = count,
     .stageFlags = static_cast<VkShaderStageFlags>(vuk::ShaderStageFlagBits::eAll),
+    .pImmutableSamplers = nullptr,
   };
 }
 
@@ -129,7 +130,7 @@ inline vuk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(cons
   vuk::DescriptorSetLayoutCreateInfo ci = {};
   ci.bindings = bindings;
   ci.index = index;
-  for (int i = 0; i < bindings.size(); i++)
+  for (const auto& _ : bindings)
     ci.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
   return ci;
 }

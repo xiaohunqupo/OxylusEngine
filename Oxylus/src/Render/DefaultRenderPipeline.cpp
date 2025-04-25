@@ -41,6 +41,7 @@ VkDescriptorSetLayoutBinding binding(uint32_t binding, vuk::DescriptorType descr
     .descriptorType = (VkDescriptorType)descriptor_type,
     .descriptorCount = count,
     .stageFlags = (VkShaderStageFlags)vuk::ShaderStageFlagBits::eAll,
+    .pImmutableSamplers = nullptr,
   };
 }
 
@@ -419,14 +420,14 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
 
     // Compute cascade bounding sphere center:
     glm::vec4 center = {};
-    for (int j = 0; j < std::size(corners); ++j) {
+    for (size_t j = 0; j < std::size(corners); ++j) {
       center += corners[j];
     }
     center /= float(std::size(corners));
 
     // Compute cascade bounding sphere radius:
     float radius = 0;
-    for (int j = 0; j < std::size(corners); ++j) {
+    for (size_t j = 0; j < std::size(corners); ++j) {
       radius = std::max(radius, glm::length(corners[j] - center));
     }
 
@@ -460,7 +461,7 @@ void DefaultRenderPipeline::create_cubemap_cameras(std::vector<DefaultRenderPipe
                                                    const glm::vec3 pos,
                                                    float near,
                                                    float far) {
-  OX_CHECK_EQ(camera_data.size(), 6);
+  OX_CHECK_EQ(camera_data.size(), static_cast<size_t>(6));
   constexpr auto fov = 90.0f;
   const auto shadowProj = glm::perspective(glm::radians(fov), 1.0f, near, far);
 

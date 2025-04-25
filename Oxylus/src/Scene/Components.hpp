@@ -27,8 +27,6 @@ struct IDComponent {
 
   IDComponent() = default;
 
-  IDComponent(const IDComponent&) = default;
-
   IDComponent(UUID id) : uuid(id) {}
 };
 
@@ -62,7 +60,6 @@ struct TransformComponent {
   glm::vec3 scale = glm::vec3(1);
 
   TransformComponent() = default;
-  TransformComponent(const TransformComponent&) = default;
   TransformComponent(const glm::vec3& translation) : position(translation) {}
 
   TransformComponent(const glm::mat4& transform_matrix) {

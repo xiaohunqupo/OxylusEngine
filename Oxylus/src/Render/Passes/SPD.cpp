@@ -48,6 +48,7 @@ static VkDescriptorSetLayoutBinding binding(uint32 binding, vuk::DescriptorType 
     .descriptorType = (VkDescriptorType)descriptor_type,
     .descriptorCount = count,
     .stageFlags = (VkShaderStageFlags)vuk::ShaderStageFlagBits::eAll,
+    .pImmutableSamplers = nullptr,
   };
 }
 
