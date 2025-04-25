@@ -12,7 +12,7 @@ void Input::deinit() {}
 
 void Input::set_instance() {
   if (_instance == nullptr)
-    _instance = App::get_system<Input>();
+    _instance = App::get_system<Input>(EngineSystems::Input);
 }
 
 void Input::reset_pressed() {

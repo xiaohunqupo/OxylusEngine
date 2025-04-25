@@ -46,7 +46,7 @@ Scene::Scene() { init("Untitled"); }
 Scene::Scene(const std::string& name) { init(name); }
 
 Scene::~Scene() {
-  App::get_system<LuaManager>()->get_state()->collect_gc();
+  App::get_system<LuaManager>(EngineSystems::LuaManager)->get_state()->collect_gc();
   if (running)
     on_runtime_stop();
 }
@@ -139,7 +139,7 @@ void Scene::update_physics(const Timestep& delta_time) {
   bool stepped = false;
   physics_frame_accumulator += (float)delta_time.get_seconds();
 
-  auto physics = App::get_system<Physics>();
+  auto physics = App::get_system<Physics>(EngineSystems::Physics);
 
   while (physics_frame_accumulator >= physics_ts) {
     physics->step(physics_ts);
@@ -322,7 +322,7 @@ void Scene::on_runtime_start() {
   physics_frame_accumulator = 0.0f;
 
   // Physics
-  auto physics = App::get_system<Physics>();
+  auto physics = App::get_system<Physics>(EngineSystems::Physics);
   {
     OX_SCOPED_ZONE_N("Physics Start");
     body_activation_listener_3d = new Physics3DBodyActivationListener();
@@ -382,7 +382,7 @@ void Scene::on_runtime_stop() {
 
   // Physics
   {
-    auto physics = App::get_system<Physics>();
+    auto physics = App::get_system<Physics>(EngineSystems::Physics);
     JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
     const auto rb_view = registry.view<RigidbodyComponent>();
     for (auto&& [e, rb] : rb_view.each()) {
@@ -527,7 +527,7 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
 
   // TODO: We should get rid of 'new' usages and use JPH::Ref<> instead.
 
-  auto physics = App::get_system<Physics>();
+  auto physics = App::get_system<Physics>(EngineSystems::Physics);
 
   auto& body_interface = physics->get_body_interface();
   if (component.runtime_body) {
@@ -688,7 +688,7 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
   if (!running)
     return;
 
-  auto physics = App::get_system<Physics>();
+  auto physics = App::get_system<Physics>(EngineSystems::Physics);
 
   const auto position = JPH::Vec3(transform.position.x, transform.position.y, transform.position.z);
   const auto capsule_shape = JPH::RotatedTranslatedShapeSettings(JPH::Vec3(0,
@@ -714,7 +714,7 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
 }
 
 void Scene::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) {
-  const auto task_scheduler = App::get_system<TaskScheduler>();
+  const auto task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
   event.task->on_complete([this](const Shared<Mesh>& mesh) { this->load_mesh(mesh); });
   task_scheduler->schedule_task(event.task);
 }

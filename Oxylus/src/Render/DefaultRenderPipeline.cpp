@@ -60,7 +60,7 @@ void DefaultRenderPipeline::init(vuk::Allocator& allocator) {
     return;
   }
 
-  const auto task_scheduler = App::get_system<TaskScheduler>();
+  const auto task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
 
   this->m_quad = RendererCommon::generate_quad();
   this->m_cube = RendererCommon::generate_cube();
@@ -118,7 +118,7 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
 
 #define SHADER_FILE(path) fs::read_shader_file(path), fs::get_shader_path(path)
 
-  auto* task_scheduler = App::get_system<TaskScheduler>();
+  auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
 
   task_scheduler->add_task([=]() mutable {
     // bindless_pci.add_hlsl(SHADER_FILE("FullscreenTriangle.hlsl"), SS::eVertex);

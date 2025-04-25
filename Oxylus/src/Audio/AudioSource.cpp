@@ -13,7 +13,7 @@ namespace ox {
 AudioSource::AudioSource(const std::string& filepath) {
   m_sound = create_unique<ma_sound>();
 
-  auto* engine = App::get_system<AudioEngine>()->get_engine();
+  auto* engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine)->get_engine();
   const ma_result result = ma_sound_init_from_file(engine,
                                                    filepath.c_str(),
                                                    MA_SOUND_FLAG_NO_SPATIALIZATION,

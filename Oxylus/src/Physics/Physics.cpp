@@ -66,7 +66,7 @@ void Physics::init() {
 
 void Physics::set_instance() {
   if (_instance == nullptr)
-    _instance = App::get_system<Physics>();
+    _instance = App::get_system<Physics>(EngineSystems::Physics);
   JPH::Factory::sInstance = new JPH::Factory();
   JPH::RegisterTypes();
 }

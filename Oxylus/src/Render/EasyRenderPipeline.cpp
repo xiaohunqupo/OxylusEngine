@@ -41,7 +41,7 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
     0);
   bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_00);
 
-  auto* task_scheduler = App::get_system<TaskScheduler>();
+  auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
 
   task_scheduler->add_task([=]() mutable {
     Slang::add_shader(bindless_pci, {.path = "2DForward.slang", .entry_points = {"VSmain", "PSmain"}, .definitions = {}});

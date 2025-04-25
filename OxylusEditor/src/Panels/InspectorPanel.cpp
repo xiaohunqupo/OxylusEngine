@@ -873,7 +873,7 @@ void InspectorPanel::draw_components(Entity entity) {
 
     int current_system_selection = 0;
 
-    auto* system_manager = App::get_system<SystemManager>();
+    auto* system_manager = App::get_system<SystemManager>(EngineSystems::SystemManager);
     for (auto& [hash, pair] : system_manager->system_registry) {
       auto& [name, system] = pair;
       std::string system_name = name;

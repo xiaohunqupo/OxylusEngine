@@ -50,20 +50,20 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   else
     std::filesystem::current_path(app_spec.working_directory);
 
-  register_system<AssetManager>();
-  register_system<VFS>();
-  register_system<Random>();
-  register_system<TaskScheduler>();
-  register_system<AudioEngine>();
-  register_system<LuaManager>();
-  register_system<ModuleRegistry>();
-  register_system<RendererConfig>();
-  register_system<SystemManager>();
-  register_system<Physics>();
+  register_system<AssetManager>(EngineSystems::AssetManager);
+  register_system<VFS>(EngineSystems::VFS);
+  register_system<Random>(EngineSystems::Random);
+  register_system<TaskScheduler>(EngineSystems::TaskScheduler);
+  register_system<AudioEngine>(EngineSystems::AudioEngine);
+  register_system<LuaManager>(EngineSystems::LuaManager);
+  register_system<ModuleRegistry>(EngineSystems::ModuleRegistry);
+  register_system<RendererConfig>(EngineSystems::RendererConfig);
+  register_system<SystemManager>(EngineSystems::SystemManager);
+  register_system<Physics>(EngineSystems::Physics);
 
   window = Window::create(app_spec.window_info);
 
-  register_system<Input>();
+  register_system<Input>(EngineSystems::Input);
 
   // Shortcut for commonly used Systems
   AssetManager::set_instance();
@@ -88,9 +88,9 @@ App::~App() { close(); }
 
 void App::set_instance(App* instance) {
   _instance = instance;
-  get_system<AssetManager>()->set_instance();
-  get_system<Input>()->set_instance();
-  get_system<Physics>()->set_instance();
+  get_system<AssetManager>(EngineSystems::AssetManager)->set_instance();
+  get_system<Input>(EngineSystems::Input)->set_instance();
+  get_system<Physics>(EngineSystems::Physics)->set_instance();
 }
 
 App& App::push_layer(Layer* layer) {
@@ -108,7 +108,7 @@ App& App::push_overlay(Layer* layer) {
 }
 
 void App::run() {
-  const auto input_sys = get_system<Input>();
+  const auto input_sys = get_system<Input>(EngineSystems::Input);
 
   WindowCallbacks window_callbacks = {};
   window_callbacks.user_data = this;
@@ -124,7 +124,7 @@ void App::run() {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_mouse_pos(position);
 
-    const auto input_system = get_system<Input>();
+    const auto input_system = get_system<Input>(EngineSystems::Input);
     input_system->input_data.mouse_offset_x = input_system->input_data.mouse_pos.x - position.x;
     input_system->input_data.mouse_offset_y = input_system->input_data.mouse_pos.y - position.y;
     input_system->input_data.mouse_pos = position;
@@ -135,7 +135,7 @@ void App::run() {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_mouse_button(button, down);
 
-    const auto input_system = get_system<Input>();
+    const auto input_system = get_system<Input>(EngineSystems::Input);
     const auto ox_button = Input::to_mouse_code(button);
     if (down) {
       input_system->set_mouse_clicked(ox_button, true);
@@ -149,7 +149,7 @@ void App::run() {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_mouse_scroll(offset);
 
-    const auto input_system = get_system<Input>();
+    const auto input_system = get_system<Input>(EngineSystems::Input);
     input_system->input_data.scroll_offset_y = offset.y;
   };
   window_callbacks.on_key =
@@ -157,7 +157,7 @@ void App::run() {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_key(key_code, scan_code, mods, down);
 
-    const auto input_system = get_system<Input>();
+    const auto input_system = get_system<Input>(EngineSystems::Input);
     const auto ox_key_code = Input::to_keycode(key_code, scan_code);
     if (down) {
       input_system->set_key_pressed(ox_key_code, !repeat);

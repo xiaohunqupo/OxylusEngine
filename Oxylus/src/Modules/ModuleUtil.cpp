@@ -10,7 +10,7 @@
 
 namespace ox {
 void ModuleUtil::load_module(const std::string& name, const std::string& path) {
-  const auto lib = App::get_system<ModuleRegistry>()->add_lib(name, path);
+  const auto lib = App::get_system<ModuleRegistry>(EngineSystems::ModuleRegistry)->add_lib(name, path);
   if (!lib)
     return;
   
@@ -18,20 +18,20 @@ void ModuleUtil::load_module(const std::string& name, const std::string& path) {
   auto* imgui_context = ImGui::GetCurrentContext();
   lib->interface->init(app_instance, imgui_context);
 
-  auto* state = App::get_system<LuaManager>()->get_state();
+  auto* state = App::get_system<LuaManager>(EngineSystems::LuaManager)->get_state();
   lib->interface->register_components(state, entt::locator<entt::meta_ctx>::handle());
-  auto* system_manager = App::get_system<SystemManager>();
+  auto* system_manager = App::get_system<SystemManager>(EngineSystems::SystemManager);
   lib->interface->register_cpp_systems(system_manager);
 }
 
 void ModuleUtil::unload_module(const std::string& module_name) {
-  const auto lib = App::get_system<ModuleRegistry>()->get_lib(module_name);
+  const auto lib = App::get_system<ModuleRegistry>(EngineSystems::ModuleRegistry)->get_lib(module_name);
   if (!lib)
     return;
 
-  auto* state = App::get_system<LuaManager>()->get_state();
+  auto* state = App::get_system<LuaManager>(EngineSystems::LuaManager)->get_state();
   lib->interface->unregister_components(state, entt::locator<entt::meta_ctx>::handle());
-  auto* system_manager = App::get_system<SystemManager>();
+  auto* system_manager = App::get_system<SystemManager>(EngineSystems::SystemManager);
   lib->interface->unregister_cpp_systems(system_manager);
 }
 } // namespace ox

@@ -3,16 +3,16 @@
 #include <fstream>
 #include <sstream>
 
-#include "Thread/TaskScheduler.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
+#include "Thread/TaskScheduler.hpp"
 
 #include "Utils/Profiler.hpp"
 #include "Utils/Toml.hpp"
 
 namespace ox {
 void RendererConfig::init() {
-  auto* task_scheduler = App::get_system<TaskScheduler>();
+  auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
   task_scheduler->add_task([this]() {
     if (!load_config("renderer_config.toml"))
       save_config("renderer_config.toml");

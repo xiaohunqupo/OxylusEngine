@@ -29,7 +29,7 @@ void Project::load_module() {
 
   const auto module_path = fs::append_paths(get_project_directory(), project_config.module_name);
   ModuleUtil::load_module(project_config.module_name, module_path);
-  auto* module_registry = App::get_system<ModuleRegistry>();
+  auto* module_registry = App::get_system<ModuleRegistry>(EngineSystems::ModuleRegistry);
   if (auto* module = module_registry->get_lib(project_config.module_name))
     last_module_write_time = std::filesystem::last_write_time(module->path + dylib::filename_components::suffix);
 }
@@ -43,7 +43,7 @@ void Project::check_module() {
   if (get_config().module_name.empty())
     return;
 
-  auto* module_registry = App::get_system<ModuleRegistry>();
+  auto* module_registry = App::get_system<ModuleRegistry>(EngineSystems::ModuleRegistry);
   if (auto* module = module_registry->get_lib(project_config.module_name)) {
     const auto& module_path = module->path + dylib::filename_components::suffix;
     if (std::filesystem::last_write_time(module_path).time_since_epoch().count() != last_module_write_time.time_since_epoch().count()) {
@@ -93,7 +93,7 @@ Shared<Project> Project::load(const std::string& path) {
     project->project_file_path = std::filesystem::absolute(path).string();
 
     const auto asset_dir_path = fs::append_paths(fs::get_directory(project->project_file_path), project->project_config.asset_directory);
-    App::get_system<VFS>()->mount_dir("Assets/", asset_dir_path);
+    App::get_system<VFS>(EngineSystems::VFS)->mount_dir("Assets/", asset_dir_path);
 
     active_project = project;
     active_project->load_module();

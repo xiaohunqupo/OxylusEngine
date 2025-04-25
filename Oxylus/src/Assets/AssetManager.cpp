@@ -18,7 +18,7 @@ void AssetManager::deinit() {}
 
 void AssetManager::set_instance() {
   if (_instance == nullptr)
-    _instance = App::get_system<AssetManager>();
+    _instance = App::get_system<AssetManager>(EngineSystems::AssetManager);
 }
 
 Shared<Texture> AssetManager::get_texture_asset(const TextureLoadInfo& info) {
@@ -85,7 +85,7 @@ Shared<AudioSource> AssetManager::get_audio_asset(const std::string& path) {
 Shared<Texture> AssetManager::load_texture_asset(const std::string& path, const TextureLoadInfo& info) {
   OX_SCOPED_ZONE;
 
-  const auto resolved_path = App::get_system<VFS>()->resolve_physical_dir(info.path);
+  const auto resolved_path = App::get_system<VFS>(EngineSystems::VFS)->resolve_physical_dir(info.path);
   TextureLoadInfo new_info = info;
   new_info.path = resolved_path;
 
@@ -97,7 +97,7 @@ Shared<Texture> AssetManager::load_texture_asset(const std::string& path, const 
 
 Shared<Mesh> AssetManager::load_mesh_asset(const std::string& path, uint32_t loadingFlags) {
   OX_SCOPED_ZONE;
-  const auto resolved_path = App::get_system<VFS>()->resolve_physical_dir(path);
+  const auto resolved_path = App::get_system<VFS>(EngineSystems::VFS)->resolve_physical_dir(path);
   Shared<Mesh> asset = create_shared<Mesh>(resolved_path);
   asset->asset_id = (uint32_t)_instance->_state.mesh_assets.size();
   asset->asset_path = path;
@@ -106,7 +106,7 @@ Shared<Mesh> AssetManager::load_mesh_asset(const std::string& path, uint32_t loa
 
 Shared<AudioSource> AssetManager::load_audio_asset(const std::string& path) {
   OX_SCOPED_ZONE;
-  const auto resolved_path = App::get_system<VFS>()->resolve_physical_dir(path);
+  const auto resolved_path = App::get_system<VFS>(EngineSystems::VFS)->resolve_physical_dir(path);
   Shared<AudioSource> source = create_shared<AudioSource>(resolved_path);
   source->asset_path = path;
   return _instance->_state.audio_assets.emplace(path, source).first->second;

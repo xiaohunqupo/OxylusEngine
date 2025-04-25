@@ -72,7 +72,23 @@ struct AppSpec {
   WindowInfo window_info = {};
 };
 
-using SystemRegistry = ankerl::unordered_dense::map<size_t, Shared<ESystem>>;
+enum class EngineSystems {
+  AssetManager = 0,
+  VFS,
+  Random,
+  TaskScheduler,
+  AudioEngine,
+  LuaManager,
+  ModuleRegistry,
+  RendererConfig,
+  SystemManager,
+  Physics,
+  Input,
+
+  Count,
+};
+
+using SystemRegistry = ankerl::unordered_dense::map<EngineSystems, Shared<ESystem>>;
 
 class App {
 public:
@@ -110,38 +126,33 @@ public:
   static SystemRegistry& get_system_registry() { return _instance->system_registry; }
 
   template <typename T, typename... Args>
-  static void register_system(Args&&... args) {
-    auto type_name = typeid(T).hash_code();
-    OX_ASSERT(!_instance->system_registry.contains(type_name), "Registering system more than once.");
+  static void register_system(const EngineSystems type, Args&&... args) {
+    if (_instance->system_registry.contains(type)) {
+      OX_LOG_ERROR("Registering system more than once.");
+      return;
+    }
 
     Shared<T> system = create_shared<T>(std::forward<Args>(args)...);
-    _instance->system_registry.emplace(type_name, std::move(system));
+    _instance->system_registry.emplace(type, std::move(system));
   }
 
-  template <typename T>
-  static void unregister_system() {
-    const auto type_name = typeid(T).hash_code();
-
-    if (_instance->system_registry.contains(type_name)) {
-      _instance->system_registry.erase(type_name);
+  static void unregister_system(const EngineSystems type) {
+    if (_instance->system_registry.contains(type)) {
+      _instance->system_registry.erase(type);
     }
   }
 
   template <typename T>
-  static T* get_system() {
-    const auto type_name = typeid(T).hash_code();
-
-    if (_instance->system_registry.contains(type_name)) {
-      return dynamic_cast<T*>(_instance->system_registry[type_name].get());
+  static T* get_system(const EngineSystems type) {
+    if (_instance->system_registry.contains(type)) {
+      return dynamic_cast<T*>(_instance->system_registry[type].get());
     }
 
     return nullptr;
   }
 
-  template <typename T>
-  static bool has_system() {
-    const auto type_name = typeid(T).hash_code();
-    return _instance->system_registry.contains(type_name);
+  static bool has_system(const EngineSystems type) {
+    return _instance->system_registry.contains(type);
   }
 
 private:

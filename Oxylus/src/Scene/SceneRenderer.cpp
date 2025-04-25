@@ -159,7 +159,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
   {
     OX_SCOPED_ZONE_N("Physics Debug Renderer");
     if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
-      auto physics = App::get_system<Physics>();
+      auto physics = App::get_system<Physics>(EngineSystems::Physics);
       physics->debug_draw();
     }
   }
@@ -183,7 +183,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     // TODO: (very outdated, currently not working)
     const auto particle_system_view = _scene->registry.view<TransformComponent, ParticleSystemComponent>();
     for (auto&& [e, tc, psc] : particle_system_view.each()) {
-      psc.system->on_update((float)App::get_timestep(), tc.position);
+      psc.system->on_update(static_cast<float>(App::get_timestep()), tc.position);
       psc.system->on_render();
     }
   }

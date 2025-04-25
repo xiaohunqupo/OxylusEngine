@@ -739,7 +739,7 @@ UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene
     for (const auto& lcc : entity["LuaScriptComponent"].GetArray()) {
       auto& lcc_component = registry.emplace<LuaScriptComponent>(deserialized_entity);
       for (const auto& path : lcc["systems"].GetArray()) {
-        auto ab = App::get_system<VFS>()->resolve_physical_dir(path.GetString());
+        auto ab = App::get_system<VFS>(EngineSystems::VFS)->resolve_physical_dir(path.GetString());
         lcc_component.lua_systems.emplace_back(create_shared<LuaSystem>(ab));
       }
     }
@@ -749,7 +749,7 @@ UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene
     for (const auto& cpp : entity["CPPScriptComponent"].GetArray()) {
       auto& cpp_component = registry.emplace<CPPScriptComponent>(deserialized_entity);
       for (const auto& hash : cpp["system_hashes"].GetArray()) {
-        auto* system_manager = App::get_system<SystemManager>();
+        auto* system_manager = App::get_system<SystemManager>(EngineSystems::SystemManager);
         cpp_component.systems.emplace_back(system_manager->get_system(std::stoull(hash.GetString())));
       }
     }
@@ -786,7 +786,7 @@ UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene
   if (entity.HasMember("TilemapComponent")) {
     for (const auto& tc : entity["TilemapComponent"].GetArray()) {
       auto& t_component = registry.emplace<TilemapComponent>(deserialized_entity);
-      const auto path = App::get_system<VFS>()->resolve_physical_dir(tc["path"].GetString());
+      const auto path = App::get_system<VFS>(EngineSystems::VFS)->resolve_physical_dir(tc["path"].GetString());
       t_component.load(path);
     }
   }

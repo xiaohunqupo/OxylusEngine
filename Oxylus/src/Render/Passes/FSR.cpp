@@ -133,7 +133,7 @@ glm::vec2 FSR::get_jitter() const {
 void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci) {
 #define SHADER_FILE(path) fs::read_shader_file(path), fs::get_shader_path(path)
 
-  auto* task_scheduler = App::get_system<TaskScheduler>();
+  auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
