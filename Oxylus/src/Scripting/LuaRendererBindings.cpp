@@ -4,8 +4,6 @@
 
 #include "LuaHelpers.hpp"
 
-#include "Core/Types.hpp"
-
 #include "Render/Window.hpp"
 
 namespace ox::LuaBindings {

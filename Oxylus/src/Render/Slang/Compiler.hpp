@@ -2,11 +2,6 @@
 
 #include "Core/Handle.hpp"
 #include "Core/Option.hpp"
-#include "Core/Types.hpp"
-
-#include <glm/gtc/type_precision.hpp>
-#include <string>
-#include <vector>
 
 namespace ox {
 struct SlangSessionInfo {

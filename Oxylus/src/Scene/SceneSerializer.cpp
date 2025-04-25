@@ -1,16 +1,11 @@
 #include "SceneSerializer.hpp"
 
-#include "Assets/AssetManager.hpp"
-#include "Core/Project.hpp"
 #include "EntitySerializer.hpp"
-#include "Utils/Profiler.hpp"
 
-#include <fstream>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <rapidjson/prettywriter.h>
 
-#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 
 namespace ox {

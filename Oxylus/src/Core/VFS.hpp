@@ -1,6 +1,5 @@
 #pragma once
 
-#include <ankerl/unordered_dense.h>
 #include "ESystem.hpp"
 
 namespace ox {

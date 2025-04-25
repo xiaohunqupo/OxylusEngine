@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Utils/Log.hpp"
 #include "App.hpp"
 
 int main(int argc, char** argv) {

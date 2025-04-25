@@ -1,15 +1,11 @@
 #pragma once
 
-#include <plf_colony.h>
 #include <vuk/Value.hpp>
 
-#include <ankerl/unordered_dense.h>
-#include <glm/vec2.hpp>
 #include <imgui.h>
 
 #include "Assets/Texture.hpp"
 #include "Core/Layer.hpp"
-#include "Core/Types.hpp"
 
 namespace ox {
 class ImGuiLayer : public Layer {

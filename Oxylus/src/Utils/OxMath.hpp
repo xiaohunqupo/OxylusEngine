@@ -1,12 +1,5 @@
 #pragma once
 
-#include <glm/glm.hpp>
-#include <glm/gtx/component_wise.hpp>
-#include <glm/gtx/quaternion.hpp>
-
-#include "Core/Types.hpp"
-
-#include "Profiler.hpp"
 #include "Render/BoundingVolume.hpp"
 
 namespace JPH {

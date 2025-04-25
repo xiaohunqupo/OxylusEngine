@@ -1,6 +1,5 @@
 #pragma once
-#include <string>
-#include <vector>
+
 #include <vuk/runtime/vk/Pipeline.hpp>
 
 namespace ox {

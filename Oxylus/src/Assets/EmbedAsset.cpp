@@ -1,10 +1,6 @@
 ﻿#include "EmbedAsset.hpp"
 
-#include <fstream>
-#include <ostream>
-
 #include "Texture.hpp"
-#include "Utils/Log.hpp"
 
 namespace ox {
 void EmbedAsset::EmbedTexture(const std::string& texFilePath, const std::string& outPath, const std::string& arrayName) {

@@ -1,10 +1,5 @@
 ﻿#pragma once
 
-#include <glm/ext/scalar_constants.hpp>
-#include <glm/mat4x4.hpp>
-#include <glm/geometric.hpp>
-#include <glm/vec3.hpp>
-
 namespace ox {
 struct Plane {
   glm::vec3 normal = {0.f, 1.f, 0.f}; // unit vector

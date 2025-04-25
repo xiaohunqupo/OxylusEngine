@@ -1,7 +1,5 @@
 #pragma once
 
-#include <ankerl/unordered_dense.h>
-
 #include "Components.hpp"
 #include "EntitySerializer.hpp"
 #include "SceneEvents.hpp"

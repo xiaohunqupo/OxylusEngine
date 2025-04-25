@@ -1,7 +1,5 @@
 #include "OS.hpp"
 
-#include "Utils/Profiler.hpp"
-
 #include <sys/file.h>
 #include <sys/inotify.h>
 #include <sys/mman.h>
@@ -9,8 +7,6 @@
 #include <sys/syscall.h>
 #include <sys/sysinfo.h>
 #include <unistd.h>
-
-#include <iostream>
 
 namespace ox {
 auto os::mem_page_size() -> uint64 {

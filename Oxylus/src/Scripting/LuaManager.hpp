@@ -1,5 +1,5 @@
 #pragma once
-#include "Core/Base.hpp"
+
 #include "Core/ESystem.hpp"
 
 namespace sol {

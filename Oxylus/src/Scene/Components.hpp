@@ -1,12 +1,8 @@
 #pragma once
-#include <optional>
-#include <string>
 
 #include "Assets/TilemapSerializer.hpp"
 #include "Core/App.hpp"
-#include "Core/Base.hpp"
 #include "Core/Systems/SystemManager.hpp"
-#include "Core/Types.hpp"
 #include "Core/UUID.hpp"
 
 #include "Audio/AudioListener.hpp"
@@ -46,7 +42,7 @@ struct TagComponent {
 
   TagComponent() = default;
 
-  TagComponent(std::string tag) : tag(std::move(tag)) {}
+  TagComponent(std::string tag_) : tag(std::move(tag_)) {}
 };
 
 struct RelationshipComponent {

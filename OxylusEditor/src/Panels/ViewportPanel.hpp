@@ -40,7 +40,7 @@ private:
                             const glm::mat4& view_proj,
                             const Frustum& frustum,
                             Scene* scene) {
-    if (gizmo_image_map[typeid(T).hash_code()]) {
+    if (m_gizmo_image_map[typeid(T).hash_code()]) {
       auto view = scene->registry.view<TransformComponent, T>();
 
       for (const auto&& [entity, transform, component] : view.each()) {
@@ -56,7 +56,7 @@ private:
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
-        if (ui::image_button("##", *gizmo_image_map[typeid(T).hash_code()], {40.f, 40.f})) {
+        if (ui::image_button("##", *m_gizmo_image_map[typeid(T).hash_code()], {40.f, 40.f})) {
           m_scene_hierarchy_panel->set_selected_entity(entity);
         }
 
@@ -69,20 +69,20 @@ private:
     }
   }
 
-  Shared<Scene> scene = {};
-  Entity hovered_entity = {};
+  Shared<Scene> m_scene = {};
+  Entity m_hovered_entity = {};
   SceneHierarchyPanel* m_scene_hierarchy_panel = nullptr;
 
   glm::vec2 m_viewport_size = {};
-  glm::vec2 viewport_bounds[2] = {};
-  glm::vec2 viewport_panel_size = {};
-  glm::vec2 viewport_position = {};
-  glm::vec2 viewport_offset = {};
+  glm::vec2 m_viewport_bounds[2] = {};
+  glm::vec2 m_viewport_panel_size = {};
+  glm::vec2 m_viewport_position = {};
+  glm::vec2 m_viewport_offset = {};
   glm::vec2 m_gizmo_position = glm::vec2(1.0f, 1.0f);
   int m_gizmo_type = -1;
   int m_gizmo_mode = 0;
 
-  ankerl::unordered_dense::map<size_t, Shared<Texture>> gizmo_image_map;
+  ankerl::unordered_dense::map<size_t, Shared<Texture>> m_gizmo_image_map;
 
   std::vector<vuk::Unique<vuk::Buffer>> id_buffers = {};
 

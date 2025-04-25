@@ -1,7 +1,6 @@
 ﻿#include "Archive.hpp"
 
 #include "Core/FileSystem.hpp"
-#include "Log.hpp"
 
 namespace ox {
 static constexpr uint64_t ARCHIVE_VERSION = 0;

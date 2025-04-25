@@ -1,10 +1,8 @@
 #pragma once
 
-#include <string>
-
 namespace ox {
 namespace StringUtils {
-static void replace_string(std::string& subject, std::string_view search, std::string_view replace) {
+inline void replace_string(std::string& subject, std::string_view search, std::string_view replace) {
   size_t pos = 0;
   while ((pos = subject.find(search, pos)) != std::string::npos) {
     subject.replace(pos, search.length(), replace);
@@ -12,8 +10,6 @@ static void replace_string(std::string& subject, std::string_view search, std::s
   }
 }
 
-static const char* from_char8_t(const char8_t* c) {
-  return reinterpret_cast<const char*>(c);
-}
-};
-}
+inline const char* from_char8_t(const char8_t* c) { return reinterpret_cast<const char*>(c); }
+} // namespace StringUtils
+} // namespace ox

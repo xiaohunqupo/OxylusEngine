@@ -1,13 +1,5 @@
 ﻿#pragma once
 
-#include <shared_mutex>
-
-#include <ankerl/unordered_dense.h>
-
-#include "Log.hpp"
-
-#include "Core/Base.hpp"
-
 namespace ox {
 enum class CVarFlags : uint32_t {
   None         = 0,

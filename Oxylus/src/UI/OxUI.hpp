@@ -1,15 +1,8 @@
 #pragma once
 
-#include <cstdint>
-#include <string>
-
-#include <glm/gtc/type_ptr.hpp>
 #include <imgui.h>
 #include <imgui_internal.h>
 #include <vuk/Value.hpp>
-
-#include "Core/Base.hpp"
-#include "Core/Types.hpp"
 
 namespace vuk {
 struct SampledImage;

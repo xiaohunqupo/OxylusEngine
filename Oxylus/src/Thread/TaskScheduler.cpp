@@ -1,8 +1,5 @@
 ﻿#include "TaskScheduler.hpp"
 
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
-
 namespace ox {
 void TaskScheduler::init() {
   OX_SCOPED_ZONE;

@@ -1,8 +1,5 @@
 ﻿#pragma once
 
-#include <glm/ext/scalar_constants.hpp> // Required for packing
-#include <glm/fwd.hpp>
-#include <glm/gtc/packing.hpp>
 #include <vuk/Value.hpp>
 
 #include "Frustum.hpp"

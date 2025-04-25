@@ -1,7 +1,5 @@
 #include "LayerStack.hpp"
 
-#include <algorithm>
-
 namespace ox {
 LayerStack::~LayerStack() {
   for (Layer* layer : m_layers) {

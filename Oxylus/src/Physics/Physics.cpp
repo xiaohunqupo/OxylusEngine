@@ -12,9 +12,6 @@
 #include "Jolt/Physics/Collision/RayCast.h"
 #include "Jolt/RegisterTypes.h"
 
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
-
 namespace ox {
 Physics* Physics::_instance = nullptr;
 

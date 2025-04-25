@@ -1,9 +1,5 @@
 ﻿#pragma once
 
-#include <cstdint>
-#include <cstdlib>
-#include <cstring>
-
 namespace ox {
 // Non-owning raw buffer
 struct Buffer {

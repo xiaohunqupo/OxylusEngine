@@ -1,11 +1,5 @@
 #pragma once
 
-#include <glm/vec3.hpp>
-
-#include "Core/Types.hpp"
-
-#include <glm/trigonometric.hpp>
-
 namespace ox {
 struct AudioListenerConfig {
   float cone_inner_angle = glm::radians(360.0f);

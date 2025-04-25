@@ -1,13 +1,9 @@
 ﻿#pragma once
-#include <Jolt/Core/Core.h>
-#include <source_location>
-#include <string>
+
 #include <vuk/ImageAttachment.hpp>
 #include <vuk/Value.hpp>
 
 #include "Asset.hpp"
-#include "Core/Base.hpp"
-#include "Core/Types.hpp"
 
 using Preset = vuk::ImageAttachment::Preset;
 

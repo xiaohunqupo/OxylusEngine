@@ -5,14 +5,12 @@
 #include <fastgltf/math.hpp>
 #include <fastgltf/tools.hpp>
 #include <fastgltf/types.hpp>
-#include <glm/gtc/type_ptr.hpp>
 #include <ktx.h>
 #include <meshoptimizer.h>
 #include <stb_image.h>
 #include <vuk/Types.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include <ranges>
 #include <stack>
 
 #include "Assets/AssetManager.hpp"
@@ -20,8 +18,6 @@
 
 #include "Scene/Components.hpp"
 
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 #include "Utils/Timer.hpp"
 
 #include "Vulkan/VkContext.hpp"

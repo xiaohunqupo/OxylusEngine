@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <glm/glm.hpp>
-
 namespace ox {
 class ColorUtils {
 public:

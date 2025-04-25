@@ -1,9 +1,10 @@
 ﻿#include "Random.hpp"
-#include <glm/ext/quaternion_geometric.hpp>
+
+#include <random>
 
 namespace ox {
-std::mt19937 Random::random_engine;
-std::uniform_int_distribution<std::mt19937::result_type> Random::distribution;
+thread_local std::mt19937 random_engine;
+thread_local std::uniform_int_distribution<std::mt19937::result_type> distribution;
 
 void Random::init() {
   random_engine.seed(std::random_device()());

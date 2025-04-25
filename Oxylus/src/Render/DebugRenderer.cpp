@@ -5,7 +5,6 @@
 #include "Core/App.hpp"
 
 #include "Utils/OxMath.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 DebugRenderer* DebugRenderer::instance = nullptr;

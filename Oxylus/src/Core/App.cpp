@@ -5,6 +5,7 @@
 #include <vuk/vsl/Core.hpp>
 
 #include "Assets/AssetManager.hpp"
+#include "Core/Input.hpp"
 #include "FileSystem.hpp"
 #include "Layer.hpp"
 #include "LayerStack.hpp"

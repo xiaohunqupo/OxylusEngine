@@ -1,8 +1,6 @@
 ﻿#pragma once
 #include <vuk/runtime/CommandBuffer.hpp>
 
-#include "Core/Types.hpp"
-
 namespace ox {
 struct Vertex {
   glm::vec3 position;

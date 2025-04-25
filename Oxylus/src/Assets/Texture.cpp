@@ -2,7 +2,6 @@
 
 #include "Texture.hpp"
 
-#include <filesystem>
 #include <ktx.h>
 #include <stb_image.h>
 #include <vuk/RenderGraph.hpp>
@@ -13,8 +12,6 @@
 #include "Core/FileSystem.hpp"
 #include "Render/RendererCommon.hpp"
 #include "Render/Utils/VukCommon.hpp"
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 static vuk::Compiler _compiler;

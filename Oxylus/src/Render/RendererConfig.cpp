@@ -1,13 +1,9 @@
 #include "RendererConfig.hpp"
 
-#include <fstream>
-#include <sstream>
-
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Thread/TaskScheduler.hpp"
 
-#include "Utils/Profiler.hpp"
 #include "Utils/Toml.hpp"
 
 namespace ox {

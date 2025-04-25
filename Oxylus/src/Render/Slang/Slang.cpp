@@ -1,10 +1,7 @@
 #include "Slang.hpp"
 
-#include <Core/VFS.hpp>
-
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 void Slang::add_shader(vuk::PipelineBaseCreateInfo& pipeline_ci, const CompileInfo& compile_info) {

@@ -1,17 +1,10 @@
 #pragma once
-#include <span>
-#include <string>
 
-#include "Core/Enum.hpp"
 #include "Core/Handle.hpp"
-#include "Core/Input.hpp"
 #include "Core/Option.hpp"
 
 #include <SDL3/SDL_keycode.h>
-#include <glm/vec4.hpp>
 #include <vulkan/vulkan_core.h>
-
-#include "Core/Types.hpp"
 
 namespace ox {
 enum class WindowCursor {
@@ -119,7 +112,7 @@ struct Window : Handle<Window> {
   uint32 get_width() const;
   uint32 get_height() const;
 
-  SDL_Window* get_handle() const;
+  void* get_handle() const;
 
   float get_content_scale() const;
 

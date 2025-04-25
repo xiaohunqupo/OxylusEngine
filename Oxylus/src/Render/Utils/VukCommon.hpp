@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include <span>
 #include <vuk/Value.hpp>
 #include <vuk/vsl/Core.hpp>
 

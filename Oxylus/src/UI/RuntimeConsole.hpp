@@ -1,13 +1,6 @@
 ﻿#pragma once
 
 #include <imgui.h>
-#include <functional>
-#include <optional>
-#include <charconv>
-
-#include <ankerl/unordered_dense.h>
-
-#include "Utils/Log.hpp"
 
 namespace ox {
 class RuntimeConsole {

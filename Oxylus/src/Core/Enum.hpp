@@ -1,8 +1,5 @@
 #pragma once
 
-#include <type_traits>
-#include <utility>
-
 namespace ox {
 template<typename T>
 concept BitmaskedEnum = requires(T v) {

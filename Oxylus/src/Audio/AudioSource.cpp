@@ -1,13 +1,10 @@
 #include "AudioSource.hpp"
 
-#include <glm/common.hpp>
 #include <miniaudio.h>
 
 #include "AudioEngine.hpp"
 
 #include "Core/App.hpp"
-
-#include "Utils/Log.hpp"
 
 namespace ox {
 AudioSource::AudioSource(const std::string& filepath) {

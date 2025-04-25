@@ -1,6 +1,5 @@
 ﻿#include "Timestep.hpp"
 
-#include "Profiler.hpp"
 #include "Timer.hpp"
 
 namespace ox {

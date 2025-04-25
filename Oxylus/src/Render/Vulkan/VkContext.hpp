@@ -1,9 +1,5 @@
 #pragma once
 
-#include "Core/Base.hpp"
-
-#include <optional>
-
 #include <VkBootstrap.h>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
@@ -11,8 +7,6 @@
 #include <vuk/runtime/vk/VkRuntime.hpp>
 
 #include "Core/Option.hpp"
-#include "Core/Types.hpp"
-#include "Utils/Profiler.hpp"
 
 #include <Render/Slang/Compiler.hpp>
 

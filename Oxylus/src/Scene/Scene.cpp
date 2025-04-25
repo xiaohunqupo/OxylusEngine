@@ -2,26 +2,17 @@
 
 #include "Entity.hpp"
 #include "Jolt/Physics/Body/AllowedDOFs.h"
-#include "Render/Camera.hpp"
 #include "Scene/Components.hpp"
-#include "Utils/Profiler.hpp"
 #include "Utils/Timestep.hpp"
-
-#include <glm/glm.hpp>
-
-#include <ankerl/unordered_dense.h>
-
-#include <glm/gtc/type_ptr.hpp>
 
 #include <sol/state.hpp>
 
 #include "SceneRenderer.hpp"
 
 #include "Core/App.hpp"
-#include "Core/FileSystem.hpp"
 
-#include "Jolt/Jolt.h"
-#include "Jolt/Physics/Body/BodyCreationSettings.h"
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
 
 #include "Jolt/Physics/Character/Character.h"
 #include "Jolt/Physics/Collision/Shape/BoxShape.h"

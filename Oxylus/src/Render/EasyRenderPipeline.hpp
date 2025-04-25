@@ -1,5 +1,5 @@
 #pragma once
-#include <glm/gtc/packing.hpp>
+
 #include <vuk/runtime/vk/Descriptor.hpp>
 
 #include "RenderPipeline.hpp"

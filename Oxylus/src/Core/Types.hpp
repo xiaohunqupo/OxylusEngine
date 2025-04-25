@@ -1,8 +1,5 @@
 #pragma once
 
-#include <cstdint>
-#include <cstddef>
-
 namespace ox {
 using float32 = float;
 using float64 = double;

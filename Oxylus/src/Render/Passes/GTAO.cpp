@@ -1,6 +1,5 @@
 ﻿#include "GTAO.hpp"
 
-#include <glm/gtc/type_ptr.hpp>
 #include "Scene/Components.hpp"
 
 namespace ox {

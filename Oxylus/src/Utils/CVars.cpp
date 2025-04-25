@@ -1,14 +1,6 @@
 ﻿#include "CVars.hpp"
 
-#include <mutex>
-#include <shared_mutex>
-
-#include <ankerl/unordered_dense.h>
-
 #include <entt/core/hashed_string.hpp>
-
-#include "Log.hpp"
-#include "Profiler.hpp"
 
 namespace ox {
 float* CVarSystem::get_float_cvar(const uint32_t hash) {

@@ -2,14 +2,9 @@
 
 #include "Core/FileSystem.hpp"
 #include "Memory/Stack.hpp"
-#include "Utils/Profiler.hpp"
 
 #include <slang-com-ptr.h>
 #include <slang.h>
-
-#include <algorithm>
-#include <filesystem>
-#include <glm/gtc/type_ptr.hpp>
 
 namespace ox {
 struct SlangBlob : ISlangBlob {

@@ -1,11 +1,5 @@
 #pragma once
 
-#include <thread>
-#include <queue>
-#include <mutex>
-#include <condition_variable>
-#include <functional>
-
 namespace ox {
 class Thread {
 public:

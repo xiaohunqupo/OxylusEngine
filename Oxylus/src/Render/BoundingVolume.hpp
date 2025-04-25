@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <glm/gtx/norm.hpp>
 
 namespace ox {
 class RayCast;
@@ -17,7 +16,7 @@ struct AABB {
   AABB() = default;
   ~AABB() = default;
   AABB(const AABB& other) = default;
-  AABB(const glm::vec3 min, const glm::vec3 max) : min(min), max(max) {}
+  AABB(const glm::vec3 min_, const glm::vec3 max_) : min(min_), max(max_) {}
 
   glm::vec3 get_center() const { return (max + min) * 0.5f; }
   glm::vec3 get_extents() const { return max - min; }
@@ -46,7 +45,7 @@ struct Sphere {
   Sphere() = default;
   ~Sphere() = default;
   Sphere(const Sphere& other) = default;
-  Sphere(const glm::vec3 center, const float radius) : center(center), radius(radius) {}
+  Sphere(const glm::vec3 center_, const float radius_) : center(center_), radius(radius_) {}
 
   bool intersects(const AABB& b) const;
   bool intersects(const Sphere& b) const;

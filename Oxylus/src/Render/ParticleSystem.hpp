@@ -1,10 +1,6 @@
 #pragma once
-#include <vector>
-
-#include <glm/gtx/compatibility.hpp>
 
 #include "Utils/OxMath.hpp"
-#include "Core/Base.hpp"
 
 namespace ox {
 class Texture;
@@ -23,7 +19,7 @@ template <typename T> struct OverLifetimeModule {
   bool enabled = false;
 
   OverLifetimeModule() : start(), end() {}
-  OverLifetimeModule(const T& start, const T& end) : start(start), end(end) {}
+  OverLifetimeModule(const T& start_, const T& end_) : start(start_), end(end_) {}
 
   T evaluate(float factor) {
     return glm::lerp(end, start, factor);
@@ -38,7 +34,7 @@ template <typename T> struct BySpeedModule {
   bool enabled = false;
 
   BySpeedModule() : start(), end() {}
-  BySpeedModule(const T& start, const T& end) : start(start), end(end) {}
+  BySpeedModule(const T& start_, const T& end_) : start(start_), end(end_) {}
 
   T evaluate(float speed) {
     float factor = math::inverse_lerp_clamped(min_speed, max_speed, speed);

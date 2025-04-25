@@ -1,7 +1,5 @@
 #include "Profiler.hpp"
 
-#include "Core/PlatformDetection.hpp"
-#include "Log.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {

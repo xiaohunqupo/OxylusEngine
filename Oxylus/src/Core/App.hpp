@@ -1,17 +1,9 @@
 #pragma once
-#include <exception>
-#include <optional>
-#include <string>
 
-#include <ankerl/unordered_dense.h>
-
-#include "Base.hpp"
-#include "Core/Types.hpp"
 #include "ESystem.hpp"
 #include "Render/Window.hpp"
 
 #include "Render/Vulkan/VkContext.hpp"
-#include "Utils/Log.hpp"
 #include "Utils/Timestep.hpp"
 
 int main(int argc, char** argv);

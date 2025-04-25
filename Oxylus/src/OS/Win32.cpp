@@ -5,8 +5,6 @@
 #endif
 #include <Windows.h>
 
-#include "Utils/Profiler.hpp"
-
 namespace ox {
 auto os::mem_page_size() -> uint64 {
     OX_SCOPED_ZONE;

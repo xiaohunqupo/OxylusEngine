@@ -1,7 +1,4 @@
 #pragma once
-#include <glm/vec2.hpp>
-
-#include "Core/Types.hpp"
 
 namespace ox {
 struct CameraComponent;

@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include "Core/Base.hpp"
 
 namespace sol {
 class state;

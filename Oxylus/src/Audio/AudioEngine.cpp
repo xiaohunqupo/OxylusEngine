@@ -4,9 +4,6 @@
 
 #include <miniaudio.h>
 
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
-
 namespace ox {
 void AudioEngine::init() {
   OX_SCOPED_ZONE;

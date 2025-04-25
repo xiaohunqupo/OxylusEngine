@@ -1,7 +1,5 @@
 ﻿#include "VukCommon.hpp"
 
-#include <fmt/format.h>
-#include <utility>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 

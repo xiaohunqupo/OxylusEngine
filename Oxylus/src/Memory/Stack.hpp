@@ -1,11 +1,6 @@
 #pragma once
 
-#include <algorithm>
-#include <fmt/base.h>
 #include <simdutf.h>
-
-#include "Core/Types.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox::memory {
 struct ThreadStack {

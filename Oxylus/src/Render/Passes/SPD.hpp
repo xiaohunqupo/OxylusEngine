@@ -3,7 +3,6 @@
 #include <vuk/Value.hpp>
 #include <vuk/Types.hpp>
 #include <vuk/runtime/vk/Descriptor.hpp>
-#include "Core/Types.hpp"
 
 namespace ox {
 class SPD {

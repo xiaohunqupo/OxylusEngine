@@ -1,8 +1,6 @@
 #include "Input.hpp"
 #include "App.hpp"
 
-#include <glm/vec2.hpp>
-
 namespace ox {
 Input* Input::_instance = nullptr;
 

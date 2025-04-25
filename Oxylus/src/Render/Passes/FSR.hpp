@@ -1,9 +1,7 @@
 #pragma once
-#include <glm/vec2.hpp>
 #include <vuk/Value.hpp>
 
 #include "Assets/Texture.hpp"
-#include "Core/Types.hpp"
 
 namespace vuk {
 struct ImageAttachment;

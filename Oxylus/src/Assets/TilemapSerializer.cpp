@@ -7,7 +7,6 @@
 #include "Assets/SpriteMaterial.hpp"
 #include "Core/FileSystem.hpp"
 #include "Scene/Components.hpp"
-#include "Utils/Log.hpp"
 
 namespace ox {
 void TilemapSerializer::serialize(const std::string& path) {}

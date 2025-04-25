@@ -2,18 +2,18 @@
 
 #include <icons/IconsMaterialDesignIcons.h>
 
-#include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
 #include "ImGuizmo.h"
 #include "Render/Camera.hpp"
 #include "Scene/Components.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "Utils/EditorConfig.hpp"
-#include "glm/gtc/type_ptr.hpp"
 
 #include "Render/RenderPipeline.hpp"
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
+
+#include "Core/Input.hpp"
 
 #include "Scene/SceneRenderer.hpp"
 
@@ -27,11 +27,11 @@
 namespace ox {
 ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true) {
   OX_SCOPED_ZONE;
-  gizmo_image_map[typeid(LightComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
+  m_gizmo_image_map[typeid(LightComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
     .path = "Resources/Icons/PointLightIcon.png",
     .preset = Preset::eRTT2DUnmipped,
   });
-  gizmo_image_map[typeid(CameraComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
+  m_gizmo_image_map[typeid(CameraComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
     .path = "Resources/Icons/CameraIcon.png",
     .preset = Preset::eRTT2DUnmipped,
   });
@@ -81,27 +81,27 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
     const auto viewport_min_region = ImGui::GetWindowContentRegionMin();
     const auto viewport_max_region = ImGui::GetWindowContentRegionMax();
-    viewport_position = glm::vec2(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
-    viewport_bounds[0] = {viewport_min_region.x + viewport_position.x, viewport_min_region.y + viewport_position.y};
-    viewport_bounds[1] = {viewport_max_region.x + viewport_position.x, viewport_max_region.y + viewport_position.y};
+    m_viewport_position = glm::vec2(ImGui::GetWindowPos().x, ImGui::GetWindowPos().y);
+    m_viewport_bounds[0] = {viewport_min_region.x + m_viewport_position.x, viewport_min_region.y + m_viewport_position.y};
+    m_viewport_bounds[1] = {viewport_max_region.x + m_viewport_position.x, viewport_max_region.y + m_viewport_position.y};
 
     is_viewport_focused = ImGui::IsWindowFocused();
     is_viewport_hovered = ImGui::IsWindowHovered();
 
-    viewport_panel_size = glm::vec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
-    if ((int)m_viewport_size.x != (int)viewport_panel_size.x || (int)m_viewport_size.y != (int)viewport_panel_size.y) {
-      m_viewport_size = {viewport_panel_size.x, viewport_panel_size.y};
+    m_viewport_panel_size = glm::vec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y);
+    if ((int)m_viewport_size.x != (int)m_viewport_panel_size.x || (int)m_viewport_size.y != (int)m_viewport_panel_size.y) {
+      m_viewport_size = {m_viewport_panel_size.x, m_viewport_panel_size.y};
     }
 
     constexpr auto sixteen_nine_ar = 1.7777777f;
     const auto fixed_width = m_viewport_size.y * sixteen_nine_ar;
-    ImGui::SetCursorPosX((viewport_panel_size.x - fixed_width) * 0.5f);
+    ImGui::SetCursorPosX((m_viewport_panel_size.x - fixed_width) * 0.5f);
 
-    const auto off = (viewport_panel_size.x - fixed_width) * 0.5f; // add offset since we render image with fixed aspect ratio
-    viewport_offset = {viewport_bounds[0].x + off * 0.5f, viewport_bounds[0].y};
+    const auto off = (m_viewport_panel_size.x - fixed_width) * 0.5f; // add offset since we render image with fixed aspect ratio
+    m_viewport_offset = {m_viewport_bounds[0].x + off * 0.5f, m_viewport_bounds[0].y};
 
     const auto* app = App::get();
-    const auto& scene_renderer = scene->get_renderer();
+    const auto& scene_renderer = m_scene->get_renderer();
     auto& frame_allocator = app->get_vkcontext().get_frame_allocator();
     if (scene_renderer != nullptr && frame_allocator != nullopt) {
       const RenderPipeline::RenderInfo render_info = {
@@ -110,7 +110,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         .picking_texel = {},
       };
       const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), render_info);
-      ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)), ImVec2{fixed_width, viewport_panel_size.y});
+      ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)), ImVec2{fixed_width, m_viewport_panel_size.y});
     } else {
       const auto warning_text = "No scene render output!";
       const auto text_width = ImGui::CalcTextSize(warning_text).x;
@@ -122,16 +122,16 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     if (m_scene_hierarchy_panel)
       m_scene_hierarchy_panel->drag_drop_target();
 
-    if (!scene->is_running()) {
+    if (!m_scene->is_running()) {
       auto projection = editor_camera.get_projection_matrix();
       projection[1][1] *= -1;
       glm::mat4 view_proj = projection * editor_camera.get_view_matrix();
       const Frustum& frustum = Camera::get_frustum(editor_camera, editor_camera.position);
 
-      show_component_gizmo<LightComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
-      show_component_gizmo<AudioSourceComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
-      show_component_gizmo<AudioListenerComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
-      show_component_gizmo<CameraComponent>(fixed_width, viewport_panel_size.y, 0, 0, view_proj, frustum, scene.get());
+      show_component_gizmo<LightComponent>(fixed_width, m_viewport_panel_size.y, 0, 0, view_proj, frustum, m_scene.get());
+      show_component_gizmo<AudioSourceComponent>(fixed_width, m_viewport_panel_size.y, 0, 0, view_proj, frustum, m_scene.get());
+      show_component_gizmo<AudioListenerComponent>(fixed_width, m_viewport_panel_size.y, 0, 0, view_proj, frustum, m_scene.get());
+      show_component_gizmo<CameraComponent>(fixed_width, m_viewport_panel_size.y, 0, 0, view_proj, frustum, m_scene.get());
 
       draw_gizmos();
     }
@@ -141,7 +141,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
       const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
       const ImVec2 button_size = {frame_height, frame_height};
       constexpr float button_count = 8.0f;
-      const ImVec2 gizmo_position = {viewport_bounds[0].x + m_gizmo_position.x, viewport_bounds[0].y + m_gizmo_position.y};
+      const ImVec2 gizmo_position = {m_viewport_bounds[0].x + m_gizmo_position.x, m_viewport_bounds[0].y + m_gizmo_position.y};
       const ImRect bb(gizmo_position.x,
                       gizmo_position.y,
                       gizmo_position.x + button_size.x + 8,
@@ -251,11 +251,11 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
 void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel) {
   m_scene_hierarchy_panel = &scene_hierarchy_panel;
-  this->scene = scene;
+  this->m_scene = scene;
 }
 
 void ViewportPanel::on_update() {
-  if (is_viewport_hovered && !scene->is_running()) {
+  if (is_viewport_hovered && !m_scene->is_running()) {
     const glm::vec3& position = editor_camera.position;
     const glm::vec2 yaw_pitch = glm::vec2(editor_camera.yaw, editor_camera.pitch);
     glm::vec3 final_position = position;
@@ -334,35 +334,35 @@ void ViewportPanel::on_update() {
     Camera::update(editor_camera, screen_extent);
   }
 
-  scene->get_renderer()->get_render_pipeline()->submit_camera(editor_camera);
+  m_scene->get_renderer()->get_render_pipeline()->submit_camera(editor_camera);
 }
 
 void ViewportPanel::draw_performance_overlay() {
   if (!performance_overlay_visible)
     return;
-  ui::draw_framerate_overlay(ImVec2(viewport_position.x, viewport_position.y),
-                             ImVec2(viewport_panel_size.x, viewport_panel_size.y),
+  ui::draw_framerate_overlay(ImVec2(m_viewport_position.x, m_viewport_position.y),
+                             ImVec2(m_viewport_panel_size.x, m_viewport_panel_size.y),
                              {15, 55},
                              &performance_overlay_visible);
 }
 
 void ViewportPanel::draw_gizmos() {
   const Entity selected_entity = m_scene_hierarchy_panel->get_selected_entity();
-  auto tc = scene->registry.try_get<TransformComponent>(selected_entity);
+  auto tc = m_scene->registry.try_get<TransformComponent>(selected_entity);
   if (selected_entity != entt::null && m_gizmo_type != -1 && tc) {
     ImGuizmo::SetOrthographic(false);
     ImGuizmo::SetDrawlist();
-    ImGuizmo::SetRect(viewport_bounds[0].x,
-                      viewport_bounds[0].y,
-                      viewport_bounds[1].x - viewport_bounds[0].x,
-                      viewport_bounds[1].y - viewport_bounds[0].y);
+    ImGuizmo::SetRect(m_viewport_bounds[0].x,
+                      m_viewport_bounds[0].y,
+                      m_viewport_bounds[1].x - m_viewport_bounds[0].x,
+                      m_viewport_bounds[1].y - m_viewport_bounds[0].y);
 
     auto camera_projection = editor_camera.get_projection_matrix();
     camera_projection[1][1] *= -1;
 
     const glm::mat4& camera_view = editor_camera.get_view_matrix();
 
-    glm::mat4 transform = eutil::get_world_transform(scene.get(), selected_entity);
+    glm::mat4 transform = eutil::get_world_transform(m_scene.get(), selected_entity);
 
     // Snapping
     const bool snap = Input::get_key_held(KeyCode::LeftControl);
@@ -387,8 +387,8 @@ void ViewportPanel::draw_gizmos() {
                          snap ? snap_values : nullptr);
 
     if (ImGuizmo::IsUsing()) {
-      const Entity parent = eutil::get_parent(scene.get(), selected_entity);
-      const glm::mat4& parent_world_transform = parent != entt::null ? eutil::get_world_transform(scene.get(), parent) : glm::mat4(1.0f);
+      const Entity parent = eutil::get_parent(m_scene.get(), selected_entity);
+      const glm::mat4& parent_world_transform = parent != entt::null ? eutil::get_world_transform(m_scene.get(), parent) : glm::mat4(1.0f);
       glm::vec3 translation, rotation, scale;
       if (math::decompose_transform(inverse(parent_world_transform) * transform, translation, rotation, scale)) {
         tc->position = translation;

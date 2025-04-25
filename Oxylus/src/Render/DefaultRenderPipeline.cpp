@@ -1,13 +1,12 @@
 #include "DefaultRenderPipeline.hpp"
 
-#include <ankerl/unordered_dense.h>
-#include <cstdint>
-#include <glm/gtc/type_ptr.inl>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/Descriptor.hpp>
 #include <vuk/runtime/vk/Pipeline.hpp>
 #include <vuk/vsl/Core.hpp>
+
+#include <glm/gtx/compatibility.hpp>
 
 #include "Camera.hpp"
 #include "DebugRenderer.hpp"
@@ -23,13 +22,10 @@
 #include "Thread/TaskScheduler.hpp"
 
 #include "Utils/CVars.hpp"
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 #include "Utils/Timer.hpp"
 
 #include "Vulkan/VkContext.hpp"
 
-#include "Core/FileSystem.hpp"
 #include "Utils/VukCommon.hpp"
 
 #include "Utils/RectPacker.hpp"
@@ -411,14 +407,14 @@ void DefaultRenderPipeline::create_dir_light_cameras(const LightComponent& light
     const float split_far = light.cascade_distances[cascade] / farPlane;
 
     glm::vec4 corners[8] = {
-      math::transform(lerp(frustum_corners[0], frustum_corners[1], split_near), light_view),
-      math::transform(lerp(frustum_corners[0], frustum_corners[1], split_far), light_view),
-      math::transform(lerp(frustum_corners[2], frustum_corners[3], split_near), light_view),
-      math::transform(lerp(frustum_corners[2], frustum_corners[3], split_far), light_view),
-      math::transform(lerp(frustum_corners[4], frustum_corners[5], split_near), light_view),
-      math::transform(lerp(frustum_corners[4], frustum_corners[5], split_far), light_view),
-      math::transform(lerp(frustum_corners[6], frustum_corners[7], split_near), light_view),
-      math::transform(lerp(frustum_corners[6], frustum_corners[7], split_far), light_view),
+      math::transform(glm::lerp(frustum_corners[0], frustum_corners[1], split_near), light_view),
+      math::transform(glm::lerp(frustum_corners[0], frustum_corners[1], split_far), light_view),
+      math::transform(glm::lerp(frustum_corners[2], frustum_corners[3], split_near), light_view),
+      math::transform(glm::lerp(frustum_corners[2], frustum_corners[3], split_far), light_view),
+      math::transform(glm::lerp(frustum_corners[4], frustum_corners[5], split_near), light_view),
+      math::transform(glm::lerp(frustum_corners[4], frustum_corners[5], split_far), light_view),
+      math::transform(glm::lerp(frustum_corners[6], frustum_corners[7], split_near), light_view),
+      math::transform(glm::lerp(frustum_corners[6], frustum_corners[7], split_far), light_view),
     };
 
     // Compute cascade bounding sphere center:

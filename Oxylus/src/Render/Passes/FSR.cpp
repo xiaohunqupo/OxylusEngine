@@ -1,19 +1,13 @@
 #include "FSR.hpp"
 
-#include <glm/gtc/packing.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/ShaderSource.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/Pipeline.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include "Audio/AudioListener.hpp"
-#include "Core/App.hpp"
-#include "Core/FileSystem.hpp"
-#include "Render/Camera.hpp"
+#include "Scene/Components.hpp"
 #include "Thread/TaskScheduler.hpp"
-
-#include "Render/Vulkan/VkContext.hpp"
 
 #define FFX_FSR2_RESOURCE_IDENTIFIER_AUTO_EXPOSURE 28
 #define FFX_FSR2_RESOURCE_IDENTIFIER_AUTO_EXPOSURE_MIPMAP_4 32

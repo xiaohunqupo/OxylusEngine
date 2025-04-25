@@ -14,11 +14,6 @@
 #include "LuaSceneBindings.hpp"
 #include "LuaUIBindings.hpp"
 
-#include "Core/Input.hpp"
-#include "Scene/Scene.hpp"
-
-#include "Utils/Log.hpp"
-
 namespace ox {
 void LuaManager::init() {
   OX_SCOPED_ZONE;

@@ -10,11 +10,9 @@
 #include "Render/Camera.hpp"
 
 #include "Render/DebugRenderer.hpp"
-#include "Render/DefaultRenderPipeline.hpp"
 #include "Render/EasyRenderPipeline.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Scene/Components.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 void SceneRenderer::init(EventDispatcher& dispatcher) {

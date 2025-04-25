@@ -1,11 +1,6 @@
 #pragma once
 
-#include <glm/trigonometric.hpp>
-#include <glm/vec3.hpp>
-#include <string>
-
 #include "Assets/Asset.hpp"
-#include "Core/Base.hpp"
 
 struct ma_sound;
 

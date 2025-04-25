@@ -5,8 +5,6 @@
 #include "Jolt/Physics/Body/Body.h"
 
 #include "Scene/Scene.hpp"
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 bool ObjectLayerPairFilterImpl::ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const {
   using namespace JPH;

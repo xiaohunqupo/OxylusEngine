@@ -2,7 +2,6 @@
 
 #include <SDL3/SDL_keycode.h>
 #include <SDL3/SDL_mouse.h>
-#include <glm/vec2.hpp>
 
 #include "ESystem.hpp"
 #include "Keycodes.hpp"

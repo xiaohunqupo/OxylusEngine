@@ -1,9 +1,5 @@
 #pragma once
 
-#include <string>
-
-#include "Base.hpp"
-
 namespace ox {
 struct ProjectConfig {
   std::string name = "Untitled";

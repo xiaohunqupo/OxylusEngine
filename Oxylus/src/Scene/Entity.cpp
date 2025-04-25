@@ -1,8 +1,6 @@
 #include "Entity.hpp"
 #include "Scene.hpp"
 
-#include "Utils/Log.hpp"
-
 #include "Components.hpp"
 
 namespace ox::eutil {

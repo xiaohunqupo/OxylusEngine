@@ -3,8 +3,6 @@
 
 #include <sol/sol.hpp>
 
-#include "Utils/Log.hpp"
-
 // --- Registry ---
 
 template <typename Component>

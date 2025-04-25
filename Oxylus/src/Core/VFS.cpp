@@ -1,8 +1,5 @@
 #include "VFS.hpp"
 
-#include <Utils/Log.hpp>
-#include <Utils/Profiler.hpp>
-
 #include "Core/FileSystem.hpp"
 
 namespace ox {

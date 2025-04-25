@@ -1,10 +1,6 @@
 #pragma once
 
-#include <glm/vec4.hpp>
-
 #include "Material.hpp"
-
-#include "Core/Types.hpp"
 #include "Texture.hpp"
 
 namespace ox {

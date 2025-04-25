@@ -2,8 +2,6 @@
 
 #include <loguru.hpp>
 
-#include "Core/PlatformDetection.hpp"
-
 namespace ox {
 class Log {
 public:

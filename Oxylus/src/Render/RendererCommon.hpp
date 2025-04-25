@@ -1,9 +1,6 @@
 ﻿#pragma once
-#include <utility>
 
 #include <vuk/Value.hpp>
-
-#include "Core/Base.hpp"
 
 namespace ox {
 class Texture;

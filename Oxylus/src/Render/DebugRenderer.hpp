@@ -1,6 +1,5 @@
 ﻿#pragma once
 
-#include "Core/Types.hpp"
 #include "Physics/RayCast.hpp"
 #include "Render/BoundingVolume.hpp"
 #include "Render/MeshVertex.hpp"

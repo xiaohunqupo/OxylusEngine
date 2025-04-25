@@ -1,6 +1,5 @@
 #include "ProjectSerializer.hpp"
 
-#include "Utils/Log.hpp"
 #include "Utils/Toml.hpp"
 #include "FileSystem.hpp"
 

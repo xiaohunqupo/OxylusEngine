@@ -1,6 +1,5 @@
 #include "VkContext.hpp"
 
-#include <sstream>
 #include <vuk/ImageAttachment.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/ThisThreadExecutor.hpp>
@@ -9,8 +8,6 @@
 
 #include "Render/RendererConfig.hpp"
 #include "Render/Window.hpp"
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 static VkBool32 debug_callback(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

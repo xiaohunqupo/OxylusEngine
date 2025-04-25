@@ -3,7 +3,6 @@
 #include "Assets/AssetManager.hpp"
 #include "Utils/StringUtils.hpp"
 
-#include <fmt/format.h>
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 

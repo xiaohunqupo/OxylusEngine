@@ -2,8 +2,6 @@
 
 #include "Layer.hpp"
 
-#include <vector>
-
 namespace ox {
 class LayerStack {
 public:

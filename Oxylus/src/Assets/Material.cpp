@@ -1,7 +1,5 @@
 #include "Material.hpp"
 
-#include "Utils/Profiler.hpp"
-
 namespace ox {
 uint32_t Material::material_id_counter = 0;
 

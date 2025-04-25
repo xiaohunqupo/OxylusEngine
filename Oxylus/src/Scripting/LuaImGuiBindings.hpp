@@ -1,4 +1,5 @@
 ﻿#pragma once
+
 #include <imgui.h>
 #include <string>
 #include <sol/sol.hpp>

@@ -1,5 +1,4 @@
 ﻿#pragma once
-#include <vector>
 
 #include <stb_rect_pack.h>
 

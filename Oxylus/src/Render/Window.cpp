@@ -288,7 +288,7 @@ uint32 Window::get_height() const {
   return impl->height;
 }
 
-SDL_Window* Window::get_handle() const {
+void* Window::get_handle() const {
   OX_SCOPED_ZONE
   return impl->handle;
 }

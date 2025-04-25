@@ -3,10 +3,7 @@
 #include <entt/locator/locator.hpp>
 #include <entt/meta/context.hpp>
 #include <entt/meta/node.hpp>
-#include <filesystem>
 
-#include "Assets/AssetManager.hpp"
-#include "Base.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Modules/ModuleRegistry.hpp"
@@ -14,9 +11,6 @@
 #include "VFS.hpp"
 
 #include "Modules/ModuleUtil.hpp"
-
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 static std::filesystem::file_time_type last_module_write_time = {};

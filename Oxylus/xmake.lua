@@ -6,6 +6,8 @@ target("Oxylus")
     add_includedirs("./src", { public = true })
     add_includedirs("./vendor", { public = true })
     add_files("./src/**.cpp")
+    add_forceincludes("pch.hpp", { public = true, force = true })
+    set_pcheader("./src/pch.hpp", { public = true, force = true })
 
     if is_plat("windows") then
         add_defines("_UNICODE", { force = true, public = true  })
@@ -16,8 +18,12 @@ target("Oxylus")
         add_defines("_WIN32", { force = true, public = true  })
 
         remove_files("./src/OS/Linux*")
+
+        add_defines("OX_PLATFORM_WINDOWS", { public = true })
     elseif is_plat("linux") then
         remove_files("./src/OS/Win32*")
+
+        add_defines("OX_PLATFORM_LINUX", { public = true })
     end
 
     if is_mode("debug")  then

@@ -1,18 +1,11 @@
 #pragma once
 
-#include <glm/detail/type_quat.hpp>
-#include <glm/glm.hpp>
-#include <string>
-#include <vector>
-
 #include "Assets/PBRMaterial.hpp"
 
 #include <vuk/Buffer.hpp>
 
 #include "BoundingVolume.hpp"
 #include "MeshVertex.hpp"
-
-#include "Core/Types.hpp"
 
 namespace fastgltf {
 class Asset;

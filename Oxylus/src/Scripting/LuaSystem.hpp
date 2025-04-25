@@ -1,12 +1,10 @@
 ﻿#pragma once
-#include <ankerl/unordered_dense.h>
 
 #include <entt/entity/entity.hpp>
 
 #include <sol/environment.hpp>
 #include <vuk/Types.hpp>
 
-#include "Core/Base.hpp"
 #include "Core/Systems/System.hpp"
 
 namespace ox {

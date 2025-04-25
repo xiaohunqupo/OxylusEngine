@@ -1,7 +1,5 @@
 ﻿#include "LuaSystem.hpp"
 
-#include <filesystem>
-
 #include <sol/state.hpp>
 
 #include "LuaManager.hpp"
@@ -10,8 +8,6 @@
 
 #include "Scene/Entity.hpp"
 #include "Scene/Scene.hpp"
-
-#include "Utils/Log.hpp"
 
 namespace ox {
 LuaSystem::LuaSystem(std::string path) : file_path(std::move(path)) { init_script(file_path); }

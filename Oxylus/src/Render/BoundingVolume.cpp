@@ -3,8 +3,6 @@
 #include "Frustum.hpp"
 #include "Physics/RayCast.hpp"
 
-#include "Utils/Profiler.hpp"
-
 namespace ox {
 void AABB::translate(const glm::vec3& translation) {
   OX_SCOPED_ZONE;

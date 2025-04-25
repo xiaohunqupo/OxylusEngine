@@ -1,9 +1,8 @@
 #pragma once
 
-#include <Scene/Entity.hpp>
+#include "Scene/Entity.hpp"
 #include "Event/Event.hpp"
 #include "Utils/Timestep.hpp"
-#include "entt/entity/fwd.hpp"
 
 namespace JPH {
 class ContactSettings;
@@ -52,14 +51,14 @@ public:
                                     const JPH::ContactSettings& settings) {}
 
   void bind_globals(Scene* s, entt::entity e, EventDispatcher* d) {
-    scene = s;
-    entity = e;
-    dispatcher = d;
+    m_scene = s;
+    m_entity = e;
+    m_dispatcher = d;
   }
 
 protected:
-  Scene* scene = nullptr;
-  entt::entity entity = entt::null;
-  EventDispatcher* dispatcher = nullptr;
+  Scene* m_scene = nullptr;
+  entt::entity m_entity = entt::null;
+  EventDispatcher* m_dispatcher = nullptr;
 };
 } // namespace ox

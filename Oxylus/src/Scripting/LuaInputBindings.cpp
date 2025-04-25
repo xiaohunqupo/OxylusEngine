@@ -8,8 +8,6 @@
 #include "Core/Input.hpp"
 #include "Core/Keycodes.hpp"
 
-#include "Utils/Profiler.hpp"
-
 namespace ox::LuaBindings {
 void bind_input(const Shared<sol::state>& state) {
   OX_SCOPED_ZONE;

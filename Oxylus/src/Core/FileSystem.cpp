@@ -1,7 +1,4 @@
 ﻿#include "FileSystem.hpp"
-#include <exception>
-
-#include "PlatformDetection.hpp"
 
 #include "Utils/StringUtils.hpp"
 
@@ -10,12 +7,6 @@
   #include <comdef.h>
   #include <shellapi.h>
 #endif
-
-#include <filesystem>
-
-#include "App.hpp"
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 std::string fs::current_path() { return std::filesystem::current_path().string(); }

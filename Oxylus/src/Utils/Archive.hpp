@@ -1,8 +1,4 @@
 ﻿#pragma once
-#include <string>
-#include <vector>
-
-#include "Log.hpp"
 
 namespace ox {
 class Archive {

@@ -1,8 +1,5 @@
 #include "EntitySerializer.hpp"
 
-#include <filesystem>
-
-#include "Core/Base.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Systems/SystemManager.hpp"
 #include "Scene.hpp"
@@ -12,11 +9,8 @@
 
 #include "Core/App.hpp"
 
-#include "Core/VFS.hpp"
 #include "Entity.hpp"
 #include "Utils/Archive.hpp"
-
-#include "Utils/Log.hpp"
 
 namespace ox {
 template <typename Component, typename WriterFunc>

@@ -1,11 +1,7 @@
 #pragma once
 
 #include "Material.hpp"
-
 #include "Texture.hpp"
-
-#include <glm/vec2.hpp>
-#include <glm/vec4.hpp>
 
 namespace ox {
 class SpriteMaterial : public Material {

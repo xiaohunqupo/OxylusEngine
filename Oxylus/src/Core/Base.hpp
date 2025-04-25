@@ -7,8 +7,6 @@
   struct& operator=(const struct& other) = delete; \
   struct& operator=(struct&& other) = delete;
 
-#include <memory>
-
 #define OX_CRASH() *(volatile int*)(nullptr) = 0;
 
 #define OX_EXPAND_IMPL(x) x

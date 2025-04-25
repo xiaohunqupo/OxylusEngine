@@ -6,7 +6,6 @@
 #include <Jolt/Core/JobSystemThreadPool.h>
 #include <Jolt/Physics/Collision/CollisionCollectorImpl.h>
 #include <Jolt/Physics/PhysicsSystem.h>
-#include <map>
 
 namespace ox {
 class RayCast;

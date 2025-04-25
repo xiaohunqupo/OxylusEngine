@@ -1,17 +1,11 @@
 ﻿#include "SPD.hpp"
 
-#include <glm/vec2.hpp>
-#include <glm/vec4.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/Descriptor.hpp>
 #include <vuk/runtime/vk/Pipeline.hpp>
 
-#include "Core/FileSystem.hpp"
 #include "Render/Utils/VukCommon.hpp"
-#include "Render/Vulkan/VkContext.hpp"
-#include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 static void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY,    // CPU side: dispatch thread group count xy

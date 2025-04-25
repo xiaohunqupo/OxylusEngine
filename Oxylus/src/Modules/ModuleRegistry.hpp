@@ -1,11 +1,7 @@
 ﻿#pragma once
 
 #include <dylib.hpp>
-#include <string_view>
 
-#include <ankerl/unordered_dense.h>
-
-#include "Core/Base.hpp"
 #include "Core/ESystem.hpp"
 
 namespace ox {

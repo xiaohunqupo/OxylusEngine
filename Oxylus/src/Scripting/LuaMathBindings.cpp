@@ -6,11 +6,7 @@
 
 #include "LuaHelpers.hpp"
 
-#include "Core/Types.hpp"
-
 #include "Render/BoundingVolume.hpp"
-
-#include "Utils/Profiler.hpp"
 
 namespace ox::LuaBindings {
 #define SET_MATH_FUNCTIONS(var, type, number)                                                                    \

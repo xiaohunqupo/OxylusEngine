@@ -1,10 +1,8 @@
 #include "Prefilter.hpp"
 
-#include <glm/gtx/quaternion.hpp>
 #include <vuk/RenderGraph.hpp>
 
 #include "Core/App.hpp"
-#include "Core/FileSystem.hpp"
 #include "Render/Mesh.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 

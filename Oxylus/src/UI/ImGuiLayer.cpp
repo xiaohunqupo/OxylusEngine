@@ -1,14 +1,9 @@
 #include "ImGuiLayer.hpp"
 #include <imgui.h>
-#include <plf_colony.h>
-
-#include <algorithm>
-#include <glm/common.hpp>
 
 #include <SDL3/SDL_mouse.h>
 #include <icons/IconsMaterialDesignIcons.h>
 #include <icons/MaterialDesign.inl>
-#include <utility>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/AllocatorHelpers.hpp>
@@ -24,7 +19,6 @@
 #include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 static ImVec4 darken(ImVec4 c, float p) { return {glm::max(0.f, c.x - 1.0f * p), glm::max(0.f, c.y - 1.0f * p), glm::max(0.f, c.z - 1.0f * p), c.w}; }

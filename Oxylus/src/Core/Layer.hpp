@@ -1,7 +1,5 @@
 #pragma once
 
-#include <string>
-
 #include "Event/Event.hpp"
 #include "Utils/Timestep.hpp"
 

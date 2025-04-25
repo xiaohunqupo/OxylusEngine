@@ -3,7 +3,6 @@
 
 #include "Event/Event.hpp"
 
-#include "Core/Base.hpp"
 #include "Scene/Components.hpp"
 
 namespace vuk {

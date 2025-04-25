@@ -1,16 +1,11 @@
 #pragma once
 
-#include <cstdint>
-#include <ankerl/unordered_dense.h>
-
 namespace ox {
 class UUID {
 public:
   UUID();
 
   UUID(uint64_t uuid);
-
-  UUID(const UUID&) = default;
 
   operator uint64_t() const { return _uuid; }
 

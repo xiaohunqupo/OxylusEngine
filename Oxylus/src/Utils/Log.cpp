@@ -1,9 +1,5 @@
 #include "Log.hpp"
 
-#include <filesystem>
-
-#include "Profiler.hpp"
-
 namespace ox {
 void Log::init(int argc, char** argv) {
   OX_SCOPED_ZONE;
