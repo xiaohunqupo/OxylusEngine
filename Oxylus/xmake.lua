@@ -1,6 +1,7 @@
 target("Oxylus")
     set_kind("static")
     set_languages("cxx23")
+    add_rpathdirs("@executable_path")
 
     add_includedirs("./src", { public = true })
     add_includedirs("./vendor", { public = true })
