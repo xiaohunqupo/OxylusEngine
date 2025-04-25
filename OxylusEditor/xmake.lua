@@ -7,4 +7,10 @@ target("OxylusEditor")
 
     add_deps("Oxylus")
 
+    add_files("./Resources/**")
+    add_rules("ox.install_resources", {
+        root_dir = os.scriptdir() .. "/Resources",
+        output_dir = "Resources",
+    })
+
 target_end()

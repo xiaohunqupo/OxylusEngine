@@ -21,6 +21,7 @@ add_cxxflags(
     { tools = { "clang", "gcc" } })
 add_cxxflags("clang::-Wshadow-all")
 
+includes("xmake/rules.lua")
 includes("xmake/packages.lua")
 
 includes("Oxylus")

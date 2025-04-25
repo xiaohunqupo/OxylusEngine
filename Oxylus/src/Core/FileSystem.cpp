@@ -140,7 +140,7 @@ std::string fs::read_shader_file(const std::string& shader_file_name) {
 
 std::string fs::get_shader_path(const std::string& shader_file_name) {
   OX_SCOPED_ZONE;
-  const auto path_str = std::filesystem::path(App::get()->get_specification().assets_path) / "Shaders";
+  const auto path_str = std::filesystem::path(App::get()->get_asset_directory_absolute()) / "Shaders";
   const auto path = std::filesystem::path(path_str) / shader_file_name;
   return path.string();
 }
