@@ -1,0 +1,6 @@
+{
+    "diagnostics.disable": [
+        "undefined-global",
+        "codestyle-check"
+    ]
+}

@@ -137,49 +137,49 @@ void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo&
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_autogen_reactive_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_autogen_reactive_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("autogen_reactive_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_compute_luminance_pyramid_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_compute_luminance_pyramid_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("luminance_pyramid_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_prepare_input_color_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_prepare_input_color_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("prepare_input_color_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_reconstruct_previous_depth_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_reconstruct_previous_depth_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("reconstruct_previous_depth_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_depth_clip_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_depth_clip_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("depth_clip_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_lock_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_lock_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("lock_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_accumulate_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_accumulate_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("accumulate_pass", ci))
   });
 
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
-    ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_rcas_pass.hlsl"), vuk::HlslShaderStage::eCompute);
+    // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_rcas_pass.hlsl"), vuk::HlslShaderStage::eCompute);
     TRY(allocator.get_context().create_named_pipeline("rcas_pass", ci))
   });
 

@@ -394,7 +394,7 @@ void ContentPanel::render_header() {
   std::filesystem::path current = m_assets_directory.parent_path();
   std::filesystem::path directoryToOpen;
   const std::filesystem::path currentDirectory = relative(m_current_directory, current);
-  for (auto& path : currentDirectory) {
+  for (const auto& path : currentDirectory) {
     current /= path;
     ImGui::SameLine();
     if (ImGui::Button(path.filename().string().c_str()))

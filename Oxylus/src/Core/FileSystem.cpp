@@ -83,7 +83,7 @@ void fs::open_folder_select_file(std::string_view path) {
 void fs::open_file_externally(std::string_view path) {
 #ifdef OX_PLATFORM_WINDOWS
   const _bstr_t widePath(path.data());
-  ShellExecute(nullptr, LPCSTR(L"open"), widePath, nullptr, nullptr, SW_RESTORE);
+  ShellExecute(nullptr, L"open", widePath, nullptr, nullptr, SW_RESTORE);
 #else
   OX_LOG_WARN("Not implemented on this platform!");
 #endif
@@ -148,7 +148,7 @@ std::string fs::get_shader_path(const std::string& shader_file_name) {
 bool fs::write_file_binary(std::string_view file_path, const std::vector<uint8_t>& data) {
   std::ofstream file(file_path.data(), std::ios::binary | std::ios::trunc);
   if (file.is_open()) {
-    file.write((const char*)data.data(), (std::streamsize)data.size());
+    file.write(reinterpret_cast<const char*>(data.data()), (std::streamsize)data.size());
     file.close();
     return true;
   }

@@ -234,6 +234,8 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
 
   // runtime->set_shader_target_version(VK_API_VERSION_1_3);
 
+  shader_compiler = SlangCompiler::create().value();
+
   superframe_allocator->allocate_semaphores(*present_ready);
   superframe_allocator->allocate_semaphores(*render_complete);
 

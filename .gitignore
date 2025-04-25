@@ -62,3 +62,8 @@ CMakeSettings.json
 /logs
 /cmake-build-debug-visual-studio
 /cmake-build-release-visual-studio
+
+# xmake
+.xmake
+compile_commands.json
+.run

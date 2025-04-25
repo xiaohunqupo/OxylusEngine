@@ -25,8 +25,8 @@ vuk::Value<vuk::ImageAttachment> RendererCommon::generate_cubemap_from_equirecta
   auto& allocator = App::get_vkcontext().superframe_allocator;
   if (!allocator->get_context().is_pipeline_available("equirectangular_to_cubemap")) {
     vuk::PipelineBaseCreateInfo equirectangular_to_cubemap;
-    equirectangular_to_cubemap.add_glsl(fs::read_shader_file("Cubemap.vert"), "Cubemap.vert");
-    equirectangular_to_cubemap.add_glsl(fs::read_shader_file("EquirectangularToCubemap.frag"), "EquirectangularToCubemap.frag");
+    // equirectangular_to_cubemap.add_glsl(fs::read_shader_file("Cubemap.vert"), "Cubemap.vert");
+    // equirectangular_to_cubemap.add_glsl(fs::read_shader_file("EquirectangularToCubemap.frag"), "EquirectangularToCubemap.frag");
     allocator->get_context().create_named_pipeline("equirectangular_to_cubemap", equirectangular_to_cubemap);
   }
 
@@ -255,8 +255,8 @@ vuk::Value<vuk::ImageAttachment> RendererCommon::apply_blur(const vuk::Value<vuk
   auto& allocator = *App::get_vkcontext().superframe_allocator;
   if (!allocator.get_context().is_pipeline_available("gaussian_blur_pipeline")) {
     vuk::PipelineBaseCreateInfo pci;
-    pci.add_hlsl(fs::read_shader_file("FullscreenTriangle.hlsl"), fs::get_shader_path("FullscreenTriangle.hlsl"), vuk::HlslShaderStage::eVertex);
-    pci.add_glsl(fs::read_shader_file("PostProcess/SinglePassGaussianBlur.frag"), "PostProcess/SinglePassGaussianBlur.frag");
+    // pci.add_hlsl(fs::read_shader_file("FullscreenTriangle.hlsl"), fs::get_shader_path("FullscreenTriangle.hlsl"), vuk::HlslShaderStage::eVertex);
+    // pci.add_glsl(fs::read_shader_file("PostProcess/SinglePassGaussianBlur.frag"), "PostProcess/SinglePassGaussianBlur.frag");
     allocator.get_context().create_named_pipeline("gaussian_blur_pipeline", pci);
   }
 

@@ -1,7 +1,5 @@
 ﻿#include "TaskScheduler.hpp"
 
-#include <TaskScheduler.h>
-
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
 
@@ -16,7 +14,7 @@ void TaskScheduler::init() {
 }
 
 void TaskScheduler::deinit() {
-  task_scheduler->ShutdownNow();
+  task_scheduler->WaitforAllAndShutdown();
 }
 
 void TaskScheduler::wait_for_all() {

@@ -19,9 +19,9 @@ public:
 
     template <typename T = int32_t>
     std::optional<T> as() const {
-      T value = {};
-      if (std::from_chars(str_value.c_str(), str_value.data() + str_value.size(), value).ec == std::errc{})
-        return (T)value;
+      // T value = {};
+      // if (std::from_chars(str_value.c_str(), str_value.data() + str_value.size(), value).ec == std::errc{})
+      //   return (T)value;
       return {};
     }
   };
