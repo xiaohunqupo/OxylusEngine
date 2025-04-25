@@ -62,7 +62,6 @@ CMakeSettings.json
 /logs
 /cmake-build-debug-visual-studio
 /cmake-build-release-visual-studio
-CMakeLists.txt
 
 # xmake
 .xmake

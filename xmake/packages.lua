@@ -46,6 +46,13 @@ add_requires("rapidjson 2025.02.05", { system = false })
 
 add_requires("joltphysics v5.3.0", { configs = {
     debug_renderer = true,
+    rtti = true,
+    avx = true,
+    avx2 = true,
+    lzcnt = true,
+    sse4_1 = true,
+    sse4_2 = true,
+    tzcnt = true,
 }, system = false })
 
 add_requires("tracy v0.11.1", { configs = {
