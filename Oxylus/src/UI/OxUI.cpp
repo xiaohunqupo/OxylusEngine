@@ -386,13 +386,13 @@ bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* too
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.9f, 0.2f, 0.2f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
-    if (ImGui::Button("##", button_size)) {
+    if (ImGui::Button("##x_reset", button_size)) {
       values.x = reset_value;
     }
     ImGui::PopStyleColor(4);
 
     ImGui::SameLine();
-    if (ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f")) {
+    if (ImGui::DragFloat("##x", &values.x, 0.1f, 0.0f, 0.0f, "%.2f")) {
       changed = true;
     }
     ImGui::PopItemWidth();
@@ -408,13 +408,13 @@ bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* too
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.3f, 0.8f, 0.3f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
-    if (ImGui::Button("##", button_size)) {
+    if (ImGui::Button("##y_reset", button_size)) {
       values.y = reset_value;
     }
     ImGui::PopStyleColor(4);
 
     ImGui::SameLine();
-    if (ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f")) {
+    if (ImGui::DragFloat("##y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f")) {
       changed = true;
     }
     ImGui::PopItemWidth();
@@ -430,13 +430,13 @@ bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* too
     ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.1f, 0.25f, 0.8f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.2f, 0.35f, 0.9f, 1.0f});
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.1f, 0.25f, 0.8f, 1.0f});
-    if (ImGui::Button("##", button_size)) {
+    if (ImGui::Button("##z_reset", button_size)) {
       values.z = reset_value;
     }
     ImGui::PopStyleColor(4);
 
     ImGui::SameLine();
-    if (ImGui::DragFloat("##Z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f")) {
+    if (ImGui::DragFloat("##z", &values.z, 0.1f, 0.0f, 0.0f, "%.2f")) {
       changed = true;
     }
     ImGui::PopItemWidth();

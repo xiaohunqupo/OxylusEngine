@@ -183,7 +183,9 @@ ImRect SceneHierarchyPanel::draw_entity_node(Entity entity, uint32_t depth, bool
 
   const float button_size_x = ImGui::GetContentRegionAvail().x;
   const float frame_height = ImGui::GetFrameHeight();
+  ImGui::PushID(static_cast<uint64>(entity));
   ImGui::Button(is_part_of_prefab ? "Prefab" : "Entity", {button_size_x, frame_height});
+  ImGui::PopID();
   // Select
   if (ImGui::IsItemDeactivated() && ImGui::IsItemHovered() && !ImGui::IsItemToggledOpen()) {
     if (!ImGui::IsKeyDown(ImGuiKey_LeftCtrl))
