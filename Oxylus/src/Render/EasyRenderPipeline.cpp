@@ -40,20 +40,20 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
     0);
   bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_00);
 
-  auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
+  // --- Shaders ---
+  auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
+  auto shaders_dir = vfs->resolve_physical_dir(VFS::APP_DIR, "Shaders");
 
-  const auto shader_path = [](const std::string& path) -> std::string {
-    auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
-    return vfs->resolve_physical_dir(VFS::APP_DIR, path);
-  };
+  Slang slang = {};
+  slang.create_session({.root_directory = shaders_dir, .definitions = {}});
 
-  task_scheduler->add_task([=]() mutable {
-    Slang::add_shader(bindless_pci, {.path = shader_path("Shaders/2DForward.slang"), .entry_points = {"VSmain", "PSmain"}, .definitions = {}});
-    TRY(allocator.get_context().create_named_pipeline("2d_forward_pipeline", bindless_pci))
-  });
+  slang.add_shader(bindless_pci, {.path = shaders_dir + "/2DForward.slang", .entry_points = {"VSmain", "PSmain"}});
+  TRY(allocator.get_context().create_named_pipeline("2d_forward_pipeline", bindless_pci))
 
-  task_scheduler->wait_for_all();
+  // --- DescriptorSets ---
+  this->descriptor_set_00 = runtime.create_persistent_descriptorset(allocator, *runtime.get_named_pipeline("2d_forward_pipeline"), 0, 64);
 
+  // --- Samplers ---
   auto hiz_sampler_ci = vuk::SamplerCreateInfo{
     .magFilter = vuk::Filter::eNearest,
     .minFilter = vuk::Filter::eNearest,
@@ -65,7 +65,6 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
     .maxLod = 16.0f,
   };
 
-  this->descriptor_set_00 = runtime.create_persistent_descriptorset(allocator, *runtime.get_named_pipeline("2d_forward_pipeline"), 0, 64);
   const vuk::Sampler linear_sampler_clamped = runtime.acquire_sampler(vuk::LinearSamplerClamped, runtime.get_frame_count());
   const vuk::Sampler linear_sampler_repeated = runtime.acquire_sampler(vuk::LinearSamplerRepeated, runtime.get_frame_count());
   const vuk::Sampler linear_sampler_repeated_anisotropy = runtime.acquire_sampler(vuk::LinearSamplerRepeatedAnisotropy, runtime.get_frame_count());

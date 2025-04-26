@@ -1,16 +1,25 @@
 #pragma once
-
-#include <vuk/runtime/vk/Pipeline.hpp>
+#include "Compiler.hpp"
+#include "Core/Option.hpp"
 
 namespace ox {
+
 class Slang {
 public:
-  struct CompileInfo {
-    std::string path = {};
-    std::vector<std::string> entry_points = {};
+  struct SessionInfo {
+    std::string root_directory = {};
     std::vector<std::pair<std::string, std::string>> definitions = {};
   };
 
-  static void add_shader(vuk::PipelineBaseCreateInfo& pipeline_ci, const CompileInfo& compile_info);
+  struct CompileInfo {
+    std::string path = {};
+    std::vector<std::string> entry_points = {};
+  };
+
+  void create_session(this Slang& self, const SessionInfo& session_info);
+  void add_shader(this Slang& self, vuk::PipelineBaseCreateInfo& pipeline_ci, const CompileInfo& compile_info);
+
+private:
+  option<SlangSession> slang_session = nullopt;
 };
 } // namespace ox
