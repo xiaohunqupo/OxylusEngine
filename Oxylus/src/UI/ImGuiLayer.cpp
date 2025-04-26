@@ -11,8 +11,8 @@
 #include <vuk/vsl/Core.hpp>
 
 #include "Core/App.hpp"
-#include "Core/FileSystem.hpp"
 #include "ImGuizmo.h"
+#include "Utils/Profiler.hpp"
 #include "imgui_frag.hpp"
 #include "imgui_vert.hpp"
 
@@ -26,11 +26,30 @@ static ImVec4 lighten(ImVec4 c, float p) {
   return {glm::max(0.f, c.x + 1.0f * p), glm::max(0.f, c.y + 1.0f * p), glm::max(0.f, c.z + 1.0f * p), c.w};
 }
 
-ImFont* ImGuiLayer::regular_font = nullptr;
-ImFont* ImGuiLayer::small_font = nullptr;
-ImFont* ImGuiLayer::bold_font = nullptr;
-
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
+
+ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config) {
+  OX_SCOPED_ZONE_N("Font Loading");
+
+  ImGuiIO& io = ImGui::GetIO();
+  io.Fonts->TexGlyphPadding = 1;
+  return io.Fonts->AddFontFromFileTTF(path.c_str(), font_config.SizePixels, &font_config);
+}
+
+void ImGuiLayer::build_fonts() {
+  OX_SCOPED_ZONE_N("Font Building");
+
+  ImGuiIO& io = ImGui::GetIO();
+  unsigned char* pixels;
+  int width, height;
+  io.Fonts->Build();
+  io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
+  font_texture = create_shared<Texture>();
+  font_texture->create_texture({.width = static_cast<unsigned>(width), .height = static_cast<unsigned>(height), .depth = 1},
+                               pixels,
+                               vuk::Format::eR8G8B8A8Srgb,
+                               Preset::eRTT2DUnmipped);
+}
 
 void ImGuiLayer::on_attach(EventDispatcher&) {
   OX_SCOPED_ZONE;
@@ -42,48 +61,11 @@ void ImGuiLayer::on_attach(EventDispatcher&) {
                     ImGuiConfigFlags_DpiEnableScaleFonts;
   io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_HasMouseCursors;
   /*io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;*/
-
-  // Upload Fonts
-  const auto regular_font_path = fs::append_paths(fs::current_path(), "Resources/Fonts/FiraSans-Regular.ttf");
-  const auto bold_font_path = fs::append_paths(fs::current_path(), "Resources/Fonts/FiraSans-Bold.ttf");
-
-  constexpr float font_size = 16.0f;
-  constexpr float font_size_small = 12.0f;
-
-  ImFontConfig fonts_config;
-  fonts_config.MergeMode = false;
-  fonts_config.PixelSnapH = true;
-  fonts_config.OversampleH = fonts_config.OversampleV = 3;
-  fonts_config.GlyphMinAdvanceX = 4.0f;
-  fonts_config.SizePixels = font_size;
-
-  {
-    OX_SCOPED_ZONE_N("Font Loading/Building");
-    regular_font = io.Fonts->AddFontFromFileTTF(regular_font_path.c_str(), font_size, &fonts_config);
-    add_icon_font(font_size);
-    small_font = io.Fonts->AddFontFromFileTTF(regular_font_path.c_str(), font_size_small, &fonts_config);
-    add_icon_font(font_size);
-    bold_font = io.Fonts->AddFontFromFileTTF(bold_font_path.c_str(), font_size, &fonts_config);
-    add_icon_font(font_size);
-    io.Fonts->TexGlyphPadding = 1;
-    io.Fonts->Build();
-  }
-
-  auto& allocator = *App::get_vkcontext().superframe_allocator;
-  auto& ctx = allocator.get_context();
   io.BackendRendererName = "oxylus";
   io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
 
-  unsigned char* pixels;
-  int width, height;
-  io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-
-  font_texture = create_shared<Texture>();
-  font_texture->create_texture({.width = static_cast<unsigned>(width), .height = static_cast<unsigned>(height), .depth = 1},
-                               pixels,
-                               vuk::Format::eR8G8B8A8Srgb,
-                               Preset::eRTT2DUnmipped);
-
+  auto& allocator = *App::get_vkcontext().superframe_allocator;
+  auto& ctx = allocator.get_context();
   vuk::PipelineBaseCreateInfo pci;
   pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
   pci.add_static_spirv(imgui_frag, sizeof(imgui_frag) / 4, "imgui.frag");

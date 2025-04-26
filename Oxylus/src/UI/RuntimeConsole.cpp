@@ -119,14 +119,14 @@ void RuntimeConsole::on_imgui_render() {
       float width = 0;
       if (ImGui::BeginChild("TextTable", ImVec2(0, -35))) {
         width = ImGui::GetWindowSize().x;
-        ImGui::PushFont(ImGuiLayer::bold_font);
+        // ImGui::PushFont(ImGuiLayer::bold_font);
         for (int32_t i = 0; i < (int32_t)text_buffer.size(); i++) {
           if (text_filter != loguru::Verbosity_OFF && text_filter != text_buffer[i].verbosity)
             continue;
           render_console_text(text_buffer[i].text, i, text_buffer[i].verbosity);
         }
 
-        ImGui::PopFont();
+        // ImGui::PopFont();
         if (request_scroll_to_bottom || (auto_scroll && ImGui::GetScrollY() >= ImGui::GetScrollMaxY())) {
           ImGui::SetScrollHereY(1.0f);
           request_scroll_to_bottom = false;
@@ -138,7 +138,7 @@ void RuntimeConsole::on_imgui_render() {
       ImGui::PushItemWidth(width);
       constexpr ImGuiInputTextFlags input_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory |
                                                   ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_EscapeClearsAll;
-      ImGui::PushFont(ImGuiLayer::bold_font);
+      // ImGui::PushFont(ImGuiLayer::bold_font);
 
       auto callback = [](ImGuiInputTextCallbackData* data) {
         const auto panel = (RuntimeConsole*)data->UserData;
@@ -157,7 +157,7 @@ void RuntimeConsole::on_imgui_render() {
         request_keyboard_focus = true;
       }
 
-      ImGui::PopFont();
+      // ImGui::PopFont();
       ImGui::PopItemWidth();
     }
     ImGui::End();

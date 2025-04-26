@@ -3,6 +3,7 @@
 #include "Core/Layer.hpp"
 #include "EditorContext.hpp"
 
+#include "EditorTheme.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/ViewportPanel.hpp"
@@ -46,6 +47,8 @@ public:
     OX_ASSERT(editor_panels.contains(hash_code));
     return dynamic_cast<T*>(editor_panels[hash_code].get());
   }
+
+  EditorTheme editor_theme;
 
   // Logo
   Shared<Texture> engine_banner = nullptr;

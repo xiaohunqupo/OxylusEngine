@@ -50,9 +50,11 @@ void draw_component(const char* name, entt::registry& reg, Entity entity, UIFunc
 
     ImGui::SetCursorPosY(ImGui::GetCursorPosY() + line_height * 0.25f);
 
+    auto& editor_theme = EditorLayer::get()->editor_theme;
+
     const size_t id = entt::type_id<T>().hash();
-    OX_ASSERT(EditorTheme::component_icon_map.contains(typeid(T).hash_code()));
-    std::string name_str = StringUtils::from_char8_t(EditorTheme::component_icon_map[typeid(T).hash_code()]);
+    OX_ASSERT(editor_theme.component_icon_map.contains(typeid(T).hash_code()));
+    std::string name_str = StringUtils::from_char8_t(editor_theme.component_icon_map[typeid(T).hash_code()]);
     name_str = name_str.append(name);
     const bool open = ImGui::TreeNodeEx(reinterpret_cast<void*>(id), TREE_FLAGS, "%s", name_str.c_str());
 
@@ -817,46 +819,43 @@ void InspectorPanel::draw_components(Entity entity) {
       }
     }
 
-    auto load_script = [](const std::string& path, LuaScriptComponent& comp) {
-      if (path.empty())
-        return;
-      const auto ext = fs::get_file_extension(path);
-      if (ext == "lua") {
-        comp.lua_systems.emplace_back(create_shared<LuaSystem>(path));
-      }
-    };
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
     const auto btn = fmt::format("{} Drop a script file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
     if (ui::button(btn.c_str(), {x, y})) {
-      std::string path = {};
       const auto& window = App::get()->get_window();
       FileDialogFilter dialog_filters[] = {{.name = "Lua file(.lua)", .pattern = "lua"}};
       window.show_dialog({
         .kind = DialogKind::OpenFile,
-        .user_data = &path,
+        .user_data = &component,
         .callback =
           [](void* user_data, const char8* const* files, int32) {
-        auto& dst_path = *static_cast<std::string*>(user_data);
+        auto* user_data_comp = static_cast<LuaScriptComponent*>(user_data);
         if (!files || !*files) {
           return;
         }
 
         const auto first_path_cstr = *files;
         const auto first_path_len = std::strlen(first_path_cstr);
-        dst_path = std::string(first_path_cstr, first_path_len);
+        const auto p_str = std::string(first_path_cstr, first_path_len);
+        if (fs::get_file_extension(p_str) == "lua") {
+          user_data_comp->lua_systems.emplace_back(create_shared<LuaSystem>(p_str));
+        }
       },
         .title = "Open lua file...",
         .default_path = fs::current_path(),
         .filters = dialog_filters,
         .multi_select = false,
       });
-      load_script(path, component);
     }
     if (ImGui::BeginDragDropTarget()) {
       if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
         const auto path = ui::get_path_from_imgui_payload(payload);
-        load_script(path, component);
+        if (path.empty())
+          return;
+        if (fs::get_file_extension(path) == "lua") {
+          component.lua_systems.emplace_back(create_shared<LuaSystem>(path));
+        }
       }
       ImGui::EndDragDropTarget();
     }

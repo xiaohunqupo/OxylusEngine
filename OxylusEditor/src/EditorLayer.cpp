@@ -47,7 +47,8 @@ EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
 void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   OX_SCOPED_ZONE;
-  EditorTheme::init();
+
+  editor_theme.init();
 
   Project::create_new();
 
@@ -336,12 +337,13 @@ void EditorLayer::open_scene_file_dialog() {
 }
 
 bool EditorLayer::open_scene(const std::filesystem::path& path) {
-  if (!exists(path)) {
+  if (!::fs::exists(path)) {
     OX_LOG_WARN("Could not find scene: {0}", path.filename().string());
     return false;
   }
   if (path.extension().string() != ".oxscene") {
-    OX_LOG_WARN("Could not load {0} - not a scene file", path.filename().string());
+    if (!::fs::is_directory(path))
+      OX_LOG_WARN("Could not load {0} - not a scene file", path.filename().string());
     return false;
   }
   const Shared<Scene> new_scene = create_shared<Scene>();
@@ -454,7 +456,7 @@ void EditorLayer::render_load_indicators() {
           ImGui::SameLine();
           auto fmt = fmt::format(" Loading asset: {}", load_indicator.name);
           ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
-          ImGui::PushFont(ImGuiLayer::bold_font);
+          ImGui::PushFont(editor_theme.bold_font);
           ImGui::TextUnformatted(fmt.c_str());
           ImGui::PopFont();
         }

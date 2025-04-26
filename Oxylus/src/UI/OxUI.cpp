@@ -252,12 +252,10 @@ bool ui::property(const char* label, Shared<Texture>& texture, const char* toolt
       ImGui::EndTooltip();
     }
   } else {
-    ImGui::PushFont(ImGuiLayer::bold_font);
     if (ImGui::Button("NO\nTEXTURE", {button_size, button_size})) {
       texture_load_func(texture);
       changed = true;
     }
-    ImGui::PopFont();
   }
   if (ImGui::BeginDragDropTarget()) {
     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {

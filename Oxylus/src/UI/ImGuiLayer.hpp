@@ -21,10 +21,6 @@ public:
   std::vector<vuk::Value<vuk::ImageAttachment>> rendering_images;
   ankerl::unordered_dense::map<uint64, ImTextureID> acquired_images;
 
-  static ImFont* bold_font;
-  static ImFont* regular_font;
-  static ImFont* small_font;
-
   inline static ImVec4 header_selected_color;
   inline static ImVec4 header_hovered_color;
   inline static ImVec4 window_bg_color;
@@ -48,6 +44,10 @@ public:
   ImTextureID add_image(vuk::Value<vuk::ImageAttachment> attachment);
   ImTextureID add_image(const Texture& texture);
 
+  ImFont* load_font(const std::string& path, ImFontConfig font_config);
+  void add_icon_font(float font_size);
+  void build_fonts();
+  
   void on_mouse_pos(glm::vec2 pos);
   void on_mouse_button(uint8 button, bool down);
   void on_mouse_scroll(glm::vec2 offset);
@@ -56,7 +56,5 @@ public:
 
   static void apply_theme(bool dark = true);
   static void set_style();
-private:
-  void add_icon_font(float font_size);
 };
 } // namespace ox

@@ -633,18 +633,21 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SetCursorPosX(cursor_pos.x + padding);
         ui::image(*_white_texture, type_color_frame_size, {0, 0}, {1, 1}, is_dir ? ImVec4(0.0f, 0.0f, 0.0f, 0.0f) : file.file_type_indicator_color);
 
+        const auto& editor_theme = EditorLayer::get()->editor_theme;
+
         const ImVec2 rect_min = ImGui::GetItemRectMin();
         const ImVec2 rect_size = ImGui::GetItemRectSize();
         const ImRect clip_rect = ImRect({rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
-                                        {rect_min.x + rect_size.x, rect_min.y + scaled_thumbnail_size_x - ImGuiLayer::regular_font->FontSize * 2.0f});
+                                        {rect_min.x + rect_size.x,
+                                         rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font->FontSize * 2.0f});
         ui::clipped_text(clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
 
         if (!is_dir) {
           constexpr auto y_pos_pad = 10.f;
           ImGui::SetCursorPos({cursor_pos.x + padding * 2.0f,
-                               cursor_pos.y + background_thumbnail_size.y - ImGuiLayer::small_font->FontSize * 2.0f + y_pos_pad});
+                               cursor_pos.y + background_thumbnail_size.y - editor_theme.small_font->FontSize * 2.0f + y_pos_pad});
           ImGui::BeginDisabled();
-          ImGui::PushFont(ImGuiLayer::small_font);
+          ImGui::PushFont(editor_theme.small_font);
           ImGui::TextUnformatted(file.file_type_string.data());
           ImGui::PopFont();
           ImGui::EndDisabled();
