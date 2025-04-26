@@ -638,8 +638,8 @@ auto json_to_entity(Scene& self,
           // [&](glm::mat4 *v) {json_to_mat(member_json.value(), *v); },
           [&](std::string* v) { *v = member_json.GetString(); },
           [&](UUID* v) {
-        // *v = UUID::from_string(member_json.GetString()).value();
-        // requested_assets.push_back(*v);
+        *v = UUID::from_string(member_json.GetString()).value();
+        requested_assets.push_back(*v);
       },
       };
 
@@ -690,12 +690,12 @@ auto Scene::load_from_file(this Scene& self,
   }
 
   OX_LOG_TRACE("Loading scene {} with {} assets...", self.scene_name, requested_assets.size());
-  // for (const auto& uuid : requested_assets) {
-  // auto* app = App::get();
-  // if (uuid && app.asset_man.get_asset(uuid)) {
-  // app.asset_man.load_asset(uuid);
-  // }
-  // }
+  for (const auto& uuid : requested_assets) {
+    // auto* app = App::get();
+    // if (uuid && app.asset_man.get_asset(uuid)) {
+      // app.asset_man.load_asset(uuid);
+    // }
+  }
 
   return true;
 }

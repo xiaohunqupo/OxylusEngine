@@ -52,6 +52,7 @@ namespace fs = std::filesystem;
 #include "Core/Types.hpp"
 #include "Core/Base.hpp"
 #include "Core/Enum.hpp"
+#include "Core/Option.hpp"
 
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
