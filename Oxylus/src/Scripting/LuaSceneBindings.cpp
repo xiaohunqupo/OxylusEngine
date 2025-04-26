@@ -24,7 +24,7 @@ template <typename T>
     default:;
   }
   OX_ASSERT(false, "probably not registered the component");
-  return -1;
+  return 0u;
 }
 
 auto collect_types(const sol::variadic_args& va) {

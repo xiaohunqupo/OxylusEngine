@@ -1742,7 +1742,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::bloom_pass(vuk::Value<vu
       .bind_sampler(0, 0, vuk::NearestMagLinearMinSamplerClamped)
       .bind_image(0, 1, input)
       .bind_sampler(0, 1, vuk::NearestMagLinearMinSamplerClamped)
-      .dispatch((extent.y + 8 - 1) / 8, (extent.y + 8 - 1) / 8, 1);
+      .dispatch(static_cast<usize>(extent.y + 8 - 1) / 8, static_cast<usize>(extent.y + 8 - 1) / 8, 1);
     return target;
   });
 
@@ -1855,7 +1855,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
       .bind_image(0, 5, depth_mip3)
       .bind_image(0, 6, depth_mip4)
       .bind_sampler(0, 7, vuk::NearestSamplerClamped)
-      .dispatch((extent.x + 16 - 1) / 16, (extent.y + 16 - 1) / 16);
+      .dispatch(static_cast<usize>(extent.x + 16 - 1) / 16, static_cast<usize>(extent.y + 16 - 1) / 16);
   });
 
   gtao_depth_pass(depth_input, mip0, mip1, mip2, mip3, mip4);
@@ -1874,7 +1874,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
       .bind_image(0, 3, main_image)
       .bind_image(0, 4, edge_image)
       .bind_sampler(0, 5, vuk::NearestSamplerClamped)
-      .dispatch((extent.x + 8 - 1) / 8, (extent.y + 8 - 1) / 8);
+      .dispatch(static_cast<usize>(extent.x + 8 - 1) / 8, static_cast<usize>(extent.y + 8 - 1) / 8);
 
     return std::make_tuple(main_image, edge_image);
   });
@@ -1913,8 +1913,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
         .bind_image(0, 2, edge_image)
         .bind_image(0, 3, output)
         .bind_sampler(0, 4, vuk::NearestSamplerClamped)
-        .dispatch((extent.x + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
-                  (extent.y + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
+        .dispatch(static_cast<usize>(extent.x + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
+                  static_cast<usize>(extent.y + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
                   1);
 
       return output;
@@ -1947,8 +1947,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::gtao_pass(vuk::Allocator
       .bind_image(0, 2, edge_input)
       .bind_image(0, 3, final_image)
       .bind_sampler(0, 4, vuk::NearestSamplerClamped)
-      .dispatch((extent.x + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
-                (extent.y + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
+      .dispatch(static_cast<usize>(extent.x + XE_GTAO_NUMTHREADS_X * 2 - 1) / (XE_GTAO_NUMTHREADS_X * 2),
+                static_cast<usize>(extent.y + XE_GTAO_NUMTHREADS_Y - 1) / XE_GTAO_NUMTHREADS_Y,
                 1);
     return final_image;
   });

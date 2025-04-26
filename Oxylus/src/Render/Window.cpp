@@ -100,7 +100,7 @@ Window Window::create(const WindowInfo& info) {
   };
 
   void* image_data = nullptr;
-  int width, height, channels;
+  int width = {}, height = {}, channels = {};
   if (info.icon.data != nullptr && info.icon.data_length > 0) {
     image_data = stbi_load_from_memory(info.icon.data, static_cast<int>(info.icon.data_length), &width, &height, &channels, 4);
   } else if (!info.icon.path.empty()) {

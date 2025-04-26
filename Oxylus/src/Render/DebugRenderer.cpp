@@ -180,7 +180,6 @@ void DebugRenderer::draw_cone(int num_circle_verts,
   float endAngle = glm::tan(angle * 0.5f) * length;
   glm::vec3 forward = -(rotation * glm::vec3(0.0f, 0.0f, -1.0f));
   glm::vec3 endPosition = position + forward * length;
-  float offset = 0.0f;
   draw_circle(num_circle_verts, endAngle, endPosition, rotation, color, depth_tested);
 
   for (int i = 0; i < num_lines_to_circle; i++) {

@@ -130,7 +130,7 @@ inline vuk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(cons
   vuk::DescriptorSetLayoutCreateInfo ci = {};
   ci.bindings = bindings;
   ci.index = index;
-  for (const auto& _ : bindings)
+  for ([[maybe_unused]]const auto& _ : bindings)
     ci.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
   return ci;
 }

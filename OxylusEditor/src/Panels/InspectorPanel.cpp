@@ -918,7 +918,7 @@ void InspectorPanel::draw_components(Entity entity) {
     if (ui::combo(lbl.c_str(),
                   &current_system_selection,
                   system_names.data(),
-                  system_names.size(),
+                  static_cast<int32>(system_names.size()),
                   std::to_string(system_hashes[current_system_selection]).c_str())) {
       if (auto system = system_manager->get_system(system_hashes[current_system_selection]))
         component.systems.emplace_back(system);

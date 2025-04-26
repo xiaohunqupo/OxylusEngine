@@ -76,10 +76,10 @@ struct SlangVirtualFS : ISlangFileSystem {
   SLANG_NO_THROW void* SLANG_MCALL castAs(const SlangUUID&) final { return nullptr; }
 
   SLANG_NO_THROW SlangResult SLANG_MCALL loadFile(const char* path_cstr, ISlangBlob** outBlob) final {
-    auto path = std::string(path_cstr);
+    const auto path = std::string(path_cstr);
 
-    auto root_path = std::filesystem::relative(_root_dir);
-    auto module_path = root_path / path;
+    const auto root_path = std::filesystem::relative(_root_dir);
+    const auto module_path = root_path / path;
 
     const auto result = fs::read_file(module_path.string());
     if (!result.empty()) {
@@ -133,7 +133,7 @@ auto SlangModule::get_entry_point(std::string_view name) -> option<SlangEntryPoi
   Slang::ComPtr<slang::IComponentType> composed_program;
   {
     Slang::ComPtr<slang::IBlob> diagnostics_blob;
-    auto result = impl->session->session->createCompositeComponentType(component_types.data(),
+    const auto result = impl->session->session->createCompositeComponentType(component_types.data(),
                                                                        uint32(component_types.size()),
                                                                        composed_program.writeRef(),
                                                                        diagnostics_blob.writeRef());
@@ -159,7 +159,7 @@ auto SlangModule::get_entry_point(std::string_view name) -> option<SlangEntryPoi
   Slang::ComPtr<slang::IBlob> spirv_code;
   {
     Slang::ComPtr<slang::IBlob> diagnostics_blob;
-    auto result = linked_program->getEntryPointCode(0, 0, spirv_code.writeRef(), diagnostics_blob.writeRef());
+    const auto result = linked_program->getEntryPointCode(0, 0, spirv_code.writeRef(), diagnostics_blob.writeRef());
     if (diagnostics_blob) {
       OX_LOG_INFO("{}", (const char*)diagnostics_blob->getBufferPointer());
     }
@@ -185,7 +185,7 @@ ShaderReflection SlangModule::get_reflection() {
   slang::ShaderReflection* program_layout = impl->slang_module->getLayout();
   option<uint32> compute_entry_point_index = nullopt;
 
-  uint32 entry_point_count = program_layout->getEntryPointCount();
+  const uint64_t entry_point_count = program_layout->getEntryPointCount();
   for (uint32 i = 0; i < entry_point_count; i++) {
     auto* entry_point = program_layout->getEntryPointByIndex(i);
     if (entry_point->getStage() == SLANG_STAGE_COMPUTE) {
@@ -195,23 +195,23 @@ ShaderReflection SlangModule::get_reflection() {
   }
 
   // Get push constants
-  uint32 param_count = program_layout->getParameterCount();
+  const uint32 param_count = program_layout->getParameterCount();
   for (uint32 i = 0; i < param_count; i++) {
     auto* param = program_layout->getParameterByIndex(i);
     auto* type_layout = param->getTypeLayout();
     auto* element_type_layout = type_layout->getElementTypeLayout();
-    auto param_category = param->getCategory();
+    const auto param_category = param->getCategory();
 
     if (param_category == slang::ParameterCategory::PushConstantBuffer) {
       usize push_constant_size = 0;
-      auto field_count = element_type_layout->getFieldCount();
+      const auto field_count = element_type_layout->getFieldCount();
       for (uint32 f = 0; f < field_count; f++) {
         auto* field_param = element_type_layout->getFieldByIndex(f);
         auto* field_type_layout = field_param->getTypeLayout();
         push_constant_size += field_type_layout->getSize();
       }
 
-      result.pipeline_layout_index = (push_constant_size / sizeof(uint32));
+      result.pipeline_layout_index = static_cast<uint32>(push_constant_size / sizeof(uint32));
       break;
     }
   }
@@ -252,7 +252,7 @@ auto SlangSession::load_module(const SlangModuleInfo& info) -> option<SlangModul
     OX_LOG_INFO("{}", (const char*)diagnostics_blob->getBufferPointer());
   }
 
-  auto module_impl = new SlangModule::Impl;
+  const auto module_impl = new SlangModule::Impl;
   module_impl->slang_module = slang_module;
   module_impl->session = impl;
 
@@ -262,7 +262,7 @@ auto SlangSession::load_module(const SlangModuleInfo& info) -> option<SlangModul
 auto SlangCompiler::create() -> option<SlangCompiler> {
   OX_SCOPED_ZONE;
 
-  auto impl = new Impl;
+  const auto impl = new Impl;
   slang::createGlobalSession(impl->global_session.writeRef());
   return SlangCompiler(impl);
 }
@@ -310,7 +310,7 @@ auto SlangCompiler::new_session(const SlangSessionInfo& info) -> option<SlangSes
   const auto search_path = info.root_directory;
   const auto* search_path_cstr = search_path.c_str();
   const char8* search_paths[] = {search_path_cstr};
-  slang::SessionDesc session_desc = {
+  const slang::SessionDesc session_desc = {
     .targets = &target_desc,
     .targetCount = 1,
     .defaultMatrixLayoutMode = SLANG_MATRIX_LAYOUT_COLUMN_MAJOR,
@@ -326,7 +326,7 @@ auto SlangCompiler::new_session(const SlangSessionInfo& info) -> option<SlangSes
     return nullopt;
   }
 
-  auto session_impl = new SlangSession::Impl;
+  const auto session_impl = new SlangSession::Impl;
   session_impl->shader_virtual_env = std::move(slang_fs);
   session_impl->session = std::move(session);
 

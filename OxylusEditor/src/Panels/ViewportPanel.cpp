@@ -328,7 +328,7 @@ void ViewportPanel::on_update() {
 
     editor_camera.yaw = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x;
     editor_camera.pitch = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y;
-    editor_camera.zoom = EditorCVar::cvar_camera_zoom.get();
+    editor_camera.zoom = static_cast<float>(EditorCVar::cvar_camera_zoom.get());
 
     auto screen_extent = App::get()->get_swapchain_extent();
     Camera::update(editor_camera, screen_extent);

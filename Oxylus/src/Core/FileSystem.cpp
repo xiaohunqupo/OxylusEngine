@@ -51,9 +51,6 @@ std::string fs::append_paths(const std::string_view path, const std::string_view
 
 std::string fs::preferred_path(const std::string_view path) {
   return std::filesystem::path(path).make_preferred().generic_string();
-  std::string new_path(path);
-  StringUtils::replace_string(new_path, "\\", "/");
-  return new_path;
 }
 
 void fs::open_folder_select_file(const std::string_view path) {

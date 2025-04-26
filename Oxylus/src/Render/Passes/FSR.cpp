@@ -291,8 +291,8 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
   fsr2_constants.preExposure = preExposure != 0 ? preExposure : 1.0f;
 
   // motion vector data
-  const bool enable_display_resolution_motion_vectors = false;
-  const int32_t* motionVectorsTargetSize = enable_display_resolution_motion_vectors ? fsr2_constants.displaySize : fsr2_constants.renderSize;
+  // const bool enable_display_resolution_motion_vectors = false;
+  // const int32_t* motionVectorsTargetSize = enable_display_resolution_motion_vectors ? fsr2_constants.displaySize : fsr2_constants.renderSize;
 
   fsr2_constants.motionVectorScale[0] = 1;
   fsr2_constants.motionVectorScale[1] = 1;

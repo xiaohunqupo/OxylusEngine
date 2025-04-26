@@ -87,7 +87,7 @@ void SPD::init(vuk::Allocator& allocator, Config config) {
     pci.explicit_set_layouts.emplace_back(layout_create_info);
   }
 
-  const auto shader_path = config.load == SPDLoad::LinearSampler ? "FFX/SPD/SPDLinear.hlsl" : "FFX/SPD/SPD.hlsl";
+  // const auto shader_path = config.load == SPDLoad::LinearSampler ? "FFX/SPD/SPDLinear.hlsl" : "FFX/SPD/SPD.hlsl";
   if (config.load == SPDLoad::LinearSampler) {
     if (config.sampler.minFilter == vuk::Filter::eNearest) {
       pci.define("POINT_SAMPLER", "");
