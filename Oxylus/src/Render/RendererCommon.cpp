@@ -12,6 +12,7 @@
 #include "Utils/OxMath.hpp"
 
 #include "Utils/VukCommon.hpp"
+#include "Vulkan/VkContext.hpp"
 
 namespace ox {
 RendererCommon::MeshLib RendererCommon::mesh_lib = {};

@@ -5,6 +5,7 @@
 #include "Core/App.hpp"
 
 #include "Utils/OxMath.hpp"
+#include "Vulkan/VkContext.hpp"
 
 namespace ox {
 DebugRenderer* DebugRenderer::instance = nullptr;

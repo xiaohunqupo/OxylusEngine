@@ -69,3 +69,4 @@ CMakeLists.txt
 .xmake
 compile_commands.json
 .run
+/vsxmake2022

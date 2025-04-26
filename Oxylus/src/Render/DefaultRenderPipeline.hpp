@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include <vuk/Value.hpp>
-
 #include "Frustum.hpp"
 #include "Passes/FSR.hpp"
 #include "RenderPipeline.hpp"
@@ -11,6 +9,9 @@
 #include "Passes/SPD.hpp"
 #include "Scene/Components.hpp"
 #include "Utils/OxMath.hpp"
+
+#include <vuk/RenderGraph.hpp>
+#include <vuk/Value.hpp>
 
 namespace ox {
 struct SkyboxLoadEvent;
@@ -515,7 +516,10 @@ private:
   void clear();
   void bind_camera_buffer(vuk::CommandBuffer& command_buffer);
   CameraData get_main_camera_data(bool use_frozen_camera = false);
-  void create_dir_light_cameras(const LightComponent& light, const CameraComponent& camera, std::vector<CameraSH>& camera_data, uint32_t cascade_count);
+  void create_dir_light_cameras(const LightComponent& light,
+                                const CameraComponent& camera,
+                                std::vector<CameraSH>& camera_data,
+                                uint32_t cascade_count);
   void create_cubemap_cameras(std::vector<CameraSH>& camera_data, glm::vec3 pos = {}, float near = 0.1f, float far = 90.0f);
   void update_frame_data(vuk::Allocator& allocator);
   void create_static_resources();

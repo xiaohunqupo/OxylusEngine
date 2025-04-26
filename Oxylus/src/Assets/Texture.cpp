@@ -12,6 +12,7 @@
 #include "Core/FileSystem.hpp"
 #include "Render/RendererCommon.hpp"
 #include "Render/Utils/VukCommon.hpp"
+#include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
 static vuk::Compiler _compiler;

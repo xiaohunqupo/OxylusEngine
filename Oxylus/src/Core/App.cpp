@@ -5,31 +5,25 @@
 #include <vuk/vsl/Core.hpp>
 
 #include "Assets/AssetManager.hpp"
+#include "Audio/AudioEngine.hpp"
 #include "Core/Input.hpp"
 #include "FileSystem.hpp"
 #include "Layer.hpp"
 #include "LayerStack.hpp"
+#include "Modules/ModuleRegistry.hpp"
 #include "Physics/Physics.hpp"
 #include "Project.hpp"
-#include "VFS.hpp"
-
-#include "Audio/AudioEngine.hpp"
-
-#include "Modules/ModuleRegistry.hpp"
-
 #include "Render/RendererConfig.hpp"
+#include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
-
 #include "Scripting/LuaManager.hpp"
-
 #include "Systems/SystemManager.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Thread/ThreadManager.hpp"
-
 #include "UI/ImGuiLayer.hpp"
-
 #include "Utils/Profiler.hpp"
 #include "Utils/Random.hpp"
+#include "VFS.hpp"
 
 namespace ox {
 App* App::_instance = nullptr;
@@ -76,8 +70,10 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   Input::set_instance();
   Physics::set_instance();
 
+  vk_context = create_shared<VkContext>();
+
   const bool enable_validation = app_spec.command_line_args.contains("vulkan-validation");
-  vk_context.create_context(window, enable_validation);
+  vk_context->create_context(window, enable_validation);
 
   DebugRenderer::init();
 
@@ -118,7 +114,7 @@ void App::run() {
   window_callbacks.user_data = this;
   window_callbacks.on_resize = [](void* user_data, const glm::uvec2 size) {
     const auto app = static_cast<App*>(user_data);
-    app->vk_context.handle_resize(size.x, size.y);
+    app->vk_context->handle_resize(size.x, size.y);
   };
   window_callbacks.on_close = [](void* user_data) {
     const auto app = static_cast<App*>(user_data);
@@ -183,7 +179,7 @@ void App::run() {
 
     window.poll(window_callbacks);
 
-    auto swapchain_attachment = vk_context.new_frame();
+    auto swapchain_attachment = vk_context->new_frame();
     swapchain_attachment = vuk::clear_image(std::move(swapchain_attachment), vuk::Black<float32>);
 
     const auto extent = swapchain_attachment->extent;
@@ -201,11 +197,11 @@ void App::run() {
       system->on_render(extent, swapchain_attachment->format);
     }
 
-    auto& frame_allocator = vk_context.get_frame_allocator();
+    auto& frame_allocator = vk_context->get_frame_allocator();
 
     swapchain_attachment = imgui_layer->end_frame(frame_allocator.value(), std::move(swapchain_attachment));
 
-    vk_context.end_frame(frame_allocator.value(), swapchain_attachment);
+    vk_context->end_frame(frame_allocator.value(), swapchain_attachment);
 
     input_sys->reset_pressed();
   }

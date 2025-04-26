@@ -1,7 +1,10 @@
 #include "Slang.hpp"
 
+#include <vuk/runtime/vk/Pipeline.hpp>
+
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
+#include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
 void Slang::create_session(this Slang& self, const SessionInfo& session_info) {

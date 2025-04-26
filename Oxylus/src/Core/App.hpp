@@ -3,7 +3,6 @@
 #include "ESystem.hpp"
 #include "Render/Window.hpp"
 
-#include "Render/Vulkan/VkContext.hpp"
 #include "Utils/Timestep.hpp"
 
 int main(int argc, char** argv);
@@ -13,6 +12,7 @@ class Layer;
 class LayerStack;
 class ImGuiLayer;
 class ThreadManager;
+class VkContext;
 
 struct AppCommandLineArgs {
   struct Arg {
@@ -102,7 +102,7 @@ public:
   const Shared<LayerStack>& get_layer_stack() const { return layer_stack; }
 
   const Window& get_window() const { return window; }
-  static VkContext& get_vkcontext() { return _instance->vk_context; }
+  static VkContext& get_vkcontext() { return *_instance->vk_context; }
   glm::vec2 get_swapchain_extent() const;
 
   static const Timestep& get_timestep() { return _instance->timestep; }
@@ -143,18 +143,18 @@ public:
 
 private:
   static App* _instance;
-  AppSpec app_spec;
-  ImGuiLayer* imgui_layer;
-  Shared<LayerStack> layer_stack;
-  VkContext vk_context;
-  Window window;
+  AppSpec app_spec = {};
+  ImGuiLayer* imgui_layer = nullptr;
+  Shared<LayerStack> layer_stack = nullptr;
+  Shared<VkContext> vk_context = nullptr;
+  Window window = {};
   glm::vec2 swapchain_extent = {};
 
   SystemRegistry system_registry = {};
   EventDispatcher dispatcher;
 
-  Shared<ThreadManager> thread_manager;
-  Timestep timestep;
+  Shared<ThreadManager> thread_manager = nullptr;
+  Timestep timestep = {};
 
   bool is_running = true;
   float last_frame_time = 0.0f;

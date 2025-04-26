@@ -2,17 +2,19 @@
 
 #include <sol/sol.hpp>
 
-#include "LuaApplicationBindings.hpp"
-#include "LuaAssetManagerBindings.hpp"
-#include "LuaAudioBindings.hpp"
-#include "LuaComponentBindings.hpp"
-#include "LuaDebugBindings.hpp"
-#include "LuaInputBindings.hpp"
-#include "LuaMathBindings.hpp"
-#include "LuaPhysicsBindings.hpp"
-#include "LuaRendererBindings.hpp"
-#include "LuaSceneBindings.hpp"
-#include "LuaUIBindings.hpp"
+#ifdef OX_LUA_BINDINGS
+  #include "LuaApplicationBindings.hpp"
+  #include "LuaAssetManagerBindings.hpp"
+  #include "LuaAudioBindings.hpp"
+  #include "LuaComponentBindings.hpp"
+  #include "LuaDebugBindings.hpp"
+  #include "LuaInputBindings.hpp"
+  #include "LuaMathBindings.hpp"
+  #include "LuaPhysicsBindings.hpp"
+  #include "LuaRendererBindings.hpp"
+  #include "LuaSceneBindings.hpp"
+  #include "LuaUIBindings.hpp"
+#endif
 
 namespace ox {
 void LuaManager::init() {
@@ -20,6 +22,7 @@ void LuaManager::init() {
   m_state = create_shared<sol::state>();
   m_state->open_libraries(sol::lib::base, sol::lib::package, sol::lib::math, sol::lib::table, sol::lib::os, sol::lib::string);
 
+#ifdef OX_LUA_BINDINGS
   bind_log();
   LuaBindings::bind_application(m_state);
   LuaBindings::bind_math(m_state);
@@ -32,6 +35,7 @@ void LuaManager::init() {
   LuaBindings::bind_audio(m_state);
   LuaBindings::bind_physics(m_state);
   LuaBindings::bind_ui(m_state);
+#endif
 }
 
 void LuaManager::deinit() {
@@ -39,13 +43,12 @@ void LuaManager::deinit() {
   m_state.reset();
 }
 
-#define SET_LOG_FUNCTIONS(table, name, log_func) \
-  table.set_function(name, sol::overload([](const std::string_view message) { log_func("{}", message);}, \
-                                         [](const glm::vec4& vec4) { log_func("x: {} y: {} z: {} w: {}", vec4.x, vec4.y, vec4.z, vec4.w); }, \
-                                         [](const glm::vec3& vec3) { log_func("x: {} y: {} z: {}", vec3.x, vec3.y, vec3.z); }, \
-                                         [](const glm::vec2& vec2) { log_func("x: {} y: {}", vec2.x, vec2.y); }, \
-                                         [](const glm::uvec2& vec2) { log_func("x: {} y: {}", vec2.x, vec2.y); } \
-));
+#define SET_LOG_FUNCTIONS(table, name, log_func)                                                                                      \
+  table.set_function(name, sol::overload([](const std::string_view message) { log_func("{}", message); }, [](const glm::vec4& vec4) { \
+    log_func("x: {} y: {} z: {} w: {}", vec4.x, vec4.y, vec4.z, vec4.w);                                                              \
+  }, [](const glm::vec3& vec3) { log_func("x: {} y: {} z: {}", vec3.x, vec3.y, vec3.z); }, [](const glm::vec2& vec2) {                \
+    log_func("x: {} y: {}", vec2.x, vec2.y);                                                                                          \
+  }, [](const glm::uvec2& vec2) { log_func("x: {} y: {}", vec2.x, vec2.y); }));
 
 void LuaManager::bind_log() const {
   OX_SCOPED_ZONE;
@@ -55,4 +58,4 @@ void LuaManager::bind_log() const {
   SET_LOG_FUNCTIONS(log, "warn", OX_LOG_WARN)
   SET_LOG_FUNCTIONS(log, "error", OX_LOG_ERROR)
 }
-}
+} // namespace ox

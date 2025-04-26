@@ -1,3 +1,8 @@
+option("lua_bindings")
+    set_default(true)
+    set_showmenu(true)
+    set_description("Enable Lua bindings")
+
 target("Oxylus")
     set_kind("static")
     set_languages("cxx23")
@@ -8,6 +13,12 @@ target("Oxylus")
     add_files("./src/**.cpp")
     add_forceincludes("pch.hpp", { public = true, force = true })
     set_pcheader("./src/pch.hpp", { public = true, force = true })
+
+    if not has_config("lua_bindings") then
+        remove_files("./src/Scripting/*Bindings*")
+	else
+		add_defines("OX_LUA_BINDINGS")
+    end
 
     if is_plat("windows") then
         add_defines("_UNICODE", { force = true, public = true  })
