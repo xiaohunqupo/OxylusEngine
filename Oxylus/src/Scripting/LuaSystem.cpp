@@ -1,12 +1,12 @@
 ﻿#include "LuaSystem.hpp"
 
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
 #include <sol/state.hpp>
 
-#include "LuaManager.hpp"
-
 #include "Core/App.hpp"
-
-#include "Scene/Entity.hpp"
+#include "LuaManager.hpp"
 #include "Scene/Scene.hpp"
 
 namespace ox {
@@ -15,7 +15,7 @@ LuaSystem::LuaSystem(std::string path) : file_path(std::move(path)) { init_scrip
 void LuaSystem::check_result(const sol::protected_function_result& result, const char* func_name) {
   if (!result.valid()) {
     const sol::error err = result;
-    OX_LOG_ERROR("Error: {0}", err.what());
+    OX_LOG_ERROR("Error in {0}: {1}", func_name, err.what());
   }
 }
 
@@ -59,6 +59,10 @@ void LuaSystem::init_script(const std::string& path) {
   if (!on_update_func->valid())
     on_update_func.reset();
 
+  on_fixed_update_func = create_unique<sol::protected_function>((*environment)["on_fixed_update"]);
+  if (!on_fixed_update_func->valid())
+    on_fixed_update_func.reset();
+
   on_render_func = create_unique<sol::protected_function>((*environment)["on_render"]);
   if (!on_render_func->valid())
     on_render_func.reset();
@@ -67,15 +71,21 @@ void LuaSystem::init_script(const std::string& path) {
   if (!on_release_func->valid())
     on_release_func.reset();
 
+  on_contact_added_func = create_unique<sol::protected_function>((*environment)["on_contact_added"]);
+  if (!on_contact_added_func->valid())
+    on_contact_added_func.reset();
+
+  on_contact_persisted_func = create_unique<sol::protected_function>((*environment)["on_contact_persisted"]);
+  if (!on_contact_persisted_func->valid())
+    on_contact_persisted_func.reset();
+
   state->collect_gc();
 }
 
-void LuaSystem::on_init(Scene* scene, entt::entity entity) {
+void LuaSystem::on_init(Scene* scene, flecs::entity entity) {
   OX_SCOPED_ZONE;
   if (on_init_func) {
-    (*environment)["scene"] = scene;
-    (*environment)["owner"] = std::ref(scene->registry);
-    (*environment)["this"] = entity;
+    bind_globals(scene, entity, App::get_timestep());
     const auto result = on_init_func->call();
     check_result(result, "on_init");
   }
@@ -89,13 +99,19 @@ void LuaSystem::on_update(const Timestep& delta_time) {
   }
 }
 
-void LuaSystem::on_release(Scene* scene, entt::entity entity) {
+void LuaSystem::on_fixed_update(float delta_time) {
+  OX_SCOPED_ZONE;
+  if (on_fixed_update_func) {
+    const auto result = on_fixed_update_func->call(delta_time);
+    check_result(result, "on_fixed_update");
+  }
+}
+
+void LuaSystem::on_release(Scene* scene, flecs::entity entity) {
   OX_SCOPED_ZONE;
   if (on_release_func) {
     const auto result = on_release_func->call();
-    (*environment)["scene"] = scene;
-    (*environment)["owner"] = std::ref(scene->registry);
-    (*environment)["this"] = entity;
+    bind_globals(scene, entity, App::get_timestep());
     check_result(result, "on_release");
   }
 
@@ -107,6 +123,32 @@ void LuaSystem::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (on_render_func) {
     const auto result = on_render_func->call(extent, format);
     check_result(result, "on_render");
+  }
+}
+
+auto LuaSystem::on_contact_added(Scene* scene,
+                                 flecs::entity e,
+                                 const JPH::Body& body1,
+                                 const JPH::Body& body2,
+                                 const JPH::ContactManifold& manifold,
+                                 const JPH::ContactSettings& settings) -> void {
+  OX_SCOPED_ZONE;
+  if (on_contact_added_func) {
+    const auto result = on_contact_added_func->call(scene, e, std::ref(body1), std::ref(body2), manifold, settings);
+    check_result(result, "on_contact_added");
+  }
+}
+
+auto LuaSystem::on_contact_persisted(Scene* scene,
+                                     flecs::entity e,
+                                     const JPH::Body& body1,
+                                     const JPH::Body& body2,
+                                     const JPH::ContactManifold& manifold,
+                                     const JPH::ContactSettings& settings) -> void {
+  OX_SCOPED_ZONE;
+  if (on_contact_persisted_func) {
+    const auto result = on_contact_persisted_func->call(scene, e, std::ref(body1), std::ref(body2), manifold, settings);
+    check_result(result, "on_contact_persisted");
   }
 }
 
@@ -128,9 +170,9 @@ void LuaSystem::reload() {
   init_script(file_path);
 }
 
-void LuaSystem::bind_globals(Scene* scene, entt::entity entity, const Timestep& timestep) {
+void LuaSystem::bind_globals(Scene* scene, flecs::entity entity, const Timestep& timestep) const {
   (*environment)["scene"] = scene;
-  (*environment)["owner"] = std::ref(scene->registry);
+  (*environment)["world"] = std::ref(scene->world);
   (*environment)["this"] = entity;
   (*environment)["current_time"] = timestep.get_elapsed_seconds();
 }

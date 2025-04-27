@@ -1,41 +1,33 @@
 #include "EditorLayer.hpp"
 
 #include <filesystem>
-
 #include <imgui_internal.h>
 // #include <imspinner.h>
 #include <ranges>
-
-#include "EditorTheme.hpp"
 
 #include "Assets/AssetManager.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
 #include "Core/Project.hpp"
+#include "EditorTheme.hpp"
 #include "Panels/AssetInspectorPanel.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/EditorSettingsPanel.hpp"
 #include "Panels/InspectorPanel.hpp"
 #include "Panels/ProjectPanel.hpp"
-#include "Panels/RenderGraphPanel.hpp"
 #include "Panels/RendererSettingsPanel.hpp"
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
-
 #include "Scene/SceneRenderer.hpp"
-
+#include "Scene/SceneSerializer.hpp"
+#include "Thread/ThreadManager.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
-#include "Utils/EditorConfig.hpp"
-#include "Utils/ImGuiScoped.hpp"
-
-#include "Scene/SceneSerializer.hpp"
-
-#include "Thread/ThreadManager.hpp"
-
 #include "Utils/CVars.hpp"
+#include "Utils/EditorConfig.hpp"
 #include "Utils/EmbeddedBanner.hpp"
+#include "Utils/ImGuiScoped.hpp"
 #include "Utils/Log.hpp"
 
 namespace ox {
@@ -45,7 +37,7 @@ static ViewportPanel* fullscreen_viewport_panel = nullptr;
 
 EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
-void EditorLayer::on_attach(EventDispatcher& dispatcher) {
+void EditorLayer::on_attach() {
   OX_SCOPED_ZONE;
 
   editor_theme.init();
@@ -65,7 +57,6 @@ void EditorLayer::on_attach(EventDispatcher& dispatcher) {
   add_panel<RendererSettingsPanel>();
   add_panel<ProjectPanel>();
   add_panel<StatisticsPanel>();
-  add_panel<RenderGraphPanel>();
 
   const auto& viewport = viewport_panels.emplace_back(create_unique<ViewportPanel>());
   viewport->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
@@ -133,8 +124,6 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
     ImGui::ShowDemoWindow();
 
   editor_shortcuts();
-
-  render_load_indicators();
 
   constexpr ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
 
@@ -211,9 +200,6 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
           ImGui::MenuItem("Console window", nullptr, &runtime_console.visible);
           ImGui::MenuItem("Performance Overlay", nullptr, &viewport_panels[0]->performance_overlay_visible);
           ImGui::MenuItem("Statistics", nullptr, &get_panel<StatisticsPanel>()->visible);
-          if (ImGui::MenuItem("RenderGraph Panel", nullptr, &get_panel<RenderGraphPanel>()->visible)) {
-            get_panel<RenderGraphPanel>()->set_context(editor_scene);
-          }
           if (ImGui::BeginMenu("Layout")) {
             if (ImGui::MenuItem("Classic")) {
               set_docking_layout(EditorLayout::Classic);
@@ -293,10 +279,10 @@ void EditorLayer::editor_shortcuts() {
 
   if (Input::get_key_pressed(KeyCode::F)) {
     const auto entity = get_selected_entity();
-    if (entity != entt::null) {
-      const auto tc = editor_scene->get_registry().get<TransformComponent>(entity);
+    if (entity != flecs::entity::null()) {
+      const auto tc = entity.get<TransformComponent>();
       auto& camera = viewport_panels[0]->editor_camera;
-      auto final_pos = tc.position + camera.forward;
+      auto final_pos = tc->position + camera.forward;
       final_pos += -5.0f * camera.forward * glm::vec3(1.0f);
       camera.position = final_pos;
     }
@@ -359,12 +345,11 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
 void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   OX_SCOPED_ZONE;
   const auto sun = scene->create_entity("Sun");
-  scene->registry.emplace<LightComponent>(sun).type = LightComponent::LightType::Directional;
-  scene->registry.get<LightComponent>(sun).intensity = 10.0f;
-  scene->registry.get<TransformComponent>(sun).rotation.x = glm::radians(25.f);
+  sun.get_mut<TransformComponent>()->rotation.x = glm::radians(25.f);
+  sun.set<LightComponent>({.type = LightComponent::LightType::Directional, .intensity = 10.f});
 }
 
-void EditorLayer::clear_selected_entity() { get_panel<SceneHierarchyPanel>()->clear_selection_context(); }
+void EditorLayer::clear_selected_entity() { get_panel<SceneHierarchyPanel>()->clear_selected_entity(); }
 
 void EditorLayer::save_scene() {
   if (!last_save_scene_path.empty()) {
@@ -418,7 +403,7 @@ void EditorLayer::on_scene_stop() {
   active_scene = nullptr;
   set_editor_context(editor_scene);
   // initalize the renderer again manually since this scene was already alive...
-  editor_scene->get_renderer()->init(editor_scene->dispatcher);
+  editor_scene->get_renderer()->init();
 }
 
 void EditorLayer::on_scene_simulate() {
@@ -428,59 +413,14 @@ void EditorLayer::on_scene_simulate() {
   set_editor_context(active_scene);
 }
 
-void EditorLayer::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) { mesh_load_indicators.emplace_back(event); }
-
-void EditorLayer::render_load_indicators() {
-  OX_SCOPED_ZONE;
-  if (mesh_load_indicators.empty())
-    return;
-
-  constexpr auto win_flags = ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoScrollbar |
-                             ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_AlwaysAutoResize |
-                             ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoInputs |
-                             ImGuiWindowFlags_NoBackground;
-
-  const auto pos = ImVec2{ImGui::GetMainViewport()->Size.x - 200.0f, ImGui::GetMainViewport()->Size.y - 100.0f};
-  ImGui::SetNextWindowPos(pos, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-  if (ImGui::Begin("indicator_window", nullptr, win_flags)) {
-    if (ImGui::BeginTable("indicator_table", 1, ImGuiTableFlags_Borders | ImGuiTableFlags_RowBg)) {
-      for (auto& load_indicator : mesh_load_indicators) {
-        ImGui::TableNextRow();
-
-        const ImU32 row_bg_color = ImGui::GetColorU32(ImVec4(0.5f, 0.5f, 0.5f, 0.10f));
-        ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, row_bg_color);
-
-        for (int column = 0; column < 1; column++) {
-          ImGui::TableSetColumnIndex(column);
-          // ImSpinner::SpinnerFadeDots("##", 16.0f, 6.0f, ImVec4(1, 1, 1, 1), 8.0f, 8);
-          ImGui::SameLine();
-          auto fmt = fmt::format(" Loading asset: {}", load_indicator.name);
-          ImGui::SetCursorPosY(ImGui::GetCursorPosY() + 8.0f);
-          ImGui::PushFont(editor_theme.bold_font);
-          ImGui::TextUnformatted(fmt.c_str());
-          ImGui::PopFont();
-        }
-      }
-      ImGui::EndTable();
-    }
-
-    ImGui::End();
-  }
-
-  std::erase_if(mesh_load_indicators, [](const FutureMeshLoadEvent& e) { return e.task->GetIsComplete(); });
-}
-
 Shared<Scene> EditorLayer::get_active_scene() { return active_scene; }
 
 void EditorLayer::set_editor_context(const Shared<Scene>& scene) {
   auto* shpanel = get_panel<SceneHierarchyPanel>();
-  shpanel->clear_selection_context();
-  shpanel->set_context(scene);
+  shpanel->set_scene(scene);
   for (const auto& panel : viewport_panels) {
     panel->set_context(scene, *shpanel);
   }
-
-  scene->dispatcher.sink<FutureMeshLoadEvent>().connect<&EditorLayer::handle_future_mesh_load_event>(*this);
 }
 
 void EditorLayer::set_scene_state(const SceneState state) { scene_state = state; }

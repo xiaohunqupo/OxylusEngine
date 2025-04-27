@@ -30,7 +30,6 @@ public:
   void on_update(Scene* scene) override;
   void on_submit() override;
 
-  void on_dispatcher_events(EventDispatcher& dispatcher) override;
   void submit_mesh_component(const MeshComponent& render_object) override;
   void submit_light(const LightComponent& light) override;
   void submit_camera(const CameraComponent& camera) override;

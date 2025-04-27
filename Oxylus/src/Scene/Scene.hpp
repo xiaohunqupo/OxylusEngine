@@ -1,99 +1,70 @@
 #pragma once
 
 #include "Components.hpp"
-#include "EntitySerializer.hpp"
-#include "SceneEvents.hpp"
-
-#include <entt/entity/registry.hpp>
-#include "Core/Systems/System.hpp"
+#include "Core/System.hpp"
 #include "Core/UUID.hpp"
 #include "Physics/PhysicsInterfaces.hpp"
-#include "Render/Mesh.hpp"
+#include "SceneRenderer.hpp"
 
 namespace ox {
-class RenderPipeline;
-class SceneRenderer;
-
-enum class SceneID : uint64 { Invalid = ~0_u64 };
 class Scene {
 public:
   std::string scene_name = "Untitled";
-  entt::registry registry;
-  // TODO: We are keeping this only for serializing relationship of entities.
-  // Check how we can do that with entt id's instead.
-  ankerl::unordered_dense::map<UUID, Entity> entity_map;
-  EventDispatcher dispatcher;
+
+  flecs::world world;
 
   Scene();
-  Scene(const std::string& name);
-  Scene(const Scene&);
+  explicit Scene(const std::string& name);
 
   ~Scene();
 
-  void init(const std::string& name);
+  auto init(this Scene& self, const std::string& name) -> void;
 
-  Entity create_entity(const std::string& name = "New Entity");
-  Entity create_entity_with_uuid(UUID uuid, const std::string& name = std::string());
+  auto create_entity(const std::string& name = "") const -> flecs::entity;
 
-  Entity load_mesh(const Shared<Mesh>& mesh);
+  auto on_runtime_start() -> void;
+  auto on_runtime_stop() -> void;
 
-  void destroy_entity(Entity entity);
-  void duplicate_children(Entity entity);
-  Entity duplicate_entity(Entity entity);
+  auto is_running() const -> bool { return running; }
 
-  void on_runtime_start();
-  void on_runtime_stop();
+  auto on_runtime_update(const Timestep& delta_time) -> void;
+  auto on_editor_update(const Timestep& delta_time, const CameraComponent& camera) const -> void;
 
-  bool is_running() const { return running; }
+  auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
 
-  void on_runtime_update(const Timestep& delta_time);
-  void on_editor_update(const Timestep& delta_time, CameraComponent& camera) const;
+  auto has_entity(UUID uuid) const -> bool;
+  static auto copy(const Shared<Scene>& src_scene) -> Shared<Scene>;
 
-  void on_render(vuk::Extent3D extent, vuk::Format format);
-
-  Entity find_entity(const std::string_view& name);
-  bool has_entity(UUID uuid) const;
-  static Shared<Scene> copy(const Shared<Scene>& src_scene);
+  auto get_world_transform(flecs::entity entity) const -> glm::mat4;
+  auto get_local_transform(flecs::entity entity) const -> glm::mat4;
 
   // Physics interfaces
-  void on_contact_added(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings);
-  void on_contact_persisted(const JPH::Body& body1,
+  auto on_contact_added(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings)
+    -> void;
+  auto on_contact_persisted(const JPH::Body& body1,
                             const JPH::Body& body2,
                             const JPH::ContactManifold& manifold,
-                            const JPH::ContactSettings& settings);
+                            const JPH::ContactSettings& settings) -> void;
 
-  void create_rigidbody(Entity ent, const TransformComponent& transform, RigidbodyComponent& component);
-  void create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const;
-
-  Entity get_entity_by_uuid(UUID uuid);
+  auto create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component) -> void;
+  auto create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const -> void;
 
   // Renderer
-  const Unique<SceneRenderer>& get_renderer() { return scene_renderer; }
-
-  entt::registry& get_registry() { return registry; }
-
-  // Events
-  void trigger_future_mesh_load_event(FutureMeshLoadEvent future_mesh_load_event);
+  auto get_renderer() -> const Unique<SceneRenderer>& { return scene_renderer; }
 
 private:
   bool running = false;
 
   // Renderer
-  Unique<SceneRenderer> scene_renderer;
+  Unique<SceneRenderer> scene_renderer = nullptr;
 
   // Physics
   Physics3DContactListener* contact_listener_3d = nullptr;
   Physics3DBodyActivationListener* body_activation_listener_3d = nullptr;
   float physics_frame_accumulator = 0.0f;
 
-  void rigidbody_component_ctor(entt::registry& reg, Entity entity);
-  void collider_component_ctor(entt::registry& reg, Entity entity);
-  void character_controller_component_ctor(entt::registry& reg, Entity entity) const;
-
   // Physics
   void update_physics(const Timestep& delta_time);
-  // Events
-  void handle_future_mesh_load_event(const FutureMeshLoadEvent& event);
 
   friend class SceneSerializer;
   friend class SceneHPanel;

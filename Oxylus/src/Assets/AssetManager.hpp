@@ -32,7 +32,6 @@ private:
   Shared<T> _asset = nullptr;
   TaskSetFunction _func = nullptr;
   OnCompleteFunction _on_complete = nullptr;
-  EventDispatcher* dispatcher = nullptr;
 };
 
 class AssetManager : public ESystem {

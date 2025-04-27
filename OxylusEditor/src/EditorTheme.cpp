@@ -38,7 +38,6 @@ void EditorTheme::init(this EditorTheme& self) {
 
   imguilayer->build_fonts();
 
-  self.component_icon_map[typeid(RelationshipComponent).hash_code()] = ICON_MDI_LIBRARY_SHELVES;
   self.component_icon_map[typeid(LightComponent).hash_code()] = ICON_MDI_LIGHTBULB;
   self.component_icon_map[typeid(CameraComponent).hash_code()] = ICON_MDI_CAMERA;
   self.component_icon_map[typeid(AudioSourceComponent).hash_code()] = ICON_MDI_VOLUME_HIGH;

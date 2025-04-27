@@ -22,9 +22,9 @@ void SceneSerializer::serialize(const std::string& filePath) const {
 
   writer.String("entities");
   writer.StartArray(); // entities
-  for (const auto [e] : _scene->registry.storage<entt::entity>().each()) {
-    EntitySerializer::serialize_entity(writer, _scene.get(), e);
-  }
+  // for (const auto [e] : _scene->registry.storage<entt::entity>().each()) {
+    // EntitySerializer::serialize_entity(writer, _scene.get(), e);
+  // }
   writer.EndArray(); // entities
 
   writer.EndObject(); // root
@@ -54,7 +54,7 @@ bool SceneSerializer::deserialize(const std::string& file_path) const {
   auto entities_array = doc["entities"].GetArray();
 
   for (auto& entity : entities_array) {
-    EntitySerializer::deserialize_entity(entity.GetObject(), _scene.get(), true);
+    // EntitySerializer::deserialize_entity(entity.GetObject(), _scene.get(), true);
   }
 
   OX_LOG_INFO("Scene loaded : {0}", fs::get_file_name(_scene->scene_name));

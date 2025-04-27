@@ -8,15 +8,15 @@
 
 namespace ox {
 void LuaBindings::bind_components(const Shared<sol::state>& state) {
-  REGISTER_COMPONENT(state, TagComponent, FIELD(TagComponent, tag), FIELD(TagComponent, enabled));
 #define TC TransformComponent
-  REGISTER_COMPONENT(state, TC, FIELD(TC, position), FIELD(TC, rotation), FIELD(TC, scale));
+  // REGISTER_COMPONENT(state, TC, FIELD(TC, position), FIELD(TC, rotation), FIELD(TC, scale));
   bind_mesh_component(state);
   bind_camera_component(state);
+  bind_light_component(state);
 }
 
 void LuaBindings::bind_light_component(const Shared<sol::state>& state) {
-  REGISTER_COMPONENT(state, LightComponent, FIELD(LightComponent, color), FIELD(LightComponent, intensity)); // TODO: Rest
+  // REGISTER_COMPONENT(state, LightComponent, FIELD(LightComponent, color), FIELD(LightComponent, intensity)); // TODO: Rest
 }
 
 void LuaBindings::bind_mesh_component(const Shared<sol::state>& state) {
@@ -40,22 +40,22 @@ void LuaBindings::bind_mesh_component(const Shared<sol::state>& state) {
 
   material.set_function("new", [](const std::string& name) -> Shared<PBRMaterial> { return create_shared<PBRMaterial>(name); });
 
-#define MC MeshComponent
-  REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, stationary), FIELD(MC, cast_shadows), FIELD(MC, materials), FIELD(MC, aabb));
+// #define MC MeshComponent
+  // REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, stationary), FIELD(MC, cast_shadows), FIELD(MC, materials), FIELD(MC, aabb));
 }
 
 void LuaBindings::bind_camera_component(const Shared<sol::state>& state) {
   auto camera_type = state->new_usertype<CameraComponent>("Camera");
 
-  REGISTER_COMPONENT(state,
-                     CameraComponent,
-                     FIELD(CameraComponent, yaw),
-                     FIELD(CameraComponent, pitch),
-                     FIELD(CameraComponent, near_clip),
-                     FIELD(CameraComponent, far_clip),
-                     FIELD(CameraComponent, fov),
-                     FIELD(CameraComponent, aspect),
-                     FIELD(CameraComponent, forward),
-                     FIELD(CameraComponent, right));
+  // REGISTER_COMPONENT(state,
+  //                    CameraComponent,
+  //                    FIELD(CameraComponent, yaw),
+  //                    FIELD(CameraComponent, pitch),
+  //                    FIELD(CameraComponent, near_clip),
+  //                    FIELD(CameraComponent, far_clip),
+  //                    FIELD(CameraComponent, fov),
+  //                    FIELD(CameraComponent, aspect),
+  //                    FIELD(CameraComponent, forward),
+  //                    FIELD(CameraComponent, right));
 }
 } // namespace ox

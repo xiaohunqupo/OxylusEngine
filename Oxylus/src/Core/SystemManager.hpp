@@ -8,8 +8,8 @@ class SystemManager : public ESystem {
 public:
   SystemManager() = default;
 
-  void init() override {};
-  void deinit() override {};
+  void init() override {}
+  void deinit() override {}
 
   template <typename T, typename... Args>
   Shared<System> register_system(Args&&... args) {

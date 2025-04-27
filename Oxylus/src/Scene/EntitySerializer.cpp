@@ -1,19 +1,16 @@
 #include "EntitySerializer.hpp"
 
+#include "Assets/AssetManager.hpp"
+#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
-#include "Core/Systems/SystemManager.hpp"
+#include "Core/SystemManager.hpp"
 #include "Core/VFS.hpp"
 #include "Scene.hpp"
 #include "Scene/Components.hpp"
-
-#include "Assets/AssetManager.hpp"
-
-#include "Core/App.hpp"
-
-#include "Entity.hpp"
 #include "Utils/Archive.hpp"
 
 namespace ox {
+#if 0
 template <typename Component, typename WriterFunc>
 void serialize_component(const std::string_view name,
                          entt::registry& registry,
@@ -531,17 +528,6 @@ void EntitySerializer::serialize_entity(rapidjson::PrettyWriter<rapidjson::Strin
   writer.EndObject(); // top
 }
 
-void EntitySerializer::serialize_entity_binary(Archive& archive, Scene* scene, Entity entity) {
-  if (scene->registry.all_of<IDComponent>(entity)) {
-    const auto& component = scene->registry.get<IDComponent>(entity);
-    archive << component.uuid;
-  }
-  if (scene->registry.all_of<TagComponent>(entity)) {
-    const auto& component = scene->registry.get<TagComponent>(entity);
-    archive << component.tag;
-  }
-}
-
 UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene, bool preserve_uuid) {
   OX_SCOPED_ZONE;
   auto& registry = scene->registry;
@@ -792,101 +778,5 @@ UUID EntitySerializer::deserialize_entity(rapidjson::Value& entity, Scene* scene
 
   return eutil::get_uuid(registry, deserialized_entity);
 }
-
-void EntitySerializer::serialize_entity_as_prefab(const char* filepath, Entity entity) {
-#if 0 // TODO:
-  if (scene->registry.all_of<PrefabComponent>(entity)) {
-    OX_CORE_ERROR("Entity already has a prefab component!");
-    return;
-  }
-
-  ryml::Tree tree;
-
-  ryml::NodeRef node_root = tree.rootref();
-  node_root |= ryml::MAP;
-
-  node_root["Prefab"] << entity.add_component_internal<PrefabComponent>().id;
-
-  ryml::NodeRef entities_node = node_root["Entities"];
-  entities_node |= ryml::SEQ;
-
-  std::vector<Entity> entities;
-  entities.push_back(entity);
-  Entity::get_all_children(entity, entities);
-
-  for (const auto& child : entities) {
-    if (child)
-      serialize_entity(entity.get_scene(), entities_node, child);
-  }
-
-  std::stringstream ss;
-  ss << tree;
-  std::ofstream filestream(filepath);
-  filestream << ss.str();
 #endif
-}
-
-Entity EntitySerializer::deserialize_entity_as_prefab(const char* filepath, Scene* scene) {
-#if 0 // TODO:
-  auto content = FileSystem::read_file(filepath);
-  if (content.empty()) {
-    OX_CORE_ERROR("Couldn't read prefab file: {0}", filepath);
-  }
-
-  const ryml::Tree tree = ryml::parse_in_arena(ryml::to_csubstr(content));
-
-  if (tree.empty()) {
-    OX_CORE_ERROR("Couldn't parse the prefab file {0}", FileSystem::get_file_name(filepath));
-  }
-
-  const ryml::ConstNodeRef root = tree.rootref();
-
-  if (!root.has_child("Prefab")) {
-    OX_CORE_ERROR("Prefab file doesn't contain a prefab{0}", FileSystem::get_file_name(filepath));
-    return {};
-  }
-
-  const UUID prefab_id = (uint64_t)root["Prefab"].val().data();
-
-  if (!prefab_id) {
-    OX_CORE_ERROR("Invalid prefab ID {0}", FileSystem::get_file_name(filepath));
-    return {};
-  }
-
-  if (root.has_child("Entities")) {
-    const ryml::ConstNodeRef entities_node = root["Entities"];
-
-    Entity root_entity = {};
-    std::unordered_map<UUID, UUID> old_new_id_map;
-    for (const auto& entity : entities_node) {
-      uint64_t old_uuid;
-      entity["Entity"] >> old_uuid;
-      UUID new_uuid = deserialize_entity(entity, scene, false);
-      old_new_id_map.emplace(old_uuid, new_uuid);
-
-      if (!root_entity)
-        root_entity = scene->get_entity_by_uuid(new_uuid);
-    }
-
-    root_entity.add_component_internal<PrefabComponent>().id = prefab_id;
-
-    // Fix parent/children UUIDs
-    for (const auto& [_, newId] : old_new_id_map) {
-      auto& relationship_component = scene->get_entity_by_uuid(newId).get_relationship();
-      UUID parent = relationship_component.parent;
-      if (parent)
-        relationship_component.parent = old_new_id_map.at(parent);
-
-      auto& children = relationship_component.children;
-      for (auto& id : children)
-        id = old_new_id_map.at(id);
-    }
-
-    return root_entity;
-  }
-
-#endif
-  OX_LOG_ERROR("There are no entities in the prefab to deserialize! {0}", fs::get_file_name(filepath));
-  return {};
-}
 } // namespace ox

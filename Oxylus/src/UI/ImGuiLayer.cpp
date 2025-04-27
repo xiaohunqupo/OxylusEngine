@@ -51,7 +51,7 @@ void ImGuiLayer::build_fonts() {
                                Preset::eRTT2DUnmipped);
 }
 
-void ImGuiLayer::on_attach(EventDispatcher&) {
+void ImGuiLayer::on_attach() {
   OX_SCOPED_ZONE;
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();

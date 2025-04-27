@@ -993,10 +993,6 @@ void DefaultRenderPipeline::run_static_passes(vuk::Allocator& allocator) {
   multiscatter_fut.wait(allocator, _compiler);
 }
 
-void DefaultRenderPipeline::on_dispatcher_events(EventDispatcher& dispatcher) {
-  dispatcher.sink<SkyboxLoadEvent>().connect<&DefaultRenderPipeline::update_skybox>(*this);
-}
-
 void DefaultRenderPipeline::submit_mesh_component(const MeshComponent& render_object) {
   OX_SCOPED_ZONE;
 
@@ -1532,15 +1528,15 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
 
 void DefaultRenderPipeline::on_update(Scene* scene) {
   // TODO: Account for the bounding volume of the probe
-  const auto pp_view = scene->registry.view<PostProcessProbe>();
-  for (auto&& [e, component] : pp_view.each()) {
-    scene_data.post_processing_data.film_grain = {component.film_grain_enabled, component.film_grain_intensity};
-    scene_data.post_processing_data.chromatic_aberration = {component.chromatic_aberration_enabled, component.chromatic_aberration_intensity};
-    scene_data.post_processing_data.vignette_offset.w = component.vignette_enabled;
-    scene_data.post_processing_data.vignette_color.a = component.vignette_intensity;
-    scene_data.post_processing_data.sharpen.x = component.sharpen_enabled;
-    scene_data.post_processing_data.sharpen.y = component.sharpen_intensity;
-  }
+  // const auto pp_view = scene->registry.view<PostProcessProbe>();
+  // for (auto&& [e, component] : pp_view.each()) {
+  //   scene_data.post_processing_data.film_grain = {component.film_grain_enabled, component.film_grain_intensity};
+  //   scene_data.post_processing_data.chromatic_aberration = {component.chromatic_aberration_enabled, component.chromatic_aberration_intensity};
+  //   scene_data.post_processing_data.vignette_offset.w = component.vignette_enabled;
+  //   scene_data.post_processing_data.vignette_color.a = component.vignette_intensity;
+  //   scene_data.post_processing_data.sharpen.x = component.sharpen_enabled;
+  //   scene_data.post_processing_data.sharpen.y = component.sharpen_intensity;
+  // }
 }
 
 // TODO: Not called anymore so needs to be called somewhere else!! Old Code!!

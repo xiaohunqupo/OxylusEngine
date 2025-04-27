@@ -10,7 +10,7 @@ public:
   SceneRenderer(Scene* scene) : _scene(scene) {}
   ~SceneRenderer() = default;
 
-  void init(EventDispatcher& dispatcher);
+  void init();
   void update(const Timestep& delta_time) const;
 
   const Unique<RenderPipeline>& get_render_pipeline() const { return _render_pipeline; }

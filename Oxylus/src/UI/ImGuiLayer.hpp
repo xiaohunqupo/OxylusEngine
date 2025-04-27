@@ -35,7 +35,7 @@ public:
   ImGuiLayer();
   ~ImGuiLayer() override = default;
 
-  void on_attach(EventDispatcher& dispatcher) override;
+  void on_attach() override;
   void on_detach() override;
 
   void begin_frame(float64 delta_time, vuk::Extent3D extent);

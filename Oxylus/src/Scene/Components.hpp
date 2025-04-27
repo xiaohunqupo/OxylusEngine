@@ -1,18 +1,14 @@
 #pragma once
 
+#include "Assets/SpriteMaterial.hpp"
 #include "Assets/TilemapSerializer.hpp"
-#include "Core/App.hpp"
-#include "Core/Systems/SystemManager.hpp"
-#include "Core/UUID.hpp"
-
 #include "Audio/AudioListener.hpp"
 #include "Audio/AudioSource.hpp"
-
-#include "Assets/SpriteMaterial.hpp"
+#include "Core/App.hpp"
+#include "Core/SystemManager.hpp"
 #include "Render/Mesh.hpp"
 #include "Render/ParticleSystem.hpp"
 #include "Render/Utils/RectPacker.hpp"
-
 #include "Scripting/LuaSystem.hpp"
 
 namespace JPH {
@@ -22,34 +18,8 @@ class Character;
 namespace ox {
 class Texture;
 
-struct IDComponent {
-  UUID uuid;
-
-  IDComponent() = default;
-
-  IDComponent(UUID id) : uuid(id) {}
-};
-
-struct TagComponent {
-  std::string tag;
-  uint16_t layer = BIT(1);
-  bool enabled = true;
-
-  // non-serialized data
-  bool handled = true;
-
-  TagComponent() = default;
-
-  TagComponent(std::string tag_) : tag(std::move(tag_)) {}
-};
-
-struct RelationshipComponent {
-  UUID parent = {};
-  std::vector<UUID> children{};
-};
-
-struct PrefabComponent {
-  UUID id;
+struct LayerComponent {
+  uint16 layer = 1;
 };
 
 struct TransformComponent {
@@ -89,8 +59,8 @@ struct MeshComponent {
   uint32_t mesh_id = Asset::INVALID_ID;
   std::vector<Shared<PBRMaterial>> materials = {};
   glm::mat4 transform = glm::mat4{1};
-  std::vector<entt::entity> child_entities = {}; // filled at load
-  std::vector<glm::mat4> child_transforms = {};  // filled at submit
+  // std::vector<entt::entity> child_entities = {}; // filled at load
+  std::vector<glm::mat4> child_transforms = {}; // filled at submit
   AABB aabb = {};
   bool dirty = false;
 
@@ -136,11 +106,10 @@ struct SpriteAnimationComponent {
 
   // non-serialized data
   float current_time = 0.f;
-  bool is_inverted = false;
 
   void reset() { current_time = 0.f; }
 
-  void set_frame_size(Texture* sprite) {
+  void set_frame_size(const Texture* sprite) {
     if (num_frames > 0) {
       const auto horizontal = sprite->get_extent().width / num_frames;
       const auto vertical = sprite->get_extent().height;
@@ -311,7 +280,7 @@ struct RigidbodyComponent {
   glm::vec3 translation = glm::vec3(0.0f);
   glm::quat rotation = glm::vec3(0.0f);
 
-  JPH::Body* get_body() { return static_cast<JPH::Body*>(runtime_body); }
+  JPH::Body* get_body() const { return static_cast<JPH::Body*>(runtime_body); }
 };
 
 struct BoxColliderComponent {
@@ -438,37 +407,4 @@ struct CPPScriptComponent {
     systems.emplace(system);
   }
 };
-
-template <typename... Component>
-struct ComponentGroup {};
-
-using AllComponents = ComponentGroup<TransformComponent,
-                                     RelationshipComponent,
-                                     PrefabComponent,
-                                     CameraComponent,
-
-                                     // Render
-                                     LightComponent,
-                                     MeshComponent,
-                                     ParticleSystemComponent,
-                                     SpriteComponent,
-                                     SpriteAnimationComponent,
-                                     TilemapComponent,
-
-                                     //  Physics
-                                     RigidbodyComponent,
-                                     BoxColliderComponent,
-                                     SphereColliderComponent,
-                                     CapsuleColliderComponent,
-                                     TaperedCapsuleColliderComponent,
-                                     CylinderColliderComponent,
-                                     MeshColliderComponent,
-
-                                     // Audio
-                                     AudioSourceComponent,
-                                     AudioListenerComponent,
-
-                                     // Scripting
-                                     LuaScriptComponent,
-                                     CPPScriptComponent>;
 } // namespace ox

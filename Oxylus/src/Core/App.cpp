@@ -17,7 +17,7 @@
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
 #include "Scripting/LuaManager.hpp"
-#include "Systems/SystemManager.hpp"
+#include "SystemManager.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Thread/ThreadManager.hpp"
 #include "UI/ImGuiLayer.hpp"
@@ -61,7 +61,6 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   register_system<Input>(EngineSystems::Input);
 
   for (const auto& system : system_registry | std::views::values) {
-    system->set_dispatcher(&dispatcher);
     system->init();
   }
 
@@ -95,14 +94,14 @@ void App::set_instance(App* instance) {
 
 App& App::push_layer(Layer* layer) {
   layer_stack->push_layer(layer);
-  layer->on_attach(dispatcher);
+  layer->on_attach();
 
   return *this;
 }
 
 App& App::push_overlay(Layer* layer) {
   layer_stack->push_overlay(layer);
-  layer->on_attach(dispatcher);
+  layer->on_attach();
 
   return *this;
 }

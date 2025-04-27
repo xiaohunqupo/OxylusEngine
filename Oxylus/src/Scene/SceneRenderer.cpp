@@ -1,49 +1,45 @@
 ﻿#include "SceneRenderer.hpp"
 
-#include "Physics/Physics.hpp"
-#include "Render/RendererConfig.hpp"
-#include "Scene.hpp"
-
 #include "Core/App.hpp"
-
-#include "Entity.hpp"
+#include "Physics/Physics.hpp"
 #include "Render/Camera.hpp"
-
 #include "Render/DebugRenderer.hpp"
 #include "Render/EasyRenderPipeline.hpp"
+#include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
+#include "Scene.hpp"
 #include "Scene/Components.hpp"
 
 namespace ox {
-void SceneRenderer::init(EventDispatcher& dispatcher) {
+void SceneRenderer::init() {
   OX_SCOPED_ZONE;
   if (!_render_pipeline)
-    _render_pipeline = create_unique<EasyRenderPipeline>("SimpleRenderPipeline");
+    _render_pipeline = create_unique<EasyRenderPipeline>("EasyRenderPipeline");
+  else
+    return;
   _render_pipeline->init(*App::get_vkcontext().superframe_allocator);
-  _render_pipeline->on_dispatcher_events(dispatcher);
 }
 
 void SceneRenderer::update(const Timestep& delta_time) const {
   OX_SCOPED_ZONE;
 
-  const auto screen_extent = App::get()->get_swapchain_extent();
-
   // Camera
   {
     OX_SCOPED_ZONE_N("Camera System");
-    const auto camera_view = _scene->registry.view<TransformComponent, CameraComponent>();
-    for (const auto entity : camera_view) {
-      auto [transform, camera] = camera_view.get<TransformComponent, CameraComponent>(entity);
-      camera.position = transform.position;
-      camera.pitch = transform.rotation.x;
-      camera.yaw = transform.rotation.y;
-      Camera::update(camera, screen_extent);
-      _render_pipeline->submit_camera(camera);
-    }
+    _scene->world.query_builder<const TransformComponent, CameraComponent>().build().each([this](const TransformComponent& tc, CameraComponent& cc) {
+      const auto screen_extent = App::get()->get_swapchain_extent();
+      cc.position = tc.position;
+      cc.pitch = tc.rotation.x;
+      cc.yaw = tc.rotation.y;
+      Camera::update(cc, screen_extent);
+      _render_pipeline->submit_camera(cc);
+    });
   }
 
   {
     OX_SCOPED_ZONE_N("Mesh System");
+    _scene->world.query_builder<const TransformComponent, MeshComponent>().build().each([this](const TransformComponent& tc, MeshComponent& cc) {});
+#if 0
     const auto mesh_view = _scene->registry.view<TransformComponent, MeshComponent, TagComponent>();
     for (const auto&& [entity, transform, mesh_component, tag] : mesh_view.each()) {
       if (!tag.enabled)
@@ -61,27 +57,28 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
       _render_pipeline->submit_mesh_component(mesh_component);
     }
+#endif
   }
 
   {
     OX_SCOPED_ZONE_N("Sprite Animation System");
-    const auto sprite_view = _scene->registry.view<TransformComponent, SpriteComponent, SpriteAnimationComponent, TagComponent>();
-    for (const auto&& [entity, transform, sprite, sprite_animation, tag] : sprite_view.each()) {
-      if (!tag.enabled || sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 ||
+    _scene->world.query_builder<const TransformComponent, SpriteComponent, SpriteAnimationComponent>()
+      .build()
+      .each([this, &delta_time](const TransformComponent& tc, SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
+      if (!sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 ||
           sprite.material->parameters.albedo_map_id == Asset::INVALID_ID)
-        continue;
+        return;
 
-      const auto dt = glm::clamp((float)delta_time.get_seconds(), 0.0f, 0.25f);
+      const auto dt = glm::clamp(static_cast<float>(delta_time.get_seconds()), 0.0f, 0.25f);
       const auto time = sprite_animation.current_time + dt;
 
       sprite_animation.current_time = time;
 
-      const float duration = float(sprite_animation.num_frames) / sprite_animation.fps;
+      const float duration = static_cast<float>(sprite_animation.num_frames) / sprite_animation.fps;
       uint32 frame = math::flooru32(sprite_animation.num_frames * (time / duration));
 
       if (time > duration) {
         if (sprite_animation.inverted) {
-          sprite_animation.is_inverted = sprite_animation.inverted ? !sprite_animation.is_inverted : false;
           // Remove/add a frame depending on the direction
           const float frame_length = 1.0f / sprite_animation.fps;
           sprite_animation.current_time -= duration - frame_length;
@@ -93,12 +90,12 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       if (sprite_animation.loop)
         frame %= sprite_animation.num_frames;
       else
-        frame = glm::min(frame, (uint32)sprite_animation.num_frames - 1);
+        frame = glm::min(frame, sprite_animation.num_frames - 1);
 
-      frame = sprite_animation.is_inverted ? sprite_animation.num_frames - 1 - frame : frame;
+      frame = sprite_animation.inverted ? sprite_animation.num_frames - 1 - frame : frame;
 
-      uint32 frame_x = frame % sprite_animation.columns;
-      uint32 frame_y = frame / sprite_animation.columns;
+      const uint32 frame_x = frame % sprite_animation.columns;
+      const uint32 frame_y = frame / sprite_animation.columns;
 
       const auto& mat = sprite.material;
       const auto& texture = mat->get_albedo_texture();
@@ -108,17 +105,13 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       auto texture_size = glm::vec2(texture->get_extent().width, texture->get_extent().height);
       uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0], sprite_animation.frame_size[1] * 1.f / texture_size[1]};
       sprite.current_uv_offset = uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
-    }
+    });
   }
 
   {
     OX_SCOPED_ZONE_N("Sprite System");
-    const auto sprite_view = _scene->registry.view<TransformComponent, SpriteComponent, TagComponent>();
-    for (const auto&& [entity, transform, sprite, tag] : sprite_view.each()) {
-      if (!tag.enabled)
-        continue;
-
-      const auto world_transform = eutil::get_world_transform(_scene, entity);
+    _scene->world.query_builder<SpriteComponent>().build().each([this](const flecs::entity entity, SpriteComponent& sprite) {
+      const auto world_transform = _scene->get_world_transform(entity);
       sprite.transform = world_transform;
       sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(world_transform);
@@ -128,16 +121,13 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       if (RendererCVar::cvar_draw_bounding_boxes.get()) {
         DebugRenderer::draw_aabb(sprite.rect, glm::vec4(1, 1, 1, 1.0f));
       }
-    }
+    });
   }
 
   {
     OX_SCOPED_ZONE_N("Tilemap System");
-    const auto tilemap_view = _scene->registry.view<TransformComponent, TilemapComponent, TagComponent>();
-    for (const auto&& [entity, transform, tilemap, tag] : tilemap_view.each()) {
-      if (!tag.enabled)
-        continue;
-
+    _scene->world.query_builder<TransformComponent, TilemapComponent>().build().each([this](TransformComponent& transform,
+                                                                                            TilemapComponent& tilemap) {
       // TODO: Tilemaps can also be just submitted as sprites into the renderer until we have the layering system.
       SpriteComponent sprite{};
       if (!tilemap.layers.empty())
@@ -151,7 +141,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       sprite.rect = sprite.rect.get_transformed(sprite.transform);
 
       _render_pipeline->submit_sprite(sprite);
-    }
+    });
   }
 
   {
@@ -164,26 +154,13 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
   {
     OX_SCOPED_ZONE_N("Lighting System");
-    const auto lighting_view = _scene->registry.view<TransformComponent, LightComponent>();
-    for (auto&& [e, tc, lc] : lighting_view.each()) {
-      if (!_scene->registry.get<TagComponent>(e).enabled)
-        continue;
+    _scene->world.query_builder<const TransformComponent, LightComponent>().build().each([this](const TransformComponent& tc, LightComponent& lc) {
       lc.position = tc.position;
       lc.rotation = tc.rotation;
       lc.direction = glm::normalize(math::transform_normal(glm::vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
 
       _render_pipeline->submit_light(lc);
-    }
-  }
-
-  {
-    OX_SCOPED_ZONE_N("Particle System");
-    // TODO: (very outdated, currently not working)
-    const auto particle_system_view = _scene->registry.view<TransformComponent, ParticleSystemComponent>();
-    for (auto&& [e, tc, psc] : particle_system_view.each()) {
-      psc.system->on_update(static_cast<float>(App::get_timestep()), tc.position);
-      psc.system->on_render();
-    }
+    });
   }
 
   _render_pipeline->on_update(_scene);

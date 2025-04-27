@@ -4,7 +4,7 @@
 #include "Linker.hpp"
 
 #include "Core/App.hpp"
-#include "Core/Systems/SystemManager.hpp"
+#include "Core/SystemManager.hpp"
 
 #include <entt/locator/locator.hpp>
 #include <entt/meta/context.hpp>

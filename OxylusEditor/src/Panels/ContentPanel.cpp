@@ -9,9 +9,7 @@
 #include "Core/Project.hpp"
 #include "EditorContext.hpp"
 #include "EditorLayer.hpp"
-
 #include "Thread/ThreadManager.hpp"
-
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/FileWatch.hpp"
@@ -78,14 +76,8 @@ static const ankerl::unordered_dense::map<FileType, const char8_t*> FILE_TYPES_T
 
 static bool drag_drop_target(const std::filesystem::path& drop_path) {
   if (ImGui::BeginDragDropTarget()) {
-    const ImGuiPayload* payload1 = ImGui::AcceptDragDropPayload("Registry");
-    const ImGuiPayload* payload2 = ImGui::AcceptDragDropPayload("Entity");
-    if (payload1 && payload2) {
-      const auto* registry = static_cast<entt::registry*>(payload1->Data);
-      const auto* entity = static_cast<Entity*>(payload1->Data);
-      auto entity_name = registry->get<TagComponent>(*entity).tag;
-      const std::filesystem::path path = drop_path / entity_name.append(".oxprefab");
-      EntitySerializer::serialize_entity_as_prefab(path.string().c_str(), *entity);
+    const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("Entity");
+    if (payload) {
       return true;
     }
 

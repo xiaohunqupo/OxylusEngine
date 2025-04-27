@@ -2,17 +2,14 @@
 
 #include "Core/Layer.hpp"
 #include "EditorContext.hpp"
-
 #include "EditorTheme.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/ViewportPanel.hpp"
-
 #include "Render/Window.hpp"
-#include "Utils/EditorConfig.hpp"
-
 #include "UI/RuntimeConsole.hpp"
 #include "Utils/Archive.hpp"
+#include "Utils/EditorConfig.hpp"
 
 namespace ox {
 enum class HistoryOp : uint32_t {
@@ -59,7 +56,7 @@ public:
 
   EditorLayer();
   ~EditorLayer() override = default;
-  void on_attach(EventDispatcher& dispatcher) override;
+  void on_attach() override;
   void on_detach() override;
 
   void on_update(const Timestep& delta_time) override;
@@ -92,7 +89,7 @@ public:
   bool open_scene(const std::filesystem::path& path);
   static void load_default_scene(const std::shared_ptr<Scene>& scene);
 
-  Entity get_selected_entity() { return get_panel<SceneHierarchyPanel>()->get_selected_entity(); }
+  flecs::entity get_selected_entity() { return get_panel<SceneHierarchyPanel>()->get_selected_entity(); }
   Shared<Scene> get_selected_scene() { return get_panel<SceneHierarchyPanel>()->get_scene(); }
   void clear_selected_entity();
 
@@ -122,10 +119,5 @@ private:
   Shared<Scene> editor_scene;
   Shared<Scene> active_scene;
   static EditorLayer* instance;
-
-  // UI
-  std::vector<FutureMeshLoadEvent> mesh_load_indicators;
-  void handle_future_mesh_load_event(const FutureMeshLoadEvent& event);
-  void render_load_indicators();
 };
 } // namespace ox

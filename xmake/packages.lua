@@ -15,6 +15,8 @@ add_requires("glm 1.0.1", { configs = {
 
 add_requires("entt v3.15.0", { system = false })
 
+add_requires("flecs v4.0.4", { system = false })
+
 add_requires("fastgltf v0.8.0", { system = false, debug = is_mode("debug") })
 
 add_requires("meshoptimizer v0.22", { system = false })

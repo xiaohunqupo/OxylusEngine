@@ -151,7 +151,6 @@ private:
   glm::vec2 swapchain_extent = {};
 
   SystemRegistry system_registry = {};
-  EventDispatcher dispatcher;
 
   Shared<ThreadManager> thread_manager = nullptr;
   Timestep timestep = {};

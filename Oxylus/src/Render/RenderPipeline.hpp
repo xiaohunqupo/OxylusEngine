@@ -1,8 +1,6 @@
 ﻿#pragma once
 #include <vuk/Value.hpp>
 
-#include "Event/Event.hpp"
-
 #include "Scene/Components.hpp"
 
 namespace vuk {
@@ -29,8 +27,6 @@ public:
   virtual void shutdown() = 0;
 
   [[nodiscard]] virtual vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) = 0;
-
-  virtual void on_dispatcher_events(EventDispatcher& dispatcher) {}
 
   virtual void on_update(Scene* scene) {}
   virtual void on_submit() {} // TODO: Not called anymore!! Old Code!!

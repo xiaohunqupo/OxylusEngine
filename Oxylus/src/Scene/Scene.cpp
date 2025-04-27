@@ -1,35 +1,28 @@
 #include "Scene.hpp"
 
-#include "Entity.hpp"
-#include "Jolt/Physics/Body/AllowedDOFs.h"
-#include "Scene/Components.hpp"
-#include "Utils/Timestep.hpp"
-
+#include <Jolt/Jolt.h>
+#include <Jolt/Physics/Body/AllowedDOFs.h>
+#include <Jolt/Physics/Body/BodyCreationSettings.h>
+#include <Jolt/Physics/Character/Character.h>
+#include <Jolt/Physics/Collision/Shape/BoxShape.h>
+#include <Jolt/Physics/Collision/Shape/CapsuleShape.h>
+#include <Jolt/Physics/Collision/Shape/CylinderShape.h>
+#include <Jolt/Physics/Collision/Shape/MeshShape.h>
+#include <Jolt/Physics/Collision/Shape/MutableCompoundShape.h>
+#include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
+#include <Jolt/Physics/Collision/Shape/SphereShape.h>
+#include <Jolt/Physics/Collision/Shape/TaperedCapsuleShape.h>
 #include <sol/state.hpp>
 
-#include "SceneRenderer.hpp"
-
 #include "Core/App.hpp"
-
-#include <Jolt/Jolt.h>
-#include <Jolt/Physics/Body/BodyCreationSettings.h>
-
-#include "Jolt/Physics/Character/Character.h"
-#include "Jolt/Physics/Collision/Shape/BoxShape.h"
-#include "Jolt/Physics/Collision/Shape/CapsuleShape.h"
-#include "Jolt/Physics/Collision/Shape/CylinderShape.h"
-#include "Jolt/Physics/Collision/Shape/MeshShape.h"
-#include "Jolt/Physics/Collision/Shape/MutableCompoundShape.h"
-#include "Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h"
-#include "Jolt/Physics/Collision/Shape/SphereShape.h"
-#include "Jolt/Physics/Collision/Shape/TaperedCapsuleShape.h"
-
+#include "Memory/Stack.hpp"
 #include "Physics/Physics.hpp"
 #include "Physics/PhysicsMaterial.hpp"
-
 #include "Render/RenderPipeline.hpp"
-
+#include "Scene/Components.hpp"
+#include "SceneRenderer.hpp"
 #include "Scripting/LuaManager.hpp"
+#include "Utils/Timestep.hpp"
 
 namespace ox {
 Scene::Scene() { init("Untitled"); }
@@ -37,275 +30,40 @@ Scene::Scene() { init("Untitled"); }
 Scene::Scene(const std::string& name) { init(name); }
 
 Scene::~Scene() {
-  App::get_system<LuaManager>(EngineSystems::LuaManager)->get_state()->collect_gc();
+  const auto* lua_manager = App::get_system<LuaManager>(EngineSystems::LuaManager);
+  lua_manager->get_state()->collect_gc();
+
   if (running)
     on_runtime_stop();
 }
 
-Scene::Scene(const Scene& scene) {
-  this->scene_name = scene.scene_name;
-  const auto pack = this->registry.storage<entt::entity>().data();
-  const auto pack_size = this->registry.storage<entt::entity>().size();
-  this->registry.storage<entt::entity>().push(pack, pack + pack_size);
-}
-
-void Scene::rigidbody_component_ctor(entt::registry& reg, entt::entity entity) {
-  auto& component = reg.get<RigidbodyComponent>(entity);
-  create_rigidbody(entity, reg.get<TransformComponent>(entity), component);
-}
-
-void Scene::collider_component_ctor(entt::registry& reg, entt::entity entity) {
-  if (reg.all_of<RigidbodyComponent>(entity))
-    create_rigidbody(entity, reg.get<TransformComponent>(entity), reg.get<RigidbodyComponent>(entity));
-}
-
-void Scene::character_controller_component_ctor(entt::registry& reg, entt::entity entity) const {
-  auto& component = reg.get<CharacterControllerComponent>(entity);
-  create_character_controller(reg.get<TransformComponent>(entity), component);
-}
-
-void Scene::init(const std::string& name) {
+auto Scene::init(this Scene& self, const std::string& name) -> void {
   OX_SCOPED_ZONE;
 
-  this->scene_name = name;
-
-  dispatcher.sink<FutureMeshLoadEvent>().connect<&Scene::handle_future_mesh_load_event>(*this);
+  self.scene_name = name;
 
   // Renderer
-  scene_renderer = create_unique<SceneRenderer>(this);
-
-  scene_renderer->init(dispatcher);
+  self.scene_renderer = create_unique<SceneRenderer>(&self);
+  self.scene_renderer->init();
 }
 
-Entity Scene::create_entity(const std::string& name) { return create_entity_with_uuid(UUID(), name); }
-
-entt::entity Scene::create_entity_with_uuid(UUID uuid, const std::string& name) {
+auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   OX_SCOPED_ZONE;
-  entt::entity ent = registry.create();
-  entity_map.emplace(uuid, ent);
-  registry.emplace<IDComponent>(ent, uuid);
-  registry.emplace<RelationshipComponent>(ent);
-  registry.emplace<TransformComponent>(ent);
-  registry.emplace<TagComponent>(ent).tag = name.empty() ? "Entity" : name;
-  return ent;
-}
 
-Entity Scene::load_mesh(const Shared<Mesh>& mesh) {
-  entt::entity root_entity = entt::null;
+  flecs::entity e = flecs::entity::null();
+  if (name.empty()) {
+    memory::ScopedStack stack;
 
-  MeshComponent* parent = nullptr;
-  auto traverse = [this, mesh, &parent, &root_entity](const Mesh::Node* node, const entt::entity parent_entity, auto& traverse_func) -> void {
-    const Entity node_entity = create_entity(node->name);
-    if (parent_entity != entt::null)
-      eutil::set_parent(this, node_entity, parent_entity);
-
-    // TODO: we could actually use this to have material components for each child instead of having them all in the parent maybe?
-    auto& tc = registry.get<TransformComponent>(node_entity);
-    tc.set_from_matrix(node->get_local_transform());
-    if (!parent) {
-      parent = &registry.get_or_emplace<MeshComponent>(node_entity, mesh);
-      root_entity = node_entity;
-    } else {
-      parent->child_entities.emplace_back(node_entity);
-    }
-
-    for (const auto& child : node->children) {
-      traverse_func(child, node_entity, traverse_func);
-    }
-  };
-
-  for (const auto& node : mesh->root_nodes) {
-    traverse(node, entt::null, traverse);
+    e = world.entity();
+    e.set_name(stack.format_char("Entity {}", e.raw_id()));
+  } else {
+    e = world.entity(name.c_str());
   }
 
-  return root_entity;
+  return e.add<TransformComponent>().add<LayerComponent>();
 }
 
-void Scene::update_physics(const Timestep& delta_time) {
-  OX_SCOPED_ZONE;
-  // Minimum stable value is 16.0
-  constexpr float physics_step_rate = 50.0f;
-  constexpr float physics_ts = 1.0f / physics_step_rate;
-
-  bool stepped = false;
-  physics_frame_accumulator += (float)delta_time.get_seconds();
-
-  auto physics = App::get_system<Physics>(EngineSystems::Physics);
-
-  while (physics_frame_accumulator >= physics_ts) {
-    physics->step(physics_ts);
-
-    {
-      {
-        OX_SCOPED_ZONE_N("CPPScripting/on_fixed_update");
-        const auto script_view = registry.view<CPPScriptComponent>();
-        for (auto&& [e, script_component] : script_view.each()) {
-          for (const auto& system : script_component.systems) {
-            system->on_fixed_update(physics_ts);
-          }
-        }
-      }
-
-      // TODO: Lua on_fixed_update
-    }
-
-    physics_frame_accumulator -= physics_ts;
-    stepped = true;
-  }
-
-  const float interpolation_factor = physics_frame_accumulator / physics_ts;
-
-  const auto& body_interface = physics->get_physics_system()->GetBodyInterface();
-  const auto view = registry.group<RigidbodyComponent>(entt::get<TransformComponent>);
-  for (auto&& [e, rb, tc] : view.each()) {
-    if (!rb.runtime_body)
-      continue;
-
-    const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
-
-    if (!body_interface.IsActive(body->GetID()))
-      continue;
-
-    if (rb.interpolation) {
-      if (stepped) {
-        JPH::Vec3 position = body->GetPosition();
-        JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
-
-        rb.previous_translation = rb.translation;
-        rb.previous_rotation = rb.rotation;
-        rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
-        rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-      }
-
-      tc.position = glm::lerp(rb.previous_translation, rb.translation, interpolation_factor);
-      tc.rotation = glm::eulerAngles(glm::slerp(rb.previous_rotation, rb.rotation, interpolation_factor));
-    } else {
-      const JPH::Vec3 position = body->GetPosition();
-      JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
-
-      rb.previous_translation = rb.translation;
-      rb.previous_rotation = rb.rotation;
-      rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
-      rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-      tc.position = rb.translation;
-      tc.rotation = glm::eulerAngles(rb.rotation);
-    }
-  }
-
-  // Character
-  {
-    const auto ch_view = registry.view<TransformComponent, CharacterControllerComponent>();
-    for (auto&& [e, tc, ch] : ch_view.each()) {
-      ch.character->PostSimulation(ch.collision_tolerance);
-      if (ch.interpolation) {
-        if (stepped) {
-          JPH::Vec3 position = ch.character->GetPosition();
-          JPH::Vec3 rotation = ch.character->GetRotation().GetEulerAngles();
-
-          ch.previous_translation = ch.translation;
-          ch.previous_rotation = ch.rotation;
-          ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
-          ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-        }
-
-        tc.position = glm::lerp(ch.previous_translation, ch.translation, interpolation_factor);
-        tc.rotation = glm::eulerAngles(glm::slerp(ch.previous_rotation, ch.rotation, interpolation_factor));
-      } else {
-        const JPH::Vec3 position = ch.character->GetPosition();
-        JPH::Vec3 rotation = ch.character->GetRotation().GetEulerAngles();
-
-        ch.previous_translation = ch.translation;
-        ch.previous_rotation = ch.rotation;
-        ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
-        ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-        tc.position = ch.translation;
-        tc.rotation = glm::eulerAngles(ch.rotation);
-      }
-    }
-  }
-}
-
-void Scene::destroy_entity(const Entity entity) {
-  OX_SCOPED_ZONE;
-  eutil::deparent(this, entity);
-  const auto children = registry.get<RelationshipComponent>(entity).children;
-
-  for (size_t i = 0; i < children.size(); i++) {
-    const Entity child_entity = get_entity_by_uuid(children[i]);
-    if (child_entity != entt::null)
-      destroy_entity(child_entity);
-  }
-
-  entity_map.erase(eutil::get_uuid(registry, entity));
-  registry.destroy(entity);
-}
-
-template <typename... Component>
-static void copy_component(entt::registry& dst, entt::registry& src, const ankerl::unordered_dense::map<UUID, entt::entity>& entt_map) {
-  ([&] {
-    auto view = src.view<Component>();
-    for (auto src_entity : view) {
-      entt::entity dst_entity = entt_map.at(src.get<IDComponent>(src_entity).uuid);
-
-      Component& src_component = src.get<Component>(src_entity);
-      dst.emplace_or_replace<Component>(dst_entity, src_component);
-    }
-  }(), ...);
-}
-
-template <typename... Component>
-static void copy_component(ComponentGroup<Component...>,
-                           entt::registry& dst,
-                           entt::registry& src,
-                           const ankerl::unordered_dense::map<UUID, entt::entity>& entt_map) {
-  copy_component<Component...>(dst, src, entt_map);
-}
-
-template <typename... Component>
-static void copy_component_if_exists(Entity dst, Entity src, entt::registry& registry) {
-  ([&] {
-    if (registry.all_of<Component>(src))
-      registry.emplace_or_replace<Component>(dst, registry.get<Component>(src));
-  }(), ...);
-}
-
-template <typename... Component>
-static void copy_component_if_exists(ComponentGroup<Component...>, Entity dst, Entity src, entt::registry& registry) {
-  copy_component_if_exists<Component...>(dst, src, registry);
-}
-
-void Scene::duplicate_children(const Entity entity) {
-  auto& rc = registry.get<RelationshipComponent>(entity);
-
-  for (auto& child : rc.children) {
-    const auto e = create_entity(eutil::get_name(registry, get_entity_by_uuid(child)));
-    copy_component_if_exists(AllComponents{}, e, get_entity_by_uuid(child), registry);
-    child = registry.get<IDComponent>(e).uuid;
-
-#if 0
-    auto& rcc = registry.get<RelationshipComponent>(e);
-
-    if (rcc.parent > 0) {
-      const auto p = create_entity(EUtil::get_name(registry, get_entity_by_uuid(child)));
-      copy_component_if_exists(AllComponents{}, p, get_entity_by_uuid(rcc.parent), registry);
-      rcc.parent = registry.get<IDComponent>(p).uuid;
-    }
-#endif
-    // duplicate_children(e);
-  }
-}
-
-Entity Scene::duplicate_entity(Entity entity) {
-  OX_SCOPED_ZONE;
-  const Entity new_entity = create_entity(eutil::get_name(registry, entity));
-  copy_component_if_exists(AllComponents{}, new_entity, entity, registry);
-
-  duplicate_children(new_entity);
-
-  return new_entity;
-}
-
-void Scene::on_runtime_start() {
+auto Scene::on_runtime_start() -> void {
   OX_SCOPED_ZONE;
 
   running = true;
@@ -313,32 +71,28 @@ void Scene::on_runtime_start() {
   physics_frame_accumulator = 0.0f;
 
   // Physics
-  auto physics = App::get_system<Physics>(EngineSystems::Physics);
   {
     OX_SCOPED_ZONE_N("Physics Start");
     body_activation_listener_3d = new Physics3DBodyActivationListener();
     contact_listener_3d = new Physics3DContactListener(this);
-    const auto physics_system = physics->get_physics_system();
+    const auto physics_system = App::get_system<Physics>(EngineSystems::Physics)->get_physics_system();
     physics_system->SetBodyActivationListener(body_activation_listener_3d);
     physics_system->SetContactListener(contact_listener_3d);
 
     // Rigidbodies
-    {
-      const auto group = registry.group<RigidbodyComponent>(entt::get<TransformComponent>);
-      for (auto&& [e, rb, tc] : group.each()) {
-        rb.previous_translation = rb.translation = tc.position;
-        rb.previous_rotation = rb.rotation = tc.rotation;
-        create_rigidbody(e, tc, rb);
-      }
-    }
+    world.query_builder<const TransformComponent, RigidbodyComponent>().build().each([this](flecs::entity e,
+                                                                                            const TransformComponent& tc,
+                                                                                            RigidbodyComponent& rb) {
+      rb.previous_translation = rb.translation = tc.position;
+      rb.previous_rotation = rb.rotation = tc.rotation;
+      create_rigidbody(e, tc, rb);
+    });
 
     // Characters
-    {
-      const auto group = registry.group<CharacterControllerComponent>(entt::get<TransformComponent>);
-      for (auto&& [e, ch, tc] : group.each()) {
-        create_character_controller(tc, ch);
-      }
-    }
+    world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each([this](const TransformComponent& tc,
+                                                                                                      CharacterControllerComponent& ch) {
+      create_character_controller(tc, ch);
+    });
 
     physics_system->OptimizeBroadPhase();
   }
@@ -346,50 +100,47 @@ void Scene::on_runtime_start() {
   // Scripting
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_init");
-    const auto script_view = registry.view<LuaScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& script : script_component.lua_systems) {
+    world.query_builder<const LuaScriptComponent>().build().each([this](const flecs::entity& e, const LuaScriptComponent& lsc) {
+      for (const auto& script : lsc.lua_systems) {
         script->reload();
         script->on_init(this, e);
       }
-    }
+    });
   }
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_init");
-    const auto script_view = registry.view<CPPScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& system : script_component.systems) {
-        system->on_init(this, e);
+    world.query_builder<const CPPScriptComponent>().build().each([this](const flecs::entity& e, const CPPScriptComponent& csc) {
+      for (const auto& script : csc.systems) {
+        script->on_init(this, e);
       }
-    }
+    });
   }
 }
 
-void Scene::on_runtime_stop() {
+auto Scene::on_runtime_stop() -> void {
   OX_SCOPED_ZONE;
 
   running = false;
 
   // Physics
   {
-    auto physics = App::get_system<Physics>(EngineSystems::Physics);
-    JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
-    const auto rb_view = registry.view<RigidbodyComponent>();
-    for (auto&& [e, rb] : rb_view.each()) {
+    const auto physics = App::get_system<Physics>(EngineSystems::Physics);
+    world.query_builder<RigidbodyComponent>().build().each([physics](const flecs::entity& e, const RigidbodyComponent& rb) {
       if (rb.runtime_body) {
+        JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
         const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
         body_interface.RemoveBody(body->GetID());
         body_interface.DestroyBody(body->GetID());
       }
-    }
-    const auto ch_view = registry.view<CharacterControllerComponent>();
-    for (auto&& [e, ch] : ch_view.each()) {
+    });
+    world.query_builder<CharacterControllerComponent>().build().each([physics](const flecs::entity& e, CharacterControllerComponent& ch) {
       if (ch.character) {
+        JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
         body_interface.RemoveBody(ch.character->GetBodyID());
         ch.character = nullptr;
       }
-    }
+    });
 
     delete body_activation_listener_3d;
     delete contact_listener_3d;
@@ -399,119 +150,101 @@ void Scene::on_runtime_stop() {
 
   // Scripting
   {
-    const auto script_view = registry.view<CPPScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& system : script_component.systems) {
-        system->on_release(this, e);
+    OX_SCOPED_ZONE_N("LuaScripting/on_release");
+    world.query_builder<const LuaScriptComponent>().build().each([this](const flecs::entity& e, const LuaScriptComponent& lsc) {
+      for (const auto& script : lsc.lua_systems) {
+        script->on_release(this, e);
       }
-    }
+    });
   }
 
   {
-    const auto script_view = registry.view<LuaScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& script : script_component.lua_systems) {
+    OX_SCOPED_ZONE_N("CPPScripting/on_release");
+    world.query_builder<const CPPScriptComponent>().build().each([this](const flecs::entity& e, const CPPScriptComponent& csc) {
+      for (const auto& script : csc.systems) {
         script->on_release(this, e);
       }
-    }
+    });
   }
 }
 
-Entity Scene::find_entity(const std::string_view& name) {
-  OX_SCOPED_ZONE;
-  const auto view = registry.view<TagComponent>();
-  for (auto&& [e, tag] : view.each()) {
-    if (tag.tag == name) {
-      return e;
-    }
-  }
-  return entt::null;
-}
-
-bool Scene::has_entity(UUID uuid) const {
-  OX_SCOPED_ZONE;
-  return entity_map.contains(uuid);
-}
-
-Entity Scene::get_entity_by_uuid(UUID uuid) {
-  OX_SCOPED_ZONE;
-  if (entity_map.contains(uuid))
-    return entity_map.at(uuid);
-  return entt::null;
-}
-
-void Scene::trigger_future_mesh_load_event(FutureMeshLoadEvent future_mesh_load_event) { dispatcher.trigger(std::move(future_mesh_load_event)); }
-
-Shared<Scene> Scene::copy(const Shared<Scene>& src_scene) {
+auto Scene::copy(const Shared<Scene>& src_scene) -> Shared<Scene> {
   OX_SCOPED_ZONE;
   Shared<Scene> new_scene = create_shared<Scene>();
 
-  auto& src_scene_registry = src_scene->registry;
-  auto& dst_scene_registry = new_scene->registry;
-
-  // Create entities in new scene
-  const auto view = src_scene_registry.view<IDComponent, TagComponent>();
-  for (const auto e : view) {
-    auto [id, tag] = view.get<IDComponent, TagComponent>(e);
-    const auto& name = tag.tag;
-    const Entity new_entity = new_scene->create_entity_with_uuid(id.uuid, name);
-    dst_scene_registry.get<TagComponent>(new_entity).enabled = tag.enabled;
-  }
-
-  for (const auto e : view) {
-    const Entity src_parent = eutil::get_parent(src_scene.get(), e);
-    if (src_parent != entt::null) {
-      const Entity dst = new_scene->get_entity_by_uuid(view.get<IDComponent>(e).uuid);
-      const auto parent_uuid = eutil::get_uuid(src_scene_registry, src_parent);
-      eutil::set_parent(new_scene.get(), dst, new_scene->get_entity_by_uuid(parent_uuid));
-    }
-  }
-
-  // Copy components (except IDComponent and TagComponent)
-  copy_component(AllComponents{}, dst_scene_registry, src_scene_registry, new_scene->entity_map);
+  OX_LOG_ERROR("TODO: Scene::copy");
 
   return new_scene;
 }
 
-void Scene::on_contact_added(const JPH::Body& body1,
+auto Scene::get_world_transform(const flecs::entity entity) const -> glm::mat4 {
+  const auto* tc = entity.get<TransformComponent>();
+  const auto parent = entity.parent();
+  const glm::mat4 parent_transform = parent != flecs::entity::null() ? get_world_transform(parent) : glm::mat4(1.0f);
+  return parent_transform * glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) *
+         glm::scale(glm::mat4(1.0f), tc->scale);
+}
+
+auto Scene::get_local_transform(flecs::entity entity) const -> glm::mat4 {
+  const auto* tc = entity.get<TransformComponent>();
+  return glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) * glm::scale(glm::mat4(1.0f), tc->scale);
+}
+
+auto Scene::on_contact_added(const JPH::Body& body1,
                              const JPH::Body& body2,
                              const JPH::ContactManifold& manifold,
-                             const JPH::ContactSettings& settings) {
+                             const JPH::ContactSettings& settings) -> void {
   OX_SCOPED_ZONE;
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_contact_added");
-    const auto script_view = registry.view<CPPScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& system : script_component.systems) {
-        system->on_contact_added(this, e, body1, body2, manifold, settings);
+    world.query_builder<const CPPScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
+                                                                                                              const CPPScriptComponent& csc) {
+      for (const auto& script : csc.systems) {
+        script->on_contact_added(this, e, body1, body2, manifold, settings);
       }
-    }
+    });
   }
 
-  // TODO: Lua callbacks
+  {
+    OX_SCOPED_ZONE_N("LuaScripting/on_contact_added");
+    world.query_builder<const LuaScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
+                                                                                                              const LuaScriptComponent& lsc) {
+      for (const auto& script : lsc.lua_systems) {
+        script->on_contact_added(this, e, body1, body2, manifold, settings);
+      }
+    });
+  }
 }
 
-void Scene::on_contact_persisted(const JPH::Body& body1,
+auto Scene::on_contact_persisted(const JPH::Body& body1,
                                  const JPH::Body& body2,
                                  const JPH::ContactManifold& manifold,
-                                 const JPH::ContactSettings& settings) {
+                                 const JPH::ContactSettings& settings) -> void {
   OX_SCOPED_ZONE;
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_contact_persisted");
-    const auto script_view = registry.view<CPPScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& system : script_component.systems) {
-        system->on_contact_persisted(this, e, body1, body2, manifold, settings);
+    world.query_builder<const CPPScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
+                                                                                                              const CPPScriptComponent& csc) {
+      for (const auto& script : csc.systems) {
+        script->on_contact_added(this, e, body1, body2, manifold, settings);
       }
-    }
+    });
   }
 
-  // TODO: Lua callbacks
+  {
+    OX_SCOPED_ZONE_N("LuaScripting/on_contact_persisted");
+    world.query_builder<const LuaScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
+                                                                                                              const LuaScriptComponent& lsc) {
+      for (const auto& script : lsc.lua_systems) {
+        script->on_contact_persisted(this, e, body1, body2, manifold, settings);
+      }
+    });
+  }
 }
 
-void Scene::create_rigidbody(entt::entity entity, const TransformComponent& transform, RigidbodyComponent& component) {
+auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component) -> void {
   OX_SCOPED_ZONE;
   if (!running)
     return;
@@ -529,120 +262,116 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
   JPH::MutableCompoundShapeSettings compound_shape_settings;
   float max_scale_component = glm::max(glm::max(transform.scale.x, transform.scale.y), transform.scale.z);
 
-  const auto& entity_name = eutil::get_name(registry, entity);
+  const auto entity_name = std::string(entity.name());
 
-  if (registry.all_of<BoxColliderComponent>(entity)) {
-    const auto& bc = registry.get<BoxColliderComponent>(entity);
-    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), bc.friction, bc.restitution);
+  if (const auto* bc = entity.get<BoxColliderComponent>()) {
+    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), bc->friction, bc->restitution);
 
-    glm::vec3 scale = bc.size;
+    glm::vec3 scale = bc->size;
     JPH::BoxShapeSettings shape_settings({glm::abs(scale.x), glm::abs(scale.y), glm::abs(scale.z)}, 0.05f, mat);
-    shape_settings.SetDensity(glm::max(0.001f, bc.density));
+    shape_settings.SetDensity(glm::max(0.001f, bc->density));
 
-    compound_shape_settings.AddShape({bc.offset.x, bc.offset.y, bc.offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({bc->offset.x, bc->offset.y, bc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (registry.all_of<SphereColliderComponent>(entity)) {
-    const auto& sc = registry.get<SphereColliderComponent>(entity);
-    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), sc.friction, sc.restitution);
+  if (const auto* sc = entity.get<SphereColliderComponent>()) {
+    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), sc->friction, sc->restitution);
 
-    float radius = 2.0f * sc.radius * max_scale_component;
+    float radius = 2.0f * sc->radius * max_scale_component;
     JPH::SphereShapeSettings shape_settings(glm::max(0.01f, radius), mat);
-    shape_settings.SetDensity(glm::max(0.001f, sc.density));
+    shape_settings.SetDensity(glm::max(0.001f, sc->density));
 
-    compound_shape_settings.AddShape({sc.offset.x, sc.offset.y, sc.offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({sc->offset.x, sc->offset.y, sc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (registry.all_of<CapsuleColliderComponent>(entity)) {
-    const auto& cc = registry.get<CapsuleColliderComponent>(entity);
-    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc.friction, cc.restitution);
+  if (const auto* cc = entity.get<CapsuleColliderComponent>()) {
+    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc->friction, cc->restitution);
 
-    float radius = 2.0f * cc.radius * max_scale_component;
-    JPH::CapsuleShapeSettings shape_settings(glm::max(0.01f, cc.height) * 0.5f, glm::max(0.01f, radius), mat);
-    shape_settings.SetDensity(glm::max(0.001f, cc.density));
+    float radius = 2.0f * cc->radius * max_scale_component;
+    JPH::CapsuleShapeSettings shape_settings(glm::max(0.01f, cc->height) * 0.5f, glm::max(0.01f, radius), mat);
+    shape_settings.SetDensity(glm::max(0.001f, cc->density));
 
-    compound_shape_settings.AddShape({cc.offset.x, cc.offset.y, cc.offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (registry.all_of<TaperedCapsuleColliderComponent>(entity)) {
-    const auto& tcc = registry.get<TaperedCapsuleColliderComponent>(entity);
-    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), tcc.friction, tcc.restitution);
+  if (const auto* tcc = entity.get<TaperedCapsuleColliderComponent>()) {
+    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), tcc->friction, tcc->restitution);
 
-    float top_radius = 2.0f * tcc.top_radius * max_scale_component;
-    float bottom_radius = 2.0f * tcc.bottom_radius * max_scale_component;
-    JPH::TaperedCapsuleShapeSettings shape_settings(glm::max(0.01f, tcc.height) * 0.5f,
+    float top_radius = 2.0f * tcc->top_radius * max_scale_component;
+    float bottom_radius = 2.0f * tcc->bottom_radius * max_scale_component;
+    JPH::TaperedCapsuleShapeSettings shape_settings(glm::max(0.01f, tcc->height) * 0.5f,
                                                     glm::max(0.01f, top_radius),
                                                     glm::max(0.01f, bottom_radius),
                                                     mat);
-    shape_settings.SetDensity(glm::max(0.001f, tcc.density));
+    shape_settings.SetDensity(glm::max(0.001f, tcc->density));
 
-    compound_shape_settings.AddShape({tcc.offset.x, tcc.offset.y, tcc.offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({tcc->offset.x, tcc->offset.y, tcc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (registry.all_of<CylinderColliderComponent>(entity)) {
-    const auto& cc = registry.get<CylinderColliderComponent>(entity);
-    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc.friction, cc.restitution);
+  if (const auto* cc = entity.get<CylinderColliderComponent>()) {
+    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc->friction, cc->restitution);
 
-    float radius = 2.0f * cc.radius * max_scale_component;
-    JPH::CylinderShapeSettings shape_settings(glm::max(0.01f, cc.height) * 0.5f, glm::max(0.01f, radius), 0.05f, mat);
-    shape_settings.SetDensity(glm::max(0.001f, cc.density));
+    float radius = 2.0f * cc->radius * max_scale_component;
+    JPH::CylinderShapeSettings shape_settings(glm::max(0.01f, cc->height) * 0.5f, glm::max(0.01f, radius), 0.05f, mat);
+    shape_settings.SetDensity(glm::max(0.001f, cc->density));
 
-    compound_shape_settings.AddShape({cc.offset.x, cc.offset.y, cc.offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (registry.all_of<MeshColliderComponent>(entity) && registry.all_of<MeshComponent>(entity)) {
-    const auto& mc = registry.get<MeshColliderComponent>(entity);
-    const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), mc.friction, mc.restitution);
+  if (const auto* mc = entity.get<MeshColliderComponent>()) {
+    if (const auto* mesh_component = entity.get<MeshComponent>()) {
+      const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), mc->friction, mc->restitution);
 
-    // TODO: We should only get the vertices and indices for this particular MeshComponent using MeshComponent::node_index
+      // TODO: We should only get the vertices and indices for this particular MeshComponent using MeshComponent::node_index
 
-    const auto& mesh_component = registry.get<MeshComponent>(entity);
-    auto vertices = mesh_component.mesh_base->_vertices;
-    const auto& indices = mesh_component.mesh_base->_indices;
+      auto vertices = mesh_component->mesh_base->_vertices;
+      const auto& indices = mesh_component->mesh_base->_indices;
 
-    // scale vertices
-    const auto world_transform = eutil::get_world_transform(this, entity);
-    for (auto& vert : vertices) {
-      glm::vec4 scaled_pos = world_transform * glm::vec4(vert.position, 1.0);
-      vert.position = glm::vec3(scaled_pos);
+      // scale vertices
+      const auto world_transform = get_world_transform(entity);
+      for (auto& vert : vertices) {
+        glm::vec4 scaled_pos = world_transform * glm::vec4(vert.position, 1.0);
+        vert.position = glm::vec3(scaled_pos);
+      }
+
+      const uint32_t vertex_count = static_cast<uint32_t>(vertices.size());
+      const uint32_t index_count = static_cast<uint32_t>(indices.size());
+      const uint32_t triangle_count = vertex_count / 3;
+
+      JPH::VertexList vertex_list;
+      vertex_list.resize(vertex_count);
+      for (uint32_t i = 0; i < vertex_count; ++i)
+        vertex_list[i] = JPH::Float3(vertices[i].position.x, vertices[i].position.y, vertices[i].position.z);
+
+      JPH::IndexedTriangleList indexedTriangleList;
+      indexedTriangleList.resize(index_count * 2);
+
+      for (uint32_t i = 0; i < triangle_count; ++i) {
+        indexedTriangleList[i * 2 + 0].mIdx[0] = indices[i * 3 + 0];
+        indexedTriangleList[i * 2 + 0].mIdx[1] = indices[i * 3 + 1];
+        indexedTriangleList[i * 2 + 0].mIdx[2] = indices[i * 3 + 2];
+
+        indexedTriangleList[i * 2 + 1].mIdx[2] = indices[i * 3 + 0];
+        indexedTriangleList[i * 2 + 1].mIdx[1] = indices[i * 3 + 1];
+        indexedTriangleList[i * 2 + 1].mIdx[0] = indices[i * 3 + 2];
+      }
+
+      JPH::PhysicsMaterialList material_list = {};
+      material_list.emplace_back(mat);
+      JPH::MeshShapeSettings shape_settings(vertex_list, indexedTriangleList, material_list);
+      compound_shape_settings.AddShape({mc->offset.x, mc->offset.y, mc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
     }
-
-    const uint32_t vertex_count = (uint32_t)vertices.size();
-    const uint32_t index_count = (uint32_t)indices.size();
-    const uint32_t triangle_count = vertex_count / 3;
-
-    JPH::VertexList vertex_list;
-    vertex_list.resize(vertex_count);
-    for (uint32_t i = 0; i < vertex_count; ++i)
-      vertex_list[i] = JPH::Float3(vertices[i].position.x, vertices[i].position.y, vertices[i].position.z);
-
-    JPH::IndexedTriangleList indexedTriangleList;
-    indexedTriangleList.resize(index_count * 2);
-
-    for (uint32_t i = 0; i < triangle_count; ++i) {
-      indexedTriangleList[i * 2 + 0].mIdx[0] = indices[i * 3 + 0];
-      indexedTriangleList[i * 2 + 0].mIdx[1] = indices[i * 3 + 1];
-      indexedTriangleList[i * 2 + 0].mIdx[2] = indices[i * 3 + 2];
-
-      indexedTriangleList[i * 2 + 1].mIdx[2] = indices[i * 3 + 0];
-      indexedTriangleList[i * 2 + 1].mIdx[1] = indices[i * 3 + 1];
-      indexedTriangleList[i * 2 + 1].mIdx[0] = indices[i * 3 + 2];
-    }
-
-    JPH::PhysicsMaterialList material_list = {};
-    material_list.emplace_back(mat);
-    JPH::MeshShapeSettings shape_settings(vertex_list, indexedTriangleList, material_list);
-    compound_shape_settings.AddShape({mc.offset.x, mc.offset.y, mc.offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
   // Body
   auto rotation = glm::quat(transform.rotation);
 
-  auto layer = registry.get<TagComponent>(entity).layer;
   uint8_t layer_index = 1; // Default Layer
-  auto collision_mask_it = physics->layer_collision_mask.find(layer);
-  if (collision_mask_it != physics->layer_collision_mask.end())
-    layer_index = collision_mask_it->second.index;
+  if (auto layer_component = entity.get<LayerComponent>()) {
+    const auto collision_mask_it = physics->layer_collision_mask.find(layer_component->layer);
+    if (collision_mask_it != physics->layer_collision_mask.end())
+      layer_index = collision_mask_it->second.index;
+  }
 
   JPH::BodyCreationSettings body_settings(compound_shape_settings.Create().Get(),
                                           {transform.position.x, transform.position.y, transform.position.z},
@@ -659,7 +388,7 @@ void Scene::create_rigidbody(entt::entity entity, const TransformComponent& tran
   body_settings.mAngularDamping = glm::max(0.0f, component.angular_drag);
   body_settings.mMotionQuality = component.continuous ? JPH::EMotionQuality::LinearCast : JPH::EMotionQuality::Discrete;
   body_settings.mGravityFactor = component.gravity_scale;
-  body_settings.mAllowedDOFs = (JPH::EAllowedDOFs)component.allowed_dofs;
+  body_settings.mAllowedDOFs = static_cast<JPH::EAllowedDOFs>(component.allowed_dofs);
 
   body_settings.mIsSensor = component.is_sensor;
 
@@ -679,7 +408,7 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
   if (!running)
     return;
 
-  auto physics = App::get_system<Physics>(EngineSystems::Physics);
+  const auto physics = App::get_system<Physics>(EngineSystems::Physics);
 
   const auto position = JPH::Vec3(transform.position.x, transform.position.y, transform.position.z);
   const auto capsule_shape = JPH::RotatedTranslatedShapeSettings(JPH::Vec3(0,
@@ -704,81 +433,73 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
   component.character->AddToPhysicsSystem(JPH::EActivation::Activate);
 }
 
-void Scene::handle_future_mesh_load_event(const FutureMeshLoadEvent& event) {
-  const auto task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
-  event.task->on_complete([this](const Shared<Mesh>& mesh) { this->load_mesh(mesh); });
-  task_scheduler->schedule_task(event.task);
-}
-
 void Scene::on_runtime_update(const Timestep& delta_time) {
   OX_SCOPED_ZONE;
 
   // TODO: maybe bindings should be done once at entity creation...
-  //       we can do it with entt on_create etc. callbacks...
-  // scripting binds
-  const auto cpp_script_view = registry.view<CPPScriptComponent>();
+  const auto cpp_scripts_query = world.query_builder<const CPPScriptComponent>().build();
   {
     OX_SCOPED_ZONE_N("CPPScripting/binding");
-    for (auto&& [e, script_component] : cpp_script_view.each()) {
-      for (const auto& system : script_component.systems) {
-        system->bind_globals(this, e, &dispatcher);
+    cpp_scripts_query.each([this](const flecs::entity& e, const CPPScriptComponent& c) {
+      for (const auto& system : c.systems) {
+        system->bind_globals(this, e);
       }
-    }
+    });
   }
 
-  const auto lua_script_view = registry.view<LuaScriptComponent>();
+  const auto lua_scripts_query = world.query_builder<const LuaScriptComponent>().build();
   {
     OX_SCOPED_ZONE_N("LuaScripting/binding");
-    for (auto&& [e, script_component] : lua_script_view.each()) {
-      for (const auto& script : script_component.lua_systems) {
+    lua_scripts_query.each([this, delta_time](const flecs::entity& e, const LuaScriptComponent& c) {
+      for (const auto& script : c.lua_systems) {
         script->bind_globals(this, e, delta_time);
       }
-    }
+    });
   }
 
   scene_renderer->update(delta_time);
 
   update_physics(delta_time);
 
-  // Scripting
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_update");
-    for (auto&& [e, script_component] : cpp_script_view.each()) {
-      for (const auto& system : script_component.systems) {
+    cpp_scripts_query.each([delta_time](const flecs::entity& e, const CPPScriptComponent& c) {
+      for (const auto& system : c.systems) {
         system->on_update(delta_time);
       }
-    }
+    });
   }
 
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_update");
-    for (auto&& [e, script_component] : lua_script_view.each()) {
-      for (const auto& script : script_component.lua_systems) {
+    lua_scripts_query.each([delta_time](const flecs::entity& e, const LuaScriptComponent& c) {
+      for (const auto& script : c.lua_systems) {
         script->on_update(delta_time);
       }
-    }
+    });
   }
 
   // Audio
   {
     OX_SCOPED_ZONE_N("Audio Systems");
-    const auto listener_view = registry.group<AudioListenerComponent>(entt::get<TransformComponent>);
-    for (auto&& [e, ac, tc] : listener_view.each()) {
+    world.query_builder<const TransformComponent, AudioListenerComponent>().build().each([this](const flecs::entity& e,
+                                                                                                const TransformComponent& tc,
+                                                                                                AudioListenerComponent& ac) {
       ac.listener = create_shared<AudioListener>();
       if (ac.active) {
-        const glm::mat4 inverted = inverse(eutil::get_world_transform(this, e));
+        const glm::mat4 inverted = glm::inverse(get_world_transform(e));
         const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
         ac.listener->set_config(ac.config);
         ac.listener->set_position(tc.position);
         ac.listener->set_direction(-forward);
-        break;
       }
-    }
+    });
 
-    const auto source_view = registry.group<AudioSourceComponent>(entt::get<TransformComponent>);
-    for (auto&& [e, ac, tc] : source_view.each()) {
+    world.query_builder<const TransformComponent, AudioSourceComponent>().build().each([this](const flecs::entity& e,
+                                                                                              const TransformComponent& tc,
+                                                                                              const AudioSourceComponent& ac) {
       if (ac.source) {
-        const glm::mat4 inverted = inverse(eutil::get_world_transform(this, e));
+        const glm::mat4 inverted = glm::inverse(get_world_transform(e));
         const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
         ac.source->set_config(ac.config);
         ac.source->set_position(tc.position);
@@ -786,7 +507,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
         if (ac.config.play_on_awake)
           ac.source->play();
       }
-    }
+    });
   }
 }
 
@@ -794,29 +515,136 @@ void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   OX_SCOPED_ZONE;
 
   {
-    OX_SCOPED_ZONE_N("CPPScripting/on_imgui_render");
-    const auto script_view = registry.view<CPPScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& system : script_component.systems) {
+    OX_SCOPED_ZONE_N("CPPScripting/on_render");
+    world.query_builder<const CPPScriptComponent>().build().each([extent, format](const CPPScriptComponent& c) {
+      for (const auto& system : c.systems) {
         system->on_render(extent, format);
       }
-    }
+    });
   }
 
   {
-    OX_SCOPED_ZONE_N("LuaScripting/on_imgui_render");
-    const auto script_view = registry.view<LuaScriptComponent>();
-    for (auto&& [e, script_component] : script_view.each()) {
-      for (const auto& script : script_component.lua_systems) {
+    OX_SCOPED_ZONE_N("LuaScripting/on_render");
+    world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
+      for (const auto& script : c.lua_systems) {
         script->on_render(extent, format);
       }
-    }
+    });
   }
 }
 
-void Scene::on_editor_update(const Timestep& delta_time, CameraComponent& camera) const {
+void Scene::on_editor_update(const Timestep& delta_time, const CameraComponent& camera) const {
   OX_SCOPED_ZONE;
   scene_renderer->get_render_pipeline()->submit_camera(camera);
   scene_renderer->update(delta_time);
+}
+
+auto Scene::update_physics(const Timestep& delta_time) -> void {
+  OX_SCOPED_ZONE;
+  // Minimum stable value is 16.0
+  constexpr float physics_step_rate = 50.0f;
+  constexpr float physics_ts = 1.0f / physics_step_rate;
+
+  bool stepped = false;
+  physics_frame_accumulator += static_cast<float>(delta_time.get_seconds());
+
+  auto* physics = App::get_system<Physics>(EngineSystems::Physics);
+
+  while (physics_frame_accumulator >= physics_ts) {
+    physics->step(physics_ts);
+
+    {
+      OX_SCOPED_ZONE_N("CPPScripting/on_fixed_update");
+      world.query_builder<const CPPScriptComponent>().build().each([](const CPPScriptComponent& c) {
+        for (const auto& system : c.systems) {
+          system->on_fixed_update(physics_ts);
+        }
+      });
+    }
+
+    {
+      OX_SCOPED_ZONE_N("LuaScripting/on_fixed_update");
+      world.query_builder<const LuaScriptComponent>().build().each([](const LuaScriptComponent& c) {
+        for (const auto& system : c.lua_systems) {
+          system->on_fixed_update(physics_ts);
+        }
+      });
+    }
+
+    physics_frame_accumulator -= physics_ts;
+    stepped = true;
+  }
+
+  const float interpolation_factor = physics_frame_accumulator / physics_ts;
+
+  world.query_builder<TransformComponent, RigidbodyComponent>().build().each([physics, stepped, interpolation_factor](TransformComponent& tc,
+                                                                                                                      RigidbodyComponent& rb) {
+    if (!rb.runtime_body)
+      return;
+
+    const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
+    const auto& body_interface = physics->get_physics_system()->GetBodyInterface();
+
+    if (!body_interface.IsActive(body->GetID()))
+      return;
+
+    if (rb.interpolation) {
+      if (stepped) {
+        const JPH::Vec3 position = body->GetPosition();
+        const JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
+
+        rb.previous_translation = rb.translation;
+        rb.previous_rotation = rb.rotation;
+        rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
+        rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+      }
+
+      tc.position = glm::lerp(rb.previous_translation, rb.translation, interpolation_factor);
+      tc.rotation = glm::eulerAngles(glm::slerp(rb.previous_rotation, rb.rotation, interpolation_factor));
+    } else {
+      const JPH::Vec3 position = body->GetPosition();
+      const JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
+
+      rb.previous_translation = rb.translation;
+      rb.previous_rotation = rb.rotation;
+      rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
+      rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+      tc.position = rb.translation;
+      tc.rotation = glm::eulerAngles(rb.rotation);
+    }
+  });
+
+  // Character
+  {
+    world.query_builder<TransformComponent, CharacterControllerComponent>().build().each([stepped,
+                                                                                          interpolation_factor](TransformComponent& tc,
+                                                                                                                CharacterControllerComponent& ch) {
+      ch.character->PostSimulation(ch.collision_tolerance);
+      if (ch.interpolation) {
+        if (stepped) {
+          const JPH::Vec3 position = ch.character->GetPosition();
+          const JPH::Vec3 rotation = ch.character->GetRotation().GetEulerAngles();
+
+          ch.previous_translation = ch.translation;
+          ch.previous_rotation = ch.rotation;
+          ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
+          ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+        }
+
+        tc.position = glm::lerp(ch.previous_translation, ch.translation, interpolation_factor);
+        tc.rotation = glm::eulerAngles(glm::slerp(ch.previous_rotation, ch.rotation, interpolation_factor));
+      } else {
+        const JPH::Vec3 position = ch.character->GetPosition();
+        const JPH::Vec3 rotation = ch.character->GetRotation().GetEulerAngles();
+
+        ch.previous_translation = ch.translation;
+        ch.previous_rotation = ch.rotation;
+        ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
+        ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+        tc.position = ch.translation;
+        tc.rotation = glm::eulerAngles(ch.rotation);
+      }
+    });
+  }
 }
 } // namespace ox

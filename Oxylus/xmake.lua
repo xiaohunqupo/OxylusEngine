@@ -83,6 +83,7 @@ target("Oxylus")
         "imguizmo",
         "glm",
         "entt",
+        "flecs",
         "fastgltf",
         "meshoptimizer",
         "fmt",

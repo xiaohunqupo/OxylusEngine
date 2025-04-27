@@ -1,7 +1,5 @@
 ﻿#pragma once
 
-#include "Event/Event.hpp"
-
 #include <vuk/Types.hpp>
 
 namespace ox {
@@ -17,10 +15,5 @@ public:
 
   virtual void on_update() {}
   virtual void on_render(vuk::Extent3D extent, vuk::Format format) {}
-
-  void set_dispatcher(EventDispatcher* dispatcher) { m_dispatcher = dispatcher; }
-
-protected:
-  EventDispatcher* m_dispatcher = nullptr;
 };
 } // namespace ox

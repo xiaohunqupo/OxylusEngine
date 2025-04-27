@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Scene/Entity.hpp"
-#include "Event/Event.hpp"
+#include <flecs.h>
+
 #include "Utils/Timestep.hpp"
 
 namespace JPH {
@@ -11,6 +11,7 @@ class Body;
 } // namespace JPH
 
 namespace ox {
+class Scene;
 class System {
 public:
   std::size_t hash_code = {}; // set in SystemManager::register_system
@@ -18,11 +19,11 @@ public:
   System() = default;
   virtual ~System() = default;
 
-  /// Called right after when the scene gets initalized.
-  virtual void on_init(Scene* scene, entt::entity e) {}
+  /// Called right after when the scene gets initialized.
+  virtual void on_init(Scene* scene, flecs::entity e) {}
 
   /// Called when the system is destroyed.
-  virtual void on_release(Scene* scene, entt::entity e) {}
+  virtual void on_release(Scene* scene, flecs::entity e) {}
 
   /// Called after physic system is updated.
   virtual void on_update(const Timestep& delta_time) {}
@@ -38,27 +39,25 @@ public:
 
   /// Physics interfaces
   virtual void on_contact_added(Scene* scene,
-                                entt::entity e,
+                                flecs::entity e,
                                 const JPH::Body& body1,
                                 const JPH::Body& body2,
                                 const JPH::ContactManifold& manifold,
                                 const JPH::ContactSettings& settings) {}
   virtual void on_contact_persisted(Scene* scene,
-                                    entt::entity e,
+                                    flecs::entity e,
                                     const JPH::Body& body1,
                                     const JPH::Body& body2,
                                     const JPH::ContactManifold& manifold,
                                     const JPH::ContactSettings& settings) {}
 
-  void bind_globals(Scene* s, entt::entity e, EventDispatcher* d) {
-    m_scene = s;
-    m_entity = e;
-    m_dispatcher = d;
+  void bind_globals(this System& self, Scene* scene, const flecs::entity entity) {
+    self._scene = scene;
+    self._entity = entity;
   }
 
 protected:
-  Scene* m_scene = nullptr;
-  entt::entity m_entity = entt::null;
-  EventDispatcher* m_dispatcher = nullptr;
+  Scene* _scene = nullptr;
+  flecs::entity _entity = {};
 };
 } // namespace ox

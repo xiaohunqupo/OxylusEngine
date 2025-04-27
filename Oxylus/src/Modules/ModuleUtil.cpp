@@ -1,6 +1,6 @@
 ﻿#include "ModuleUtil.hpp"
 
-#include "Core/Systems/SystemManager.hpp"
+#include "Core/SystemManager.hpp"
 #include "ModuleInterface.hpp"
 #include "ModuleRegistry.hpp"
 

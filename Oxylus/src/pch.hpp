@@ -49,8 +49,6 @@ namespace fs = std::filesystem;
 
 #include <Jolt/Core/Core.h>
 
-#include <entt/entity/fwd.hpp>
-
 #include "Core/Types.hpp"
 #include "Core/Base.hpp"
 #include "Core/Enum.hpp"

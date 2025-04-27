@@ -197,7 +197,8 @@ void RuntimeConsole::process_command(const std::string& command) {
   bool is_cvar_variable = false;
 
   auto* cvar_system = CVarSystem::get();
-  const auto cvar = cvar_system->get_cvar(entt::hashed_string(parsed_command.c_str()));
+  const std::hash<std::string> hasher = {};
+  const auto cvar = cvar_system->get_cvar(hasher(parsed_command.c_str()));
   if (cvar) {
     is_cvar_variable = true;
     switch (cvar->type) {
@@ -207,7 +208,7 @@ void RuntimeConsole::process_command(const std::string& command) {
         if (!value.str_value.empty()) {
           const auto parsed = value.as<int32_t>();
           if (parsed.has_value()) {
-            cvar_system->set_int_cvar(entt::hashed_string(cvar->name.c_str()), *parsed);
+            cvar_system->set_int_cvar(hasher(cvar->name.c_str()), *parsed);
             current_value = *parsed;
             changed = true;
           }
@@ -221,7 +222,7 @@ void RuntimeConsole::process_command(const std::string& command) {
         if (!value.str_value.empty()) {
           const auto parsed = value.as<float>();
           if (parsed.has_value()) {
-            cvar_system->set_float_cvar(entt::hashed_string(cvar->name.c_str()), *parsed);
+            cvar_system->set_float_cvar(hasher(cvar->name.c_str()), *parsed);
             current_value = *parsed;
             changed = true;
           }
@@ -233,7 +234,7 @@ void RuntimeConsole::process_command(const std::string& command) {
         auto current_value = cvar_system->string_cvars.at(cvar->array_index).current;
         bool changed = false;
         if (!value.str_value.empty()) {
-          cvar_system->set_string_cvar(entt::hashed_string(cvar->name.c_str()), value.str_value.c_str());
+          cvar_system->set_string_cvar(hasher(cvar->name.c_str()), value.str_value.c_str());
           current_value = value.str_value;
           changed = true;
         }

@@ -49,23 +49,23 @@ public:
   CVarSystem() = default;
 
   static CVarSystem* get();
-  CVarParameter* get_cvar(uint32_t hash);
+  CVarParameter* get_cvar(usize hash);
 
   CVarParameter* create_float_cvar(const char* name, const char* description, float default_value, float current_value);
   CVarParameter* create_int_cvar(const char* name, const char* description, int32_t default_value, int32_t current_value);
   CVarParameter* create_string_cvar(const char* name, const char* description, const char* default_value, const char* current_value);
 
-  float* get_float_cvar(uint32_t hash);
-  int32_t* get_int_cvar(uint32_t hash);
-  std::string* get_string_cvar(uint32_t hash);
+  float* get_float_cvar(usize hash);
+  int32_t* get_int_cvar(usize hash);
+  std::string* get_string_cvar(usize hash);
 
-  void set_float_cvar(uint32_t hash, float value);
-  void set_int_cvar(uint32_t hash, int32_t value);
-  void set_string_cvar(uint32_t hash, const char* value);
+  void set_float_cvar(usize hash, float value);
+  void set_int_cvar(usize hash, int32_t value);
+  void set_string_cvar(usize hash, const char* value);
 
 private:
   std::shared_mutex mutex_;
-  ankerl::unordered_dense::map<uint32_t, Unique<CVarParameter>> saved_cvars;
+  ankerl::unordered_dense::map<usize, Unique<CVarParameter>> saved_cvars;
   std::vector<CVarParameter*> cached_edit_parameters;
 
   CVarParameter* init_cvar(const char* name, const char* description);

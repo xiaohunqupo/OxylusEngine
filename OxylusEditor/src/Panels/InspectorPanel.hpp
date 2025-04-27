@@ -1,11 +1,13 @@
 #pragma once
 
+#include <flecs.h>
+
 #include "Assets/PBRMaterial.hpp"
 #include "Assets/SpriteMaterial.hpp"
 #include "EditorPanel.hpp"
-#include "Scene/Entity.hpp"
 
 namespace ox {
+class Scene;
 class InspectorPanel : public EditorPanel {
 public:
   InspectorPanel();
@@ -16,13 +18,10 @@ public:
   static void draw_sprite_material_properties(Shared<SpriteMaterial>& material);
 
 private:
-  void draw_components(Entity entity);
+  void draw_components(flecs::entity entity);
 
-  template <typename Component>
-  static void draw_add_component(entt::registry& reg, Entity entity, const char* name);
-
-  Entity selected_entity = entt::null;
-  Scene* context;
-  bool debug_mode = false;
+  flecs::entity selected_entity = {};
+  Scene* _scene;
+  bool _rename_entity = false;
 };
 } // namespace ox
