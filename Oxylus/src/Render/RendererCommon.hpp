@@ -4,7 +4,7 @@
 
 namespace ox {
 class Texture;
-class Mesh;
+// class Mesh;
 
 class RendererCommon {
 public:

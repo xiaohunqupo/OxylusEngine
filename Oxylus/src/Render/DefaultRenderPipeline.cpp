@@ -946,7 +946,7 @@ void DefaultRenderPipeline::create_dynamic_textures(const vuk::Extent3D& ext) {
           if ((int)shadow_map_atlas.get_extent().width < packer.width || (int)shadow_map_atlas.get_extent().height < packer.height) {
             const auto shadow_size = vuk::Extent3D{(uint32_t)packer.width, (uint32_t)packer.height, 1};
 
-            auto ia = shadow_map_atlas.as_attachment();
+            auto ia = shadow_map_atlas.attachment();
             ia.extent = shadow_size;
             shadow_map_atlas.create_texture(ia);
             shadow_map_atlas_transparent.create_texture(ia);
@@ -1064,8 +1064,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   };
   auto final_image = vuk::clear_image(vuk::declare_ia("final_image", final_ia), vuk::Black<float>);
 
-  auto hiz_ia = first_pass || resized ? vuk::declare_ia("hiz_image", hiz_texture.as_attachment())
-                                      : vuk::acquire_ia("hiz_image", hiz_texture.as_attachment(), vuk::eFragmentSampled | vuk::eComputeSampled);
+  auto hiz_ia = first_pass || resized ? vuk::declare_ia("hiz_image", hiz_texture.attachment())
+                                      : vuk::acquire_ia("hiz_image", hiz_texture.attachment(), vuk::eFragmentSampled | vuk::eComputeSampled);
   auto hiz_image = vuk::make_pass("transition", [](vuk::CommandBuffer&, VUK_IA(vuk::eComputeRW) output) { return output; })(hiz_ia);
 
   if (first_pass || resized) {
@@ -1114,8 +1114,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     return std::make_tuple(_index_buffer, _indirect_buffer);
   })(vis_meshlets_buff_output, triangles_dis_buffer_output, instanced_idx_buf, indirect_commands_buff);
 
-  auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture->as_attachment()), vuk::DepthZero);
-  auto vis_image = vuk::clear_image(vuk::declare_ia("visibility_image", visibility_texture.as_attachment()), vuk::Black<float>);
+  auto depth = vuk::clear_image(vuk::declare_ia("depth_image", depth_texture->attachment()), vuk::DepthZero);
+  auto vis_image = vuk::clear_image(vuk::declare_ia("visibility_image", visibility_texture.attachment()), vuk::Black<float>);
 
   auto [vis_image_output, depth_output] = vuk::make_pass("main_vis_buffer_pass",
                                                          [this](vuk::CommandBuffer& command_buffer,
@@ -1153,7 +1153,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   auto depth_hiz_output = hiz_spd.dispatch("hiz_pass", frame_allocator, hiz_image_copied);
 
-  auto material_depth = vuk::clear_image(vuk::declare_ia("material_depth_image", material_depth_texture.as_attachment()), vuk::DepthZero);
+  auto material_depth = vuk::clear_image(vuk::declare_ia("material_depth_image", material_depth_texture.attachment()), vuk::DepthZero);
 
   // depth_hiz_output is not actually used in this pass, but passed here so it runs.
   auto material_depth_output = vuk::make_pass("material_vis_buffer_pass",
@@ -1175,13 +1175,13 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     return material_depth;
   })(material_depth, vis_image_output, depth_hiz_output);
 
-  auto albedo = vuk::clear_image(vuk::declare_ia("albedo_texture", albedo_texture.as_attachment()), vuk::Black<float>);
-  auto normal = vuk::clear_image(vuk::declare_ia("normal_texture", normal_texture.as_attachment()), vuk::Black<float>);
-  auto normal_vertex = vuk::clear_image(vuk::declare_ia("normal_vertex_texture", normal_vertex_texture.as_attachment()), vuk::Black<float>);
-  auto metallic_roughness = vuk::clear_image(vuk::declare_ia("metallic_roughness_texture", metallic_roughness_texture.as_attachment()),
+  auto albedo = vuk::clear_image(vuk::declare_ia("albedo_texture", albedo_texture.attachment()), vuk::Black<float>);
+  auto normal = vuk::clear_image(vuk::declare_ia("normal_texture", normal_texture.attachment()), vuk::Black<float>);
+  auto normal_vertex = vuk::clear_image(vuk::declare_ia("normal_vertex_texture", normal_vertex_texture.attachment()), vuk::Black<float>);
+  auto metallic_roughness = vuk::clear_image(vuk::declare_ia("metallic_roughness_texture", metallic_roughness_texture.attachment()),
                                              vuk::Black<float>);
-  auto velocity = vuk::clear_image(vuk::declare_ia("velocity_texture", velocity_texture.as_attachment()), vuk::Black<float>);
-  auto emission = vuk::clear_image(vuk::declare_ia("emission_texture", emission_texture.as_attachment()), vuk::Black<float>);
+  auto velocity = vuk::clear_image(vuk::declare_ia("velocity_texture", velocity_texture.attachment()), vuk::Black<float>);
+  auto emission = vuk::clear_image(vuk::declare_ia("emission_texture", emission_texture.attachment()), vuk::Black<float>);
   auto [albedo_output,
         normal_output,
         normal_vertex_output,
@@ -1217,10 +1217,10 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
     return std::make_tuple(_albedo, _normal, _normal_vertex, _metallic_roughness, _velocity, _emission);
   })(material_depth_output, albedo, normal, normal_vertex, metallic_roughness, velocity, emission, vis_image_output);
 
-  auto envmap_image = vuk::clear_image(vuk::declare_ia("sky_envmap_image", sky_envmap_texture.as_attachment()), vuk::Black<float>);
+  auto envmap_image = vuk::clear_image(vuk::declare_ia("sky_envmap_image", sky_envmap_texture.attachment()), vuk::Black<float>);
   auto sky_envmap_output = dir_light_data ? sky_envmap_pass(frame_allocator, envmap_image) : envmap_image;
 
-  auto color_image = vuk::clear_image(vuk::declare_ia("color_image", color_texture.as_attachment()), vuk::Black<float>);
+  auto color_image = vuk::clear_image(vuk::declare_ia("color_image", color_texture.attachment()), vuk::Black<float>);
 
   // TODO: pass GTAO
   auto color_output = vuk::make_pass("shading_pass",
@@ -1268,8 +1268,8 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
      metallic_roughness_output,
      velocity_output,
      emission_output,
-     vuk::acquire_ia("sky_transmittance_lut", sky_transmittance_lut.as_attachment(), vuk::eFragmentSampled),
-     vuk::acquire_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment(), vuk::eFragmentSampled),
+     vuk::acquire_ia("sky_transmittance_lut", sky_transmittance_lut.attachment(), vuk::eFragmentSampled),
+     vuk::acquire_ia("sky_multiscatter_lut", sky_multiscatter_lut.attachment(), vuk::eFragmentSampled),
      sky_envmap_output);
 
   auto color_output_w2d = vuk::make_pass("2d_forward_pass",
@@ -1383,15 +1383,15 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
 
   return debug_pass(frame_allocator, depth_output, final_output);
 #if 0
-  auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.as_attachment()), vuk::DepthZero);
+  auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);
 
-  auto gtao_output = vuk::clear_image(vuk::declare_ia("gtao_output", gtao_final_texture.as_attachment()), vuk::Black<uint32_t>);
+  auto gtao_output = vuk::clear_image(vuk::declare_ia("gtao_output", gtao_final_texture.attachment()), vuk::Black<uint32_t>);
   if (RendererCVar::cvar_gtao_enable.get())
     gtao_output = gtao_pass(frame_allocator, gtao_output, depth_output, normal_output);
 
   #if FSR
-  auto ia = forward_texture.as_attachment();
+  auto ia = forward_texture.attachment();
   ia.image = {};
   ia.image_view = {};
   auto fsr_image = vuk::clear_image(vuk::declare_ia("fsr_output", ia), vuk::Black<float>);
@@ -2033,7 +2033,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_transmittance_pass()
       .dispatch((lut_size.x + 8 - 1) / 8, (lut_size.y + 8 - 1) / 8);
 
     return dst;
-  })(vuk::clear_image(vuk::declare_ia("sky_transmittance_lut", sky_transmittance_lut.as_attachment()), vuk::Black<float>));
+  })(vuk::clear_image(vuk::declare_ia("sky_transmittance_lut", sky_transmittance_lut.attachment()), vuk::Black<float>));
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_multiscatter_pass(vuk::Value<vuk::ImageAttachment>& transmittance_lut) {
@@ -2045,7 +2045,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_multiscatter_pass(vu
     command_buffer.bind_compute_pipeline("sky_multiscatter_pipeline").bind_persistent(0, *descriptor_set_00).dispatch(lut_size.x, lut_size.y);
 
     return dst;
-  })(vuk::clear_image(vuk::declare_ia("sky_multiscatter_lut", sky_multiscatter_lut.as_attachment()), vuk::Black<float>), transmittance_lut);
+  })(vuk::clear_image(vuk::declare_ia("sky_multiscatter_lut", sky_multiscatter_lut.attachment()), vuk::Black<float>), transmittance_lut);
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::Allocator& frame_allocator,

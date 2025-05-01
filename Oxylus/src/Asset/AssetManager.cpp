@@ -1,116 +1,136 @@
 #include "AssetManager.hpp"
 
-#include "Asset/Texture.hpp"
-#include "Audio/AudioSource.hpp"
-#include "Core/App.hpp"
-#include "Render/Mesh.hpp"
-
 namespace ox {
-AssetManager* AssetManager::_instance = nullptr;
 
 void AssetManager::init() {}
 
 void AssetManager::deinit() {}
 
-void AssetManager::set_instance() {
-  if (_instance == nullptr)
-    _instance = App::get_system<AssetManager>(EngineSystems::AssetManager);
-}
+auto AssetManager::registry() const -> const AssetRegistry& { return asset_registry; }
 
-Shared<Texture> AssetManager::get_texture_asset(const TextureLoadInfo& info) {
-  if (_instance->_state.texture_assets.contains(info.path)) {
-    return _instance->_state.texture_assets[info.path];
-  }
-
-  return load_texture_asset(info.path, info);
-}
-
-Shared<Texture> AssetManager::get_texture_asset(const std::string& name, const TextureLoadInfo& info) {
-  if (_instance->_state.texture_assets.contains(name)) {
-    return _instance->_state.texture_assets[name];
-  }
-
-  return load_texture_asset(name, info);
-}
-
-AssetTask<Texture>* AssetManager::get_texture_asset_future(const TextureLoadInfo& info) {
-  const auto* t = &_instance->_state.texture_tasks.emplace_back(create_unique<AssetTask<Texture>>([info] {
-    if (_instance->_state.texture_assets.contains(info.path)) {
-      return _instance->_state.texture_assets[info.path];
+auto AssetManager::load_asset(const UUID& uuid) -> bool {
+  auto* asset = this->get_asset(uuid);
+  switch (asset->type) {
+    case AssetType::Model: {
+      return this->load_model(uuid);
     }
-
-    return load_texture_asset(info.path, info);
-  }));
-
-  return t->get();
-}
-
-Shared<Mesh> AssetManager::get_mesh_asset(const std::string& path, const uint32_t loadingFlags) {
-  OX_SCOPED_ZONE;
-  if (_instance->_state.mesh_assets.contains(path)) {
-    return _instance->_state.mesh_assets[path];
-  }
-
-  return load_mesh_asset(path, loadingFlags);
-}
-
-AssetTask<Mesh>* AssetManager::get_mesh_asset_future(const std::string& path, uint32_t loadingFlags) {
-  const auto* t = &_instance->_state.mesh_tasks.emplace_back(create_unique<AssetTask<Mesh>>([path, loadingFlags] {
-    if (_instance->_state.mesh_assets.contains(path)) {
-      return _instance->_state.mesh_assets[path];
+    case AssetType::Texture: {
+      return this->load_texture(uuid);
     }
-
-    return load_mesh_asset(path, loadingFlags);
-  }));
-
-  return t->get();
-}
-
-Shared<AudioSource> AssetManager::get_audio_asset(const std::string& path) {
-  OX_SCOPED_ZONE;
-  if (_instance->_state.audio_assets.contains(path)) {
-    return _instance->_state.audio_assets[path];
+    case AssetType::Scene: {
+      return this->load_scene(uuid);
+    }
+    default:;
   }
 
-  return load_audio_asset(path);
+  return false;
 }
 
-Shared<Texture> AssetManager::load_texture_asset(const std::string& path, const TextureLoadInfo& info) {
-  OX_SCOPED_ZONE;
-
-  Shared<Texture> texture = create_shared<Texture>(info);
-  texture->asset_id = (uint32_t)_instance->_state.texture_assets.size();
-  texture->asset_path = path;
-  return _instance->_state.texture_assets.emplace(path, texture).first->second;
+auto AssetManager::unload_asset(const UUID& uuid) -> void {
+  const auto* asset = this->get_asset(uuid);
+  OX_CHECK_NULL(asset);
+  switch (asset->type) {
+    case AssetType::Model: {
+      this->unload_model(uuid);
+    } break;
+    case AssetType::Texture: {
+      this->unload_texture(uuid);
+    } break;
+    case AssetType::Scene: {
+      this->unload_scene(uuid);
+    } break;
+    default:;
+  }
 }
 
-Shared<Mesh> AssetManager::load_mesh_asset(const std::string& path, uint32_t loadingFlags) {
+auto AssetManager::load_model(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
-  Shared<Mesh> asset = create_shared<Mesh>(path);
-  asset->asset_id = (uint32_t)_instance->_state.mesh_assets.size();
-  asset->asset_path = path;
-  return _instance->_state.mesh_assets.emplace(path, asset).first->second;
+
+  OX_UNIMPLEMENTED(AssetManager::load_model);
+
+  return false;
 }
 
-Shared<AudioSource> AssetManager::load_audio_asset(const std::string& path) {
+auto AssetManager::unload_model(const UUID& uuid) -> void {
   OX_SCOPED_ZONE;
-  Shared<AudioSource> source = create_shared<AudioSource>(path);
-  source->asset_path = path;
-  return _instance->_state.audio_assets.emplace(path, source).first->second;
+
+  OX_UNIMPLEMENTED(AssetManager::unload_model);
 }
 
-void AssetManager::free_unused_assets() {
+auto AssetManager::load_texture(const UUID& uuid,
+                                const TextureLoadInfo& info) -> bool {
   OX_SCOPED_ZONE;
-  const auto m_count = std::erase_if(_instance->_state.mesh_assets,
-                                     [](const std::pair<std::string, Shared<Mesh>>& pair) { return pair.second.use_count() <= 1; });
 
-  if (m_count > 0)
-    OX_LOG_INFO("Cleaned up {} mesh assets.", m_count);
+  auto* asset = this->get_asset(uuid);
+  OX_CHECK_NULL(asset);
+  asset->acquire_ref();
 
-  const auto t_count = std::erase_if(_instance->_state.texture_assets,
-                                     [](const std::pair<std::string, Shared<Texture>>& pair) { return pair.second.use_count() <= 1; });
+  if (asset->is_loaded()) {
+    return true;
+  }
 
-  if (t_count > 0)
-    OX_LOG_INFO("Cleaned up {} texture assets.", t_count);
+  textures_mutex.lock();
+
+  Texture texture{};
+  texture.create(asset->path, info);
+  asset->texture_id = textures.create_slot(std::move(texture));
+
+  textures_mutex.unlock();
+
+  OX_LOG_INFO("Loaded texture {} {}.", asset->uuid.str(), SlotMap_decode_id(asset->texture_id).index);
+
+  return true;
+}
+
+auto AssetManager::unload_texture(const UUID& uuid) -> void {
+  OX_SCOPED_ZONE;
+
+  auto* asset = this->get_asset(uuid);
+  if (!asset || !(asset->is_loaded() && asset->release_ref())) {
+    return;
+  }
+
+  OX_LOG_TRACE("Unloaded texture {}.", uuid.str());
+
+  textures.destroy_slot(asset->texture_id);
+  asset->texture_id = TextureID::Invalid;
+}
+
+auto AssetManager::load_material(const UUID& uuid,
+                                 const Material& material_info) -> bool {
+  OX_SCOPED_ZONE;
+
+  OX_UNIMPLEMENTED(AssetManager::load_material);
+
+  return false;
+}
+
+auto AssetManager::unload_material(const UUID& uuid) -> void {
+  OX_SCOPED_ZONE;
+
+  OX_UNIMPLEMENTED(AssetManager::unload_material);
+}
+
+auto AssetManager::load_scene(const UUID& uuid) -> bool {
+  OX_SCOPED_ZONE;
+
+  OX_UNIMPLEMENTED(AssetManager::load_scene);
+
+  return false;
+}
+
+auto AssetManager::unload_scene(const UUID& uuid) -> void {
+  OX_SCOPED_ZONE;
+
+  OX_UNIMPLEMENTED(AssetManager::unload_scene);
+}
+
+auto AssetManager::get_asset(const UUID& uuid) -> Asset* {
+  const auto it = asset_registry.find(uuid);
+  if (it == asset_registry.end()) {
+    return nullptr;
+  }
+
+  return &it->second;
 }
 } // namespace ox

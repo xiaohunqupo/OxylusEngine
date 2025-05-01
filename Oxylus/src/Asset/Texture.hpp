@@ -1,76 +1,75 @@
 ﻿#pragma once
 
 #include <vuk/ImageAttachment.hpp>
+#include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
-
-#include "Asset.hpp"
 
 using Preset = vuk::ImageAttachment::Preset;
 
 namespace ox {
 struct TextureLoadInfo {
-  std::string path = {};
   Preset preset = Preset::eMap2D;
   vuk::Extent3D extent = {};
   vuk::Format format = vuk::Format::eR8G8B8A8Unorm;
-  void* data = nullptr;
   enum class MimeType { Generic, KTX } mime = MimeType::Generic;
+  void* data = nullptr; // optional
 };
 
-class Texture : public Asset {
+enum class TextureID : uint64 { Invalid = std::numeric_limits<uint64>::max() };
+class Texture {
 public:
   Texture() = default;
-  explicit Texture(const TextureLoadInfo& info, std::source_location loc = std::source_location::current());
   ~Texture() = default;
 
-  void create_texture(vuk::Extent3D extent,
-                      vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
-                      vuk::ImageAttachment::Preset preset = vuk::ImageAttachment::Preset::eGeneric2D,
-                      std::source_location loc = std::source_location::current());
-  void create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc = std::source_location::current());
-  void create_texture(vuk::Extent3D extent,
-                      const void* data,
-                      vuk::Format format = vuk::Format::eR8G8B8A8Unorm,
-                      Preset preset = Preset::eMap2D,
-                      std::source_location loc = std::source_location::current());
-  void load(const TextureLoadInfo& load_info, std::source_location loc = std::source_location::current());
-  vuk::ImageAttachment as_attachment() const { return _attachment; }
-  vuk::Value<vuk::ImageAttachment> acquire(vuk::Name name = {}, vuk::Access last_access = vuk::Access::eFragmentSampled) const;
-  vuk::Value<vuk::ImageAttachment> discard(vuk::Name name = {}) const;
+  auto create(const std::string& path,
+              const TextureLoadInfo& load_info,
+              const std::source_location& loc = std::source_location::current()) -> void;
 
-  const vuk::Unique<vuk::Image>& get_image() const { return _image; }
-  const vuk::Unique<vuk::ImageView>& get_view() const { return _view; }
-  const vuk::Extent3D& get_extent() const { return _attachment.extent; }
+  auto attachment() const -> vuk::ImageAttachment { return _attachment; }
+  auto acquire(vuk::Name name = {},
+               vuk::Access last_access = vuk::Access::eFragmentSampled) const -> vuk::Value<vuk::ImageAttachment>;
+  auto discard(vuk::Name name = {}) const -> vuk::Value<vuk::ImageAttachment>;
 
-  void set_name(std::string_view name, const std::source_location& loc = std::source_location::current());
+  auto get_image() const -> const vuk::Unique<vuk::Image>& { return _image; }
+  auto get_view() const -> const vuk::Unique<vuk::ImageView>& { return _view; }
+  auto get_extent() const -> const vuk::Extent3D& { return _attachment.extent; }
 
-  uint64 get_view_id() const { return _view->id; }
+  auto set_name(std::string_view name,
+                const std::source_location& loc = std::source_location::current()) -> void;
 
-  static uint32_t get_mip_count(vuk::Extent3D extent) {
-    return (uint32_t)log2f((float)std::max(std::max(extent.width, extent.height), extent.depth)) + 1;
+  auto get_view_id() const -> uint64 { return _view->id; }
+
+  static auto load_stb_image(const std::string& filename,
+                             uint32_t* width = nullptr,
+                             uint32_t* height = nullptr,
+                             uint32_t* bits = nullptr,
+                             bool srgb = true) -> Unique<uint8[]>;
+
+  static auto load_stb_image_from_memory(void* buffer,
+                                         size_t len,
+                                         uint32_t* width = nullptr,
+                                         uint32_t* height = nullptr,
+                                         uint32_t* bits = nullptr,
+                                         bool flipY = false,
+                                         bool srgb = true) -> Unique<uint8[]>;
+
+  static auto get_magenta_texture(uint32_t width,
+                                  uint32_t height,
+                                  uint32_t channels) -> uint8_t*;
+
+  static auto convert_to_four_channels(uint32_t width,
+                                       uint32_t height,
+                                       const uint8_t* three_channel_data) -> uint8_t*;
+
+  static auto get_mip_count(const vuk::Extent3D extent) -> uint32_t {
+    return static_cast<uint32_t>(log2f(static_cast<float>(std::max(std::max(extent.width, extent.height), extent.depth)))) + 1;
   }
 
-  static Unique<uint8_t[]> load_stb_image(const std::string& filename,
-                                          uint32_t* width = nullptr,
-                                          uint32_t* height = nullptr,
-                                          uint32_t* bits = nullptr,
-                                          bool srgb = true);
-  static Unique<unsigned char[]> load_stb_image_from_memory(void* buffer,
-                                                            size_t len,
-                                                            uint32_t* width = nullptr,
-                                                            uint32_t* height = nullptr,
-                                                            uint32_t* bits = nullptr,
-                                                            bool flipY = false,
-                                                            bool srgb = true);
-
-  static uint8_t* get_magenta_texture(uint32_t width, uint32_t height, uint32_t channels);
-
-  static uint8_t* convert_to_four_channels(uint32_t width, uint32_t height, const uint8_t* three_channel_data);
-
 private:
-  vuk::ImageAttachment _attachment;
+  vuk::ImageAttachment _attachment = {};
   vuk::Unique<vuk::Image> _image;
   vuk::Unique<vuk::ImageView> _view;
-  std::string _name;
+  std::string _name = {};
+  vuk::Compiler _compiler = {};
 };
 } // namespace ox

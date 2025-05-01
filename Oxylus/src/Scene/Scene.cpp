@@ -18,6 +18,7 @@
 #include <rapidjson/prettywriter.h>
 #include <sol/state.hpp>
 
+#include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Memory/Stack.hpp"
 #include "Physics/Physics.hpp"
@@ -224,11 +225,10 @@ auto Scene::on_runtime_stop() -> void {
 
 auto Scene::copy(const Shared<Scene>& src_scene) -> Shared<Scene> {
   OX_SCOPED_ZONE;
-  Shared<Scene> new_scene = create_shared<Scene>();
 
   OX_LOG_ERROR("TODO: Scene::copy");
 
-  return new_scene;
+  return nullptr;
 }
 
 auto Scene::get_world_transform(const flecs::entity entity) const -> glm::mat4 {
@@ -526,17 +526,17 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
         writer.String(member_name.data());
         std::visit(ox::match{
                        [](const auto&) {},
-                       [&](float32* v) { writer.Double(*v); },
-                       [&](int32* v) { writer.Int(*v); },
-                       [&](uint32* v) { writer.Uint(*v); },
-                       [&](int64* v) { writer.Int64(*v); },
-                       [&](uint64* v) { writer.Uint64(*v); },
-                       [&](glm::vec2* v) { serialize_vec2(writer, *v); },
-                       [&](glm::vec3* v) { serialize_vec3(writer, *v); },
-                       [&](glm::vec4* v) { serialize_vec4(writer, *v); },
-                       [&](glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
+                       [&](const float32* v) { writer.Double(*v); },
+                       [&](const int32* v) { writer.Int(*v); },
+                       [&](const uint32* v) { writer.Uint(*v); },
+                       [&](const int64* v) { writer.Int64(*v); },
+                       [&](const uint64* v) { writer.Uint64(*v); },
+                       [&](const glm::vec2* v) { serialize_vec2(writer, *v); },
+                       [&](const glm::vec3* v) { serialize_vec3(writer, *v); },
+                       [&](const glm::vec4* v) { serialize_vec4(writer, *v); },
+                       [&](const glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
                        [&](glm::mat4* v) {}, // do nothing
-                       [&](std::string* v) { writer.String(v->c_str()); },
+                       [&](const std::string* v) { writer.String(v->c_str()); },
                        // [&](UUID* v) { member_json = v->str().c_str(); }, TODO:
                    },
                    member);
@@ -554,7 +554,7 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
   });
 }
 
-auto Scene::save_to_file(this Scene& self,
+auto Scene::save_to_file(this const Scene& self,
                          std::string path) -> bool {
   OX_SCOPED_ZONE;
   rapidjson::StringBuffer sb;
@@ -691,10 +691,10 @@ auto Scene::load_from_file(this Scene& self,
 
   OX_LOG_TRACE("Loading scene {} with {} assets...", self.scene_name, requested_assets.size());
   for (const auto& uuid : requested_assets) {
-    // auto* app = App::get();
-    // if (uuid && app.asset_man.get_asset(uuid)) {
-      // app.asset_man.load_asset(uuid);
-    // }
+    auto* asset_man = App::get_system<AssetManager>(EngineSystems::AssetManager);
+    if (uuid && asset_man->get_asset(uuid)) {
+      asset_man->load_asset(uuid);
+    }
   }
 
   return true;

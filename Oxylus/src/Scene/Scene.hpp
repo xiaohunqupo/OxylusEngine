@@ -7,6 +7,7 @@
 #include "SceneRenderer.hpp"
 
 namespace ox {
+enum class SceneID : uint64 { Invalid = std::numeric_limits<uint64>::max() };
 class Scene {
 public:
   std::string scene_name = "Untitled";
@@ -61,7 +62,7 @@ public:
   // Renderer
   auto get_renderer() -> const Unique<SceneRenderer>& { return scene_renderer; }
 
-  auto save_to_file(this Scene& self,
+  auto save_to_file(this const Scene& self,
                     std::string path) -> bool;
   auto load_from_file(this Scene& self,
                       const std::string& path) -> bool;

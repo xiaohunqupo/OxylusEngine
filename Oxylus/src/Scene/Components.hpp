@@ -6,7 +6,6 @@
 #include "Audio/AudioSource.hpp"
 #include "Core/App.hpp"
 #include "Core/SystemManager.hpp"
-#include "Render/Mesh.hpp"
 #include "Render/ParticleSystem.hpp"
 #include "Render/Utils/RectPacker.hpp"
 #include "Scripting/LuaSystem.hpp"

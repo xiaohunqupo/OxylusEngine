@@ -97,7 +97,7 @@ vuk::Value<vuk::ImageAttachment> Prefilter::generate_irradiance_cube(const Share
       .set_scissor(0, vuk::Rect2D::framebuffer())
       .bind_graphics_pipeline("IrradiancePipeline")
       .bind_sampler(1, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear})
-      .bind_image(1, 0, cubemap->as_attachment())
+      .bind_image(1, 0, cubemap->attachment())
       .push_constants(vuk::ShaderStageFlagBits::eFragment, 0, push_block);
 
     auto* projection = command_buffer.scratch_buffer<glm::mat4>(0, 0);
@@ -156,7 +156,7 @@ vuk::Value<vuk::ImageAttachment> Prefilter::generate_prefiltered_cube(const Shar
       .set_scissor(0, vuk::Rect2D::framebuffer())
       .bind_graphics_pipeline("PrefilterPipeline")
       .bind_sampler(1, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear})
-      .bind_image(1, 0, cubemap->as_attachment())
+      .bind_image(1, 0, cubemap->attachment())
       .push_constants(vuk::ShaderStageFlagBits::eFragment, 0, push_block);
 
     auto* projection = command_buffer.scratch_buffer<glm::mat4>(0, 0);

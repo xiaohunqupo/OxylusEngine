@@ -15,90 +15,23 @@
 #include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
-static vuk::Compiler _compiler;
-
-Texture::Texture(const TextureLoadInfo& info, std::source_location loc) {
-  if (!info.path.empty())
-    load(info, loc);
-  else
-    create_texture(info.extent, info.data, info.format, info.preset, loc);
-}
-
-void Texture::create_texture(const vuk::Extent3D extent, vuk::Format format, vuk::ImageAttachment::Preset preset, std::source_location loc) {
-  auto& allocator = App::get_vkcontext().superframe_allocator;
-  auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
-  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-  auto image = vuk::allocate_image(*allocator, ia);
-  ia.image = **image;
-  auto view = vuk::allocate_image_view(*allocator, ia);
-  ia.image_view = **view;
-
-  _image = std::move(*image);
-  _view = std::move(*view);
-  _attachment = ia;
-
-  set_name({}, loc);
-}
-
-void Texture::create_texture(const vuk::ImageAttachment& image_attachment, std::source_location loc) {
-  auto& allocator = App::get_vkcontext().superframe_allocator;
-  auto ia = image_attachment;
-  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst;
-  auto image = vuk::allocate_image(*allocator, ia);
-  ia.image = **image;
-  auto view = vuk::allocate_image_view(*allocator, ia);
-
-  _image = std::move(*image);
-  _view = std::move(*view);
-  _attachment = ia;
-
-  set_name({}, loc);
-}
-
-void Texture::create_texture(vuk::Extent3D extent, const void* data, const vuk::Format format, Preset preset, std::source_location loc) {
-  OX_SCOPED_ZONE;
+void Texture::create(const std::string& path,
+                     const TextureLoadInfo& load_info,
+                     const std::source_location& loc) {
   auto& allocator = App::get_vkcontext().superframe_allocator;
 
-  auto ia = vuk::ImageAttachment::from_preset(preset, format, extent, vuk::Samples::e1);
-  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-  auto [tex, view, fut] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data);
+  const auto is_generic = load_info.mime == TextureLoadInfo::MimeType::Generic;
 
-  if (ia.level_count > 1)
-    fut = vuk::generate_mips(fut, ia.level_count);
+  std::unique_ptr<uint8[]> stb_data = nullptr;
+  std::unique_ptr<ktxTexture2, decltype([](ktxTexture2* p) { ktxTexture_Destroy(ktxTexture(p)); })> ktx_data = {};
 
-  fut.wait(*allocator, _compiler);
+  uint32_t width = {}, height = {}, chans = {};
+  vuk::Format format = load_info.format;
 
-  _image = std::move(tex);
-  _view = std::move(view);
-  _attachment = ia;
-
-  set_name({}, loc);
-}
-
-void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
-  auto& allocator = App::get_vkcontext().superframe_allocator;
-
-  if (load_info.mime == TextureLoadInfo::MimeType::Generic) {
-    uint32_t width, height, chans;
-    const auto data = load_stb_image(load_info.path, &width, &height, &chans);
-
-    if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
-      create_texture({width, height, 1}, data.get(), load_info.format, load_info.preset, loc);
-    } else {
-      auto ia = vuk::ImageAttachment::from_preset(load_info.preset, load_info.format, {width, height, 1}, vuk::Samples::e1);
-      ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
-      auto [tex, view, hdr_image] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, data.get());
-
-      auto fut = RendererCommon::generate_cubemap_from_equirectangular(hdr_image);
-      auto val = fut.get(*allocator, _compiler);
-
-      _image = vuk::Unique(*allocator, val->image);
-      _view = vuk::Unique(*allocator, val->image_view);
-      _attachment.format = val->format;
-      _attachment.extent = val->extent;
-    }
+  if (is_generic && !path.empty()) {
+    stb_data = load_stb_image(path, &width, &height, &chans);
   } else {
-    const auto file_data = fs::read_file_binary(load_info.path);
+    const auto file_data = fs::read_file_binary(path);
     ktxTexture2* ktx{};
     if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(), file_data.size(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
         result != KTX_SUCCESS) {
@@ -119,19 +52,52 @@ void Texture::load(const TextureLoadInfo& load_info, std::source_location loc) {
       format_ktx = static_cast<vuk::Format>(static_cast<VkFormat>(ktx->vkFormat));
     }
 
-    create_texture({ktx->baseWidth, ktx->baseHeight}, ktx->kvData, format_ktx, load_info.preset, loc);
+    width = ktx->baseWidth;
+    height = ktx->baseHeight;
+    format = format_ktx;
+
+    ktx_data.reset(ktx);
   }
+
+  const void* final_data = nullptr;
+  if (path.empty()) {
+    final_data = load_info.data;
+  } else {
+    final_data = is_generic ? stb_data.get() : ktx_data.get();
+  }
+
+  auto ia = vuk::ImageAttachment::from_preset(load_info.preset, format, {width, height, 1}, vuk::Samples::e1);
+  ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
+
+  auto [tex, view, fut] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, final_data);
+
+  if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
+    if (ia.level_count > 1)
+      fut = vuk::generate_mips(fut, ia.level_count);
+  } else {
+    fut = RendererCommon::generate_cubemap_from_equirectangular(fut);
+  }
+
+  fut.wait(*allocator, _compiler);
+
+  _image = std::move(tex);
+  _view = std::move(view);
+  _attachment = ia;
+
+  set_name({}, loc);
 }
 
-vuk::Value<vuk::ImageAttachment> Texture::acquire(const vuk::Name name, const vuk::Access last_access) const {
-  return vuk::acquire_ia(name.is_invalid() ? vuk::Name(_name) : name, as_attachment(), last_access);
+vuk::Value<vuk::ImageAttachment> Texture::acquire(const vuk::Name name,
+                                                  const vuk::Access last_access) const {
+  return vuk::acquire_ia(name.is_invalid() ? vuk::Name(_name) : name, attachment(), last_access);
 }
 
 vuk::Value<vuk::ImageAttachment> Texture::discard(vuk::Name name) const {
-  return vuk::discard_ia(name.is_invalid() ? vuk::Name(_name) : name, as_attachment());
+  return vuk::discard_ia(name.is_invalid() ? vuk::Name(_name) : name, attachment());
 }
 
-void Texture::set_name(std::string_view name, const std::source_location& loc) {
+void Texture::set_name(std::string_view name,
+                       const std::source_location& loc) {
   auto& ctx = App::get_vkcontext();
   if (!name.empty()) {
     ctx.runtime->set_name(_image->image, vuk::Name(name));
@@ -146,7 +112,11 @@ void Texture::set_name(std::string_view name, const std::source_location& loc) {
   }
 }
 
-Unique<uint8_t[]> Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* height, uint32_t* bits, bool srgb) {
+Unique<uint8[]> Texture::load_stb_image(const std::string& filename,
+                                        uint32_t* width,
+                                        uint32_t* height,
+                                        uint32_t* bits,
+                                        bool srgb) {
   const auto filePath = std::filesystem::path(filename);
 
   if (!exists(filePath))
@@ -175,13 +145,13 @@ Unique<uint8_t[]> Texture::load_stb_image(const std::string& filename, uint32_t*
   return result;
 }
 
-Unique<unsigned char[]> Texture::load_stb_image_from_memory(void* buffer,
-                                                            size_t len,
-                                                            uint32_t* width,
-                                                            uint32_t* height,
-                                                            uint32_t* bits,
-                                                            bool flipY,
-                                                            bool srgb) {
+Unique<uint8[]> Texture::load_stb_image_from_memory(void* buffer,
+                                                    size_t len,
+                                                    uint32_t* width,
+                                                    uint32_t* height,
+                                                    uint32_t* bits,
+                                                    bool flipY,
+                                                    bool srgb) {
   int tex_width = 0, tex_height = 0, tex_channels = 0;
   int size_of_channel = 8;
   const auto pixels = stbi_load_from_memory((stbi_uc*)buffer, (int)len, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
@@ -208,7 +178,9 @@ Unique<unsigned char[]> Texture::load_stb_image_from_memory(void* buffer,
   return result;
 }
 
-uint8_t* Texture::get_magenta_texture(uint32_t width, uint32_t height, uint32_t channels) {
+uint8_t* Texture::get_magenta_texture(uint32_t width,
+                                      uint32_t height,
+                                      uint32_t channels) {
   const uint32_t size = width * height * channels;
   const auto data = new uint8_t[size];
 
@@ -219,7 +191,9 @@ uint8_t* Texture::get_magenta_texture(uint32_t width, uint32_t height, uint32_t 
   return data;
 }
 
-uint8_t* Texture::convert_to_four_channels(uint32_t width, uint32_t height, const uint8_t* three_channel_data) {
+uint8_t* Texture::convert_to_four_channels(uint32_t width,
+                                           uint32_t height,
+                                           const uint8_t* three_channel_data) {
   const auto bufferSize = width * height * 4;
   const auto buffer = new uint8_t[bufferSize];
   auto* rgba = buffer;

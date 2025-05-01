@@ -362,23 +362,23 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
   const float sharpenessRemapped = -2.0f * sharpness + 2.0f;
   FsrRcasCon(rcasConsts.rcasConfig, sharpenessRemapped);
 
-  auto adjusted_color_ia = vuk::acquire_ia("adjusted_color", adjusted_color.as_attachment(), vuk::eNone);
-  auto luminance_current_ia = vuk::acquire_ia("luminance_current", luminance_current.as_attachment(), vuk::eNone);
-  auto luminance_history_ia = vuk::acquire_ia("luminance_history", luminance_history.as_attachment(), vuk::eNone);
-  auto exposure_ia = vuk::acquire_ia("exposure", exposure.as_attachment(), vuk::eNone);
-  auto previous_depth_ia = vuk::acquire_ia("previous_depth", previous_depth.as_attachment(), vuk::eNone);
-  auto dilated_depth_ia = vuk::acquire_ia("dilated_depth", dilated_depth.as_attachment(), vuk::eNone);
-  auto dilated_motion_ia = vuk::acquire_ia("dilated_motion", dilated_motion.as_attachment(), vuk::eNone);
-  auto dilated_reactive_ia = vuk::acquire_ia("dilated_reactive", dilated_reactive.as_attachment(), vuk::eNone);
-  auto disocclusion_mask_ia = vuk::acquire_ia("disocclusion_mask", disocclusion_mask.as_attachment(), vuk::eNone);
-  auto reactive_mask_ia = vuk::acquire_ia("reactive_mask", reactive_mask.as_attachment(), vuk::eNone);
-  auto spd_global_atomic_ia = vuk::acquire_ia("spd_global_atomic", spd_global_atomic.as_attachment(), vuk::eNone);
+  auto adjusted_color_ia = vuk::acquire_ia("adjusted_color", adjusted_color.attachment(), vuk::eNone);
+  auto luminance_current_ia = vuk::acquire_ia("luminance_current", luminance_current.attachment(), vuk::eNone);
+  auto luminance_history_ia = vuk::acquire_ia("luminance_history", luminance_history.attachment(), vuk::eNone);
+  auto exposure_ia = vuk::acquire_ia("exposure", exposure.attachment(), vuk::eNone);
+  auto previous_depth_ia = vuk::acquire_ia("previous_depth", previous_depth.attachment(), vuk::eNone);
+  auto dilated_depth_ia = vuk::acquire_ia("dilated_depth", dilated_depth.attachment(), vuk::eNone);
+  auto dilated_motion_ia = vuk::acquire_ia("dilated_motion", dilated_motion.attachment(), vuk::eNone);
+  auto dilated_reactive_ia = vuk::acquire_ia("dilated_reactive", dilated_reactive.attachment(), vuk::eNone);
+  auto disocclusion_mask_ia = vuk::acquire_ia("disocclusion_mask", disocclusion_mask.attachment(), vuk::eNone);
+  auto reactive_mask_ia = vuk::acquire_ia("reactive_mask", reactive_mask.attachment(), vuk::eNone);
+  auto spd_global_atomic_ia = vuk::acquire_ia("spd_global_atomic", spd_global_atomic.attachment(), vuk::eNone);
 
-  vuk::Value<vuk::ImageAttachment> output_ints[2] = {vuk::acquire_ia("output_internal0", output_internal[0].as_attachment(), vuk::eNone),
-                                                     vuk::acquire_ia("output_internal1", output_internal[1].as_attachment(), vuk::eNone)};
+  vuk::Value<vuk::ImageAttachment> output_ints[2] = {vuk::acquire_ia("output_internal0", output_internal[0].attachment(), vuk::eNone),
+                                                     vuk::acquire_ia("output_internal1", output_internal[1].attachment(), vuk::eNone)};
 
-  vuk::Value<vuk::ImageAttachment> locks[2] = {vuk::acquire_ia("lock_status0", lock_status[0].as_attachment(), vuk::eNone),
-                                               vuk::acquire_ia("lock_status1", lock_status[1].as_attachment(), vuk::eNone)};
+  vuk::Value<vuk::ImageAttachment> locks[2] = {vuk::acquire_ia("lock_status0", lock_status[0].attachment(), vuk::eNone),
+                                               vuk::acquire_ia("lock_status1", lock_status[1].attachment(), vuk::eNone)};
 
   if (resetAccumulation) {
     adjusted_color_ia = vuk::clear_image(adjusted_color_ia, vuk::Black<float>);
@@ -636,8 +636,8 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     return std::make_tuple(_rw_output, _rw_lock);
   });
 
-  auto lanczos_ia = vuk::acquire_ia("lanczos_lut", lanczos_lut.as_attachment(), vuk::eComputeSampled);
-  auto maximum_bias_ia = vuk::acquire_ia("maximum_bias_lut", maximum_bias_lut.as_attachment(), vuk::eComputeSampled);
+  auto lanczos_ia = vuk::acquire_ia("lanczos_lut", lanczos_lut.attachment(), vuk::eComputeSampled);
+  auto maximum_bias_ia = vuk::acquire_ia("maximum_bias_lut", maximum_bias_lut.attachment(), vuk::eComputeSampled);
 
   auto [rw_output_output, rw_lock_output2] = reproject_accumulate_pass(exposure_output,
                                                                        dilated_motion_output,
