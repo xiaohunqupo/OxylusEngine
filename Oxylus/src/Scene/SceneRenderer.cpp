@@ -62,10 +62,9 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
   {
     OX_SCOPED_ZONE_N("Sprite Animation System");
-    _scene->world.query_builder<const TransformComponent, SpriteComponent, SpriteAnimationComponent>()
-      .build()
-      .each([this, &delta_time](const TransformComponent& tc, SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
-      if (!sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 ||
+    _scene->world.query_builder<SpriteComponent, SpriteAnimationComponent>().build().each(
+        [this, &delta_time](SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
+      if (sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 ||
           sprite.material->parameters.albedo_map_id == Asset::INVALID_ID)
         return;
 
@@ -126,8 +125,8 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
   {
     OX_SCOPED_ZONE_N("Tilemap System");
-    _scene->world.query_builder<TransformComponent, TilemapComponent>().build().each([this](TransformComponent& transform,
-                                                                                            TilemapComponent& tilemap) {
+    _scene->world.query_builder<TransformComponent, TilemapComponent>().build().each(
+        [this](TransformComponent& transform, TilemapComponent& tilemap) {
       // TODO: Tilemaps can also be just submitted as sprites into the renderer until we have the layering system.
       SpriteComponent sprite{};
       if (!tilemap.layers.empty())

@@ -9,7 +9,6 @@
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
 #include "Scene/Components.hpp"
-#include "Scene/EntitySerializer.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/ImGuiScoped.hpp"
@@ -18,13 +17,13 @@
 namespace ox {
 SceneHierarchyPanel::SceneHierarchyPanel() : EditorPanel("Scene Hierarchy", ICON_MDI_VIEW_LIST, true) {}
 
-auto SceneHierarchyPanel::get_selected_entity() const -> flecs::entity { return selected_entity; }
+auto SceneHierarchyPanel::get_selected_entity() const -> flecs::entity { return _selected_entity; }
 
-auto SceneHierarchyPanel::set_selected_entity(flecs::entity entity) -> void { selected_entity = entity; }
+auto SceneHierarchyPanel::set_selected_entity(flecs::entity entity) -> void { _selected_entity = entity; }
 
 auto SceneHierarchyPanel::set_scene(const Shared<Scene>& scene) -> void {
   _scene = scene;
-  selected_entity = flecs::entity::null();
+  _selected_entity = flecs::entity::null();
 }
 
 auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth, bool force_expand_tree, bool is_part_of_prefab) -> ImRect {
@@ -33,12 +32,12 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
 
   const auto child_count = _scene->world.count(flecs::ChildOf, entity);
 
-  if (m_filter.IsActive() && !m_filter.PassFilter(entity.name().c_str())) {
+  if (_filter.IsActive() && !_filter.PassFilter(entity.name().c_str())) {
     entity.children([this](flecs::entity child) { draw_entity_node(child); });
     return {0, 0, 0, 0};
   }
 
-  const auto is_selected = selected_entity.id() == entity.id();
+  const auto is_selected = _selected_entity.id() == entity.id();
 
   ImGuiTreeNodeFlags flags = (is_selected ? ImGuiTreeNodeFlags_Selected : 0);
   flags |= ImGuiTreeNodeFlags_OpenOnArrow;
@@ -76,7 +75,7 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
 
   // Select
   if (!ImGui::IsItemToggledOpen() && ImGui::IsItemClicked(ImGuiMouseButton_Left)) {
-    selected_entity = entity;
+    _selected_entity = entity;
   }
 
   // Expand recursively
@@ -88,9 +87,9 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, popup_item_spacing);
   if (ImGui::BeginPopupContextItem()) {
     if (ImGui::MenuItem("Rename", "F2"))
-      renaming_entity = entity;
+      _renaming_entity = entity;
     if (ImGui::MenuItem("Duplicate", "Ctrl+D"))
-      selected_entity = entity.clone(true);
+      _selected_entity = entity.clone(true);
     if (ImGui::MenuItem("Delete", "Del"))
       entity_deleted = true;
 
@@ -110,8 +109,8 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
   {
     if (ImGui::BeginDragDropTarget()) {
       if (const ImGuiPayload* entity_payload = ImGui::AcceptDragDropPayload("Entity")) {
-        dragged_entity = *static_cast<flecs::entity*>(entity_payload->Data);
-        dragged_entity_target = entity;
+        _dragged_entity = *static_cast<flecs::entity*>(entity_payload->Data);
+        _dragged_entity_target = entity;
       } else if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
         const std::filesystem::path path = std::filesystem::path((const char*)payload->Data);
         if (path.extension() == ".oxprefab") {
@@ -130,7 +129,7 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
     }
   }
 
-  if (entity.id() == renaming_entity.id()) {
+  if (entity.id() == _renaming_entity.id()) {
     static bool renaming = false;
     if (!renaming) {
       renaming = true;
@@ -144,7 +143,7 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
 
     if (ImGui::IsItemDeactivated()) {
       renaming = false;
-      renaming_entity = flecs::entity::null();
+      _renaming_entity = flecs::entity::null();
     }
   }
 
@@ -161,7 +160,7 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
   ImGui::PopID();
   // Select
   if (ImGui::IsItemDeactivated() && ImGui::IsItemHovered() && !ImGui::IsItemToggledOpen()) {
-    selected_entity = entity;
+    _selected_entity = entity;
   }
 
   ImGui::TableNextColumn();
@@ -217,7 +216,7 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
 
   // PostProcess Actions
   if (entity_deleted)
-    deleted_entity = entity;
+    _deleted_entity = entity;
 
   return node_rect;
 }
@@ -245,7 +244,7 @@ void SceneHierarchyPanel::drag_drop_target() const {
 }
 
 void SceneHierarchyPanel::draw_context_menu() {
-  const bool has_context = selected_entity != flecs::entity::null();
+  const bool has_context = _selected_entity != flecs::entity::null();
 
   auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
   const auto objects_dir = vfs->resolve_physical_dir(VFS::APP_DIR, "Objects");
@@ -346,35 +345,35 @@ void SceneHierarchyPanel::draw_context_menu() {
   }
 
   if (has_context && to_select != flecs::entity::null())
-    to_select.child_of(selected_entity);
+    to_select.child_of(_selected_entity);
 
   if (to_select != flecs::entity::null())
-    selected_entity = to_select;
+    _selected_entity = to_select;
 }
 
 auto SceneHierarchyPanel::on_update() -> void {
-  if (selected_entity != flecs::entity::null()) {
+  if (_selected_entity != flecs::entity::null()) {
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_D)) {
-      selected_entity.clone(true);
+      _selected_entity.clone(true);
     }
-    if (ImGui::IsKeyPressed(ImGuiKey_Delete) && (m_table_hovered || EditorLayer::get()->viewport_panels[0]->is_viewport_hovered)) {
-      selected_entity.destruct();
-      selected_entity = flecs::entity::null();
+    if (ImGui::IsKeyPressed(ImGuiKey_Delete) && (_table_hovered || EditorLayer::get()->viewport_panels[0]->is_viewport_hovered)) {
+      _selected_entity.destruct();
+      _selected_entity = flecs::entity::null();
     }
     if (ImGui::IsKeyPressed(ImGuiKey_F2)) {
-      renaming_entity = selected_entity;
+      _renaming_entity = _selected_entity;
     }
   }
 
-  if (deleted_entity != flecs::entity::null()) {
+  if (_deleted_entity != flecs::entity::null()) {
     auto& arch = EditorLayer::get()->advance_history();
     arch << static_cast<uint32_t>(HistoryOp::Delete);
 
-    if (selected_entity.id() == deleted_entity.id())
-      selected_entity = flecs::entity::null();
+    if (_selected_entity.id() == _deleted_entity.id())
+      _selected_entity = flecs::entity::null();
 
-    deleted_entity.destruct();
-    deleted_entity = flecs::entity::null();
+    _deleted_entity.destruct();
+    _deleted_entity = flecs::entity::null();
   }
 }
 
@@ -388,7 +387,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
     constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_BordersInner | ImGuiTableFlags_ScrollY;
 
     const float filter_cursor_pos_x = ImGui::GetCursorPosX();
-    m_filter.Draw("###HierarchyFilter", ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
+    _filter.Draw("###HierarchyFilter", ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
     ImGui::SameLine();
 
     if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLUS)))
@@ -401,7 +400,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
     }
     ImGui::PopStyleVar();
 
-    if (!m_filter.IsActive()) {
+    if (!_filter.IsActive()) {
       ImGui::SameLine();
       ImGui::SetCursorPosX(filter_cursor_pos_x + ImGui::GetFontSize() * 0.5f);
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
@@ -442,7 +441,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
       const auto pop_item_spacing = ImGuiLayer::popup_item_spacing;
       ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, pop_item_spacing);
       if (ImGui::BeginPopupContextWindow("SceneHierarchyContextWindow", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
-        selected_entity = flecs::entity::null();
+        _selected_entity = flecs::entity::null();
         draw_context_menu();
         ImGui::EndPopup();
       }
@@ -450,20 +449,20 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
 
       ImGui::EndTable();
 
-      m_table_hovered = ImGui::IsItemHovered();
+      _table_hovered = ImGui::IsItemHovered();
 
       if (ImGui::IsItemClicked())
-        selected_entity = flecs::entity::null();
+        _selected_entity = flecs::entity::null();
     }
-    m_window_hovered = ImGui::IsWindowHovered();
+    _window_hovered = ImGui::IsWindowHovered();
 
-    if (ImGui::IsMouseDown(0) && m_window_hovered)
-      selected_entity = flecs::entity::null();
+    if (ImGui::IsMouseDown(0) && _window_hovered)
+      _selected_entity = flecs::entity::null();
 
-    if (dragged_entity != flecs::entity::null() && dragged_entity_target != flecs::entity::null()) {
-      dragged_entity.child_of(dragged_entity_target);
-      dragged_entity = flecs::entity::null();
-      dragged_entity_target = flecs::entity::null();
+    if (_dragged_entity != flecs::entity::null() && _dragged_entity_target != flecs::entity::null()) {
+      _dragged_entity.child_of(_dragged_entity_target);
+      _dragged_entity = flecs::entity::null();
+      _dragged_entity_target = flecs::entity::null();
     }
 
     on_end();

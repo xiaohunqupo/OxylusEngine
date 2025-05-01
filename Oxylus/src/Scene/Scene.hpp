@@ -12,13 +12,15 @@ public:
   std::string scene_name = "Untitled";
 
   flecs::world world;
+  flecs::entity root = {};
 
   Scene();
   explicit Scene(const std::string& name);
 
   ~Scene();
 
-  auto init(this Scene& self, const std::string& name) -> void;
+  auto init(this Scene& self,
+            const std::string& name) -> void;
 
   auto create_entity(const std::string& name = "") const -> flecs::entity;
 
@@ -28,9 +30,11 @@ public:
   auto is_running() const -> bool { return running; }
 
   auto on_runtime_update(const Timestep& delta_time) -> void;
-  auto on_editor_update(const Timestep& delta_time, const CameraComponent& camera) const -> void;
+  auto on_editor_update(const Timestep& delta_time,
+                        const CameraComponent& camera) const -> void;
 
-  auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
+  auto on_render(vuk::Extent3D extent,
+                 vuk::Format format) -> void;
 
   auto has_entity(UUID uuid) const -> bool;
   static auto copy(const Shared<Scene>& src_scene) -> Shared<Scene>;
@@ -39,18 +43,28 @@ public:
   auto get_local_transform(flecs::entity entity) const -> glm::mat4;
 
   // Physics interfaces
-  auto on_contact_added(const JPH::Body& body1, const JPH::Body& body2, const JPH::ContactManifold& manifold, const JPH::ContactSettings& settings)
-    -> void;
+  auto on_contact_added(const JPH::Body& body1,
+                        const JPH::Body& body2,
+                        const JPH::ContactManifold& manifold,
+                        const JPH::ContactSettings& settings) -> void;
   auto on_contact_persisted(const JPH::Body& body1,
                             const JPH::Body& body2,
                             const JPH::ContactManifold& manifold,
                             const JPH::ContactSettings& settings) -> void;
 
-  auto create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component) -> void;
-  auto create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const -> void;
+  auto create_rigidbody(flecs::entity entity,
+                        const TransformComponent& transform,
+                        RigidbodyComponent& component) -> void;
+  auto create_character_controller(const TransformComponent& transform,
+                                   CharacterControllerComponent& component) const -> void;
 
   // Renderer
   auto get_renderer() -> const Unique<SceneRenderer>& { return scene_renderer; }
+
+  auto save_to_file(this Scene& self,
+                    std::string path) -> bool;
+  auto load_from_file(this Scene& self,
+                      const std::string& path) -> bool;
 
 private:
   bool running = false;

@@ -1,5 +1,6 @@
 #include "Scene.hpp"
 
+#include <Core/FileSystem.hpp>
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/AllowedDOFs.h>
 #include <Jolt/Physics/Body/BodyCreationSettings.h>
@@ -12,6 +13,9 @@
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/TaperedCapsuleShape.h>
+#include <rapidjson/document.h>
+#include <rapidjson/error/en.h>
+#include <rapidjson/prettywriter.h>
 #include <sol/state.hpp>
 
 #include "Core/App.hpp"
@@ -19,12 +23,64 @@
 #include "Physics/Physics.hpp"
 #include "Physics/PhysicsMaterial.hpp"
 #include "Render/RenderPipeline.hpp"
+#include "Scene/ComponentWrapper.hpp"
 #include "Scene/Components.hpp"
 #include "SceneRenderer.hpp"
 #include "Scripting/LuaManager.hpp"
 #include "Utils/Timestep.hpp"
 
 namespace ox {
+void serialize_vec2(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                    const glm::vec2& vec) {
+  writer.StartArray();
+  writer.Double(vec.x);
+  writer.Double(vec.y);
+  writer.EndArray();
+}
+
+void serialize_vec3(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                    const glm::vec3& vec) {
+  writer.StartArray();
+  writer.Double(vec.x);
+  writer.Double(vec.y);
+  writer.Double(vec.z);
+  writer.EndArray();
+}
+
+void serialize_vec4(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                    const glm::vec4& vec) {
+  writer.StartArray();
+  writer.Double(vec.x);
+  writer.Double(vec.y);
+  writer.Double(vec.z);
+  writer.Double(vec.w);
+  writer.EndArray();
+}
+
+auto deserialize_vec2(const rapidjson::GenericArray<true,
+                                                    rapidjson::GenericValue<rapidjson::UTF8<>>>& array,
+                      glm::vec2* v) -> void {
+  v->x = static_cast<float>(array[0].GetDouble());
+  v->y = static_cast<float>(array[1].GetDouble());
+}
+
+auto deserialize_vec3(const rapidjson::GenericArray<true,
+                                                    rapidjson::GenericValue<rapidjson::UTF8<>>>& array,
+                      glm::vec3* v) -> void {
+  v->x = static_cast<float>(array[0].GetDouble());
+  v->y = static_cast<float>(array[1].GetDouble());
+  v->z = static_cast<float>(array[2].GetDouble());
+}
+
+auto deserialize_vec4(const rapidjson::GenericArray<true,
+                                                    rapidjson::GenericValue<rapidjson::UTF8<>>>& array,
+                      glm::vec4* v) -> void {
+  v->x = static_cast<float>(array[0].GetDouble());
+  v->y = static_cast<float>(array[1].GetDouble());
+  v->z = static_cast<float>(array[2].GetDouble());
+  v->w = static_cast<float>(array[3].GetDouble());
+}
+
 Scene::Scene() { init("Untitled"); }
 
 Scene::Scene(const std::string& name) { init(name); }
@@ -37,7 +93,8 @@ Scene::~Scene() {
     on_runtime_stop();
 }
 
-auto Scene::init(this Scene& self, const std::string& name) -> void {
+auto Scene::init(this Scene& self,
+                 const std::string& name) -> void {
   OX_SCOPED_ZONE;
 
   self.scene_name = name;
@@ -80,19 +137,16 @@ auto Scene::on_runtime_start() -> void {
     physics_system->SetContactListener(contact_listener_3d);
 
     // Rigidbodies
-    world.query_builder<const TransformComponent, RigidbodyComponent>().build().each([this](flecs::entity e,
-                                                                                            const TransformComponent& tc,
-                                                                                            RigidbodyComponent& rb) {
+    world.query_builder<const TransformComponent, RigidbodyComponent>().build().each(
+        [this](flecs::entity e, const TransformComponent& tc, RigidbodyComponent& rb) {
       rb.previous_translation = rb.translation = tc.position;
       rb.previous_rotation = rb.rotation = tc.rotation;
       create_rigidbody(e, tc, rb);
     });
 
     // Characters
-    world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each([this](const TransformComponent& tc,
-                                                                                                      CharacterControllerComponent& ch) {
-      create_character_controller(tc, ch);
-    });
+    world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
+        [this](const TransformComponent& tc, CharacterControllerComponent& ch) { create_character_controller(tc, ch); });
 
     physics_system->OptimizeBroadPhase();
   }
@@ -198,8 +252,8 @@ auto Scene::on_contact_added(const JPH::Body& body1,
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_contact_added");
-    world.query_builder<const CPPScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
-                                                                                                              const CPPScriptComponent& csc) {
+    world.query_builder<const CPPScriptComponent>().build().each(
+        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const CPPScriptComponent& csc) {
       for (const auto& script : csc.systems) {
         script->on_contact_added(this, e, body1, body2, manifold, settings);
       }
@@ -208,8 +262,8 @@ auto Scene::on_contact_added(const JPH::Body& body1,
 
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_contact_added");
-    world.query_builder<const LuaScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
-                                                                                                              const LuaScriptComponent& lsc) {
+    world.query_builder<const LuaScriptComponent>().build().each(
+        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
       for (const auto& script : lsc.lua_systems) {
         script->on_contact_added(this, e, body1, body2, manifold, settings);
       }
@@ -225,8 +279,8 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_contact_persisted");
-    world.query_builder<const CPPScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
-                                                                                                              const CPPScriptComponent& csc) {
+    world.query_builder<const CPPScriptComponent>().build().each(
+        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const CPPScriptComponent& csc) {
       for (const auto& script : csc.systems) {
         script->on_contact_added(this, e, body1, body2, manifold, settings);
       }
@@ -235,8 +289,8 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
 
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_contact_persisted");
-    world.query_builder<const LuaScriptComponent>().build().each([this, &body1, &body2, &manifold, &settings](const flecs::entity& e,
-                                                                                                              const LuaScriptComponent& lsc) {
+    world.query_builder<const LuaScriptComponent>().build().each(
+        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
       for (const auto& script : lsc.lua_systems) {
         script->on_contact_persisted(this, e, body1, body2, manifold, settings);
       }
@@ -244,7 +298,9 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
   }
 }
 
-auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component) -> void {
+auto Scene::create_rigidbody(flecs::entity entity,
+                             const TransformComponent& transform,
+                             RigidbodyComponent& component) -> void {
   OX_SCOPED_ZONE;
   if (!running)
     return;
@@ -394,8 +450,8 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
 
   JPH::Body* body = body_interface.CreateBody(body_settings);
 
-  JPH::EActivation activation = component.awake && component.type != RigidbodyComponent::BodyType::Static ? JPH::EActivation::Activate
-                                                                                                          : JPH::EActivation::DontActivate;
+  JPH::EActivation activation =
+      component.awake && component.type != RigidbodyComponent::BodyType::Static ? JPH::EActivation::Activate : JPH::EActivation::DontActivate;
   body_interface.AddBody(body->GetID(), activation);
 
   body->SetUserData((uint64)entity);
@@ -403,7 +459,8 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
   component.runtime_body = body;
 }
 
-void Scene::create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const {
+void Scene::create_character_controller(const TransformComponent& transform,
+                                        CharacterControllerComponent& component) const {
   OX_SCOPED_ZONE;
   if (!running)
     return;
@@ -411,15 +468,12 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
   const auto physics = App::get_system<Physics>(EngineSystems::Physics);
 
   const auto position = JPH::Vec3(transform.position.x, transform.position.y, transform.position.z);
-  const auto capsule_shape = JPH::RotatedTranslatedShapeSettings(JPH::Vec3(0,
-                                                                           0.5f * component.character_height_standing +
-                                                                             component.character_radius_standing,
-                                                                           0),
-                                                                 JPH::Quat::sIdentity(),
-                                                                 new JPH::CapsuleShape(0.5f * component.character_height_standing,
-                                                                                       component.character_radius_standing))
-                               .Create()
-                               .Get();
+  const auto capsule_shape =
+      JPH::RotatedTranslatedShapeSettings(JPH::Vec3(0, 0.5f * component.character_height_standing + component.character_radius_standing, 0),
+                                          JPH::Quat::sIdentity(),
+                                          new JPH::CapsuleShape(0.5f * component.character_height_standing, component.character_radius_standing))
+          .Create()
+          .Get();
 
   // Create character
   const Shared<JPH::CharacterSettings> settings = create_shared<JPH::CharacterSettings>();
@@ -431,6 +485,219 @@ void Scene::create_character_controller(const TransformComponent& transform, Cha
                                            -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
   component.character = create_shared<JPH::Character>(settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
   component.character->AddToPhysicsSystem(JPH::EActivation::Activate);
+}
+
+auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                    flecs::entity root) -> void {
+  const auto q = root.world() //
+                     .query_builder()
+                     .with(flecs::ChildOf, root)
+                     .build();
+
+  q.each([&](flecs::entity e) {
+    writer.StartObject();
+    writer.String("name");
+    writer.String(e.name());
+
+    std::vector<ECS::ComponentWrapper> components = {};
+    writer.String("tags");
+    writer.StartArray();
+    e.each([&](flecs::id component_id) {
+      if (!component_id.is_entity()) {
+        return;
+      }
+
+      ECS::ComponentWrapper component(e, component_id);
+      if (!component.has_component()) {
+        writer.String(component.path.c_str());
+      } else {
+        components.emplace_back(e, component_id);
+      }
+    });
+    writer.EndArray();
+
+    writer.String("components");
+    writer.StartArray();
+    for (auto& component : components) {
+      writer.StartObject();
+      writer.String("name");
+      writer.String(component.name.data());
+      component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+        writer.String(member_name.data());
+        std::visit(ox::match{
+                       [](const auto&) {},
+                       [&](float32* v) { writer.Double(*v); },
+                       [&](int32* v) { writer.Int(*v); },
+                       [&](uint32* v) { writer.Uint(*v); },
+                       [&](int64* v) { writer.Int64(*v); },
+                       [&](uint64* v) { writer.Uint64(*v); },
+                       [&](glm::vec2* v) { serialize_vec2(writer, *v); },
+                       [&](glm::vec3* v) { serialize_vec3(writer, *v); },
+                       [&](glm::vec4* v) { serialize_vec4(writer, *v); },
+                       [&](glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
+                       [&](glm::mat4* v) {}, // do nothing
+                       [&](std::string* v) { writer.String(v->c_str()); },
+                       // [&](UUID* v) { member_json = v->str().c_str(); }, TODO:
+                   },
+                   member);
+      });
+      writer.EndObject();
+    }
+    writer.EndArray();
+
+    writer.String("children");
+    writer.StartArray();
+    entity_to_json(writer, e);
+    writer.EndArray();
+
+    writer.EndObject();
+  });
+}
+
+auto Scene::save_to_file(this Scene& self,
+                         std::string path) -> bool {
+  OX_SCOPED_ZONE;
+  rapidjson::StringBuffer sb;
+
+  rapidjson::PrettyWriter writer(sb);
+  writer.StartObject(); // root
+
+  writer.String("name");
+  writer.String(self.scene_name.c_str());
+
+  writer.String("entities");
+  writer.StartArray(); // entities
+  entity_to_json(writer, self.root);
+  writer.EndArray();   // entities
+
+  writer.EndObject();  // root
+
+  std::ofstream filestream(path);
+  filestream << sb.GetString();
+
+  OX_LOG_INFO("Saved scene {0}.", self.scene_name);
+
+  return true;
+}
+
+auto json_to_entity(Scene& self,
+                    flecs::entity root,
+                    const rapidjson::GenericValue<rapidjson::UTF8<>>& json,
+                    std::vector<UUID>& requested_assets) -> bool {
+  OX_SCOPED_ZONE;
+  memory::ScopedStack stack;
+
+  const auto& world = self.world;
+
+  const auto entity_name = json["name"].GetString();
+  if (entity_name == nullptr) {
+    OX_LOG_ERROR("Entities must have names!");
+    return false;
+  }
+
+  auto e = self.create_entity(std::string(entity_name));
+  e.child_of(root);
+
+  const auto entity_tags_json = json["tags"].GetArray();
+  for (const auto& entity_tag : entity_tags_json) {
+    auto tag = world.component(stack.null_terminate(entity_tag.GetString()).data());
+    e.add(tag);
+  }
+
+  const auto components_json = json["components"].GetArray();
+  for (const auto& component_json : components_json) {
+    const auto component_name = component_json["name"].GetString();
+    if (component_name == nullptr) {
+      OX_LOG_ERROR("Entity '{}' has corrupt components JSON array.", e.name().c_str());
+      return false;
+    }
+
+    auto component_id = world.lookup(component_name);
+    if (!component_id) {
+      OX_LOG_ERROR("Entity '{}' has invalid component named '{}'!", e.name().c_str(), component_name);
+      return false;
+    }
+
+    // OX_CHECK_EQ(self.get_entity_db().is_component_known(component_id));
+    e.add(component_id);
+    ECS::ComponentWrapper component(e, component_id);
+    component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+      const auto& member_json = component_json[member_name.data()];
+
+      auto match_result = ox::match{
+          [](const auto&) {},
+          [&](float32* v) { *v = member_json.GetFloat(); },
+          [&](int32* v) { *v = member_json.GetInt(); },
+          [&](uint32* v) { *v = member_json.GetUint(); },
+          [&](int64* v) { *v = member_json.GetInt64(); },
+          [&](uint64* v) { *v = member_json.GetUint64(); },
+          [&](glm::vec2* v) { deserialize_vec2(member_json.GetArray(), v); },
+          [&](glm::vec3* v) { deserialize_vec3(member_json.GetArray(), v); },
+          [&](glm::vec4* v) { deserialize_vec4(member_json.GetArray(), v); },
+          [&](glm::quat* v) { deserialize_vec4(member_json.GetArray(), reinterpret_cast<glm::vec4*>(v)); },
+          // [&](glm::mat4 *v) {json_to_mat(member_json.value(), *v); },
+          [&](std::string* v) { *v = member_json.GetString(); },
+          [&](UUID* v) {
+        // *v = UUID::from_string(member_json.GetString()).value();
+        // requested_assets.push_back(*v);
+      },
+      };
+
+      std::visit(match_result, member);
+    });
+
+    e.modified(component_id);
+  }
+
+  const auto children_json = json["children"].GetArray();
+  for (const auto& children : children_json) {
+    if (!json_to_entity(self, e, children, requested_assets)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
+auto Scene::load_from_file(this Scene& self,
+                           const std::string& path) -> bool {
+  OX_SCOPED_ZONE;
+  const auto content = fs::read_file(path);
+  if (content.empty()) {
+    OX_LOG_ERROR("Failed to read/open file {}!", path);
+    return false;
+  }
+
+  rapidjson::Document doc;
+  doc.Parse(content.data());
+
+  const rapidjson::ParseResult parse_result = doc.Parse(content.c_str());
+
+  if (doc.HasParseError()) {
+    OX_LOG_ERROR("Json parser error for: {0} {1}", path, rapidjson::GetParseError_En(parse_result.Code()));
+    return false;
+  }
+
+  self.scene_name = doc["name"].GetString();
+
+  const auto entities_array = doc["entities"].GetArray();
+
+  std::vector<UUID> requested_assets = {};
+  for (auto& entity_json : entities_array) {
+    if (!json_to_entity(self, self.root, entity_json, requested_assets)) {
+      return false;
+    }
+  }
+
+  OX_LOG_TRACE("Loading scene {} with {} assets...", self.scene_name, requested_assets.size());
+  // for (const auto& uuid : requested_assets) {
+  // auto* app = App::get();
+  // if (uuid && app.asset_man.get_asset(uuid)) {
+  // app.asset_man.load_asset(uuid);
+  // }
+  // }
+
+  return true;
 }
 
 void Scene::on_runtime_update(const Timestep& delta_time) {
@@ -482,9 +749,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
   // Audio
   {
     OX_SCOPED_ZONE_N("Audio Systems");
-    world.query_builder<const TransformComponent, AudioListenerComponent>().build().each([this](const flecs::entity& e,
-                                                                                                const TransformComponent& tc,
-                                                                                                AudioListenerComponent& ac) {
+    world.query_builder<const TransformComponent, AudioListenerComponent>().build().each(
+        [this](const flecs::entity& e, const TransformComponent& tc, AudioListenerComponent& ac) {
       ac.listener = create_shared<AudioListener>();
       if (ac.active) {
         const glm::mat4 inverted = glm::inverse(get_world_transform(e));
@@ -495,9 +761,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
       }
     });
 
-    world.query_builder<const TransformComponent, AudioSourceComponent>().build().each([this](const flecs::entity& e,
-                                                                                              const TransformComponent& tc,
-                                                                                              const AudioSourceComponent& ac) {
+    world.query_builder<const TransformComponent, AudioSourceComponent>().build().each(
+        [this](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
       if (ac.source) {
         const glm::mat4 inverted = glm::inverse(get_world_transform(e));
         const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
@@ -511,7 +776,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
   }
 }
 
-void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
+void Scene::on_render(const vuk::Extent3D extent,
+                      const vuk::Format format) {
   OX_SCOPED_ZONE;
 
   {
@@ -533,7 +799,8 @@ void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   }
 }
 
-void Scene::on_editor_update(const Timestep& delta_time, const CameraComponent& camera) const {
+void Scene::on_editor_update(const Timestep& delta_time,
+                             const CameraComponent& camera) const {
   OX_SCOPED_ZONE;
   scene_renderer->get_render_pipeline()->submit_camera(camera);
   scene_renderer->update(delta_time);
@@ -577,8 +844,8 @@ auto Scene::update_physics(const Timestep& delta_time) -> void {
 
   const float interpolation_factor = physics_frame_accumulator / physics_ts;
 
-  world.query_builder<TransformComponent, RigidbodyComponent>().build().each([physics, stepped, interpolation_factor](TransformComponent& tc,
-                                                                                                                      RigidbodyComponent& rb) {
+  world.query_builder<TransformComponent, RigidbodyComponent>().build().each(
+      [physics, stepped, interpolation_factor](TransformComponent& tc, RigidbodyComponent& rb) {
     if (!rb.runtime_body)
       return;
 
@@ -616,9 +883,8 @@ auto Scene::update_physics(const Timestep& delta_time) -> void {
 
   // Character
   {
-    world.query_builder<TransformComponent, CharacterControllerComponent>().build().each([stepped,
-                                                                                          interpolation_factor](TransformComponent& tc,
-                                                                                                                CharacterControllerComponent& ch) {
+    world.query_builder<TransformComponent, CharacterControllerComponent>().build().each(
+        [stepped, interpolation_factor](TransformComponent& tc, CharacterControllerComponent& ch) {
       ch.character->PostSimulation(ch.collision_tolerance);
       if (ch.interpolation) {
         if (stepped) {

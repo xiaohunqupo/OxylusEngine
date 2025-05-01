@@ -20,8 +20,6 @@
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
 #include "Scene/SceneRenderer.hpp"
-#include "Scene/SceneSerializer.hpp"
-#include "Thread/ThreadManager.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/CVars.hpp"
@@ -87,7 +85,7 @@ void EditorLayer::on_update(const Timestep& delta_time) {
     fullscreen_viewport_panel = nullptr;
   }
 
-  for (const auto& [name, panel] : editor_panels) {
+  for (const auto& panel : editor_panels | std::views::values) {
     if (!panel->visible)
       continue;
     panel->on_update();
@@ -114,7 +112,8 @@ void EditorLayer::on_update(const Timestep& delta_time) {
   }
 }
 
-void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format) {
+void EditorLayer::on_render(const vuk::Extent3D extent,
+                            const vuk::Format format) {
   if (const auto scene = get_active_scene(); active_scene)
     scene->on_render(extent, format);
 
@@ -151,8 +150,8 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
 
     const float frame_height = ImGui::GetFrameHeight();
 
-    constexpr ImGuiWindowFlags menu_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar |
-                                            ImGuiWindowFlags_NoNavFocus;
+    constexpr ImGuiWindowFlags menu_flags =
+        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoNavFocus;
 
     ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {frame_padding.x, 4.0f});
@@ -228,8 +227,8 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
 
         {
           // Project name text
-          ImGui::SetCursorPos(ImVec2(ImGui::GetMainViewport()->Size.x - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x,
-                                     0));
+          ImGui::SetCursorPos(
+              ImVec2(ImGui::GetMainViewport()->Size.x - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
           ImGuiScoped::StyleColor b_color1(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGuiScoped::StyleColor b_color2(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGui::Button(Project::get_active()->get_config().name.c_str());
@@ -300,10 +299,10 @@ void EditorLayer::open_scene_file_dialog() {
   const auto& window = App::get()->get_window();
   FileDialogFilter dialog_filters[] = {{.name = "Oxylus scene file(.oxscene)", .pattern = "oxscene"}};
   window.show_dialog({
-    .kind = DialogKind::OpenFile,
-    .user_data = this,
-    .callback =
-      [](void* user_data, const char8* const* files, int32) {
+      .kind = DialogKind::OpenFile,
+      .user_data = this,
+      .callback =
+          [](void* user_data, const char8* const* files, int32) {
     auto* layer = static_cast<EditorLayer*>(user_data);
     if (!files || !*files) {
       return;
@@ -315,10 +314,10 @@ void EditorLayer::open_scene_file_dialog() {
     if (!path.empty())
       layer->open_scene(path);
   },
-    .title = "Oxylus scene file...",
-    .default_path = fs::current_path(),
-    .filters = dialog_filters,
-    .multi_select = false,
+      .title = "Oxylus scene file...",
+      .default_path = fs::current_path(),
+      .filters = dialog_filters,
+      .multi_select = false,
   });
 }
 
@@ -332,9 +331,8 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
       OX_LOG_WARN("Could not load {0} - not a scene file", path.filename().string());
     return false;
   }
-  const Shared<Scene> new_scene = create_shared<Scene>();
-  const SceneSerializer serializer(new_scene);
-  if (serializer.deserialize(path.string())) {
+  const auto new_scene = create_shared<Scene>();
+  if (new_scene->load_from_file(path.string())) {
     editor_scene = new_scene;
     set_editor_context(new_scene);
   }
@@ -353,7 +351,7 @@ void EditorLayer::clear_selected_entity() { get_panel<SceneHierarchyPanel>()->cl
 
 void EditorLayer::save_scene() {
   if (!last_save_scene_path.empty()) {
-    ThreadManager::get()->asset_thread.queue_job([this] { SceneSerializer(editor_scene).serialize(last_save_scene_path); });
+    editor_scene->save_to_file(last_save_scene_path);
   } else {
     save_scene_as();
   }
@@ -363,10 +361,10 @@ void EditorLayer::save_scene_as() {
   const auto& window = App::get()->get_window();
   FileDialogFilter dialog_filters[] = {{.name = "Oxylus Scene(.oxscene)", .pattern = "oxscene"}};
   window.show_dialog({
-    .kind = DialogKind::SaveFile,
-    .user_data = this,
-    .callback =
-      [](void* user_data, const char8* const* files, int32) {
+      .kind = DialogKind::SaveFile,
+      .user_data = this,
+      .callback =
+          [](void* user_data, const char8* const* files, int32) {
     const auto layer = static_cast<EditorLayer*>(user_data);
     if (!files || !*files) {
       return;
@@ -377,14 +375,14 @@ void EditorLayer::save_scene_as() {
     const auto path = std::string(first_path_cstr, first_path_len);
 
     if (!path.empty()) {
-      SceneSerializer(layer->editor_scene).serialize(path);
+      layer->editor_scene->save_to_file(path);
       layer->last_save_scene_path = path;
     }
   },
-    .title = "New Scene...",
-    .default_path = "NewScene.oxscene",
-    .filters = dialog_filters,
-    .multi_select = false,
+      .title = "New Scene...",
+      .default_path = "NewScene.oxscene",
+      .filters = dialog_filters,
+      .multi_select = false,
   });
 }
 

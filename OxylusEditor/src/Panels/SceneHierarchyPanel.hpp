@@ -17,7 +17,7 @@ public:
   auto set_scene(const Shared<Scene>& scene) -> void;
 
   auto get_selected_entity() const -> flecs::entity;
-  auto clear_selected_entity() -> void { selected_entity = flecs::entity::null(); }
+  auto clear_selected_entity() -> void { _selected_entity = flecs::entity::null(); }
   auto set_selected_entity(flecs::entity entity) -> void;
   auto get_scene() const -> const Shared<Scene>& { return _scene; }
 
@@ -25,14 +25,14 @@ public:
 
 private:
   Shared<Scene> _scene = nullptr;
-  ImGuiTextFilter m_filter;
-  bool m_table_hovered = false;
-  bool m_window_hovered = false;
-  flecs::entity selected_entity = {};
-  flecs::entity renaming_entity = {};
-  flecs::entity dragged_entity = {};
-  flecs::entity dragged_entity_target = {};
-  flecs::entity deleted_entity = {};
+  ImGuiTextFilter _filter;
+  bool _table_hovered = false;
+  bool _window_hovered = false;
+  flecs::entity _selected_entity = {};
+  flecs::entity _renaming_entity = {};
+  flecs::entity _dragged_entity = {};
+  flecs::entity _dragged_entity_target = {};
+  flecs::entity _deleted_entity = {};
 
   void draw_context_menu();
 };
