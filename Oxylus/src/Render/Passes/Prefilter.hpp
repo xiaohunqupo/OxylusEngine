@@ -1,7 +1,7 @@
 #pragma once
 #include <vuk/Value.hpp>
 
-#include "Assets/Texture.hpp"
+#include "Asset/Texture.hpp"
 
 namespace ox {
 class Mesh;

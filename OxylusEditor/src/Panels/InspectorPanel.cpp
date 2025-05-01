@@ -5,7 +5,7 @@
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include "Assets/AssetManager.hpp"
+#include "Asset/AssetManager.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/SystemManager.hpp"
 #include "EditorLayer.hpp"

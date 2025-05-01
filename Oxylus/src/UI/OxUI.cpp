@@ -1,16 +1,14 @@
 #include "OxUI.hpp"
 
-#include "Assets/AssetManager.hpp"
-#include "Utils/StringUtils.hpp"
-
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include "ImGuiLayer.hpp"
-
-#include "Assets/Texture.hpp"
+#include "Asset/AssetManager.hpp"
+#include "Asset/Texture.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
+#include "ImGuiLayer.hpp"
+#include "Utils/StringUtils.hpp"
 #include "imgui.h"
 
 namespace ox {

@@ -1,6 +1,6 @@
 #include "AssetManager.hpp"
 
-#include "Assets/Texture.hpp"
+#include "Asset/Texture.hpp"
 #include "Audio/AudioSource.hpp"
 #include "Core/App.hpp"
 #include "Render/Mesh.hpp"

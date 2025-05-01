@@ -2,7 +2,7 @@
 
 #include <icons/IconsMaterialDesignIcons.h>
 
-#include "Assets/AssetManager.hpp"
+#include "Asset/AssetManager.hpp"
 #include "EditorLayer.hpp"
 
 namespace ox {

@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Assets/Asset.hpp"
+#include "Asset/Asset.hpp"
 
 struct ma_sound;
 

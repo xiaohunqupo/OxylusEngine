@@ -1,5 +1,6 @@
 #include "SpriteMaterial.hpp"
-#include "Assets/Material.hpp"
+
+#include "Asset/Material.hpp"
 
 namespace ox {
 SpriteMaterial::SpriteMaterial(std::string name_) : Material(name_) {

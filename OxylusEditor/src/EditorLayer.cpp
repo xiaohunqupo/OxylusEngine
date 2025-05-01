@@ -5,7 +5,7 @@
 // #include <imspinner.h>
 #include <ranges>
 
-#include "Assets/AssetManager.hpp"
+#include "Asset/AssetManager.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
 #include "Core/Project.hpp"

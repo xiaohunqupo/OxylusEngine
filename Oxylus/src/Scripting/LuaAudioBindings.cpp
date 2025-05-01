@@ -2,7 +2,7 @@
 
 #include <sol/state.hpp>
 
-#include "Assets/AssetManager.hpp"
+#include "Asset/AssetManager.hpp"
 #include "Audio/AudioSource.hpp"
 #include "LuaHelpers.hpp"
 #include "Scene/Components.hpp"

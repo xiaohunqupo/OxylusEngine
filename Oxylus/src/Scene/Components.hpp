@@ -1,7 +1,7 @@
 #pragma once
 
-#include "Assets/SpriteMaterial.hpp"
-#include "Assets/TilemapSerializer.hpp"
+#include "Asset/SpriteMaterial.hpp"
+#include "Asset/TilemapSerializer.hpp"
 #include "Audio/AudioListener.hpp"
 #include "Audio/AudioSource.hpp"
 #include "Core/App.hpp"

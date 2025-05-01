@@ -2,7 +2,7 @@
 
 #include <sol/state.hpp>
 
-#include "Assets/PBRMaterial.hpp"
+#include "Asset/PBRMaterial.hpp"
 #include "LuaHelpers.hpp"
 #include "Scene/Components.hpp"
 

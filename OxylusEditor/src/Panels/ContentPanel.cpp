@@ -3,7 +3,7 @@
 #include <Core/VFS.hpp>
 #include <icons/IconsMaterialDesignIcons.h>
 
-#include "Assets/AssetManager.hpp"
+#include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Project.hpp"

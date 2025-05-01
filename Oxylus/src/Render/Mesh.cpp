@@ -7,19 +7,15 @@
 #include <fastgltf/types.hpp>
 #include <ktx.h>
 #include <meshoptimizer.h>
+#include <stack>
 #include <stb_image.h>
 #include <vuk/Types.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include <stack>
-
-#include "Assets/AssetManager.hpp"
+#include "Asset/AssetManager.hpp"
 #include "Core/FileSystem.hpp"
-
 #include "Scene/Components.hpp"
-
 #include "Utils/Timer.hpp"
-
 #include "Vulkan/VkContext.hpp"
 
 namespace ox {

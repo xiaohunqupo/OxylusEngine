@@ -1,9 +1,8 @@
 #pragma once
 
-#include "Assets/PBRMaterial.hpp"
-
 #include <vuk/Buffer.hpp>
 
+#include "Asset/PBRMaterial.hpp"
 #include "BoundingVolume.hpp"
 #include "MeshVertex.hpp"
 

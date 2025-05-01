@@ -1,10 +1,9 @@
 #pragma once
 
+#include <imgui.h>
 #include <vuk/Value.hpp>
 
-#include <imgui.h>
-
-#include "Assets/Texture.hpp"
+#include "Asset/Texture.hpp"
 #include "Core/Layer.hpp"
 
 namespace ox {

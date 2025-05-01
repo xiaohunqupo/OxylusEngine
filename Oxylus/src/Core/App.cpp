@@ -4,7 +4,7 @@
 #include <ranges>
 #include <vuk/vsl/Core.hpp>
 
-#include "Assets/AssetManager.hpp"
+#include "Asset/AssetManager.hpp"
 #include "Audio/AudioEngine.hpp"
 #include "Core/Input.hpp"
 #include "FileSystem.hpp"

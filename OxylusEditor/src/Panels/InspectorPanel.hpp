@@ -2,8 +2,8 @@
 
 #include <flecs.h>
 
-#include "Assets/PBRMaterial.hpp"
-#include "Assets/SpriteMaterial.hpp"
+#include "Asset/PBRMaterial.hpp"
+#include "Asset/SpriteMaterial.hpp"
 #include "EditorPanel.hpp"
 
 namespace ox {

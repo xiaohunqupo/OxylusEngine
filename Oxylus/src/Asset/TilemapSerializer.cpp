@@ -3,8 +3,8 @@
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 
-#include "Assets/AssetManager.hpp"
-#include "Assets/SpriteMaterial.hpp"
+#include "Asset/AssetManager.hpp"
+#include "Asset/SpriteMaterial.hpp"
 #include "Core/FileSystem.hpp"
 #include "Scene/Components.hpp"
 
