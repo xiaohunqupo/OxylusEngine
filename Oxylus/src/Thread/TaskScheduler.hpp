@@ -21,12 +21,6 @@ public:
 
   Unique<enki::TaskScheduler>& get_underlying() { return task_scheduler; }
 
-  template <typename func>
-  void add_task(func function) {
-    const enki::TaskSetFunction f = [function](enki::TaskSetPartition, uint32_t) mutable { function(); };
-    task_scheduler->AddTaskSetToPipe(task_sets.emplace_back(create_unique<TaskSet>(f)).get());
-  }
-
   void schedule_task(ITaskSet* set) const { task_scheduler->AddTaskSetToPipe(set); }
 
   void schedule_task(IPinnedTask* set) const { task_scheduler->AddPinnedTask(set); }

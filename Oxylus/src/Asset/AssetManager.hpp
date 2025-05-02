@@ -15,7 +15,7 @@ struct Asset {
   std::string path = {};
   AssetType type = AssetType::None;
   union {
-    MeshID model_id = MeshID::Invalid;
+    MeshID mesh_id = MeshID::Invalid;
     TextureID texture_id;
     MaterialID material_id;
     SceneID scene_id;
@@ -25,7 +25,7 @@ struct Asset {
   // Reference count of loads
   uint64 ref_count = 0;
 
-  auto is_loaded() const -> bool { return model_id != MeshID::Invalid; }
+  auto is_loaded() const -> bool { return mesh_id != MeshID::Invalid; }
 
   auto acquire_ref() -> void { ++std::atomic_ref(ref_count); }
 
@@ -43,8 +43,8 @@ public:
   auto load_asset(const UUID& uuid) -> bool;
   auto unload_asset(const UUID& uuid) -> void;
 
-  auto load_model(const UUID& uuid) -> bool;
-  auto unload_model(const UUID& uuid) -> void;
+  auto load_mesh(const UUID& uuid) -> bool;
+  auto unload_mesh(const UUID& uuid) -> void;
 
   auto load_texture(const UUID& uuid,
                     const TextureLoadInfo& info = {}) -> bool;
@@ -61,6 +61,21 @@ public:
   auto unload_audio(const UUID& uuid) -> void;
 
   auto get_asset(const UUID& uuid) -> Asset*;
+
+  auto get_mesh(const UUID& uuid) -> Mesh*;
+  auto get_mesh(MeshID mesh_id) -> Mesh*;
+
+  auto get_texture(const UUID& uuid) -> Texture*;
+  auto get_texture(TextureID texture_id) -> Texture*;
+
+  auto get_material(const UUID& uuid) -> Material*;
+  auto get_material(MaterialID material_id) -> Material*;
+
+  auto get_scene(const UUID& uuid) -> Scene*;
+  auto get_scene(SceneID scene_id) -> Scene*;
+
+  auto get_audio(const UUID& uuid) -> AudioSource*;
+  auto get_audio(AudioID audio_id) -> AudioSource*;
 
 private:
   AssetRegistry asset_registry = {};

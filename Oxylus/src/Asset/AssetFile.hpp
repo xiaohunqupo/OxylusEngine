@@ -4,7 +4,7 @@ namespace ox {
 enum class AssetType : uint32 {
   None = 0,
   Shader,
-  Model,
+  Mesh,
   Texture,
   Material,
   Font,

@@ -1,4 +1,5 @@
 #pragma once
+#include "Core/UUID.hpp"
 
 namespace ox {
 enum class AlphaMode : uint32 {

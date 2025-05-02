@@ -11,12 +11,17 @@
 #include "Scene/Components.hpp"
 
 namespace ox {
-void SceneRenderer::init() {
+void SceneRenderer::init(Scene* scene,
+                         const Shared<RenderPipeline>& render_pipeline) {
   OX_SCOPED_ZONE;
-  if (!_render_pipeline)
+
+  _scene = scene;
+
+  if (!render_pipeline)
     _render_pipeline = create_unique<EasyRenderPipeline>("EasyRenderPipeline");
   else
-    return;
+    _render_pipeline = render_pipeline;
+
   _render_pipeline->init(*App::get_vkcontext().superframe_allocator);
 }
 

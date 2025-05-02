@@ -101,8 +101,8 @@ auto Scene::init(this Scene& self,
   self.scene_name = name;
 
   // Renderer
-  self.scene_renderer = create_unique<SceneRenderer>(&self);
-  self.scene_renderer->init();
+  self.scene_renderer = create_unique<SceneRenderer>();
+  self.scene_renderer->init(&self, nullptr);
 }
 
 auto Scene::create_entity(const std::string& name) const -> flecs::entity {
