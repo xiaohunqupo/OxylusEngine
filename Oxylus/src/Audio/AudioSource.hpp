@@ -1,16 +1,9 @@
 #pragma once
 
-#include "Asset/Asset.hpp"
-
 struct ma_sound;
 
 namespace ox {
-enum class AttenuationModelType {
-  None = 0,
-  Inverse,
-  Linear,
-  Exponential
-};
+enum class AttenuationModelType { None = 0, Inverse, Linear, Exponential };
 
 struct AudioSourceConfig {
   float volume_multiplier = 1.0f;
@@ -33,12 +26,15 @@ struct AudioSourceConfig {
   float doppler_factor = 1.0f;
 };
 
-class AudioSource : public Asset {
+enum class AudioID : uint64 { Invalid = std::numeric_limits<uint64>::max() };
+class AudioSource {
 public:
-  explicit AudioSource(const std::string& filepath);
+  AudioSource() = default;
   ~AudioSource();
   AudioSource(const AudioSource& other) = delete;
   AudioSource(AudioSource&& other) = delete;
+
+  bool load(const std::string& path);
 
   void play() const;
   void pause() const;
@@ -56,14 +52,16 @@ public:
   void set_max_gain(float maxGain) const;
   void set_min_distance(float minDistance) const;
   void set_max_distance(float maxDistance) const;
-  void set_cone(float innerAngle, float outerAngle, float outerGain) const;
+  void set_cone(float innerAngle,
+                float outerAngle,
+                float outerGain) const;
   void set_doppler_factor(float factor) const;
   void set_position(const glm::vec3& position) const;
   void set_direction(const glm::vec3& forward) const;
   void set_velocity(const glm::vec3& velocity) const;
 
 private:
-  Unique<ma_sound> m_sound;
-  bool m_spatialization = false;
+  Unique<ma_sound> _sound;
+  bool _spatialization = false;
 };
-}
+} // namespace ox

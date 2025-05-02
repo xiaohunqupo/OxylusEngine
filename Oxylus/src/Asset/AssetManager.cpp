@@ -20,6 +20,9 @@ auto AssetManager::load_asset(const UUID& uuid) -> bool {
     case AssetType::Scene: {
       return this->load_scene(uuid);
     }
+    case AssetType::Audio: {
+      return this->load_audio(uuid);
+    }
     default:;
   }
 
@@ -73,7 +76,7 @@ auto AssetManager::load_texture(const UUID& uuid,
 
   Texture texture{};
   texture.create(asset->path, info);
-  asset->texture_id = textures.create_slot(std::move(texture));
+  asset->texture_id = texture_map.create_slot(std::move(texture));
 
   textures_mutex.unlock();
 
@@ -92,7 +95,7 @@ auto AssetManager::unload_texture(const UUID& uuid) -> void {
 
   OX_LOG_TRACE("Unloaded texture {}.", uuid.str());
 
-  textures.destroy_slot(asset->texture_id);
+  texture_map.destroy_slot(asset->texture_id);
   asset->texture_id = TextureID::Invalid;
 }
 
@@ -123,6 +126,38 @@ auto AssetManager::unload_scene(const UUID& uuid) -> void {
   OX_SCOPED_ZONE;
 
   OX_UNIMPLEMENTED(AssetManager::unload_scene);
+}
+
+auto AssetManager::load_audio(const UUID& uuid) -> bool {
+  OX_SCOPED_ZONE;
+
+  auto* asset = this->get_asset(uuid);
+  OX_CHECK_NULL(asset);
+  asset->acquire_ref();
+
+  if (asset->is_loaded()) {
+    return true;
+  }
+
+  AudioSource audio{};
+  audio.load(asset->path);
+  asset->audio_id = audio_map.create_slot(std::move(audio));
+
+  OX_LOG_INFO("Loaded audio {} {}.", asset->uuid.str(), SlotMap_decode_id(asset->audio_id).index);
+
+  return true;
+}
+
+auto AssetManager::unload_audio(const UUID& uuid) -> void {
+  auto* asset = this->get_asset(uuid);
+  if (!asset || !(asset->is_loaded() && asset->release_ref())) {
+    return;
+  }
+
+  OX_LOG_TRACE("Unloaded audio {}.", uuid.str());
+
+  audio_map.destroy_slot(asset->audio_id);
+  asset->audio_id = AudioID::Invalid;
 }
 
 auto AssetManager::get_asset(const UUID& uuid) -> Asset* {

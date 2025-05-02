@@ -3,14 +3,13 @@
 namespace ox {
 enum class AssetType : uint32 {
   None = 0,
-  Root = 0,
   Shader,
   Model,
   Texture,
   Material,
   Font,
   Scene,
-  Directory, // Internal use
+  Audio,
 };
 
 // List of file extensions supported by Engine.

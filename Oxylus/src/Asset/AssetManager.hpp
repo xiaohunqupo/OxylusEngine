@@ -1,10 +1,12 @@
 #pragma once
 
-#include "AssetFile.hpp"
+#include "Asset/AssetFile.hpp"
+#include "Asset/Material.hpp"
+#include "Asset/Mesh.hpp"
+#include "Asset/Texture.hpp"
 #include "Core/ESystem.hpp"
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
-#include "Mesh.hpp"
 #include "Scene/Scene.hpp"
 
 namespace ox {
@@ -17,6 +19,7 @@ struct Asset {
     TextureID texture_id;
     MaterialID material_id;
     SceneID scene_id;
+    AudioID audio_id;
   };
 
   // Reference count of loads
@@ -54,6 +57,9 @@ public:
   auto load_scene(const UUID& uuid) -> bool;
   auto unload_scene(const UUID& uuid) -> void;
 
+  auto load_audio(const UUID& uuid) -> bool;
+  auto unload_audio(const UUID& uuid) -> void;
+
   auto get_asset(const UUID& uuid) -> Asset*;
 
 private:
@@ -62,9 +68,10 @@ private:
   std::shared_mutex registry_mutex = {};
   std::shared_mutex textures_mutex = {};
 
-  SlotMap<Mesh, MeshID> meshes = {};
-  SlotMap<Texture, TextureID> textures = {};
-  SlotMap<Material, MaterialID> materials = {};
-  SlotMap<std::unique_ptr<Scene>, SceneID> scenes = {};
+  SlotMap<Mesh, MeshID> mesh_map = {};
+  SlotMap<Texture, TextureID> texture_map = {};
+  SlotMap<Material, MaterialID> material_map = {};
+  SlotMap<std::unique_ptr<Scene>, SceneID> scene_map = {};
+  SlotMap<AudioSource, AudioID> audio_map = {};
 };
 } // namespace ox
