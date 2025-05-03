@@ -44,6 +44,8 @@ void draw_component(const char* name,
                     flecs::entity entity,
                     UIFunction ui_function,
                     const bool removable = true) {
+  if (!entity.has<T>())
+    return;
   auto* component = entity.get_mut<T>();
   if (!component) {
     return;
@@ -105,6 +107,7 @@ void InspectorPanel::draw_material_properties(Material* material) {
   ui::property_vector("Color", material->albedo_color, true, true);
 
   auto* asset_man = App::get_asset_manager();
+
   if (UUID new_asset = {}; ui::texture_property("Albedo", material->albedo_texture, &new_asset)) {
     asset_man->unload_texture(material->albedo_texture);
     material->albedo_texture = new_asset;

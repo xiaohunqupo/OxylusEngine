@@ -30,7 +30,7 @@ void Texture::create(const std::string& path,
 
   if (is_generic && !path.empty()) {
     stb_data = load_stb_image(path, &width, &height, &chans);
-  } else {
+  } else if (!is_generic && !path.empty()) {
     const auto file_data = fs::read_file_binary(path);
     ktxTexture2* ktx{};
     if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(), file_data.size(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);

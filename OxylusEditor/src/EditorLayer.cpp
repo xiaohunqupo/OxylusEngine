@@ -19,7 +19,6 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
-#include "Scene/SceneRenderer.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/CVars.hpp"
@@ -47,7 +46,7 @@ void EditorLayer::on_attach() {
   engine_banner = create_shared<Texture>();
   engine_banner->create({},
                         {.preset = Preset::eRTT2DUnmipped,
-                         .format = vuk::Format::eR8G8B8A8Srgb,
+                         .format = vuk::Format::eR8G8B8A8Unorm,
                          .mime = {},
                          .data = EngineBanner,
                          .extent = {EngineBannerWidth, EngineBannerHeight}});

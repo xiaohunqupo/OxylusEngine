@@ -6,6 +6,9 @@
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "Asset/AssetFile.hpp"
+#include "Asset/AssetManager.hpp"
+#include "Asset/Material.hpp"
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
 #include "Scene/Components.hpp"
@@ -275,8 +278,12 @@ void SceneHierarchyPanel::draw_context_menu() {
       ImGui::EndMenu();
     }
 
+    auto* asset_man = App::get_asset_manager();
+
     if (ImGui::MenuItem("Sprite")) {
       to_select = _scene->create_entity().add<SpriteComponent>();
+      to_select.get_mut<SpriteComponent>()->material = asset_man->create_asset(AssetType::Material, {});
+      asset_man->load_material(to_select.get_mut<SpriteComponent>()->material, Material{});
     }
 
     if (ImGui::MenuItem("Tilemap")) {
