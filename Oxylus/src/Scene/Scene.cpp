@@ -379,7 +379,7 @@ auto Scene::create_rigidbody(flecs::entity entity,
       const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), mc->friction, mc->restitution);
 
       // TODO: We should only get the vertices and indices for this particular MeshComponent using MeshComponent::node_index
-
+#if 0
       auto vertices = mesh_component->mesh_base->_vertices;
       const auto& indices = mesh_component->mesh_base->_indices;
 
@@ -416,6 +416,7 @@ auto Scene::create_rigidbody(flecs::entity entity,
       material_list.emplace_back(mat);
       JPH::MeshShapeSettings shape_settings(vertex_list, indexedTriangleList, material_list);
       compound_shape_settings.AddShape({mc->offset.x, mc->offset.y, mc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+#endif
     }
   }
 
@@ -763,14 +764,15 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
 
     world.query_builder<const TransformComponent, AudioSourceComponent>().build().each(
         [this](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
-      if (ac.source) {
+      auto* asset_man = App::get_asset_manager();
+      if (auto* audio = asset_man->get_audio(ac.audio_source)) {
         const glm::mat4 inverted = glm::inverse(get_world_transform(e));
         const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
-        ac.source->set_config(ac.config);
-        ac.source->set_position(tc.position);
-        ac.source->set_direction(forward);
+        audio->set_config(ac.config);
+        audio->set_position(tc.position);
+        audio->set_direction(forward);
         if (ac.config.play_on_awake)
-          ac.source->play();
+          audio->play();
       }
     });
   }

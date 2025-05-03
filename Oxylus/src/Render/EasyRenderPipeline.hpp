@@ -14,7 +14,8 @@ public:
   void init(vuk::Allocator& allocator) override;
   void shutdown() override;
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) override;
+  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator,
+                                                           const RenderInfo& render_info) override;
 
   void on_update(Scene* scene) override;
   void submit_sprite(const SpriteComponent& sprite) override;
@@ -83,19 +84,20 @@ private:
       };
       static_assert(sizeof(SortKey) == sizeof(uint64_t));
       const SortKey a = {
-        .bits =
-          {
-            .distance_y = math::unpack_u32_low(flags16_distance16) & RENDER_FLAGS_2D_SORT_Y ? math::unpack_u32_high(material_id16_ypos16) : 0u,
-            .distance_z = math::unpack_u32_high(flags16_distance16),
-          },
+          .bits =
+              {
+                  .distance_y = math::unpack_u32_low(flags16_distance16) & RENDER_FLAGS_2D_SORT_Y ? math::unpack_u32_high(material_id16_ypos16) : 0u,
+                  .distance_z = math::unpack_u32_high(flags16_distance16),
+              },
       };
       const SortKey b = {
-        .bits =
-          {
-            .distance_y = math::unpack_u32_low(other.flags16_distance16) & RENDER_FLAGS_2D_SORT_Y ? math::unpack_u32_high(other.material_id16_ypos16)
-                                                                                                  : 0u,
-            .distance_z = math::unpack_u32_high(other.flags16_distance16),
-          },
+          .bits =
+              {
+                  .distance_y = math::unpack_u32_low(other.flags16_distance16) & RENDER_FLAGS_2D_SORT_Y
+                                  ? math::unpack_u32_high(other.material_id16_ypos16)
+                                  : 0u,
+                  .distance_z = math::unpack_u32_high(other.flags16_distance16),
+              },
       };
       return a.value > b.value;
     }
@@ -131,7 +133,9 @@ private:
       previous_offset = num_sprites;
     }
 
-    void add(const SpriteComponent& sprite, const float distance) {
+    void add(const SpriteComponent& sprite,
+             const float distance) {
+#if 0
       sprite.material->set_id(last_material_id);
       last_material_id += 1;
 
@@ -152,6 +156,7 @@ private:
       });
 
       num_sprites += 1;
+#endif
     }
 
     void sort() { std::ranges::sort(sprite_data, std::greater<SpriteGPUData>()); }

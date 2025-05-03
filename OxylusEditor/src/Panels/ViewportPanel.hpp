@@ -1,6 +1,7 @@
 #pragma once
 
-#include <vuk/Value.hpp>
+#include <vuk/runtime/vk/PipelineInstance.hpp>
+#include <vuk/runtime/vk/Query.hpp>
 
 #include "EditorPanel.hpp"
 #include "Render/Camera.hpp"
@@ -21,9 +22,11 @@ public:
   ViewportPanel();
   ~ViewportPanel() override = default;
 
-  void on_render(vuk::Extent3D extent, vuk::Format format) override;
+  void on_render(vuk::Extent3D extent,
+                 vuk::Format format) override;
 
-  void set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel);
+  void set_context(const Shared<Scene>& scene,
+                   SceneHierarchyPanel& scene_hierarchy_panel);
 
   void on_update() override;
 

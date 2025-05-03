@@ -2,15 +2,14 @@
 
 #include <sol/state.hpp>
 
+#include "Asset/AudioSource.hpp"
 #include "Asset/AssetManager.hpp"
-#include "Audio/AudioSource.hpp"
 #include "LuaHelpers.hpp"
 #include "Scene/Components.hpp"
 
 namespace ox::LuaBindings {
 void bind_audio(const Shared<sol::state>& state) {
   auto audio_source = state->new_usertype<AudioSource>("AudioSource");
-  SET_TYPE_FUNCTION(audio_source, AudioSource, get_path);
   SET_TYPE_FUNCTION(audio_source, AudioSource, play);
   SET_TYPE_FUNCTION(audio_source, AudioSource, pause);
   SET_TYPE_FUNCTION(audio_source, AudioSource, un_pause);

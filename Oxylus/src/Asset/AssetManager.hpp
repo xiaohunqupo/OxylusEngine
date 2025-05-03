@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/AssetFile.hpp"
+#include "Asset/AudioSource.hpp"
 #include "Asset/Material.hpp"
 #include "Asset/Mesh.hpp"
 #include "Asset/Texture.hpp"
@@ -39,6 +40,9 @@ public:
   void deinit() override;
 
   auto registry() const -> const AssetRegistry&;
+
+  auto create_asset(AssetType type,
+                    const std::string& path) -> UUID;
 
   auto load_asset(const UUID& uuid) -> bool;
   auto unload_asset(const UUID& uuid) -> void;

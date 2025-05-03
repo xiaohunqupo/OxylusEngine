@@ -13,6 +13,8 @@
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
 
+#if 0
+
 namespace ox {
 struct SkyboxLoadEvent;
 
@@ -547,3 +549,4 @@ private:
                                                             vuk::Value<vuk::ImageAttachment>& input_clr);
 };
 } // namespace ox
+#endif

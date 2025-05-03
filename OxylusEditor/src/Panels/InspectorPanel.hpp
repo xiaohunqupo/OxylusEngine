@@ -2,11 +2,10 @@
 
 #include <flecs.h>
 
-#include "Asset/PBRMaterial.hpp"
-#include "Asset/SpriteMaterial.hpp"
 #include "EditorPanel.hpp"
 
 namespace ox {
+struct Material;
 class Scene;
 class InspectorPanel : public EditorPanel {
 public:
@@ -14,8 +13,7 @@ public:
 
   void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
-  static void draw_pbr_material_properties(Shared<PBRMaterial>& material);
-  static void draw_sprite_material_properties(Shared<SpriteMaterial>& material);
+  static void draw_material_properties(Material* material);
 
 private:
   void draw_components(flecs::entity entity);

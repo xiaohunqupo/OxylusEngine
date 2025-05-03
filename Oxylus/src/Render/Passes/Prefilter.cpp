@@ -1,9 +1,9 @@
 #include "Prefilter.hpp"
 
 #include <vuk/RenderGraph.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
 
 #include "Core/App.hpp"
-#include "Render/Mesh.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 
 #define M_PI 3.14159265358979323846
@@ -105,9 +105,9 @@ vuk::Value<vuk::ImageAttachment> Prefilter::generate_irradiance_cube(const Share
     const auto view = command_buffer.scratch_buffer<glm::mat4[6]>(0, 1);
     memcpy(view, capture_views, sizeof(capture_views));
 
-    skybox->bind_vertex_buffer(command_buffer);
-    skybox->bind_index_buffer(command_buffer);
-    command_buffer.draw_indexed(skybox->index_count, 6, 0, 0, 0);
+    // skybox->bind_vertex_buffer(command_buffer);
+    // skybox->bind_index_buffer(command_buffer);
+    // command_buffer.draw_indexed(skybox->index_count, 6, 0, 0, 0);
 
     return output;
   });
@@ -164,9 +164,9 @@ vuk::Value<vuk::ImageAttachment> Prefilter::generate_prefiltered_cube(const Shar
     const auto view = command_buffer.scratch_buffer<glm::mat4[6]>(0, 1);
     memcpy(view, capture_views, sizeof(capture_views));
 
-    skybox->bind_vertex_buffer(command_buffer);
-    skybox->bind_index_buffer(command_buffer);
-    command_buffer.draw_indexed(skybox->index_count, 6, 0, 0, 0);
+    // skybox->bind_vertex_buffer(command_buffer);
+    // skybox->bind_index_buffer(command_buffer);
+    // command_buffer.draw_indexed(skybox->index_count, 6, 0, 0, 0);
 
     return output;
   });

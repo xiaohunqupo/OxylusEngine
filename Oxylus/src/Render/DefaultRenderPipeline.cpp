@@ -34,6 +34,7 @@
 #include "vuk/Value.hpp"
 #include "vuk/runtime/vk/Allocator.hpp"
 
+#if 0
 namespace ox {
 VkDescriptorSetLayoutBinding binding(uint32_t binding, vuk::DescriptorType descriptor_type, uint32_t count = 1024) {
   return {
@@ -2112,3 +2113,4 @@ void DefaultRenderPipeline::sky_view_lut_pass(const Shared<vuk::RenderGraph>& rg
 }
 #endif
 } // namespace ox
+#endif

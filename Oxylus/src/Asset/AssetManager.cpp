@@ -10,8 +10,25 @@ void AssetManager::deinit() {}
 
 auto AssetManager::registry() const -> const AssetRegistry& { return asset_registry; }
 
+auto AssetManager::create_asset(const AssetType type,
+                                const std::string& path) -> UUID {
+  const auto uuid = UUID::generate_random();
+  auto [asset_it, inserted] = asset_registry.try_emplace(uuid);
+  if (!inserted) {
+    OX_LOG_ERROR("Can't create asset {}!", uuid.str());
+    return UUID(nullptr);
+  }
+
+  auto& asset = asset_it->second;
+  asset.uuid = uuid;
+  asset.type = type;
+  asset.path = path;
+
+  return asset.uuid;
+}
+
 auto AssetManager::load_asset(const UUID& uuid) -> bool {
-  auto* asset = this->get_asset(uuid);
+  const auto* asset = this->get_asset(uuid);
   switch (asset->type) {
     case AssetType::Mesh: {
       return this->load_mesh(uuid);
@@ -125,7 +142,7 @@ auto AssetManager::load_material(const UUID& uuid,
         uuids(uuid),
         load_infos(load_info),
         asset_manager(asset_man) {
-      this->m_SetSize = uuids.size(); // One task per texture
+      this->m_SetSize = static_cast<uint32_t>(uuids.size()); // One task per texture
     }
 
     void ExecuteRange(const enki::TaskSetPartition range,
@@ -362,7 +379,7 @@ auto AssetManager::get_material(const MaterialID material_id) -> Material* {
 auto AssetManager::get_scene(const UUID& uuid) -> Scene* {
   OX_SCOPED_ZONE;
 
-  auto* asset = this->get_asset(uuid);
+  const auto* asset = this->get_asset(uuid);
   if (asset == nullptr) {
     return nullptr;
   }

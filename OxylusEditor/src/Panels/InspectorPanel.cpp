@@ -10,15 +10,21 @@
 #include "Core/SystemManager.hpp"
 #include "EditorLayer.hpp"
 #include "EditorTheme.hpp"
+#include "Render/ParticleSystem.hpp"
 #include "Scene/Components.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/ColorUtils.hpp"
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
-InspectorPanel::InspectorPanel() : EditorPanel("Inspector", ICON_MDI_INFORMATION, true), _scene(nullptr) {}
+InspectorPanel::InspectorPanel() :
+    EditorPanel("Inspector",
+                ICON_MDI_INFORMATION,
+                true),
+    _scene(nullptr) {}
 
-void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
+void InspectorPanel::on_render(vuk::Extent3D extent,
+                               vuk::Format format) {
   selected_entity = EditorLayer::get()->get_selected_entity();
   _scene = EditorLayer::get()->get_selected_scene().get();
 
@@ -32,8 +38,12 @@ void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   on_end();
 }
 
-template <typename T, typename UIFunction>
-void draw_component(const char* name, flecs::entity entity, UIFunction ui_function, const bool removable = true) {
+template <typename T,
+          typename UIFunction>
+void draw_component(const char* name,
+                    flecs::entity entity,
+                    UIFunction ui_function,
+                    const bool removable = true) {
   auto* component = entity.get_mut<T>();
   if (!component) {
     return;
@@ -80,53 +90,52 @@ void draw_component(const char* name, flecs::entity entity, UIFunction ui_functi
     entity.remove<T>();
 }
 
-void InspectorPanel::draw_sprite_material_properties(Shared<SpriteMaterial>& material) {
-  if (ui::button("Reset")) {
-    material = create_shared<SpriteMaterial>();
-    material->create();
-  }
-  ImGui::Spacing();
+void InspectorPanel::draw_material_properties(Material* material) {
   ui::begin_properties(ui::default_properties_flags);
-  if (ui::property("Albedo", material->get_albedo_texture()))
-    material->set_albedo_texture(material->get_albedo_texture());
-  ui::property_vector("Color", material->parameters.color, true, true);
-  ui::draw_vec2_control("UV Size", material->parameters.uv_size, nullptr, 1.0f);
-  ui::draw_vec2_control("UV Offset", material->parameters.uv_offset, nullptr, 0.0f);
 
-  ui::end_properties();
-}
+  const char* alpha_modes[] = {"Opaque", "Mash", "Blend"};
+  ui::property("Alpha mode", reinterpret_cast<int*>(&material->alpha_mode), alpha_modes, 3);
 
-void InspectorPanel::draw_pbr_material_properties(Shared<PBRMaterial>& material) {
-  if (ui::button("Reset")) {
-    material = create_shared<PBRMaterial>();
-    material->create();
+  const char* samplers[] = {"Nearest", "Linear", "Anisotropy"};
+  ui::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 3);
+
+  ui::property_vector<glm::vec2>("UV Size", material->uv_size, 0.1f, 10.f);
+  ui::property_vector<glm::vec2>("UV Offset", material->uv_offset, -10.0f, 10.f);
+
+  ui::property_vector("Color", material->albedo_color, true, true);
+
+  auto* asset_man = App::get_asset_manager();
+  if (UUID new_asset = {}; ui::texture_property("Albedo", material->albedo_texture, &new_asset)) {
+    asset_man->unload_texture(material->albedo_texture);
+    material->albedo_texture = new_asset;
   }
-  ui::begin_properties(ui::default_properties_flags);
-  const char* alpha_modes[] = {"Opaque", "Blend", "Mask"};
-  ui::property("Alpha mode", (int*)&material->parameters.alpha_mode, alpha_modes, 3);
-  const char* samplers[] = {"Bilinear", "Trilinear", "Anisotropy"};
-  ui::property("Sampler", (int*)&material->parameters.sampling_mode, samplers, 3);
-  ui::property("UV Scale", &material->parameters.uv_scale, 0.0f);
 
-  if (ui::property("Albedo", material->get_albedo_texture()))
-    material->set_albedo_texture(material->get_albedo_texture());
-  ui::property_vector("Color", material->parameters.color, true, true);
+  if (UUID new_asset = {}; ui::texture_property("Normal", material->normal_texture, &new_asset)) {
+    asset_man->unload_texture(material->normal_texture);
+    material->normal_texture = new_asset;
+  }
 
-  ui::property("Reflectance", &material->parameters.reflectance, 0.0f, 1.0f);
-  if (ui::property("Normal", material->get_normal_texture()))
-    material->set_normal_texture(material->get_normal_texture());
+  if (UUID new_asset = {}; ui::texture_property("Emissive", material->emissive_texture, &new_asset)) {
+    asset_man->unload_texture(material->emissive_texture);
+    material->emissive_texture = new_asset;
+  }
+  if (material->emissive_texture) {
+    ui::property_vector("Emissive Color", material->emissive_color, true, true);
+  }
 
-  if (ui::property("PhysicalMap", material->get_physical_texture()))
-    material->set_physical_texture(material->get_physical_texture());
-  ui::property("Roughness", &material->parameters.roughness, 0.0f, 1.0f);
-  ui::property("Metallic", &material->parameters.metallic, 0.0f, 1.0f);
+  if (UUID new_asset = {}; ui::texture_property("Metallic Roughness", material->metallic_roughness_texture, &new_asset)) {
+    asset_man->unload_texture(material->metallic_roughness_texture);
+    material->metallic_roughness_texture = new_asset;
+  }
+  if (material->metallic_roughness_texture) {
+    ui::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
+    ui::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
+  }
 
-  if (ui::property("AO", material->get_ao_texture()))
-    material->set_ao_texture(material->get_ao_texture());
-
-  if (ui::property("Emissive", material->get_emissive_texture()))
-    material->set_emissive_texture(material->get_emissive_texture());
-  ui::property_vector("Emissive Color", material->parameters.emissive, true, true);
+  if (UUID new_asset = {}; ui::texture_property("Occlusion", material->occlusion_texture, &new_asset)) {
+    asset_man->unload_texture(material->occlusion_texture);
+    material->occlusion_texture = new_asset;
+  }
 
   ui::end_properties();
 }
@@ -141,7 +150,7 @@ static void draw_particle_over_lifetime_module(const std::string_view module_nam
 
   if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
     ui::begin_properties();
-    ui::property("Enabled", &property_module.enabled);
+    ui::texture_property("Enabled", &property_module.enabled);
 
     if (rotation) {
       T degrees = glm::degrees(property_module.start);
@@ -172,7 +181,7 @@ static void draw_particle_by_speed_module(const std::string_view module_name,
 
   if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
     ui::begin_properties();
-    ui::property("Enabled", &property_module.enabled);
+    ui::texture_property("Enabled", &property_module.enabled);
 
     if (rotation) {
       T degrees = glm::degrees(property_module.start);
@@ -187,15 +196,16 @@ static void draw_particle_by_speed_module(const std::string_view module_name,
       ui::property_vector("End", property_module.end, color);
     }
 
-    ui::property("Min Speed", &property_module.min_speed);
-    ui::property("Max Speed", &property_module.max_speed);
+    ui::texture_property("Min Speed", &property_module.min_speed);
+    ui::texture_property("Max Speed", &property_module.max_speed);
     ui::end_properties();
     ImGui::TreePop();
   }
 }
 
 template <typename Component>
-void draw_add_component(const flecs::entity entity, const char* name) {
+void draw_add_component(const flecs::entity entity,
+                        const char* name) {
   if (ImGui::MenuItem(name)) {
     if (entity.has<Component>())
       OX_LOG_WARN("Entity already has same component!");
@@ -260,42 +270,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   });
 
   draw_component<MeshComponent>(" Mesh Component", entity, [](MeshComponent& component, flecs::entity e) {
-    if (!component.mesh_base)
-      return;
-    ui::begin_properties();
-    ui::text("Totoal meshlet count:", fmt::format("{}", component.mesh_base->_meshlets.size()).c_str());
-    ui::text("Total material count:", fmt::format("{}", component.materials.size()).c_str());
-    ui::text("Mesh asset id:", fmt::format("{}", component.mesh_id).c_str());
-    ui::property("Cast shadows", &component.cast_shadows);
-    ui::property("Stationary", &component.stationary);
-    ui::end_properties();
 
-    ImGui::SeparatorText("Materials");
-
-    const float filter_cursor_pos_x = ImGui::GetCursorPosX();
-    ImGuiTextFilter name_filter;
-
-    name_filter.Draw("##material_filter",
-                     ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
-
-    if (!name_filter.IsActive()) {
-      ImGui::SameLine();
-      ImGui::SetCursorPosX(filter_cursor_pos_x + ImGui::GetFontSize() * 0.5f);
-      ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
-    }
-
-    for (uint32 i = 0; i < (uint32)component.materials.size(); i++) {
-      auto& material = component.materials[i];
-      if (name_filter.PassFilter(material->name.c_str())) {
-        ImGui::PushID(i);
-        constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_FramePadding;
-        if (ImGui::TreeNodeEx(material->name.c_str(), flags, "%s", material->name.c_str())) {
-          draw_pbr_material_properties(material);
-          ImGui::TreePop();
-        }
-        ImGui::PopID();
-      }
-    }
   });
 
   draw_component<SpriteComponent>(" Sprite Component", entity, [](SpriteComponent& component, flecs::entity e) {
@@ -306,7 +281,10 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ui::end_properties();
 
     ImGui::SeparatorText("Material");
-    draw_sprite_material_properties(component.material);
+
+    auto* asset_man = App::get_asset_manager();
+    if (auto* material = asset_man->get_material(component.material))
+      draw_material_properties(material);
   });
 
   draw_component<SpriteAnimationComponent>(" Sprite Animation Component", entity, [this](SpriteAnimationComponent& component, flecs::entity e) {
@@ -327,8 +305,14 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     const float y = ImGui::GetFrameHeight();
     ImGui::Spacing();
     if (ui::button("Auto", {x, y})) {
-      if (const auto* sc = e.get<SpriteComponent>())
-        component.set_frame_size(sc->material->get_albedo_texture().get());
+      if (const auto* sc = e.get<SpriteComponent>()) {
+        auto asset_man = App::get_asset_manager();
+        if (const auto* material = asset_man->get_material(sc->material)) {
+          if (const auto* texture = asset_man->get_texture(material->albedo_texture)) {
+            component.set_frame_size(texture->get_extent().width, texture->get_extent().height);
+          }
+        }
+      }
     }
     ui::end_properties();
   });
@@ -341,10 +325,10 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
       const auto& window = App::get()->get_window();
       FileDialogFilter dialog_filters[] = {{.name = "ldtk file(.json)", .pattern = "json"}};
       window.show_dialog({
-        .kind = DialogKind::OpenFile,
-        .user_data = &path,
-        .callback =
-          [](void* user_data, const char8* const* files, int32) {
+          .kind = DialogKind::OpenFile,
+          .user_data = &path,
+          .callback =
+              [](void* user_data, const char8* const* files, int32) {
         auto& dst_path = *static_cast<std::string*>(user_data);
         if (!files || !*files) {
           return;
@@ -354,10 +338,10 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
         const auto first_path_len = std::strlen(first_path_cstr);
         dst_path = std::string(first_path_cstr, first_path_len);
       },
-        .title = "Load exported png and json file from ldtk",
-        .default_path = fs::current_path(),
-        .filters = dialog_filters,
-        .multi_select = false,
+          .title = "Load exported png and json file from ldtk",
+          .default_path = fs::current_path(),
+          .filters = dialog_filters,
+          .multi_select = false,
       });
       component.load(path);
     }
@@ -403,51 +387,60 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   });
 
   draw_component<AudioSourceComponent>(" Audio Source Component", entity, [&entity, this](AudioSourceComponent& component, flecs::entity e) {
-    auto& config = component.config;
-    const std::string filepath = component.source ? component.source->get_path()
-                                                  : fmt::format("{} Drop an audio file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
+    auto* asset_man = App::get_asset_manager();
+    auto* asset = asset_man->get_asset(component.audio_source);
 
-    auto load_file = [](const std::filesystem::path& path, AudioSourceComponent& comp) {
-      if (const std::string ext = path.extension().string(); ext == ".mp3" || ext == ".wav" || ext == ".flac")
-        comp.source = create_shared<AudioSource>(path.string());
-    };
+    const std::string filepath =
+        (asset && asset->is_loaded()) ? asset->path : fmt::format("{} Drop an audio file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
 
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
     if (ui::button(filepath.c_str(), {x, y})) {
-      std::string path = {};
       const auto& window = App::get()->get_window();
       FileDialogFilter dialog_filters[] = {{.name = "Audio file(.mp3, .wav, .flac)", .pattern = "mp3;wav;flac"}};
       window.show_dialog({
-        .kind = DialogKind::OpenFile,
-        .user_data = &path,
-        .callback =
-          [](void* user_data, const char8* const* files, int32) {
-        auto& dst_path = *static_cast<std::string*>(user_data);
+          .kind = DialogKind::OpenFile,
+          .user_data = &component,
+          .callback =
+              [](void* user_data, const char8* const* files, int32) {
+        auto* comp = static_cast<AudioSourceComponent*>(user_data);
+
         if (!files || !*files) {
           return;
         }
 
         const auto first_path_cstr = *files;
         const auto first_path_len = std::strlen(first_path_cstr);
-        dst_path = std::string(first_path_cstr, first_path_len);
+        auto path = ::fs::path(std::string(first_path_cstr, first_path_len));
+        if (const std::string ext = path.extension().string(); ext == ".mp3" || ext == ".wav" || ext == ".flac") {
+          auto* am = App::get_asset_manager();
+          comp->audio_source = am->create_asset(AssetType::Audio, path.string());
+          am->load_asset(comp->audio_source);
+        }
       },
-        .title = "Open audio file...",
-        .default_path = fs::current_path(),
-        .filters = dialog_filters,
-        .multi_select = false,
+          .title = "Open audio file...",
+          .default_path = fs::current_path(),
+          .filters = dialog_filters,
+          .multi_select = false,
       });
-      load_file(path, component);
     }
     if (ImGui::BeginDragDropTarget()) {
       if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
         const std::filesystem::path path = ui::get_path_from_imgui_payload(payload);
-        load_file(path, component);
+        if (const std::string ext = path.extension().string(); ext == ".mp3" || ext == ".wav" || ext == ".flac") {
+          component.audio_source = asset_man->create_asset(AssetType::Audio, path.string());
+          asset_man->load_asset(component.audio_source);
+        }
       }
       ImGui::EndDragDropTarget();
     }
     ImGui::Spacing();
 
+    auto* audio_asset = asset_man->get_audio(component.audio_source);
+    if (!audio_asset)
+      return;
+
+    auto& config = component.config;
     ui::begin_properties();
     ui::property("Volume Multiplier", &config.volume_multiplier);
     ui::property("Pitch Multiplier", &config.pitch_multiplier);
@@ -456,14 +449,14 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ui::end_properties();
 
     ImGui::Spacing();
-    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLAY "Play ")) && component.source)
-      component.source->play();
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLAY "Play ")))
+      audio_asset->play();
     ImGui::SameLine();
-    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PAUSE "Pause ")) && component.source)
-      component.source->pause();
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PAUSE "Pause ")))
+      audio_asset->pause();
     ImGui::SameLine();
-    if (ui::button(StringUtils::from_char8_t(ICON_MDI_STOP "Stop ")) && component.source)
-      component.source->stop();
+    if (ui::button(StringUtils::from_char8_t(ICON_MDI_STOP "Stop ")))
+      audio_asset->stop();
     ImGui::Spacing();
 
     ui::begin_properties();
@@ -492,13 +485,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     }
     ui::end_properties();
 
-    if (component.source) {
-      const glm::mat4 inverted = glm::inverse(_scene->get_world_transform(entity));
-      const glm::vec3 forward = glm::normalize(glm::vec3(inverted[2]));
-      component.source->set_config(config);
-      component.source->set_position(entity.get<TransformComponent>()->position);
-      component.source->set_direction(-forward);
-    }
+    audio_asset->set_config(config);
   });
 
   draw_component<AudioListenerComponent>(" Audio Listener Component", entity, [](AudioListenerComponent& component, flecs::entity e) {
@@ -569,10 +556,10 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ui::begin_properties();
 
     const char* dofs_strings[] = {
-      "None",
-      "All",
-      "Plane2D",
-      "Custom",
+        "None",
+        "All",
+        "Plane2D",
+        "Custom",
     };
     int current_dof_selection = 3;
     switch (component.allowed_dofs) {
@@ -781,10 +768,10 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
       const auto& window = App::get()->get_window();
       FileDialogFilter dialog_filters[] = {{.name = "Lua file(.lua)", .pattern = "lua"}};
       window.show_dialog({
-        .kind = DialogKind::OpenFile,
-        .user_data = &component,
-        .callback =
-          [](void* user_data, const char8* const* files, int32) {
+          .kind = DialogKind::OpenFile,
+          .user_data = &component,
+          .callback =
+              [](void* user_data, const char8* const* files, int32) {
         auto* user_data_comp = static_cast<LuaScriptComponent*>(user_data);
         if (!files || !*files) {
           return;
@@ -797,10 +784,10 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
           user_data_comp->lua_systems.emplace_back(create_shared<LuaSystem>(p_str));
         }
       },
-        .title = "Open lua file...",
-        .default_path = fs::current_path(),
-        .filters = dialog_filters,
-        .multi_select = false,
+          .title = "Open lua file...",
+          .default_path = fs::current_path(),
+          .filters = dialog_filters,
+          .multi_select = false,
       });
     }
     if (ImGui::BeginDragDropTarget()) {
@@ -881,6 +868,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   });
 
   draw_component<ParticleSystemComponent>("Particle System Component", entity, [](const ParticleSystemComponent& component, flecs::entity e) {
+#if 0
     auto& props = component.system->get_properties();
 
     ImGui::Text("Active Particles Count: %u", component.system->get_active_particle_count());
@@ -895,30 +883,30 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ImGui::Separator();
 
     ui::begin_properties();
-    ui::property("Duration", &props.duration);
-    if (ui::property("Looping", &props.looping)) {
+    ui::texture_property("Duration", &props.duration);
+    if (ui::texture_property("Looping", &props.looping)) {
       if (props.looping)
         component.system->play();
     }
-    ui::property("Start Delay", &props.start_delay);
-    ui::property("Start Lifetime", &props.start_lifetime);
+    ui::texture_property("Start Delay", &props.start_delay);
+    ui::texture_property("Start Lifetime", &props.start_lifetime);
     ui::property_vector("Start Velocity", props.start_velocity);
     ui::property_vector("Start Color", props.start_color, true);
     ui::property_vector("Start Size", props.start_size);
     ui::property_vector("Start Rotation", props.start_rotation);
-    ui::property("Gravity Modifier", &props.gravity_modifier);
-    ui::property("Simulation Speed", &props.simulation_speed);
-    ui::property("Play On Awake", &props.play_on_awake);
-    ui::property("Max Particles", &props.max_particles);
+    ui::texture_property("Gravity Modifier", &props.gravity_modifier);
+    ui::texture_property("Simulation Speed", &props.simulation_speed);
+    ui::texture_property("Play On Awake", &props.play_on_awake);
+    ui::texture_property("Max Particles", &props.max_particles);
     ui::end_properties();
 
     ImGui::Separator();
 
     ui::begin_properties();
-    ui::property("Rate Over Time", &props.rate_over_time);
-    ui::property("Rate Over Distance", &props.rate_over_distance);
-    ui::property("Burst Count", &props.burst_count);
-    ui::property("Burst Time", &props.burst_time);
+    ui::texture_property("Rate Over Time", &props.rate_over_time);
+    ui::texture_property("Rate Over Distance", &props.rate_over_distance);
+    ui::texture_property("Burst Count", &props.burst_count);
+    ui::texture_property("Burst Time", &props.burst_time);
     ui::property_vector("Position Start", props.position_start);
     ui::property_vector("Position End", props.position_end);
     // OxUI::Property("Texture", props.Texture); //TODO:
@@ -932,6 +920,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     draw_particle_by_speed_module("Size By Speed", props.size_by_speed);
     draw_particle_over_lifetime_module("Rotation Over Lifetime", props.rotation_over_lifetime, false, true);
     draw_particle_by_speed_module("Rotation By Speed", props.rotation_by_speed, false, true);
+#endif
   });
 }
 } // namespace ox

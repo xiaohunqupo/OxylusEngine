@@ -1,5 +1,6 @@
 ﻿#include "SceneRenderer.hpp"
 
+#include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Physics/Physics.hpp"
 #include "Render/Camera.hpp"
@@ -69,8 +70,10 @@ void SceneRenderer::update(const Timestep& delta_time) const {
     OX_SCOPED_ZONE_N("Sprite Animation System");
     _scene->world.query_builder<SpriteComponent, SpriteAnimationComponent>().build().each(
         [this, &delta_time](SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
-      if (sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 ||
-          sprite.material->parameters.albedo_map_id == Asset::INVALID_ID)
+      const auto asset_manager = App::get_system<AssetManager>(EngineSystems::AssetManager);
+      auto* material = asset_manager->get_material(sprite.material);
+
+      if (sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 || !material || !material->albedo_texture)
         return;
 
       const auto dt = glm::clamp(static_cast<float>(delta_time.get_seconds()), 0.0f, 0.25f);
@@ -101,14 +104,12 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       const uint32 frame_x = frame % sprite_animation.columns;
       const uint32 frame_y = frame / sprite_animation.columns;
 
-      const auto& mat = sprite.material;
-      const auto& texture = mat->get_albedo_texture();
-      auto& uv_size = mat->parameters.uv_size;
-      const auto& uv_offset = mat->parameters.uv_offset;
+      const auto* albedo_texture = asset_manager->get_texture(material->albedo_texture);
+      auto& uv_size = material->uv_size;
 
-      auto texture_size = glm::vec2(texture->get_extent().width, texture->get_extent().height);
+      auto texture_size = glm::vec2(albedo_texture->get_extent().width, albedo_texture->get_extent().height);
       uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0], sprite_animation.frame_size[1] * 1.f / texture_size[1]};
-      sprite.current_uv_offset = uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
+      sprite.current_uv_offset = material->uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
     });
   }
 

@@ -45,7 +45,12 @@ void EditorLayer::on_attach() {
   editor_config.load_config();
 
   engine_banner = create_shared<Texture>();
-  engine_banner->create_texture({EngineBannerWidth, EngineBannerHeight, 1}, EngineBanner, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
+  engine_banner->create({},
+                        {.preset = Preset::eRTT2DUnmipped,
+                         .format = vuk::Format::eR8G8B8A8Srgb,
+                         .mime = {},
+                         .data = EngineBanner,
+                         .extent = {EngineBannerWidth, EngineBannerHeight}});
 
   add_panel<SceneHierarchyPanel>();
   add_panel<ContentPanel>();
@@ -400,8 +405,6 @@ void EditorLayer::on_scene_stop() {
   active_scene->on_runtime_stop();
   active_scene = nullptr;
   set_editor_context(editor_scene);
-  // initalize the renderer again manually since this scene was already alive...
-  editor_scene->get_renderer()->init();
 }
 
 void EditorLayer::on_scene_simulate() {

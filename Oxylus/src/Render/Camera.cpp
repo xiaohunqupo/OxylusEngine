@@ -3,7 +3,7 @@
 #include "Core/App.hpp"
 
 namespace ox {
-void Camera::update(::ox::CameraComponent& component, const glm::vec2& screen_size) {
+void Camera::update(CameraComponent& component, const glm::vec2& screen_size) {
   OX_SCOPED_ZONE;
 
   component.jitter_prev = component.jitter;

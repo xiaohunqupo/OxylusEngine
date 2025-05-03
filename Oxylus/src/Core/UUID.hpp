@@ -20,7 +20,7 @@ public:
   static option<UUID> from_string(std::string_view str);
 
   UUID() = default;
-  explicit UUID(nullptr_t) {};
+  explicit UUID(nullptr_t) {}
   UUID(const UUID& other) = default;
   UUID& operator=(const UUID& other) = default;
   UUID(UUID&& other) = default;

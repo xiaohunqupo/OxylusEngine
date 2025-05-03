@@ -1,29 +1,24 @@
 #pragma once
 
-#include "Asset/SpriteMaterial.hpp"
-#include "Asset/TilemapSerializer.hpp"
+#include "Asset/AudioSource.hpp"
 #include "Audio/AudioListener.hpp"
-#include "Audio/AudioSource.hpp"
 #include "Core/App.hpp"
 #include "Core/SystemManager.hpp"
-#include "Render/ParticleSystem.hpp"
+#include "Core/UUID.hpp"
 #include "Render/Utils/RectPacker.hpp"
 #include "Scripting/LuaSystem.hpp"
+#include "Utils/OxMath.hpp"
 
 namespace JPH {
 class Character;
 }
 
 namespace ox {
-class Texture;
-
 struct LayerComponent {
   uint16 layer = 1;
 };
 
 struct TransformComponent {
-  static constexpr auto in_place_delete = true;
-
   glm::vec3 position = glm::vec3(0);
   glm::vec3 rotation = glm::vec3(0); // Stored in radians
   glm::vec3 scale = glm::vec3(1);
@@ -48,32 +43,20 @@ struct TransformComponent {
 
 // Rendering
 struct MeshComponent {
-  static constexpr auto in_place_delete = true; // pointer stability
-
-  Shared<Mesh> mesh_base = nullptr;
+  UUID mesh_id = {};
   bool cast_shadows = true;
   bool stationary = false;
 
   // non-serialized data
-  uint32_t mesh_id = Asset::INVALID_ID;
-  std::vector<Shared<PBRMaterial>> materials = {};
   glm::mat4 transform = glm::mat4{1};
-  // std::vector<entt::entity> child_entities = {}; // filled at load
-  std::vector<glm::mat4> child_transforms = {}; // filled at submit
   AABB aabb = {};
-  bool dirty = false;
+  bool dirty = true;
 
   MeshComponent() = default;
-
-  explicit MeshComponent(const Shared<Mesh>& mesh) : mesh_base(mesh) {
-    materials = mesh_base->_materials;
-    mesh_id = mesh->get_id();
-    dirty = true;
-  }
 };
 
 struct SpriteComponent {
-  Shared<SpriteMaterial> material = nullptr;
+  UUID material = {};
   uint32 layer = 0;
 
   bool sort_y = true;
@@ -86,10 +69,7 @@ struct SpriteComponent {
   // set if an animation is controlling this sprite
   std::optional<glm::vec2> current_uv_offset = std::nullopt;
 
-  SpriteComponent() {
-    material = create_shared<SpriteMaterial>();
-    material->create();
-  }
+  SpriteComponent() {}
 
   glm::vec3 get_position() const { return glm::vec3(transform[3]); }
   glm::vec2 get_size() const { return {glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1]))}; }
@@ -108,10 +88,11 @@ struct SpriteAnimationComponent {
 
   void reset() { current_time = 0.f; }
 
-  void set_frame_size(const Texture* sprite) {
+  void set_frame_size(const uint32 width,
+                      const uint32 height) {
     if (num_frames > 0) {
-      const auto horizontal = sprite->get_extent().width / num_frames;
-      const auto vertical = sprite->get_extent().height;
+      const auto horizontal = width / num_frames;
+      const auto vertical = height;
 
       frame_size = {horizontal, vertical};
 
@@ -137,15 +118,15 @@ struct SpriteAnimationComponent {
 
 struct TilemapComponent {
   std::string path = {};
-  ankerl::unordered_dense::map<std::string, Shared<SpriteMaterial>> layers = {};
+  ankerl::unordered_dense::map<std::string, UUID> layers = {};
   glm::ivec2 tilemap_size = {64, 64};
 
   TilemapComponent() {}
 
   void load(const std::string& _path) {
     path = _path;
-    TilemapSerializer serializer(this);
-    serializer.deserialize(path);
+    // TilemapSerializer serializer(this);
+    // serializer.deserialize(path);
   }
 };
 
@@ -197,9 +178,9 @@ struct CameraComponent {
 };
 
 struct ParticleSystemComponent {
-  Shared<ParticleSystem> system = nullptr;
+  // Shared<ParticleSystem> system = nullptr;
 
-  ParticleSystemComponent() : system(create_shared<ParticleSystem>()) {}
+  // ParticleSystemComponent() : system(create_shared<ParticleSystem>()) {}
 };
 
 struct LightComponent {
@@ -352,7 +333,12 @@ struct CharacterControllerComponent {
     float acceleration;
     float deceleration;
 
-    MovementSettings(const float maxSpeed, float accel, float decel) : max_speed(maxSpeed), acceleration(accel), deceleration(decel) {}
+    MovementSettings(const float maxSpeed,
+                     float accel,
+                     float decel) :
+        max_speed(maxSpeed),
+        acceleration(accel),
+        deceleration(decel) {}
   };
 
   bool interpolation = true;
@@ -382,7 +368,7 @@ struct CharacterControllerComponent {
 struct AudioSourceComponent {
   AudioSourceConfig config;
 
-  Shared<AudioSource> source = nullptr;
+  UUID audio_source = {};
 };
 
 struct AudioListenerComponent {

@@ -29,21 +29,21 @@ static constexpr float FFX_EPSILON = 1e-06f;
 static constexpr int FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH = 16;
 static constexpr int FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT = 16;
 static constexpr float ffxFsr2MaximumBias[] = {
-  2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.876f, 1.809f, 1.772f, 1.753f, 1.748f, 2.0f,   2.0f,
-  2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.869f, 1.801f, 1.764f, 1.745f, 1.739f, 2.0f,   2.0f,   2.0f,   2.0f,
-  2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.976f, 1.841f, 1.774f, 1.737f, 1.716f, 1.71f,  2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,
-  2.0f,   2.0f,   2.0f,   2.0f,   1.914f, 1.784f, 1.716f, 1.673f, 1.649f, 1.641f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,
-  2.0f,   2.0f,   1.793f, 1.676f, 1.604f, 1.562f, 1.54f,  1.533f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.802f,
-  1.619f, 1.536f, 1.492f, 1.467f, 1.454f, 1.449f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.812f, 1.575f, 1.496f, 1.456f,
-  1.432f, 1.416f, 1.408f, 1.405f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.555f, 1.479f, 1.438f, 1.413f, 1.398f, 1.387f,
-  1.381f, 1.379f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.812f, 1.555f, 1.474f, 1.43f,  1.404f, 1.387f, 1.376f, 1.368f, 1.363f, 1.362f,
-  2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.802f, 1.575f, 1.479f, 1.43f,  1.401f, 1.382f, 1.369f, 1.36f,  1.354f, 1.351f, 1.35f,  2.0f,   2.0f,
-  1.976f, 1.914f, 1.793f, 1.619f, 1.496f, 1.438f, 1.404f, 1.382f, 1.367f, 1.357f, 1.349f, 1.344f, 1.341f, 1.34f,  1.876f, 1.869f, 1.841f, 1.784f,
-  1.676f, 1.536f, 1.456f, 1.413f, 1.387f, 1.369f, 1.357f, 1.347f, 1.341f, 1.336f, 1.333f, 1.332f, 1.809f, 1.801f, 1.774f, 1.716f, 1.604f, 1.492f,
-  1.432f, 1.398f, 1.376f, 1.36f,  1.349f, 1.341f, 1.335f, 1.33f,  1.328f, 1.327f, 1.772f, 1.764f, 1.737f, 1.673f, 1.562f, 1.467f, 1.416f, 1.387f,
-  1.368f, 1.354f, 1.344f, 1.336f, 1.33f,  1.326f, 1.323f, 1.323f, 1.753f, 1.745f, 1.716f, 1.649f, 1.54f,  1.454f, 1.408f, 1.381f, 1.363f, 1.351f,
-  1.341f, 1.333f, 1.328f, 1.323f, 1.321f, 1.32f,  1.748f, 1.739f, 1.71f,  1.641f, 1.533f, 1.449f, 1.405f, 1.379f, 1.362f, 1.35f,  1.34f,  1.332f,
-  1.327f, 1.323f, 1.32f,  1.319f,
+    2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.876f, 1.809f, 1.772f, 1.753f, 1.748f, 2.0f,   2.0f,
+    2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.869f, 1.801f, 1.764f, 1.745f, 1.739f, 2.0f,   2.0f,   2.0f,   2.0f,
+    2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.976f, 1.841f, 1.774f, 1.737f, 1.716f, 1.71f,  2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,
+    2.0f,   2.0f,   2.0f,   2.0f,   1.914f, 1.784f, 1.716f, 1.673f, 1.649f, 1.641f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,
+    2.0f,   2.0f,   1.793f, 1.676f, 1.604f, 1.562f, 1.54f,  1.533f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.802f,
+    1.619f, 1.536f, 1.492f, 1.467f, 1.454f, 1.449f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.812f, 1.575f, 1.496f, 1.456f,
+    1.432f, 1.416f, 1.408f, 1.405f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.555f, 1.479f, 1.438f, 1.413f, 1.398f, 1.387f,
+    1.381f, 1.379f, 2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.812f, 1.555f, 1.474f, 1.43f,  1.404f, 1.387f, 1.376f, 1.368f, 1.363f, 1.362f,
+    2.0f,   2.0f,   2.0f,   2.0f,   2.0f,   1.802f, 1.575f, 1.479f, 1.43f,  1.401f, 1.382f, 1.369f, 1.36f,  1.354f, 1.351f, 1.35f,  2.0f,   2.0f,
+    1.976f, 1.914f, 1.793f, 1.619f, 1.496f, 1.438f, 1.404f, 1.382f, 1.367f, 1.357f, 1.349f, 1.344f, 1.341f, 1.34f,  1.876f, 1.869f, 1.841f, 1.784f,
+    1.676f, 1.536f, 1.456f, 1.413f, 1.387f, 1.369f, 1.357f, 1.347f, 1.341f, 1.336f, 1.333f, 1.332f, 1.809f, 1.801f, 1.774f, 1.716f, 1.604f, 1.492f,
+    1.432f, 1.398f, 1.376f, 1.36f,  1.349f, 1.341f, 1.335f, 1.33f,  1.328f, 1.327f, 1.772f, 1.764f, 1.737f, 1.673f, 1.562f, 1.467f, 1.416f, 1.387f,
+    1.368f, 1.354f, 1.344f, 1.336f, 1.33f,  1.326f, 1.323f, 1.323f, 1.753f, 1.745f, 1.716f, 1.649f, 1.54f,  1.454f, 1.408f, 1.381f, 1.363f, 1.351f,
+    1.341f, 1.333f, 1.328f, 1.323f, 1.321f, 1.32f,  1.748f, 1.739f, 1.71f,  1.641f, 1.533f, 1.449f, 1.405f, 1.379f, 1.362f, 1.35f,  1.34f,  1.332f,
+    1.327f, 1.323f, 1.32f,  1.319f,
 
 };
 
@@ -52,7 +52,8 @@ static float lanczos2(float value) {
   return abs(value) < FFX_EPSILON ? 1.f : sinf(FFX_PI * value) / (FFX_PI * value) * (sinf(0.5f * FFX_PI * value) / (0.5f * FFX_PI * value));
 }
 // Calculate halton number for index and base.
-static float halton(int32_t index, int32_t base) {
+static float halton(int32_t index,
+                    int32_t base) {
   float f = 1.0f, result = 0.0f;
 
   for (int32_t currentIndex = index; currentIndex > 0;) {
@@ -65,16 +66,17 @@ static float halton(int32_t index, int32_t base) {
   return result;
 }
 
-int32_t ffxFsr2GetJitterPhaseCount(int32_t render_width, int32_t display_width) {
+int32_t ffxFsr2GetJitterPhaseCount(int32_t render_width,
+                                   int32_t display_width) {
   constexpr float base_phase_count = 8.0f;
   const int32_t jitter_phase_count = int32_t(base_phase_count * pow(float(display_width) / render_width, 2.0f));
   return jitter_phase_count;
 }
 
-void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY,             // CPU side: dispatch thread group count xy
-              glm::uvec2& workGroupOffset,                        // GPU side: pass in as constant
-              glm::uvec2& numWorkGroupsAndMips,                   // GPU side: pass in as constant
-              glm::uvec4 rectInfo,                                // left, top, width, height
+void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY,        // CPU side: dispatch thread group count xy
+              glm::uvec2& workGroupOffset,                   // GPU side: pass in as constant
+              glm::uvec2& numWorkGroupsAndMips,              // GPU side: pass in as constant
+              glm::uvec4 rectInfo,                           // left, top, width, height
               int32_t mips)                                  // optional: if -1, calculate based on rect width and height
 {
   workGroupOffset[0] = rectInfo[0] / 64;                     // rectInfo[0] = left
@@ -105,7 +107,8 @@ void SpdSetup(glm::uvec2& dispatchThreadGroupCountXY, // CPU side: dispatch thre
   SpdSetup(dispatchThreadGroupCountXY, workGroupOffset, numWorkGroupsAndMips, rectInfo, -1);
 }
 
-void FsrRcasCon(glm::uvec4& con, float sharpness) {
+void FsrRcasCon(glm::uvec4& con,
+                float sharpness) {
   // Transform from stops to linear value.
   sharpness = exp2(-sharpness);
   glm::vec2 hSharp = {sharpness, sharpness};
@@ -124,11 +127,12 @@ glm::vec2 FSR::get_jitter() const {
   return {x, y};
 }
 
-void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci) {
+void FSR::load_pipelines(vuk::Allocator& allocator,
+                         vuk::PipelineBaseCreateInfo& pipeline_ci) {
 #define SHADER_FILE(path) fs::read_shader_file(path), fs::get_shader_path(path)
 
   auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
-
+#if 0
   task_scheduler->add_task([=]() mutable {
     vuk::PipelineBaseCreateInfo ci;
     // ci.add_hlsl(SHADER_FILE("FFX/FSR2/ffx_fsr2_autogen_reactive_pass.hlsl"), vuk::HlslShaderStage::eCompute);
@@ -178,9 +182,11 @@ void FSR::load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo&
   });
 
   task_scheduler->wait_for_all();
+#endif
 }
 
-void FSR::create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D presentation_resolution) {
+void FSR::create_fs2_resources(vuk::Extent3D render_resolution,
+                               vuk::Extent3D presentation_resolution) {
   _render_res = render_resolution;
   _present_res = presentation_resolution;
 
@@ -193,7 +199,7 @@ void FSR::create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D pr
     lanczos2_weights[index] = int16_t(roundf(y * 32767.0f));
   }
 
-  lanczos_lut.create_texture({lanczos2_lut_width, 1u, 1u}, &lanczos2_weights, vuk::Format::eR16Snorm, Preset::eSTT2DUnmipped);
+  // lanczos_lut.create_texture({lanczos2_lut_width, 1u, 1u}, &lanczos2_weights, vuk::Format::eR16Snorm, Preset::eSTT2DUnmipped);
 
   // upload path only supports R16_SNORM, let's go and convert
   int16_t maximum_bias[FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH * FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT];
@@ -201,10 +207,10 @@ void FSR::create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D pr
     maximum_bias[i] = int16_t(roundf(ffxFsr2MaximumBias[i] / 2.0f * 32767.0f));
   }
 
-  maximum_bias_lut.create_texture({(uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH, (uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT, 1u},
-                                  maximum_bias,
-                                  vuk::Format::eR16Snorm,
-                                  Preset::eSTT2DUnmipped);
+  // maximum_bias_lut.create_texture({(uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_WIDTH, (uint32_t)FFX_FSR2_MAXIMUM_BIAS_TEXTURE_HEIGHT, 1u},
+                                  // maximum_bias,
+                                  // vuk::Format::eR16Snorm,
+                                  // Preset::eSTT2DUnmipped);
 
   fsr2_constants.renderSize[0] = render_resolution.width;
   fsr2_constants.renderSize[1] = render_resolution.height;
@@ -213,36 +219,36 @@ void FSR::create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D pr
   fsr2_constants.displaySizeRcp[0] = 1.0f / presentation_resolution.width;
   fsr2_constants.displaySizeRcp[1] = 1.0f / presentation_resolution.height;
 
-  adjusted_color.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16G16B16A16Unorm, Preset::eSTT2DUnmipped);
-  exposure.create_texture({1u, 1u, 1u}, vuk::Format::eR32G32Sfloat, Preset::eSTT2DUnmipped);
+  // adjusted_color.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16G16B16A16Unorm, Preset::eSTT2DUnmipped);
+  // exposure.create_texture({1u, 1u, 1u}, vuk::Format::eR32G32Sfloat, Preset::eSTT2DUnmipped);
 
   vuk::ImageAttachment luminance_ia = vuk::ImageAttachment::from_preset(Preset::eSTT2DUnmipped,
                                                                         vuk::Format::eR32G32Sfloat,
                                                                         {render_resolution.width / 2u, render_resolution.height / 2u, 1u},
                                                                         vuk::Samples::e1);
   luminance_ia.level_count = Texture::get_mip_count(luminance_ia.extent);
-  luminance_current.create_texture(luminance_ia);
+  // luminance_current.create_texture(luminance_ia);
 
-  luminance_history.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8G8B8A8Unorm, Preset::eSTT2DUnmipped);
-  previous_depth.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
-  dilated_depth.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16Sfloat, Preset::eSTT2DUnmipped);
-  dilated_motion.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16G16Sfloat, Preset::eSTT2DUnmipped);
-  dilated_reactive.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8G8Unorm, Preset::eSTT2DUnmipped);
-  disocclusion_mask.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
-  reactive_mask.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
-  lock_status[0].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
-                                vuk::Format::eB10G11R11UfloatPack32,
-                                Preset::eSTT2DUnmipped);
-  lock_status[1].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
-                                vuk::Format::eB10G11R11UfloatPack32,
-                                Preset::eSTT2DUnmipped);
-  output_internal[0].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
-                                    vuk::Format::eR16G16B16A16Sfloat,
-                                    Preset::eSTT2DUnmipped);
-  output_internal[1].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
-                                    vuk::Format::eR16G16B16A16Sfloat,
-                                    Preset::eSTT2DUnmipped);
-  spd_global_atomic.create_texture({1u, 1u, 1u}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
+  // luminance_history.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8G8B8A8Unorm, Preset::eSTT2DUnmipped);
+  // previous_depth.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
+  // dilated_depth.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16Sfloat, Preset::eSTT2DUnmipped);
+  // dilated_motion.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR16G16Sfloat, Preset::eSTT2DUnmipped);
+  // dilated_reactive.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8G8Unorm, Preset::eSTT2DUnmipped);
+  // disocclusion_mask.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
+  // reactive_mask.create_texture({render_resolution.width, render_resolution.height, 1u}, vuk::Format::eR8Unorm, Preset::eSTT2DUnmipped);
+  // lock_status[0].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
+                                // vuk::Format::eB10G11R11UfloatPack32,
+                                // Preset::eSTT2DUnmipped);
+  // lock_status[1].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
+                                // vuk::Format::eB10G11R11UfloatPack32,
+                                // Preset::eSTT2DUnmipped);
+  // output_internal[0].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
+                                    // vuk::Format::eR16G16B16A16Sfloat,
+                                    // Preset::eSTT2DUnmipped);
+  // output_internal[1].create_texture({presentation_resolution.width, presentation_resolution.height, 1u},
+                                    // vuk::Format::eR16G16B16A16Sfloat,
+                                    // Preset::eSTT2DUnmipped);
+  // spd_global_atomic.create_texture({1u, 1u, 1u}, vuk::Format::eR32Uint, Preset::eSTT2DUnmipped);
 }
 
 vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>& input_color_post_alpha,
@@ -418,9 +424,9 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                  VUK_IA(vuk::eComputeSampled) _input_color_pre_alpha,
                                                  VUK_IA(vuk::eComputeSampled) _input_color_post_alpha) {
     command_buffer.bind_compute_pipeline("autogen_reactive_pass")
-      .bind_image(0, 0, _input_color_pre_alpha)
-      .bind_image(0, 1, _input_color_post_alpha)
-      .bind_image(0, 2, output);
+        .bind_image(0, 0, _input_color_pre_alpha)
+        .bind_image(0, 1, _input_color_post_alpha)
+        .bind_image(0, 2, output);
 
     struct Fsr2GenerateReactiveConstants {
       float scale;
@@ -458,15 +464,14 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
 
   vuk::Value<vuk::ImageAttachment> reactive_mask_output = gen_reactive_mask(reactive_mask_ia, input_color_pre_alpha, input_color_post_alpha);
 
-  auto luminance_pyramid_pass = vuk::make_pass("luminance_pyramid",
-                                               [this,
-                                                luminance_pyramid_constants,
-                                                dispatch_thread_group_count_xy](vuk::CommandBuffer& command_buffer,
-                                                                                VUK_IA(vuk::eComputeSampled) _input_color_post_alpha,
-                                                                                VUK_IA(vuk::eComputeRW) _spd_global,
-                                                                                VUK_IA(vuk::eComputeRW) _luminance_curr,
-                                                                                VUK_IA(vuk::eComputeRW) _luminance_mip5,
-                                                                                VUK_IA(vuk::eComputeRW) _exposure) {
+  auto luminance_pyramid_pass =
+      vuk::make_pass("luminance_pyramid",
+                     [this, luminance_pyramid_constants, dispatch_thread_group_count_xy](vuk::CommandBuffer& command_buffer,
+                                                                                         VUK_IA(vuk::eComputeSampled) _input_color_post_alpha,
+                                                                                         VUK_IA(vuk::eComputeRW) _spd_global,
+                                                                                         VUK_IA(vuk::eComputeRW) _luminance_curr,
+                                                                                         VUK_IA(vuk::eComputeRW) _luminance_mip5,
+                                                                                         VUK_IA(vuk::eComputeRW) _exposure) {
     command_buffer.bind_compute_pipeline("luminance_pyramid_pass");
 
     auto* constants = command_buffer.scratch_buffer<Fsr2Constants>(0, 0);
@@ -476,20 +481,17 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     *spdconstants = luminance_pyramid_constants;
 
     command_buffer.bind_image(0, 2, _input_color_post_alpha)
-      .bind_image(0, 3, _spd_global)
-      .bind_image(0, 4, _luminance_curr)
-      .bind_image(0, 5, _luminance_mip5)
-      .bind_image(0, 6, _exposure)
-      .dispatch(dispatch_thread_group_count_xy[0], dispatch_thread_group_count_xy[1], 1);
+        .bind_image(0, 3, _spd_global)
+        .bind_image(0, 4, _luminance_curr)
+        .bind_image(0, 5, _luminance_mip5)
+        .bind_image(0, 6, _exposure)
+        .dispatch(dispatch_thread_group_count_xy[0], dispatch_thread_group_count_xy[1], 1);
 
     return std::make_tuple(_spd_global, _luminance_curr, _luminance_mip5, _exposure);
   });
 
-  auto [sdp_global_output, luminance_current_output, luminance_mip5, exposure_output] = luminance_pyramid_pass(input_color_post_alpha,
-                                                                                                               spd_global_atomic_ia,
-                                                                                                               luminance_current_ia,
-                                                                                                               luminance_current_ia.mip(5),
-                                                                                                               exposure_ia);
+  auto [sdp_global_output, luminance_current_output, luminance_mip5, exposure_output] =
+      luminance_pyramid_pass(input_color_post_alpha, spd_global_atomic_ia, luminance_current_ia, luminance_current_ia.mip(5), exposure_ia);
 
   auto adjust_input_color_pass = vuk::make_pass("adjust_input_color",
                                                 [dispatch_src_x, dispatch_src_y, this](vuk::CommandBuffer& command_buffer,
@@ -499,11 +501,11 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                                                        VUK_IA(vuk::eComputeRW) _luminance_history,
                                                                                        VUK_IA(vuk::eComputeRW) _adjusted_color) {
     command_buffer.bind_compute_pipeline("prepare_input_color_pass")
-      .bind_image(0, 0, _input_color_post_alpha)
-      .bind_image(0, 1, _exposure)
-      .bind_image(0, 2, _previous_depth)
-      .bind_image(0, 3, _adjusted_color)
-      .bind_image(0, 4, _luminance_history);
+        .bind_image(0, 0, _input_color_post_alpha)
+        .bind_image(0, 1, _exposure)
+        .bind_image(0, 2, _previous_depth)
+        .bind_image(0, 3, _adjusted_color)
+        .bind_image(0, 4, _luminance_history);
 
     auto* constants = command_buffer.scratch_buffer<Fsr2Constants>(0, 5);
     *constants = fsr2_constants;
@@ -513,11 +515,8 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
     return std::make_tuple(_previous_depth, _luminance_history, _adjusted_color);
   });
 
-  auto [prev_depth_output, luminance_history_output, adjusted_color_output] = adjust_input_color_pass(input_color_post_alpha,
-                                                                                                      exposure_output,
-                                                                                                      previous_depth_ia,
-                                                                                                      luminance_history_ia,
-                                                                                                      adjusted_color_ia);
+  auto [prev_depth_output, luminance_history_output, adjusted_color_output] =
+      adjust_input_color_pass(input_color_post_alpha, exposure_output, previous_depth_ia, luminance_history_ia, adjusted_color_ia);
 
   auto reconstruct_dilate_pass = vuk::make_pass("reconstruct_dilate",
                                                 [this, dispatch_src_y, dispatch_src_x](vuk::CommandBuffer& command_buffer,
@@ -531,15 +530,15 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                                                        VUK_IA(vuk::eComputeRW) _dilated_depth,
                                                                                        VUK_IA(vuk::eComputeRW) _dilated_reactive) {
     command_buffer.bind_compute_pipeline("reconstruct_previous_depth_pass")
-      .bind_image(0, 0, _input_velocity)
-      .bind_image(0, 1, _input_depth)
-      .bind_image(0, 2, _reactive_mask)
-      .bind_image(0, 3, _input_post_alpha)
-      .bind_image(0, 4, _adjusted_color)
-      .bind_image(0, 5, _previous_depth)
-      .bind_image(0, 6, _dilated_motion)
-      .bind_image(0, 7, _dilated_depth)
-      .bind_image(0, 8, _dilated_reactive);
+        .bind_image(0, 0, _input_velocity)
+        .bind_image(0, 1, _input_depth)
+        .bind_image(0, 2, _reactive_mask)
+        .bind_image(0, 3, _input_post_alpha)
+        .bind_image(0, 4, _adjusted_color)
+        .bind_image(0, 5, _previous_depth)
+        .bind_image(0, 6, _dilated_motion)
+        .bind_image(0, 7, _dilated_depth)
+        .bind_image(0, 8, _dilated_reactive);
 
     auto* constants = command_buffer.scratch_buffer<Fsr2Constants>(0, 9);
     *constants = fsr2_constants;
@@ -566,10 +565,10 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                                                VUK_IA(vuk::eComputeSampled) _dilated_depth,
                                                                                VUK_IA(vuk::eComputeRW) _disocclusion_mask) {
     command_buffer.bind_compute_pipeline("depth_clip_pass")
-      .bind_image(0, 0, _previous_depth)
-      .bind_image(0, 1, _dilated_motion)
-      .bind_image(0, 2, _dilated_depth)
-      .bind_image(0, 3, _disocclusion_mask);
+        .bind_image(0, 0, _previous_depth)
+        .bind_image(0, 1, _dilated_motion)
+        .bind_image(0, 2, _dilated_depth)
+        .bind_image(0, 3, _disocclusion_mask);
 
     auto* constants = command_buffer.scratch_buffer<Fsr2Constants>(0, 4);
     *constants = fsr2_constants;
@@ -614,19 +613,19 @@ vuk::Value<vuk::ImageAttachment> FSR::dispatch(vuk::Value<vuk::ImageAttachment>&
                                                                                          VUK_IA(vuk::eComputeRW) _rw_output,
                                                                                          VUK_IA(vuk::eComputeRW) _rw_lock) {
     command_buffer.bind_compute_pipeline("accumulate_pass")
-      .bind_image(0, 0, _exposure)
-      .bind_image(0, 1, _dilated_motion)
-      .bind_image(0, 2, _r_output)
-      .bind_image(0, 3, _r_lock)
-      .bind_image(0, 4, _disocclusion_mask)
-      .bind_image(0, 5, _adjusted_color)
-      .bind_image(0, 6, _luminance_history)
-      .bind_image(0, 7, _lanczos_lut)
-      .bind_image(0, 8, _maximum_bias_lut)
-      .bind_image(0, 9, _dilated_reactive)
-      .bind_image(0, 10, _luminance_current)
-      .bind_image(0, 11, _rw_output)
-      .bind_image(0, 12, _rw_lock);
+        .bind_image(0, 0, _exposure)
+        .bind_image(0, 1, _dilated_motion)
+        .bind_image(0, 2, _r_output)
+        .bind_image(0, 3, _r_lock)
+        .bind_image(0, 4, _disocclusion_mask)
+        .bind_image(0, 5, _adjusted_color)
+        .bind_image(0, 6, _luminance_history)
+        .bind_image(0, 7, _lanczos_lut)
+        .bind_image(0, 8, _maximum_bias_lut)
+        .bind_image(0, 9, _dilated_reactive)
+        .bind_image(0, 10, _luminance_current)
+        .bind_image(0, 11, _rw_output)
+        .bind_image(0, 12, _rw_lock);
 
     auto* constants = command_buffer.scratch_buffer<Fsr2Constants>(0, 13);
     *constants = fsr2_constants;

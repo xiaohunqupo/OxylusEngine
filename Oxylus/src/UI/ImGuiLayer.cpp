@@ -1,9 +1,9 @@
 #include "ImGuiLayer.hpp"
-#include <imgui.h>
 
 #include <SDL3/SDL_mouse.h>
 #include <icons/IconsMaterialDesignIcons.h>
 #include <icons/MaterialDesign.inl>
+#include <imgui.h>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/AllocatorHelpers.hpp>
@@ -12,23 +12,27 @@
 
 #include "Core/App.hpp"
 #include "ImGuizmo.h"
+#include "Render/Utils/VukCommon.hpp"
+#include "Render/Vulkan/VkContext.hpp"
+#include "Render/Window.hpp"
 #include "Utils/Profiler.hpp"
 #include "imgui_frag.hpp"
 #include "imgui_vert.hpp"
 
-#include "Render/Utils/VukCommon.hpp"
-#include "Render/Vulkan/VkContext.hpp"
-#include "Render/Window.hpp"
-
 namespace ox {
-static ImVec4 darken(ImVec4 c, float p) { return {glm::max(0.f, c.x - 1.0f * p), glm::max(0.f, c.y - 1.0f * p), glm::max(0.f, c.z - 1.0f * p), c.w}; }
-static ImVec4 lighten(ImVec4 c, float p) {
+static ImVec4 darken(ImVec4 c,
+                     float p) {
+  return {glm::max(0.f, c.x - 1.0f * p), glm::max(0.f, c.y - 1.0f * p), glm::max(0.f, c.z - 1.0f * p), c.w};
+}
+static ImVec4 lighten(ImVec4 c,
+                      float p) {
   return {glm::max(0.f, c.x + 1.0f * p), glm::max(0.f, c.y + 1.0f * p), glm::max(0.f, c.z + 1.0f * p), c.w};
 }
 
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 
-ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config) {
+ImFont* ImGuiLayer::load_font(const std::string& path,
+                              ImFontConfig font_config) {
   OX_SCOPED_ZONE_N("Font Loading");
 
   ImGuiIO& io = ImGui::GetIO();
@@ -45,10 +49,14 @@ void ImGuiLayer::build_fonts() {
   io.Fonts->Build();
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
   font_texture = create_shared<Texture>();
-  font_texture->create_texture({.width = static_cast<unsigned>(width), .height = static_cast<unsigned>(height), .depth = 1},
-                               pixels,
-                               vuk::Format::eR8G8B8A8Srgb,
-                               Preset::eRTT2DUnmipped);
+  font_texture->create({},
+                       {
+                           .preset = Preset::eRTT2DUnmipped,
+                           .format = vuk::Format::eR8G8B8A8Srgb,
+                           .mime = {},
+                           .data = pixels,
+                           .extent = {static_cast<uint32>(width), static_cast<uint32>(height)},
+                       });
 }
 
 void ImGuiLayer::on_attach() {
@@ -93,7 +101,8 @@ void ImGuiLayer::add_icon_font(float font_size) {
 
 void ImGuiLayer::on_detach() { ImGui::DestroyContext(); }
 
-void ImGuiLayer::begin_frame(const float64 delta_time, const vuk::Extent3D extent) {
+void ImGuiLayer::begin_frame(const float64 delta_time,
+                             const vuk::Extent3D extent) {
   OX_SCOPED_ZONE;
 
   const App* app = App::get();
@@ -140,7 +149,8 @@ void ImGuiLayer::begin_frame(const float64 delta_time, const vuk::Extent3D exten
   }
 }
 
-vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> target) {
+vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator,
+                                                       vuk::Value<vuk::ImageAttachment> target) {
   OX_SCOPED_ZONE;
 
   ImGui::Render();
@@ -186,14 +196,14 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 
   auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(rendering_images));
 
-  return vuk::make_pass("imgui",
-                        [verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](vuk::CommandBuffer& command_buffer,
-                                                                                                  VUK_IA(vuk::eColorWrite) color_rt,
-                                                                                                  VUK_ARG(vuk::ImageAttachment[],
-                                                                                                          vuk::Access::eFragmentSampled) sis) {
+  return vuk::make_pass(
+      "imgui",
+      [verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](vuk::CommandBuffer& command_buffer,
+                                                                                VUK_IA(vuk::eColorWrite) color_rt,
+                                                                                VUK_ARG(vuk::ImageAttachment[], vuk::Access::eFragmentSampled) sis) {
     command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
-      .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
-      .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
+        .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
+        .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
 
     reset_render_state(command_buffer, verts, inds);
     // Will project scissor/clipping rectangles into framebuffer space
@@ -283,7 +293,8 @@ void ImGuiLayer::on_mouse_pos(glm::vec2 pos) {
   imgui.AddMousePosEvent(pos.x, pos.y);
 }
 
-void ImGuiLayer::on_mouse_button(uint8 button, bool down) {
+void ImGuiLayer::on_mouse_button(uint8 button,
+                                 bool down) {
   ZoneScoped;
 
   int32 imgui_button = 0;
@@ -310,8 +321,12 @@ void ImGuiLayer::on_mouse_scroll(glm::vec2 offset) {
   imgui.AddMouseWheelEvent(offset.x, offset.y);
 }
 
-ImGuiKey to_imgui_key(SDL_Keycode keycode, SDL_Scancode scancode);
-void ImGuiLayer::on_key(uint32 key_code, uint32 scan_code, uint16 mods, bool down) {
+ImGuiKey to_imgui_key(SDL_Keycode keycode,
+                      SDL_Scancode scancode);
+void ImGuiLayer::on_key(uint32 key_code,
+                        uint32 scan_code,
+                        uint16 mods,
+                        bool down) {
   ZoneScoped;
 
   auto& imgui = ImGui::GetIO();
@@ -332,7 +347,8 @@ void ImGuiLayer::on_text_input(const char8* text) {
   imgui.AddInputCharactersUTF8(text);
 }
 
-ImGuiKey to_imgui_key(SDL_Keycode keycode, SDL_Scancode scancode) {
+ImGuiKey to_imgui_key(SDL_Keycode keycode,
+                      SDL_Scancode scancode) {
   ZoneScoped;
 
   switch (scancode) {

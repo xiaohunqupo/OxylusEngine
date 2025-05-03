@@ -4,17 +4,20 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "Asset/Texture.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Project.hpp"
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
-
 #include "UI/OxUI.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
-ProjectPanel::ProjectPanel() : EditorPanel("Projects", ICON_MDI_ACCOUNT_BADGE, true) {}
+ProjectPanel::ProjectPanel() :
+    EditorPanel("Projects",
+                ICON_MDI_ACCOUNT_BADGE,
+                true) {}
 
 void ProjectPanel::on_update() {}
 
@@ -29,18 +32,21 @@ void ProjectPanel::load_project_for_editor(const std::string& filepath) {
   }
 }
 
-void ProjectPanel::new_project(const std::string& project_dir, const std::string& project_name, const std::string& project_asset_dir) {
+void ProjectPanel::new_project(const std::string& project_dir,
+                               const std::string& project_name,
+                               const std::string& project_asset_dir) {
   const auto project = Project::new_project(project_dir, project_name, project_asset_dir);
 
   if (project)
     EditorConfig::get()->add_recent_project(project.get());
 }
 
-void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
+void ProjectPanel::on_render(vuk::Extent3D extent,
+                             vuk::Format format) {
   if (visible && !ImGui::IsPopupOpen("ProjectSelector"))
     ImGui::OpenPopup("ProjectSelector");
-  constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration |
-                         ImGuiWindowFlags_NoDocking;
+  constexpr auto flags =
+      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking;
   static bool draw_new_project_panel = false;
 
   ui::center_next_window();
@@ -68,10 +74,10 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FOLDER), {ImGui::GetContentRegionAvail().x, 0})) {
           FileDialogFilter dialog_filters[] = {{.name = "Project dir", .pattern = ""}};
           window.show_dialog({
-            .kind = DialogKind::OpenFolder,
-            .user_data = this,
-            .callback =
-              [](void* user_data, const char8* const* files, int32) {
+              .kind = DialogKind::OpenFolder,
+              .user_data = this,
+              .callback =
+                  [](void* user_data, const char8* const* files, int32) {
             auto* panel = static_cast<ProjectPanel*>(user_data);
             if (!files || !*files) {
               return;
@@ -82,10 +88,10 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
             panel->new_project_dir = std::string(first_path_cstr, first_path_len);
             panel->new_project_dir = fs::append_paths(panel->new_project_dir, panel->new_project_name);
           },
-            .title = "Project dir...",
-            .default_path = fs::current_path(),
-            .filters = dialog_filters,
-            .multi_select = false,
+              .title = "Project dir...",
+              .default_path = fs::current_path(),
+              .filters = dialog_filters,
+              .multi_select = false,
           });
         }
         ui::end_property_grid();
@@ -122,10 +128,10 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
       if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_UPLOAD " Load Project"), {x, y})) {
         FileDialogFilter dialog_filters[] = {{.name = "Oxylus Project", .pattern = "oxproj"}};
         window.show_dialog({
-          .kind = DialogKind::OpenFile,
-          .user_data = this,
-          .callback =
-            [](void* user_data, const char8* const* files, int32) {
+            .kind = DialogKind::OpenFile,
+            .user_data = this,
+            .callback =
+                [](void* user_data, const char8* const* files, int32) {
           auto* usr_data = static_cast<ProjectPanel*>(user_data);
           if (!files || !*files) {
             return;
@@ -138,10 +144,10 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
             usr_data->load_project_for_editor(path);
           }
         },
-          .title = "Open project...",
-          .default_path = fs::current_path(),
-          .filters = dialog_filters,
-          .multi_select = false,
+            .title = "Open project...",
+            .default_path = fs::current_path(),
+            .filters = dialog_filters,
+            .multi_select = false,
         });
       }
       ui::align_right(ImVec2(120, 0).x);

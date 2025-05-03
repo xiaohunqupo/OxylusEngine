@@ -25,7 +25,7 @@ void Texture::create(const std::string& path,
   std::unique_ptr<uint8[]> stb_data = nullptr;
   std::unique_ptr<ktxTexture2, decltype([](ktxTexture2* p) { ktxTexture_Destroy(ktxTexture(p)); })> ktx_data = {};
 
-  uint32_t width = {}, height = {}, chans = {};
+  uint32_t width = load_info.extent.width, height = load_info.extent.height, chans = {};
   vuk::Format format = load_info.format;
 
   if (is_generic && !path.empty()) {
@@ -63,7 +63,7 @@ void Texture::create(const std::string& path,
   if (path.empty()) {
     final_data = load_info.data;
   } else {
-    final_data = is_generic ? stb_data.get() : ktx_data.get();
+    final_data = is_generic ? stb_data.get() : ktx_data.get()->kvData;
   }
 
   auto ia = vuk::ImageAttachment::from_preset(load_info.preset, format, {width, height, 1}, vuk::Samples::e1);
@@ -78,7 +78,9 @@ void Texture::create(const std::string& path,
     fut = RendererCommon::generate_cubemap_from_equirectangular(fut);
   }
 
-  fut.wait(*allocator, _compiler);
+  vuk::Compiler compiler{};
+
+  fut.wait(*allocator, compiler);
 
   _image = std::move(tex);
   _view = std::move(view);
@@ -154,9 +156,10 @@ Unique<uint8[]> Texture::load_stb_image_from_memory(void* buffer,
                                                     bool srgb) {
   int tex_width = 0, tex_height = 0, tex_channels = 0;
   int size_of_channel = 8;
-  const auto pixels = stbi_load_from_memory((stbi_uc*)buffer, (int)len, &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+  const auto pixels =
+      stbi_load_from_memory(static_cast<stbi_uc*>(buffer), static_cast<int>(len), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
 
-  if (stbi_is_16_bit_from_memory((stbi_uc*)buffer, (int)len)) {
+  if (stbi_is_16_bit_from_memory(static_cast<stbi_uc*>(buffer), static_cast<int>(len))) {
     size_of_channel = 16;
   }
 

@@ -65,7 +65,6 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   }
 
   // Shortcut for commonly used Systems
-  AssetManager::set_instance();
   Input::set_instance();
   Physics::set_instance();
 
@@ -87,7 +86,6 @@ App::~App() { close(); }
 
 void App::set_instance(App* instance) {
   _instance = instance;
-  get_system<AssetManager>(EngineSystems::AssetManager)->set_instance();
   get_system<Input>(EngineSystems::Input)->set_instance();
   get_system<Physics>(EngineSystems::Physics)->set_instance();
 }
@@ -152,7 +150,7 @@ void App::run() {
     input_system->input_data.scroll_offset_y = offset.y;
   };
   window_callbacks.on_key =
-    [](void* user_data, const SDL_Keycode key_code, const SDL_Scancode scan_code, const uint16 mods, const bool down, const bool repeat) {
+      [](void* user_data, const SDL_Keycode key_code, const SDL_Scancode scan_code, const uint16 mods, const bool down, const bool repeat) {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_key(key_code, scan_code, mods, down);
 
@@ -226,4 +224,8 @@ void App::close() { is_running = false; }
 glm::vec2 App::get_swapchain_extent() const { return this->swapchain_extent; }
 
 bool App::asset_directory_exists() const { return std::filesystem::exists(app_spec.assets_path); }
+
+AssetManager* App::get_asset_manager() { return _instance->get_system<AssetManager>(EngineSystems::AssetManager); }
+
+VFS* App::get_vfs() { return _instance->get_system<VFS>(EngineSystems::VFS); }
 } // namespace ox

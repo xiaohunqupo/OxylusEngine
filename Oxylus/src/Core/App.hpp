@@ -2,12 +2,14 @@
 
 #include "ESystem.hpp"
 #include "Render/Window.hpp"
-
 #include "Utils/Timestep.hpp"
+#include "VFS.hpp"
 
-int main(int argc, char** argv);
+int main(int argc,
+         char** argv);
 
 namespace ox {
+class AssetManager;
 class Layer;
 class LayerStack;
 class ImGuiLayer;
@@ -23,7 +25,8 @@ struct AppCommandLineArgs {
   std::vector<Arg> args = {};
 
   AppCommandLineArgs() = default;
-  AppCommandLineArgs(const int argc, char** argv) {
+  AppCommandLineArgs(const int argc,
+                     char** argv) {
     for (int i = 0; i < argc; i++)
       args.emplace_back(Arg{.arg_str = argv[i], .arg_index = (uint32)i});
   }
@@ -111,8 +114,13 @@ public:
 
   static SystemRegistry& get_system_registry() { return _instance->system_registry; }
 
-  template <typename T, typename... Args>
-  static void register_system(const EngineSystems type, Args&&... args) {
+  static AssetManager* get_asset_manager();
+  static VFS* get_vfs();
+
+  template <typename T,
+            typename... Args>
+  static void register_system(const EngineSystems type,
+                              Args&&... args) {
     if (_instance->system_registry.contains(type)) {
       OX_LOG_ERROR("Registering system more than once.");
       return;
@@ -137,9 +145,7 @@ public:
     return nullptr;
   }
 
-  static bool has_system(const EngineSystems type) {
-    return _instance->system_registry.contains(type);
-  }
+  static bool has_system(const EngineSystems type) { return _instance->system_registry.contains(type); }
 
 private:
   static App* _instance;
@@ -160,7 +166,8 @@ private:
 
   void run();
 
-  friend int ::main(int argc, char** argv);
+  friend int ::main(int argc,
+                    char** argv);
 };
 
 App* create_application(const AppCommandLineArgs& args);

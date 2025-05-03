@@ -3,6 +3,8 @@
 #include <vuk/ImageAttachment.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
+#include <vuk/runtime/vk/PipelineInstance.hpp>
+#include <vuk/runtime/vk/Query.hpp>
 
 using Preset = vuk::ImageAttachment::Preset;
 
@@ -12,6 +14,7 @@ struct TextureLoadInfo {
   vuk::Format format = vuk::Format::eR8G8B8A8Unorm;
   enum class MimeType { Generic, KTX } mime = MimeType::Generic;
   void* data = nullptr; // optional
+  vuk::Extent2D extent = {}; // optional
 };
 
 enum class TextureID : uint64 { Invalid = std::numeric_limits<uint64>::max() };
@@ -19,6 +22,18 @@ class Texture {
 public:
   Texture() = default;
   ~Texture() = default;
+
+  Texture& operator=(Texture&& other) noexcept {
+    if (this != &other) {
+      _image = std::move(other._image);
+      _view = std::move(other._view);
+      _attachment = std::move(other._attachment);
+      _name = std::move(other._name);
+    }
+    return *this;
+  }
+
+  Texture(Texture&& other) noexcept { *this = std::move(other); }
 
   auto create(const std::string& path,
               const TextureLoadInfo& load_info,
@@ -69,6 +84,5 @@ private:
   vuk::Unique<vuk::Image> _image;
   vuk::Unique<vuk::ImageView> _view;
   std::string _name = {};
-  vuk::Compiler _compiler = {};
 };
 } // namespace ox

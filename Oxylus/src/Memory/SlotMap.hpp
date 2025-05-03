@@ -63,7 +63,7 @@ public:
       self.free_indices.pop_back();
       self.slots[index] = std::move(v);
       self.states[index] = true;
-      return SlotMap_encode_id<ID>(self.versions[index], index);
+      return SlotMap_encode_id<ID>(self.versions[index], static_cast<uint32>(index));
     }
     auto index = static_cast<uint32>(self.slots.size());
     self.slots.emplace_back(std::move(v));

@@ -2,7 +2,6 @@
 
 #include <sol/state.hpp>
 
-#include "Asset/PBRMaterial.hpp"
 #include "LuaHelpers.hpp"
 #include "Scene/Components.hpp"
 
@@ -20,25 +19,6 @@ void LuaBindings::bind_light_component(const Shared<sol::state>& state) {
 }
 
 void LuaBindings::bind_mesh_component(const Shared<sol::state>& state) {
-  auto material = state->new_usertype<PBRMaterial>("PBRMaterial");
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_color);
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_emissive);
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_roughness);
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_metallic);
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_reflectance);
-  const std::initializer_list<std::pair<sol::string_view, PBRMaterial::AlphaMode>> alpha_mode = {
-    {"Opaque", PBRMaterial::AlphaMode::Opaque},
-    {"Blend", PBRMaterial::AlphaMode::Blend},
-    {"Mask", PBRMaterial::AlphaMode::Mask},
-  };
-  state->new_enum<PBRMaterial::AlphaMode, true>("AlphaMode", alpha_mode);
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_alpha_mode);
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_alpha_cutoff);
-  SET_TYPE_FUNCTION(material, PBRMaterial, set_double_sided);
-  SET_TYPE_FUNCTION(material, PBRMaterial, is_opaque);
-  SET_TYPE_FUNCTION(material, PBRMaterial, alpha_mode_to_string);
-
-  material.set_function("new", [](const std::string& name) -> Shared<PBRMaterial> { return create_shared<PBRMaterial>(name); });
 
 // #define MC MeshComponent
   // REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, stationary), FIELD(MC, cast_shadows), FIELD(MC, materials), FIELD(MC, aabb));

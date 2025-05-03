@@ -21,7 +21,8 @@
 
 namespace ox {
 template <typename T>
-void show_component_gizmo(ankerl::unordered_dense::map<size_t, Shared<Texture>>& gizmo_image_map,
+void show_component_gizmo(ankerl::unordered_dense::map<size_t,
+                                                       Shared<Texture>>& gizmo_image_map,
                           SceneHierarchyPanel* scene_hierarchy_panel,
                           const std::string_view name,
                           const float width,
@@ -34,9 +35,8 @@ void show_component_gizmo(ankerl::unordered_dense::map<size_t, Shared<Texture>>&
   const auto id = typeid(T).hash_code();
   if (gizmo_image_map[id]) {
 
-    scene->world.query_builder<T>()
-      .build()
-      .each([view_proj, width, height, xpos, ypos, scene, frustum, &gizmo_image_map, scene_hierarchy_panel, id, name](flecs::entity entity, const T&) {
+    scene->world.query_builder<T>().build().each(
+        [view_proj, width, height, xpos, ypos, scene, frustum, &gizmo_image_map, scene_hierarchy_panel, id, name](flecs::entity entity, const T&) {
       const glm::vec3 pos = scene->get_world_transform(entity)[3];
 
       if (frustum.is_inside(pos) == (uint32_t)Intersection::Outside)
@@ -58,19 +58,25 @@ void show_component_gizmo(ankerl::unordered_dense::map<size_t, Shared<Texture>>&
   }
 }
 
-ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true) {
+ViewportPanel::ViewportPanel() :
+    EditorPanel("Viewport",
+                ICON_MDI_TERRAIN,
+                true) {
   OX_SCOPED_ZONE;
-  _gizmo_image_map[typeid(LightComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
-    .path = "Resources/Icons/PointLightIcon.png",
-    .preset = Preset::eRTT2DUnmipped,
-  });
-  _gizmo_image_map[typeid(CameraComponent).hash_code()] = create_shared<Texture>(TextureLoadInfo{
-    .path = "Resources/Icons/CameraIcon.png",
-    .preset = Preset::eRTT2DUnmipped,
-  });
+
+  auto* vfs = App::get_vfs();
+
+  const auto light_image = create_shared<Texture>();
+  light_image->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/PointLightIcon.png"), {.preset = Preset::eRTT2DUnmipped});
+  _gizmo_image_map[typeid(LightComponent).hash_code()] = light_image;
+
+  const auto camera_image = create_shared<Texture>();
+  camera_image->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/CameraIcon.png"), {.preset = Preset::eRTT2DUnmipped});
+  _gizmo_image_map[typeid(CameraComponent).hash_code()] = camera_image;
 }
 
-void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
+void ViewportPanel::on_render(const vuk::Extent3D extent,
+                              vuk::Format format) {
   draw_performance_overlay();
 
   constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar;
@@ -138,9 +144,9 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     auto& frame_allocator = app->get_vkcontext().get_frame_allocator();
     if (scene_renderer != nullptr && frame_allocator != nullopt) {
       const RenderPipeline::RenderInfo render_info = {
-        .extent = extent,
-        .format = format,
-        .picking_texel = {},
+          .extent = extent,
+          .format = format,
+          .picking_texel = {},
       };
       const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), render_info);
       ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)), ImVec2{fixed_width, _viewport_panel_size.y});
@@ -267,8 +273,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
                               alpha,
                               alpha))
           editor_camera.projection = editor_camera.projection == CameraComponent::Projection::Orthographic
-                                     ? CameraComponent::Projection::Perspective
-                                     : CameraComponent::Projection::Orthographic;
+                                       ? CameraComponent::Projection::Perspective
+                                       : CameraComponent::Projection::Orthographic;
 
         ImGui::PopStyleVar(2);
       }
@@ -318,7 +324,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
   }
 }
 
-void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel) {
+void ViewportPanel::set_context(const Shared<Scene>& scene,
+                                SceneHierarchyPanel& scene_hierarchy_panel) {
   _scene_hierarchy_panel = &scene_hierarchy_panel;
   this->_scene = scene;
 }

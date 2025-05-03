@@ -19,59 +19,59 @@
 
 namespace ox {
 static const ankerl::unordered_dense::map<FileType, const char*> FILE_TYPES_TO_STRING = {
-  {FileType::Unknown, "Unknown"},
+    {FileType::Unknown, "Unknown"},
 
-  {FileType::Scene, "Scene"},
-  {FileType::Prefab, "Prefab"},
-  {FileType::Shader, "Shader"},
-  {FileType::Texture, "Texture"},
-  {FileType::Cubemap, "Cubemap"},
-  {FileType::Model, "Model"},
-  {FileType::Script, "Script"},
-  {FileType::Audio, "Audio"},
+    {FileType::Scene, "Scene"},
+    {FileType::Prefab, "Prefab"},
+    {FileType::Shader, "Shader"},
+    {FileType::Texture, "Texture"},
+    {FileType::Cubemap, "Cubemap"},
+    {FileType::Model, "Model"},
+    {FileType::Script, "Script"},
+    {FileType::Audio, "Audio"},
 };
 
 static const ankerl::unordered_dense::map<std::string, FileType> FILE_TYPES = {
-  {".oxscene", FileType::Scene}, {".oxprefab", FileType::Prefab}, {".hlsl", FileType::Shader},    {".hlsli", FileType::Shader},
-  {".glsl", FileType::Shader},   {".frag", FileType::Shader},     {".vert", FileType::Shader},
+    {".oxscene", FileType::Scene}, {".oxprefab", FileType::Prefab}, {".hlsl", FileType::Shader},    {".hlsli", FileType::Shader},
+    {".glsl", FileType::Shader},   {".frag", FileType::Shader},     {".vert", FileType::Shader},
 
-  {".png", FileType::Texture},   {".jpg", FileType::Texture},     {".jpeg", FileType::Texture},   {".bmp", FileType::Texture},
-  {".gif", FileType::Texture},   {".ktx", FileType::Texture},     {".ktx2", FileType::Texture},   {".tiff", FileType::Texture},
+    {".png", FileType::Texture},   {".jpg", FileType::Texture},     {".jpeg", FileType::Texture},   {".bmp", FileType::Texture},
+    {".gif", FileType::Texture},   {".ktx", FileType::Texture},     {".ktx2", FileType::Texture},   {".tiff", FileType::Texture},
 
-  {".hdr", FileType::Cubemap},   {".tga", FileType::Cubemap},
+    {".hdr", FileType::Cubemap},   {".tga", FileType::Cubemap},
 
-  {".gltf", FileType::Model},    {".glb", FileType::Model},       {".oxmat", FileType::Material},
+    {".gltf", FileType::Model},    {".glb", FileType::Model},       {".oxmat", FileType::Material},
 
-  {".mp3", FileType::Audio},     {".m4a", FileType::Audio},       {".wav", FileType::Audio},      {".ogg", FileType::Audio},
+    {".mp3", FileType::Audio},     {".m4a", FileType::Audio},       {".wav", FileType::Audio},      {".ogg", FileType::Audio},
 
-  {".lua", FileType::Script},
+    {".lua", FileType::Script},
 };
 
 static const ankerl::unordered_dense::map<FileType, ImVec4> TYPE_COLORS = {
-  {FileType::Scene, {0.75f, 0.35f, 0.20f, 1.00f}},
-  {FileType::Prefab, {0.10f, 0.50f, 0.80f, 1.00f}},
-  {FileType::Shader, {0.10f, 0.50f, 0.80f, 1.00f}},
-  {FileType::Material, {0.80f, 0.20f, 0.30f, 1.00f}},
-  {FileType::Texture, {0.80f, 0.20f, 0.30f, 1.00f}},
-  {FileType::Cubemap, {0.80f, 0.20f, 0.30f, 1.00f}},
-  {FileType::Model, {0.20f, 0.80f, 0.75f, 1.00f}},
-  {FileType::Audio, {0.20f, 0.80f, 0.50f, 1.00f}},
-  {FileType::Script, {0.0f, 16.0f, 121.0f, 1.00f}},
+    {FileType::Scene, {0.75f, 0.35f, 0.20f, 1.00f}},
+    {FileType::Prefab, {0.10f, 0.50f, 0.80f, 1.00f}},
+    {FileType::Shader, {0.10f, 0.50f, 0.80f, 1.00f}},
+    {FileType::Material, {0.80f, 0.20f, 0.30f, 1.00f}},
+    {FileType::Texture, {0.80f, 0.20f, 0.30f, 1.00f}},
+    {FileType::Cubemap, {0.80f, 0.20f, 0.30f, 1.00f}},
+    {FileType::Model, {0.20f, 0.80f, 0.75f, 1.00f}},
+    {FileType::Audio, {0.20f, 0.80f, 0.50f, 1.00f}},
+    {FileType::Script, {0.0f, 16.0f, 121.0f, 1.00f}},
 };
 
 static const ankerl::unordered_dense::map<FileType, const char8_t*> FILE_TYPES_TO_ICON = {
-  {FileType::Unknown, ICON_MDI_FILE},
+    {FileType::Unknown, ICON_MDI_FILE},
 
-  {FileType::Scene, ICON_MDI_FILE},
-  {FileType::Prefab, ICON_MDI_FILE},
-  {FileType::Shader, ICON_MDI_IMAGE_FILTER_BLACK_WHITE},
+    {FileType::Scene, ICON_MDI_FILE},
+    {FileType::Prefab, ICON_MDI_FILE},
+    {FileType::Shader, ICON_MDI_IMAGE_FILTER_BLACK_WHITE},
 
-  {FileType::Material, ICON_MDI_SPRAY_BOTTLE},
-  {FileType::Texture, ICON_MDI_FILE_IMAGE},
-  {FileType::Cubemap, ICON_MDI_IMAGE_FILTER_HDR},
-  {FileType::Model, ICON_MDI_VECTOR_POLYGON},
+    {FileType::Material, ICON_MDI_SPRAY_BOTTLE},
+    {FileType::Texture, ICON_MDI_FILE_IMAGE},
+    {FileType::Cubemap, ICON_MDI_IMAGE_FILTER_HDR},
+    {FileType::Model, ICON_MDI_VECTOR_POLYGON},
 
-  {FileType::Audio, ICON_MDI_MICROPHONE},
+    {FileType::Audio, ICON_MDI_MICROPHONE},
 };
 
 static bool drag_drop_target(const std::filesystem::path& drop_path) {
@@ -129,10 +129,12 @@ static void open_file(const std::filesystem::path& path) {
   }
 }
 
-std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
-                                                                      uint32_t* count,
-                                                                      int* selectionMask,
-                                                                      ImGuiTreeNodeFlags flags) {
+std::pair<bool,
+          uint32_t>
+ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
+                                            uint32_t* count,
+                                            int* selectionMask,
+                                            ImGuiTreeNodeFlags flags) {
   OX_SCOPED_ZONE;
   bool anyNodeClicked = false;
   uint32_t nodeClicked = 0;
@@ -225,7 +227,10 @@ std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std:
   return {anyNodeClicked, nodeClicked};
 }
 
-ContentPanel::ContentPanel() : EditorPanel("Contents", ICON_MDI_FOLDER_STAR, true) {
+ContentPanel::ContentPanel() :
+    EditorPanel("Contents",
+                ICON_MDI_FOLDER_STAR,
+                true) {
   const auto& window = App::get()->get_window();
   const float32 scale = window.get_content_scale();
   thumbnail_max_limit *= scale;
@@ -234,26 +239,22 @@ ContentPanel::ContentPanel() : EditorPanel("Contents", ICON_MDI_FOLDER_STAR, tru
   _white_texture = create_shared<Texture>();
   char white_texture_data[16 * 16 * 4];
   memset(white_texture_data, 0xff, 16 * 16 * 4);
-  _white_texture->create_texture({16, 16, 1}, white_texture_data, vuk::Format::eR8G8B8A8Unorm, Preset::eRTT2DUnmipped);
+  _white_texture->create(
+      {},
+      {.preset = Preset::eRTT2DUnmipped, .format = vuk::Format::eR8G8B8A8Unorm, .mime = {}, .data = white_texture_data, .extent = {16, 16}});
 
   auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
 
-  auto file_icon = create_shared<Texture>(TextureLoadInfo{
-    .path = vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FileIcon.png"),
-    .preset = Preset::eRTT2DUnmipped,
-  });
+  auto file_icon = create_shared<Texture>();
+  file_icon->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FileIcon.png"), {.preset = Preset::eRTT2DUnmipped});
   thumbnail_cache.emplace("file_icon", file_icon);
 
-  auto directory_icon = create_shared<Texture>(TextureLoadInfo{
-    .path = vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FolderIcon.png"),
-    .preset = Preset::eRTT2DUnmipped,
-  });
+  auto directory_icon = create_shared<Texture>();
+  directory_icon->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FolderIcon.png"), {.preset = Preset::eRTT2DUnmipped});
   thumbnail_cache.emplace("folder_icon", directory_icon);
 
-  auto mesh_icon = create_shared<Texture>(TextureLoadInfo{
-    .path = vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/MeshFileIcon.png"),
-    .preset = Preset::eRTT2DUnmipped,
-  });
+  auto mesh_icon = create_shared<Texture>();
+  mesh_icon->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/MeshFileIcon.png"), {.preset = Preset::eRTT2DUnmipped});
   thumbnail_cache.emplace("mesh_icon", mesh_icon);
 }
 
@@ -267,9 +268,10 @@ void ContentPanel::init() {
   });
 }
 
-void ContentPanel::on_update() { m_elapsed_time += (float)App::get_timestep(); }
+void ContentPanel::on_update() { m_elapsed_time += static_cast<float>(App::get_timestep()); }
 
-void ContentPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
+void ContentPanel::on_render(vuk::Extent3D extent,
+                             vuk::Format format) {
   constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
 
   constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_ContextMenuInBody;
@@ -315,7 +317,7 @@ void ContentPanel::render_header() {
                  nullptr,
                  0.1f,
                  "");
-    ui::property("Show file thumbnails", (bool*)EditorCVar::cvar_file_thumbnails.get_ptr());
+    ui::property("Show file thumbnails", reinterpret_cast<bool*>(EditorCVar::cvar_file_thumbnails.get_ptr()));
     ui::end_properties();
     ImGui::EndPopup();
   }
@@ -411,8 +413,8 @@ void ContentPanel::render_side_view() {
   OX_SCOPED_ZONE;
   static int selectionMask = 0;
 
-  constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX |
-                                         ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_ScrollY;
+  constexpr ImGuiTableFlags tableFlags =
+      ImGuiTableFlags_RowBg | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_ScrollY;
 
   constexpr ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_SpanFullWidth;
 
@@ -537,7 +539,7 @@ void ContentPanel::render_body(bool grid) {
             if (ThreadManager::get()->asset_thread.get_queue_size() == 0) {
               ThreadManager::get()->asset_thread.queue_job([this, file_path] {
                 auto thumbnail_texture = create_shared<Texture>();
-                thumbnail_texture->load(TextureLoadInfo{.path = file_path, .preset = Preset::eRTT2DUnmipped});
+                thumbnail_texture->create(file_path, {.preset = Preset::eRTT2DUnmipped});
                 thumbnail_cache.emplace(file_path, thumbnail_texture);
               });
             }
@@ -629,15 +631,15 @@ void ContentPanel::render_body(bool grid) {
 
         const ImVec2 rect_min = ImGui::GetItemRectMin();
         const ImVec2 rect_size = ImGui::GetItemRectSize();
-        const ImRect clip_rect = ImRect({rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
-                                        {rect_min.x + rect_size.x,
-                                         rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font->FontSize * 2.0f});
+        const ImRect clip_rect =
+            ImRect({rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
+                   {rect_min.x + rect_size.x, rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font->FontSize * 2.0f});
         ui::clipped_text(clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
 
         if (!is_dir) {
           constexpr auto y_pos_pad = 10.f;
-          ImGui::SetCursorPos({cursor_pos.x + padding * 2.0f,
-                               cursor_pos.y + background_thumbnail_size.y - editor_theme.small_font->FontSize * 2.0f + y_pos_pad});
+          ImGui::SetCursorPos(
+              {cursor_pos.x + padding * 2.0f, cursor_pos.y + background_thumbnail_size.y - editor_theme.small_font->FontSize * 2.0f + y_pos_pad});
           ImGui::BeginDisabled();
           ImGui::PushFont(editor_theme.small_font);
           ImGui::TextUnformatted(file.file_type_string.data());
@@ -750,7 +752,7 @@ void ContentPanel::update_directory_entries(const std::filesystem::path& directo
       file_type_color = file_type_color_it->second;
 
     File entry =
-      {filename, path.string(), extension, directory_entry, nullptr, directory_entry.is_directory(), file_type, file_type_string, file_type_color};
+        {filename, path.string(), extension, directory_entry, nullptr, directory_entry.is_directory(), file_type, file_type_string, file_type_color};
 
     m_directory_entries.push_back(entry);
   }
@@ -758,7 +760,8 @@ void ContentPanel::update_directory_entries(const std::filesystem::path& directo
   m_elapsed_time = 0.0f;
 }
 
-void ContentPanel::draw_context_menu_items(const std::filesystem::path& context, bool isDir) {
+void ContentPanel::draw_context_menu_items(const std::filesystem::path& context,
+                                           bool isDir) {
   if (isDir) {
     if (ImGui::BeginMenu("Create")) {
       if (ImGui::MenuItem("Folder")) {
