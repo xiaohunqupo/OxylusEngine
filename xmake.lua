@@ -23,8 +23,10 @@ add_cxxflags(
     "-Wno-gnu-zero-variadic-macro-arguments",
     { tools = { "clang" } })
 
+includes("xmake/options.lua")
 includes("xmake/rules.lua")
 includes("xmake/packages.lua")
+includes("xmake/toolchains.lua")
 
 includes("Oxylus")
 includes("OxylusEditor")

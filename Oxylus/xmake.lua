@@ -1,8 +1,3 @@
-option("lua_bindings")
-    set_default(true)
-    set_showmenu(true)
-    set_description("Enable Lua bindings")
-
 target("Oxylus")
     set_kind("static")
     set_languages("cxx23")
@@ -14,6 +9,7 @@ target("Oxylus")
     add_forceincludes("pch.hpp", { public = true, force = true })
     set_pcheader("./src/pch.hpp", { public = true, force = true })
 
+    add_options("profile")
     if not has_config("lua_bindings") then
         remove_files("./src/Scripting/*Bindings*")
 	else
