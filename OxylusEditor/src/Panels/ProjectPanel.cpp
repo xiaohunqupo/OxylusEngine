@@ -72,7 +72,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent,
         ImGui::InputText("##Directory", &new_project_dir, flags);
         ImGui::SameLine();
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FOLDER), {ImGui::GetContentRegionAvail().x, 0})) {
-          FileDialogFilter dialog_filters[] = {{.name = "Project dir", .pattern = ""}};
+          FileDialogFilter dialog_filters[] = {{.name = "Project dir", .pattern = "oxproj"}};
           window.show_dialog({
               .kind = DialogKind::OpenFolder,
               .user_data = this,
