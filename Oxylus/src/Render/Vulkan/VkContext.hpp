@@ -1,5 +1,6 @@
 #pragma once
 
+#include <Render/Slang/Compiler.hpp>
 #include <VkBootstrap.h>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
@@ -7,8 +8,6 @@
 #include <vuk/runtime/vk/VkRuntime.hpp>
 
 #include "Core/Option.hpp"
-
-#include <Render/Slang/Compiler.hpp>
 
 namespace ox {
 struct Window;
@@ -43,15 +42,19 @@ public:
   std::string device_name = {};
 
   VkContext() = default;
+  ~VkContext();
 
-  void create_context(const Window& window, bool vulkan_validation_layers);
+  void create_context(const Window& window,
+                      bool vulkan_validation_layers);
   vuk::Value<vuk::ImageAttachment> new_frame();
-  void end_frame(vuk::Allocator& frame_allocator, vuk::Value<vuk::ImageAttachment> target);
-  void handle_resize(uint32 width, uint32 height);
+  void end_frame(vuk::Allocator& frame_allocator,
+                 vuk::Value<vuk::ImageAttachment> target);
+  void handle_resize(u32 width,
+                     u32 height);
   void set_vsync(bool enable);
   bool is_vsync() const;
   option<vuk::Allocator>& get_frame_allocator();
 
   uint32_t get_max_viewport_count() const { return vkbphysical_device.properties.limits.maxViewports; }
 };
-}
+} // namespace ox

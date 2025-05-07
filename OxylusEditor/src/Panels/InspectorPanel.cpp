@@ -331,7 +331,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
           .kind = DialogKind::OpenFile,
           .user_data = &path,
           .callback =
-              [](void* user_data, const char8* const* files, int32) {
+              [](void* user_data, const c8* const* files, i32) {
         auto& dst_path = *static_cast<std::string*>(user_data);
         if (!files || !*files) {
           return;
@@ -405,7 +405,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
           .kind = DialogKind::OpenFile,
           .user_data = &component,
           .callback =
-              [](void* user_data, const char8* const* files, int32) {
+              [](void* user_data, const c8* const* files, i32) {
         auto* comp = static_cast<AudioSourceComponent*>(user_data);
 
         if (!files || !*files) {
@@ -517,7 +517,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     }
 
     if (component.color_temperature_mode) {
-      if (ui::property<uint32>("Temperature (K)", &component.temperature, 1000, 40000))
+      if (ui::property<u32>("Temperature (K)", &component.temperature, 1000, 40000))
         ColorUtils::TempratureToColor(component.temperature, component.color);
     } else {
       ui::property_vector("Color", component.color, true);
@@ -538,8 +538,8 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
     ui::property("Cast Shadows", &component.cast_shadows);
 
-    const ankerl::unordered_dense::map<uint32, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
-    const ankerl::unordered_dense::map<int, uint32> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
+    const ankerl::unordered_dense::map<u32, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
+    const ankerl::unordered_dense::map<int, u32> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
 
     const char* res_strings[] = {"Auto", "512", "1024", "2048"};
     int idx = res_map.at(component.shadow_map_res);
@@ -548,7 +548,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     }
 
     if (component.type == LightComponent::Directional) {
-      for (uint32 i = 0; i < (uint32)component.cascade_distances.size(); ++i)
+      for (u32 i = 0; i < (u32)component.cascade_distances.size(); ++i)
         ui::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
     }
 
@@ -582,19 +582,19 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
     ImGui::Indent();
     ui::begin_property_grid("Allowed positions", nullptr);
-    ImGui::CheckboxFlags("x", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::TranslationX);
+    ImGui::CheckboxFlags("x", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::TranslationX);
     ImGui::SameLine();
-    ImGui::CheckboxFlags("y", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::TranslationY);
+    ImGui::CheckboxFlags("y", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::TranslationY);
     ImGui::SameLine();
-    ImGui::CheckboxFlags("z", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::TranslationZ);
+    ImGui::CheckboxFlags("z", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::TranslationZ);
     ui::end_property_grid();
 
     ui::begin_property_grid("Allowed rotations", nullptr);
-    ImGui::CheckboxFlags("x", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::RotationX);
+    ImGui::CheckboxFlags("x", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::RotationX);
     ImGui::SameLine();
-    ImGui::CheckboxFlags("y", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::RotationY);
+    ImGui::CheckboxFlags("y", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::RotationY);
     ImGui::SameLine();
-    ImGui::CheckboxFlags("z", (uint32*)&component.allowed_dofs, (uint32)RigidbodyComponent::AllowedDOFs::RotationZ);
+    ImGui::CheckboxFlags("z", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::RotationZ);
     ui::end_property_grid();
     ImGui::Unindent();
 
@@ -744,7 +744,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
       ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
     }
 
-    for (uint32 i = 0; i < (uint32)component.lua_systems.size(); i++) {
+    for (u32 i = 0; i < (u32)component.lua_systems.size(); i++) {
       const auto& system = component.lua_systems[i];
       auto name = fs::get_file_name(system->get_path());
       if (name_filter.PassFilter(name.c_str())) {
@@ -774,7 +774,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
           .kind = DialogKind::OpenFile,
           .user_data = &component,
           .callback =
-              [](void* user_data, const char8* const* files, int32) {
+              [](void* user_data, const c8* const* files, i32) {
         auto* user_data_comp = static_cast<LuaScriptComponent*>(user_data);
         if (!files || !*files) {
           return;
@@ -831,9 +831,9 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
       ImGui::TableSetupColumn("  Systems", ImGuiTableColumnFlags_NoHide);
       ImGui::TableHeadersRow();
 
-      int32 delete_index = -1;
+      i32 delete_index = -1;
 
-      for (uint32 index = 0; auto& sys : component.systems) {
+      for (u32 index = 0; auto& sys : component.systems) {
         ImGui::TableNextRow();
         ImGui::TableNextColumn();
         ImGui::PushID(index);
@@ -863,7 +863,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     if (ui::combo(lbl.c_str(),
                   &current_system_selection,
                   system_names.data(),
-                  static_cast<int32>(system_names.size()),
+                  static_cast<i32>(system_names.size()),
                   std::to_string(system_hashes[current_system_selection]).c_str())) {
       if (auto system = system_manager->get_system(system_hashes[current_system_selection]))
         component.systems.emplace_back(system);

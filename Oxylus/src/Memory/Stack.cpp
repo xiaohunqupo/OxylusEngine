@@ -7,7 +7,7 @@ ThreadStack::ThreadStack() {
   OX_SCOPED_ZONE;
 
   constexpr static usize stack_size = ox::mib_to_bytes(32);
-  ptr = static_cast<uint8*>(os::mem_reserve(stack_size));
+  ptr = static_cast<u8*>(os::mem_reserve(stack_size));
   os::mem_commit(ptr, stack_size);
 }
 

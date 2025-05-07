@@ -1,34 +1,26 @@
 #include "DefaultRenderPipeline.hpp"
 
+#include <glm/gtx/compatibility.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/Descriptor.hpp>
 #include <vuk/runtime/vk/Pipeline.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include <glm/gtx/compatibility.hpp>
-
 #include "Camera.hpp"
+#include "Core/App.hpp"
 #include "DebugRenderer.hpp"
 #include "MeshVertex.hpp"
-#include "RendererCommon.hpp"
-#include "SceneRendererEvents.hpp"
-
-#include "Core/App.hpp"
 #include "Passes/Prefilter.hpp"
-
+#include "RendererCommon.hpp"
 #include "Scene/Scene.hpp"
-
+#include "SceneRendererEvents.hpp"
 #include "Thread/TaskScheduler.hpp"
-
 #include "Utils/CVars.hpp"
-#include "Utils/Timer.hpp"
-
-#include "Vulkan/VkContext.hpp"
-
-#include "Utils/VukCommon.hpp"
-
 #include "Utils/RectPacker.hpp"
+#include "Utils/Timer.hpp"
+#include "Utils/VukCommon.hpp"
+#include "Vulkan/VkContext.hpp"
 #include "vuk/ImageAttachment.hpp"
 #include "vuk/ShaderSource.hpp"
 #include "vuk/Value.hpp"
@@ -114,7 +106,7 @@ void DefaultRenderPipeline::load_pipelines(vuk::Allocator& allocator) {
 
   using SS = vuk::HlslShaderStage;
 
-#define SHADER_FILE(path) fs::read_shader_file(path), fs::get_shader_path(path)
+  #define SHADER_FILE(path) fs::read_shader_file(path), fs::get_shader_path(path)
 
   auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
 
@@ -369,7 +361,7 @@ DefaultRenderPipeline::CameraData DefaultRenderPipeline::get_main_camera_data(co
   camera_data.temporalaa_jitter = cam.jitter;
   camera_data.temporalaa_jitter_prev = cam.jitter_prev;
 
-  for (uint32 i = 0; i < 6; i++) {
+  for (u32 i = 0; i < 6; i++) {
     const auto* plane = Camera::get_frustum(cam, cam.position).planes[i];
     camera_data.frustum_planes[i] = {plane->normal, plane->distance};
   }
@@ -489,7 +481,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
   render_queue_2d.update();
   render_queue_2d.sort();
 
-  scene_data.num_lights = (uint32)scene_lights.size();
+  scene_data.num_lights = (u32)scene_lights.size();
   scene_data.grid_max_distance = RendererCVar::cvar_draw_grid_distance.get();
 
   const auto app = App::get();
@@ -544,7 +536,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     std::vector<PBRMaterial::Parameters> material_parameters = {};
     material_parameters.reserve(scene_flattened.get_material_count());
     for (auto& mat : scene_flattened.materials) {
-      mat->set_id((uint32)material_parameters.size());
+      mat->set_id((u32)material_parameters.size());
 
       const auto& albedo = mat->get_albedo_texture();
       const auto& normal = mat->get_normal_texture();
@@ -574,7 +566,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
     std::vector<SpriteMaterial::Parameters> sprite_material_parameters = {};
     sprite_material_parameters.reserve(render_queue_2d.materials.size());
-    for (uint32 index = 0; auto& mat : render_queue_2d.materials) {
+    for (u32 index = 0; auto& mat : render_queue_2d.materials) {
       const auto& albedo = mat->get_albedo_texture();
 
       if (albedo && albedo->is_valid_id())
@@ -602,7 +594,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
       auto& light = light_datas.emplace_back();
       light.position = lc.position;
       light.set_range(lc.range);
-      light.set_type((uint32)lc.type);
+      light.set_type((u32)lc.type);
       light.rotation = lc.rotation;
       light.set_direction(lc.direction);
       light.set_color(glm::vec4(lc.color * (lc.type == LightComponent::Directional ? 1.0f : lc.intensity), 1.0f));
@@ -620,7 +612,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
       switch (lc.type) {
         case LightComponent::LightType::Directional: {
-          light.set_shadow_cascade_count((uint32)lc.cascade_distances.size());
+          light.set_shadow_cascade_count((u32)lc.cascade_distances.size());
         } break;
         case LightComponent::LightType::Point: {
           if (cast_shadows) {
@@ -659,12 +651,12 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
       if (lc.cast_shadows) {
         switch (lc.type) {
           case LightComponent::Directional: {
-            auto cascade_count = (uint32)lc.cascade_distances.size();
+            auto cascade_count = (u32)lc.cascade_distances.size();
             auto sh_cameras = std::vector<CameraSH>(cascade_count);
             create_dir_light_cameras(lc, current_camera, sh_cameras, cascade_count);
 
-            light.matrix_index = (uint32)shader_entities.size();
-            for (uint32 cascade = 0; cascade < cascade_count; ++cascade) {
+            light.matrix_index = (u32)shader_entities.size();
+            for (u32 cascade = 0; cascade < cascade_count; ++cascade) {
               shader_entities.emplace_back(sh_cameras[cascade].projection_view);
             }
             break;
@@ -674,11 +666,11 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
           }
           case LightComponent::Spot:
 // TODO:
-#if 0
+  #if 0
           auto sh_camera = create_spot_light_camera(lc, *current_camera);
           light.matrix_index = (uint32_t)shader_entities.size();
           shader_entities.emplace_back(sh_camera.projection_view);
-#endif
+  #endif
             break;
         }
       }
@@ -707,8 +699,8 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     descriptor_set_00->update_storage_buffer(1, TRANSFORMS_BUFFER_INDEX, transforms_buffer);
 
     debug_aabb_buffer = *vuk::allocate_cpu_buffer(allocator, sizeof(vuk::DrawIndirectCommand) + sizeof(DebugAabb) * MAX_AABB_COUNT);
-    uint32 vert_count = 14;
-    std::memcpy(debug_aabb_buffer.mapped_ptr, &vert_count, sizeof(uint32));
+    u32 vert_count = 14;
+    std::memcpy(debug_aabb_buffer.mapped_ptr, &vert_count, sizeof(u32));
     descriptor_set_00->update_storage_buffer(2, DEBUG_AABB_INDEX, debug_aabb_buffer);
 
     // scene textures
@@ -774,9 +766,9 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
     descriptor_set_02->update_storage_buffer(READ_WRITE, VISIBLE_MESHLETS_BUFFER_INDEX, visible_meshlets_buffer);
 
     struct DispatchParams {
-      uint32 groupCountX;
-      uint32 groupCountY;
-      uint32 groupCountZ;
+      u32 groupCountX;
+      u32 groupCountY;
+      u32 groupCountZ;
     };
 
     DispatchParams params{0, 1, 1};
@@ -810,7 +802,7 @@ void DefaultRenderPipeline::update_frame_data(vuk::Allocator& allocator) {
 
     constexpr auto max_meshlet_primitives = 64;
     instanced_index_buffer = *allocate_gpu_buffer(allocator,
-                                                  scene_flattened.get_meshlet_instances_count() * max_meshlet_primitives * 3 * sizeof(uint32));
+                                                  scene_flattened.get_meshlet_instances_count() * max_meshlet_primitives * 3 * sizeof(u32));
     descriptor_set_02->update_storage_buffer(READ_WRITE, INSTANCED_INDEX_BUFFER_INDEX, instanced_index_buffer);
 
     descriptor_set_02->commit(ctx);
@@ -1383,7 +1375,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   })(final_image, color_output_w2d, bloom_output);
 
   return debug_pass(frame_allocator, depth_output, final_output);
-#if 0
+  #if 0
   auto shadow_map = vuk::clear_image(vuk::declare_ia("shadow_map", shadow_map_atlas.attachment()), vuk::DepthZero);
   shadow_map = shadow_pass(shadow_map);
 
@@ -1391,7 +1383,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   if (RendererCVar::cvar_gtao_enable.get())
     gtao_output = gtao_pass(frame_allocator, gtao_output, depth_output, normal_output);
 
-  #if FSR
+    #if FSR
   auto ia = forward_texture.attachment();
   ia.image = {};
   ia.image_view = {};
@@ -1406,7 +1398,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
                                  App::get_timestep().get_elapsed_millis(),
                                  1.0f,
                                  vk_context.current_frame);
-  #endif
+    #endif
 
   auto fxaa_ia = vuk::ImageAttachment::from_preset(Preset::eGeneric2D, vuk::Format::eR32G32B32A32Sfloat, {}, vuk::Samples::e1);
   auto fxaa_image = vuk::clear_image(vuk::declare_ia("fxaa_image", fxaa_ia), vuk::Black<float>);
@@ -1427,7 +1419,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::on_render(vuk::Allocator
   }
 
   return final_pass(target, grid_output, bloom_output);
-#endif
+  #endif
 }
 
 vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocator& frame_allocator,
@@ -1439,7 +1431,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
   const auto& triangles = DebugRenderer::get_instance()->get_triangles(false);
   auto [triangle_vertices, triangle_index_count] = DebugRenderer::get_vertices_from_triangles(triangles);
 
-  const uint32 index_count = line_index_count + triangle_index_count;
+  const u32 index_count = line_index_count + triangle_index_count;
   if (index_count >= DebugRenderer::MAX_LINE_INDICES)
     OX_LOG_ERROR("Increase DebugRenderer::MAX_LINE_INDICES");
 
@@ -1461,7 +1453,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
   if (!debug_vertex_buffer_previous)
     return input_clr;
 
-#if 0 // TODO:
+  #if 0 // TODO:
   // depth tested
   const auto& lines_dt = DebugRenderer::get_instance()->get_lines(true);
   auto [vertices_dt, index_count_dt] = DebugRenderer::get_vertices_from_lines(lines_dt);
@@ -1471,7 +1463,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
 
   auto [vd_buff, vd_buff_fut] = create_cpu_buffer(frame_allocator, std::span(vertices_dt));
   auto& v_buffer_dt = *vd_buff;
-#endif
+  #endif
 
   return vuk::make_pass("debug_pass2",
                         [this, line_index_count, dbg_index_buffer](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eColorWrite) _output) {
@@ -1497,7 +1489,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
 
     command_buffer.draw_indexed(line_index_count, 1, 0, 0, 0);
 
-#if 0 // TODO
+  #if 0 // TODO
   // depth tested
     command_buffer.bind_graphics_pipeline("unlit_pipeline")
       .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
@@ -1519,7 +1511,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::debug_pass(vuk::Allocato
     bind_camera_buffer(command_buffer);
 
     command_buffer.draw_indexed(index_count_dt, 1, 0, 0, 0);
-#endif
+  #endif
 
     DebugRenderer::reset();
 
@@ -1570,7 +1562,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
         .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
       });
 
-#if 0
+  #if 0
     const auto max_viewport_count = App::get_vkcontext().get_max_viewport_count();
     for (auto& light : scene_lights) {
       if (!light.cast_shadows)
@@ -1705,7 +1697,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::shadow_pass(vuk::Value<v
         }
       }
     }
-#endif
+  #endif
 
     return map;
   });
@@ -2077,7 +2069,7 @@ vuk::Value<vuk::ImageAttachment> DefaultRenderPipeline::sky_envmap_pass(vuk::All
   return envmap_spd.dispatch("envmap_spd", frame_allocator, envmap_image);
 }
 
-#if 0 // UNUSED
+  #if 0 // UNUSED
 void DefaultRenderPipeline::sky_view_lut_pass(const Shared<vuk::RenderGraph>& rg) {
   OX_SCOPED_ZONE;
 
@@ -2111,6 +2103,7 @@ void DefaultRenderPipeline::sky_view_lut_pass(const Shared<vuk::RenderGraph>& rg
       .draw(3, 1, 0, 0);
   }});
 }
-#endif
+  #endif
 } // namespace ox
 #endif
+

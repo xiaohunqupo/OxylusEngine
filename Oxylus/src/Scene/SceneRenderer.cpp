@@ -82,7 +82,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       sprite_animation.current_time = time;
 
       const float duration = static_cast<float>(sprite_animation.num_frames) / sprite_animation.fps;
-      uint32 frame = math::flooru32(sprite_animation.num_frames * (time / duration));
+      u32 frame = math::flooru32(sprite_animation.num_frames * (time / duration));
 
       if (time > duration) {
         if (sprite_animation.inverted) {
@@ -101,8 +101,8 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
       frame = sprite_animation.inverted ? sprite_animation.num_frames - 1 - frame : frame;
 
-      const uint32 frame_x = frame % sprite_animation.columns;
-      const uint32 frame_y = frame / sprite_animation.columns;
+      const u32 frame_x = frame % sprite_animation.columns;
+      const u32 frame_y = frame / sprite_animation.columns;
 
       const auto* albedo_texture = asset_manager->get_texture(material->albedo_texture);
       auto& uv_size = material->uv_size;

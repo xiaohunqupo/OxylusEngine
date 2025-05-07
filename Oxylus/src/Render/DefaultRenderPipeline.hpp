@@ -1,17 +1,16 @@
 ﻿#pragma once
 
-#include "Frustum.hpp"
-#include "Passes/FSR.hpp"
-#include "RenderPipeline.hpp"
-#include "RendererConfig.hpp"
-
-#include "Passes/GTAO.hpp"
-#include "Passes/SPD.hpp"
-#include "Scene/Components.hpp"
-#include "Utils/OxMath.hpp"
-
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
+
+#include "Frustum.hpp"
+#include "Passes/FSR.hpp"
+#include "Passes/GTAO.hpp"
+#include "Passes/SPD.hpp"
+#include "RenderPipeline.hpp"
+#include "RendererConfig.hpp"
+#include "Scene/Components.hpp"
+#include "Utils/OxMath.hpp"
 
 #if 0
 
@@ -101,19 +100,19 @@ private:
     glm::vec3 position;
 
     glm::vec3 rotation;
-    uint32 type8_flags8_range16;
+    u32 type8_flags8_range16;
 
     glm::uvec2 direction16_cone_angle_cos16; // coneAngleCos is used for cascade count in directional light
     glm::uvec2 color;                        // half4 packed
 
     glm::vec4 shadow_atlas_mul_add;
 
-    uint32 radius16_length16;
-    uint32 matrix_index;
-    uint32 remap;
+    u32 radius16_length16;
+    u32 matrix_index;
+    u32 remap;
 
-    void set_type(uint32 type) { type8_flags8_range16 |= type & 0xFF; }
-    void set_flags(uint32 flags) { type8_flags8_range16 |= (flags & 0xFF) << 8u; }
+    void set_type(u32 type) { type8_flags8_range16 |= type & 0xFF; }
+    void set_flags(u32 flags) { type8_flags8_range16 |= (flags & 0xFF) << 8u; }
     void set_range(float value) { type8_flags8_range16 |= glm::packHalf1x16(value) << 16u; }
     void set_radius(float value) { radius16_length16 |= glm::packHalf1x16(value); }
     void set_length(float value) { radius16_length16 |= glm::packHalf1x16(value) << 16u; }
@@ -129,12 +128,12 @@ private:
       direction16_cone_angle_cos16.y |= glm::packHalf1x16(value.z);
     }
     void set_cone_angle_cos(float value) { direction16_cone_angle_cos16.y |= glm::packHalf1x16(value) << 16u; }
-    void set_shadow_cascade_count(uint32 value) { direction16_cone_angle_cos16.y |= (value & 0xFFFF) << 16u; }
+    void set_shadow_cascade_count(u32 value) { direction16_cone_angle_cos16.y |= (value & 0xFFFF) << 16u; }
     void set_angle_scale(float value) { remap |= glm::packHalf1x16(value); }
     void set_angle_offset(float value) { remap |= glm::packHalf1x16(value) << 16u; }
     void set_cube_remap_near(float value) { remap |= glm::packHalf1x16(value); }
     void set_cube_remap_far(float value) { remap |= glm::packHalf1x16(value) << 16u; }
-    void set_indices(uint32 indices) { matrix_index = indices; }
+    void set_indices(u32 indices) { matrix_index = indices; }
     void set_gravity(float value) { set_cone_angle_cos(value); }
     void set_collider_tip(glm::vec3 value) { shadow_atlas_mul_add = glm::vec4(value.x, value.y, value.z, 0); }
   };
@@ -184,7 +183,7 @@ private:
 
   // GPU Buffer
   struct SceneData {
-    uint32 num_lights;
+    u32 num_lights;
     float grid_max_distance;
     glm::uvec2 screen_size;
     int draw_meshlet_aabbs;
@@ -193,7 +192,7 @@ private:
     glm::uvec2 shadow_atlas_res;
 
     glm::vec3 sun_direction;
-    uint32 meshlet_count;
+    u32 meshlet_count;
 
     glm::vec4 sun_color; // pre-multipled with intensity
 
@@ -238,7 +237,7 @@ private:
     } post_processing_data;
   } scene_data;
 
-#define MAX_AABB_COUNT 100000
+  #define MAX_AABB_COUNT 100000
 
   struct DebugAabb {
     glm::vec3 center;
@@ -300,11 +299,11 @@ private:
 
   struct DrawBatch2D {
     vuk::Name pipeline_name = {};
-    uint32 offset = 0;
-    uint32 count = 0;
+    u32 offset = 0;
+    u32 count = 0;
   };
 
-  enum RenderFlags2D : uint32 {
+  enum RenderFlags2D : u32 {
     RENDER_FLAGS_2D_NONE = 0,
 
     RENDER_FLAGS_2D_SORT_Y = 1 << 0,
@@ -313,8 +312,8 @@ private:
 
   struct SpriteGPUData {
     glm::mat4 transform = {};
-    uint32 material_id16_ypos16 = 0;
-    uint32 flags16_distance16 = 0;
+    u32 material_id16_ypos16 = 0;
+    u32 flags16_distance16 = 0;
 
     bool operator>(const SpriteGPUData& other) const {
       union SortKey {
@@ -353,12 +352,12 @@ private:
 
     vuk::Name current_pipeline_name = {};
 
-    uint32 num_sprites = 0;
-    uint32 previous_offset = 0;
+    u32 num_sprites = 0;
+    u32 previous_offset = 0;
 
-    uint32 last_batches_size = 0;
-    uint32 last_sprite_data_size = 0;
-    uint32 last_materials_size = 0;
+    u32 last_batches_size = 0;
+    u32 last_sprite_data_size = 0;
+    u32 last_materials_size = 0;
 
     void init() {
       batches.reserve(last_batches_size);
@@ -379,7 +378,7 @@ private:
     }
 
     void add(const SpriteComponent& sprite, float distance) {
-      sprite.material->set_id((uint32)materials.size());
+      sprite.material->set_id((u32)materials.size());
       materials.emplace_back(sprite.material);
 
       uint16 flags = 0;
@@ -389,8 +388,8 @@ private:
       if (sprite.flip_x)
         flags |= RENDER_FLAGS_2D_FLIP_X;
 
-      const uint32 flags_and_distance = math::pack_u16(uint16(flags), glm::packHalf1x16(distance));
-      const uint32 materialid_and_ypos = math::pack_u16(uint16(sprite.material->get_id()), glm::packHalf1x16(sprite.get_position().y));
+      const u32 flags_and_distance = math::pack_u16(uint16(flags), glm::packHalf1x16(distance));
+      const u32 materialid_and_ypos = math::pack_u16(uint16(sprite.material->get_id()), glm::packHalf1x16(sprite.get_position().y));
 
       sprite_data.emplace_back(SpriteGPUData{
         .transform = sprite.transform,
@@ -406,9 +405,9 @@ private:
     void clear() {
       num_sprites = 0;
       previous_offset = 0;
-      last_batches_size = (uint32)batches.size();
-      last_sprite_data_size = (uint32)sprite_data.size();
-      last_materials_size = (uint32)materials.size();
+      last_batches_size = (u32)batches.size();
+      last_sprite_data_size = (u32)sprite_data.size();
+      last_materials_size = (u32)materials.size();
       current_pipeline_name = {};
 
       batches.clear();
@@ -425,19 +424,19 @@ private:
     std::vector<glm::mat4> transforms;
     std::vector<Shared<PBRMaterial>> materials;
 
-    std::vector<uint32> indices{};
+    std::vector<u32> indices{};
     std::vector<Vertex> vertices{};
-    std::vector<uint32> primitives{};
+    std::vector<u32> primitives{};
 
-    uint32 last_meshlet_size = 0;
-    uint32 last_meshlet_instances_size = 0;
-    uint32 last_indices_size = 0;
-    uint32 last_vertices_size = 0;
-    uint32 last_primitives_size = 0;
-    uint32 last_transforms_size = 0;
+    u32 last_meshlet_size = 0;
+    u32 last_meshlet_instances_size = 0;
+    u32 last_indices_size = 0;
+    u32 last_vertices_size = 0;
+    u32 last_primitives_size = 0;
+    u32 last_transforms_size = 0;
 
-    uint32 get_meshlet_instances_count() const { return (uint32)meshlet_instances.size(); }
-    uint32 get_material_count() const { return (uint32)materials.size(); }
+    u32 get_meshlet_instances_count() const { return (u32)meshlet_instances.size(); }
+    u32 get_material_count() const { return (u32)materials.size(); }
 
     void init() {
       meshlets.reserve(last_meshlet_size);
@@ -450,12 +449,12 @@ private:
     }
 
     void clear() {
-      last_meshlet_size = (uint32)meshlets.size();
-      last_meshlet_instances_size = (uint32)meshlet_instances.size();
+      last_meshlet_size = (u32)meshlets.size();
+      last_meshlet_instances_size = (u32)meshlet_instances.size();
 
-      last_indices_size = (uint32)indices.size();
-      last_vertices_size = (uint32)vertices.size();
-      last_primitives_size = (uint32)primitives.size();
+      last_indices_size = (u32)indices.size();
+      last_vertices_size = (u32)vertices.size();
+      last_primitives_size = (u32)primitives.size();
 
       indices.clear();
       vertices.clear();
@@ -485,11 +484,11 @@ private:
       for (auto& mc : mc_list) {
         for (int node_index = 0; auto& node : mc.mesh_base->nodes) {
           if (!node.meshlet_indices.empty()) {
-            const auto instance_id = (uint32)transforms.size();
+            const auto instance_id = (u32)transforms.size();
             const auto transform = node_index == 0 ? mc.transform : mc.child_transforms[node_index - 1];
             transforms.emplace_back(transform);
             for (auto& [meshletIndex, _, materialId] : node.meshlet_indices) {
-              // meshlet.instance_id = uint32(instance_id);
+              // meshlet.instance_id = u32(instance_id);
               meshlet_instances.emplace_back(meshletIndex, instance_id, materialId);
             }
             node_index++;
@@ -550,3 +549,4 @@ private:
 };
 } // namespace ox
 #endif
+

@@ -1,7 +1,7 @@
 #pragma once
 
 namespace ox {
-enum class AssetType : uint32 {
+enum class AssetType : u32 {
   None = 0,
   Shader,
   Mesh,
@@ -13,7 +13,7 @@ enum class AssetType : uint32 {
 };
 
 // List of file extensions supported by Engine.
-enum class AssetFileType : uint32 {
+enum class AssetFileType : u32 {
   None = 0,
   Binary,
   Meta,
@@ -25,7 +25,7 @@ enum class AssetFileType : uint32 {
   KTX2,
 };
 
-enum class AssetFileFlags : uint64 {
+enum class AssetFileFlags : u64 {
   None = 0,
 };
 consteval void enable_bitmask(AssetFileFlags);
@@ -36,8 +36,8 @@ struct TextureAssetFileHeader {
 };
 
 struct AssetFileHeader {
-  char8 magic[2] = {'O', 'X'};
-  uint16 version = 1;
+  c8 magic[2] = {'O', 'X'};
+  u16 version = 1;
   AssetFileFlags flags = AssetFileFlags::None;
   AssetType type = AssetType::None;
   union {

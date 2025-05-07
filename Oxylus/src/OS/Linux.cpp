@@ -9,29 +9,29 @@
 #include <unistd.h>
 
 namespace ox {
-auto os::mem_page_size() -> uint64 {
+auto os::mem_page_size() -> u64 {
     return sysconf(_SC_PAGESIZE);
 }
 
-auto os::mem_reserve(uint64 size) -> void * {
+auto os::mem_reserve(u64 size) -> void * {
     OX_SCOPED_ZONE;
 
     return mmap(nullptr, size, PROT_NONE, MAP_PRIVATE | MAP_ANON, -1, 0);
 }
 
-auto os::mem_release(void *data, uint64 size) -> void {
+auto os::mem_release(void *data, u64 size) -> void {
     OX_SCOPED_ZONE;
 
     munmap(data, size);
 }
 
-auto os::mem_commit(void *data, uint64 size) -> bool {
+auto os::mem_commit(void *data, u64 size) -> bool {
     OX_SCOPED_ZONE;
 
     return mprotect(data, size, PROT_READ | PROT_WRITE);
 }
 
-auto os::mem_decommit(void *data, uint64 size) -> void {
+auto os::mem_decommit(void *data, u64 size) -> void {
     OX_SCOPED_ZONE;
 
     madvise(data, size, MADV_DONTNEED);

@@ -6,23 +6,23 @@
 namespace ox {
 // For unions and other unsafe stuff
 struct SlotMapIDUnpacked {
-  uint32 version = ~0_u32;
-  uint32 index = ~0_u32;
+  u32 version = ~0_u32;
+  u32 index = ~0_u32;
 };
 
 template <typename T>
 concept SlotMapID = std::is_enum_v<T> &&                               // ID must be an enum to preserve strong typing.
-                    std::is_same_v<uint64, std::underlying_type_t<T>>; // ID enum must have underlying type of u64.
+                    std::is_same_v<u64, std::underlying_type_t<T>>; // ID enum must have underlying type of u64.
 
-constexpr static uint64 SLOT_MAP_VERSION_BITS = 32_u64;
-constexpr static uint64 SLOT_MAP_INDEX_MASK = (1_u64 << SLOT_MAP_VERSION_BITS) - 1_u64;
+constexpr static u64 SLOT_MAP_VERSION_BITS = 32_u64;
+constexpr static u64 SLOT_MAP_INDEX_MASK = (1_u64 << SLOT_MAP_VERSION_BITS) - 1_u64;
 
 template <SlotMapID ID>
-constexpr auto SlotMap_encode_id(uint32 version,
-                                 uint32 index) -> ID {
+constexpr auto SlotMap_encode_id(u32 version,
+                                 u32 index) -> ID {
   OX_SCOPED_ZONE;
 
-  uint64 raw = (static_cast<uint64>(version) << SLOT_MAP_VERSION_BITS) | static_cast<uint64>(index);
+  u64 raw = (static_cast<u64>(version) << SLOT_MAP_VERSION_BITS) | static_cast<u64>(index);
   return static_cast<ID>(raw);
 }
 
@@ -30,9 +30,9 @@ template <SlotMapID ID>
 constexpr auto SlotMap_decode_id(ID id) -> SlotMapIDUnpacked {
   OX_SCOPED_ZONE;
 
-  auto raw = static_cast<uint64>(id);
-  auto version = static_cast<uint32>(raw >> SLOT_MAP_VERSION_BITS);
-  auto index = static_cast<uint32>(raw & SLOT_MAP_INDEX_MASK);
+  auto raw = static_cast<u64>(id);
+  auto version = static_cast<u32>(raw >> SLOT_MAP_VERSION_BITS);
+  auto index = static_cast<u32>(raw & SLOT_MAP_INDEX_MASK);
 
   return {.version = version, .index = index};
 }
@@ -47,7 +47,7 @@ private:
   std::vector<T> slots = {};
   // this is vector of dynamic bitsets. T != char/bool
   std::vector<bool> states = {}; // slot state, useful when iterating
-  std::vector<uint32> versions = {};
+  std::vector<u32> versions = {};
 
   std::vector<usize> free_indices = {};
   mutable std::shared_mutex mutex = {};
@@ -63,9 +63,9 @@ public:
       self.free_indices.pop_back();
       self.slots[index] = std::move(v);
       self.states[index] = true;
-      return SlotMap_encode_id<ID>(self.versions[index], static_cast<uint32>(index));
+      return SlotMap_encode_id<ID>(self.versions[index], static_cast<u32>(index));
     }
-    auto index = static_cast<uint32>(self.slots.size());
+    auto index = static_cast<u32>(self.slots.size());
     self.slots.emplace_back(std::move(v));
     self.states.emplace_back(true);
     self.versions.emplace_back(1_u32);

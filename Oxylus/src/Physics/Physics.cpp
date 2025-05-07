@@ -2,20 +2,19 @@
 
 #include <cstdarg>
 
-#include "Jolt/Physics/Body/BodyManager.h"
-#include "RayCast.hpp"
-
 #include "Core/App.hpp"
-#include "Utils/OxMath.hpp"
-
+#include "Jolt/Physics/Body/BodyManager.h"
 #include "Jolt/Physics/Collision/CastResult.h"
 #include "Jolt/Physics/Collision/RayCast.h"
 #include "Jolt/RegisterTypes.h"
+#include "RayCast.hpp"
+#include "Utils/OxMath.hpp"
 
 namespace ox {
 Physics* Physics::_instance = nullptr;
 
-static void TraceImpl(const char* inFMT, ...) {
+static void TraceImpl(const char* inFMT,
+                      ...) {
   va_list list;
   va_start(list, inFMT);
   char buffer[1024];
@@ -26,7 +25,10 @@ static void TraceImpl(const char* inFMT, ...) {
 }
 
 #ifdef JPH_ENABLE_ASSERTS
-static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, JPH::uint inLine) {
+static bool AssertFailedImpl(const char* inExpression,
+                             const char* inMessage,
+                             const char* inFile,
+                             JPH::uint inLine) {
   OX_LOG_ERROR("{0}:{1}:{2} {3}", inFile, inLine, inExpression, inMessage != nullptr ? inMessage : "");
   return true;
 };

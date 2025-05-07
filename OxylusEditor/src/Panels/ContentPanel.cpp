@@ -232,7 +232,7 @@ ContentPanel::ContentPanel() :
                 ICON_MDI_FOLDER_STAR,
                 true) {
   const auto& window = App::get()->get_window();
-  const float32 scale = window.get_content_scale();
+  const f32 scale = window.get_content_scale();
   thumbnail_max_limit *= scale;
   thumbnail_size_grid_limit *= scale;
 

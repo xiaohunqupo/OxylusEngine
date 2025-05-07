@@ -1,13 +1,13 @@
 ﻿#pragma once
 
-#include <vuk/Value.hpp>
 #include <vuk/Types.hpp>
+#include <vuk/Value.hpp>
 #include <vuk/runtime/vk/Descriptor.hpp>
 
 namespace ox {
 class SPD {
 public:
-  enum class SPDLoad : uint32 {
+  enum class SPDLoad : u32 {
     Load,
     LinearSampler,
   };
@@ -21,9 +21,12 @@ public:
   SPD() = default;
   ~SPD() = default;
 
-  void init(vuk::Allocator& allocator, Config config);
+  void init(vuk::Allocator& allocator,
+            Config config);
 
-  vuk::Value<vuk::ImageAttachment> dispatch(vuk::Name pass_name, vuk::Allocator& allocator, vuk::Value<vuk::ImageAttachment> image);
+  vuk::Value<vuk::ImageAttachment> dispatch(vuk::Name pass_name,
+                                            vuk::Allocator& allocator,
+                                            vuk::Value<vuk::ImageAttachment> image);
 
 private:
   static constexpr auto SPD_MAX_MIP_LEVELS = 13;

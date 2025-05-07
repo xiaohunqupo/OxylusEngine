@@ -24,7 +24,7 @@ struct Asset {
   };
 
   // Reference count of loads
-  uint64 ref_count = 0;
+  u64 ref_count = 0;
 
   auto is_loaded() const -> bool { return mesh_id != MeshID::Invalid; }
 

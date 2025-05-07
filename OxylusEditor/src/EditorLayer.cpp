@@ -306,7 +306,7 @@ void EditorLayer::open_scene_file_dialog() {
       .kind = DialogKind::OpenFile,
       .user_data = this,
       .callback =
-          [](void* user_data, const char8* const* files, int32) {
+          [](void* user_data, const c8* const* files, i32) {
     auto* layer = static_cast<EditorLayer*>(user_data);
     if (!files || !*files) {
       return;
@@ -368,7 +368,7 @@ void EditorLayer::save_scene_as() {
       .kind = DialogKind::SaveFile,
       .user_data = this,
       .callback =
-          [](void* user_data, const char8* const* files, int32) {
+          [](void* user_data, const c8* const* files, i32) {
     const auto layer = static_cast<EditorLayer*>(user_data);
     if (!files || !*files) {
       return;

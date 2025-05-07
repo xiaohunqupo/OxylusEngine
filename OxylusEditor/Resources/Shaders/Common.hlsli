@@ -244,30 +244,6 @@ struct SceneData {
 
   PackedFloat4 sun_color; // pre-multipled with intensity
 
-  struct Indices {
-    int albedo_image_index;
-    int normal_image_index;
-    int normal_vertex_image_index;
-    int depth_image_index;
-    int bloom_image_index;
-    int mesh_instance_buffer_index;
-    int entites_buffer_index;
-    int materials_buffer_index;
-    int lights_buffer_index;
-    int sky_env_map_index;
-    int sky_transmittance_lut_index;
-    int sky_multiscatter_lut_index;
-    int velocity_image_index;
-    int shadow_array_index;
-    int gtao_buffer_image_index;
-    int hiz_image_index;
-    int vis_image_index;
-    int emission_image_index;
-    int metallic_roughness_ao_image_index;
-    int transforms_buffer_index;
-    int sprite_materials_buffer_index;
-  } indices_;
-
   // TODO: use flags
   struct PostProcessingData {
     int tonemapper;

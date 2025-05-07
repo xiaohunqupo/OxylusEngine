@@ -7,7 +7,7 @@
 #include "SceneRenderer.hpp"
 
 namespace ox {
-enum class SceneID : uint64 { Invalid = std::numeric_limits<uint64>::max() };
+enum class SceneID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class Scene {
 public:
   std::string scene_name = "Untitled";

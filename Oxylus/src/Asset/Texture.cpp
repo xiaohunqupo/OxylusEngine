@@ -22,7 +22,7 @@ void Texture::create(const std::string& path,
 
   const auto is_generic = load_info.mime == TextureLoadInfo::MimeType::Generic;
 
-  std::unique_ptr<uint8[]> stb_data = nullptr;
+  std::unique_ptr<u8[]> stb_data = nullptr;
   std::unique_ptr<ktxTexture2, decltype([](ktxTexture2* p) { ktxTexture_Destroy(ktxTexture(p)); })> ktx_data = {};
 
   uint32_t width = load_info.extent.width, height = load_info.extent.height, chans = {};
@@ -33,7 +33,10 @@ void Texture::create(const std::string& path,
   } else if (!is_generic && !path.empty()) {
     const auto file_data = fs::read_file_binary(path);
     ktxTexture2* ktx{};
-    if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(), file_data.size(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
+    if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(),
+                                                         file_data.size(),
+                                                         KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+                                                         &ktx);
         result != KTX_SUCCESS) {
       OX_LOG_ERROR("Couldn't load KTX2 file {}", ktxErrorString(result));
     }
@@ -44,7 +47,8 @@ void Texture::create(const std::string& path,
     // If the image needs is in a supercompressed encoding, transcode it to a desired format
     if (ktxTexture2_NeedsTranscoding(ktx)) {
       OX_SCOPED_ZONE_N("Transcode KTX 2 Texture");
-      if (const auto result = ktxTexture2_TranscodeBasis(ktx, ktxTranscodeFormat, KTX_TF_HIGH_QUALITY); result != KTX_SUCCESS) {
+      if (const auto result = ktxTexture2_TranscodeBasis(ktx, ktxTranscodeFormat, KTX_TF_HIGH_QUALITY);
+          result != KTX_SUCCESS) {
         OX_LOG_ERROR("Couldn't transcode KTX2 file {}", ktxErrorString(result));
       }
     } else {
@@ -69,7 +73,8 @@ void Texture::create(const std::string& path,
   auto ia = vuk::ImageAttachment::from_preset(load_info.preset, format, {width, height, 1}, vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
 
-  auto [tex, view, fut] = vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, final_data);
+  auto [tex, view, fut] =
+      vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, final_data);
 
   if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
     if (ia.level_count > 1)
@@ -79,8 +84,8 @@ void Texture::create(const std::string& path,
   }
 
   vuk::Compiler compiler{};
-
-  fut.wait(*allocator, compiler);
+  // TODO: Not cool!!
+  fut.as_released(vuk::eFragmentSampled, vuk::DomainFlagBits::eGraphicsQueue).wait(*allocator, compiler);
 
   _image = std::move(tex);
   _view = std::move(view);
@@ -114,11 +119,11 @@ void Texture::set_name(std::string_view name,
   }
 }
 
-Unique<uint8[]> Texture::load_stb_image(const std::string& filename,
-                                        uint32_t* width,
-                                        uint32_t* height,
-                                        uint32_t* bits,
-                                        bool srgb) {
+Unique<u8[]> Texture::load_stb_image(const std::string& filename,
+                                     uint32_t* width,
+                                     uint32_t* height,
+                                     uint32_t* bits,
+                                     bool srgb) {
   const auto filePath = std::filesystem::path(filename);
 
   if (!exists(filePath))
@@ -140,24 +145,28 @@ Unique<uint8[]> Texture::load_stb_image(const std::string& filename,
     *bits = tex_channels * size_of_channel;
 
   const int32_t size = tex_width * tex_height * tex_channels * size_of_channel / 8;
-  auto result = create_unique<uint8_t[]>(size);
+  auto result = create_unique<u8[]>(size);
   memcpy(result.get(), pixels, size);
   stbi_image_free(pixels);
 
   return result;
 }
 
-Unique<uint8[]> Texture::load_stb_image_from_memory(void* buffer,
-                                                    size_t len,
-                                                    uint32_t* width,
-                                                    uint32_t* height,
-                                                    uint32_t* bits,
-                                                    bool flipY,
-                                                    bool srgb) {
+Unique<u8[]> Texture::load_stb_image_from_memory(void* buffer,
+                                                 size_t len,
+                                                 uint32_t* width,
+                                                 uint32_t* height,
+                                                 uint32_t* bits,
+                                                 bool flipY,
+                                                 bool srgb) {
   int tex_width = 0, tex_height = 0, tex_channels = 0;
   int size_of_channel = 8;
-  const auto pixels =
-      stbi_load_from_memory(static_cast<stbi_uc*>(buffer), static_cast<int>(len), &tex_width, &tex_height, &tex_channels, STBI_rgb_alpha);
+  const auto pixels = stbi_load_from_memory(static_cast<stbi_uc*>(buffer),
+                                            static_cast<int>(len),
+                                            &tex_width,
+                                            &tex_height,
+                                            &tex_channels,
+                                            STBI_rgb_alpha);
 
   if (stbi_is_16_bit_from_memory(static_cast<stbi_uc*>(buffer), static_cast<int>(len))) {
     size_of_channel = 16;
@@ -174,31 +183,31 @@ Unique<uint8[]> Texture::load_stb_image_from_memory(void* buffer,
     *bits = tex_channels * size_of_channel;
 
   const int32_t size = tex_width * tex_height * tex_channels * size_of_channel / 8;
-  auto result = create_unique<uint8_t[]>(size);
+  auto result = create_unique<u8[]>(size);
   memcpy(result.get(), pixels, size);
 
   stbi_image_free(pixels);
   return result;
 }
 
-uint8_t* Texture::get_magenta_texture(uint32_t width,
-                                      uint32_t height,
-                                      uint32_t channels) {
+u8* Texture::get_magenta_texture(uint32_t width,
+                                 uint32_t height,
+                                 uint32_t channels) {
   const uint32_t size = width * height * channels;
-  const auto data = new uint8_t[size];
+  const auto data = new u8[size];
 
-  const uint8_t magenta[16] = {255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255};
+  const u8 magenta[16] = {255, 0, 255, 255, 0, 0, 0, 255, 0, 0, 0, 255, 255, 0, 255, 255};
 
   memcpy(data, magenta, size);
 
   return data;
 }
 
-uint8_t* Texture::convert_to_four_channels(uint32_t width,
-                                           uint32_t height,
-                                           const uint8_t* three_channel_data) {
+u8* Texture::convert_to_four_channels(uint32_t width,
+                                      uint32_t height,
+                                      const u8* three_channel_data) {
   const auto bufferSize = width * height * 4;
-  const auto buffer = new uint8_t[bufferSize];
+  const auto buffer = new u8[bufferSize];
   auto* rgba = buffer;
   const auto* rgb = three_channel_data;
   for (uint32_t i = 0; i < width * height; ++i) {

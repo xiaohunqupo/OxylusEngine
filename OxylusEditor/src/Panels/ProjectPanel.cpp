@@ -57,7 +57,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent,
     const auto banner_size = EditorLayer::get()->engine_banner->get_extent();
 
     const auto& window = App::get()->get_window();
-    const float32 scale = window.get_content_scale();
+    const f32 scale = window.get_content_scale();
 
     ui::image(*EditorLayer::get()->engine_banner, {static_cast<float>(banner_size.width) * scale, static_cast<float>(banner_size.height) * scale});
     ui::spacing(2);
@@ -77,7 +77,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent,
               .kind = DialogKind::OpenFolder,
               .user_data = this,
               .callback =
-                  [](void* user_data, const char8* const* files, int32) {
+                  [](void* user_data, const c8* const* files, i32) {
             auto* panel = static_cast<ProjectPanel*>(user_data);
             if (!files || !*files) {
               return;
@@ -131,7 +131,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent,
             .kind = DialogKind::OpenFile,
             .user_data = this,
             .callback =
-                [](void* user_data, const char8* const* files, int32) {
+                [](void* user_data, const c8* const* files, i32) {
           auto* usr_data = static_cast<ProjectPanel*>(user_data);
           if (!files || !*files) {
             return;

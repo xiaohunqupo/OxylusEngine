@@ -8,7 +8,6 @@ struct SampledImage;
 }
 
 namespace ox {
-class VkContext;
 class Scene;
 
 class RenderPipeline {
@@ -26,7 +25,8 @@ public:
   virtual void init(vuk::Allocator& allocator) = 0;
   virtual void shutdown() = 0;
 
-  [[nodiscard]] virtual vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator, const RenderInfo& render_info) = 0;
+  [[nodiscard]] virtual vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator,
+                                                                   const RenderInfo& render_info) = 0;
 
   virtual void on_update(Scene* scene) {}
   virtual void on_submit() {} // TODO: Not called anymore!! Old Code!!

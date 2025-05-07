@@ -19,7 +19,7 @@ class VkContext;
 struct AppCommandLineArgs {
   struct Arg {
     std::string arg_str;
-    uint32 arg_index;
+    u32 arg_index;
   };
 
   std::vector<Arg> args = {};
@@ -28,7 +28,7 @@ struct AppCommandLineArgs {
   AppCommandLineArgs(const int argc,
                      char** argv) {
     for (int i = 0; i < argc; i++)
-      args.emplace_back(Arg{.arg_str = argv[i], .arg_index = (uint32)i});
+      args.emplace_back(Arg{.arg_str = argv[i], .arg_index = (u32)i});
   }
 
   bool contains(const std::string_view arg) const {
@@ -40,7 +40,7 @@ struct AppCommandLineArgs {
     return false;
   }
 
-  std::optional<Arg> get(const uint32 index) const {
+  std::optional<Arg> get(const u32 index) const {
     try {
       return args.at(index);
     } catch ([[maybe_unused]] std::exception& exception) {
@@ -48,7 +48,7 @@ struct AppCommandLineArgs {
     }
   }
 
-  std::optional<uint32> get_index(const std::string_view arg) const {
+  std::optional<u32> get_index(const std::string_view arg) const {
     for (const auto& a : args) {
       if (a.arg_str == arg) {
         return a.arg_index;

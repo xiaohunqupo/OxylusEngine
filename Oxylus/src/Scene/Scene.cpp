@@ -147,7 +147,9 @@ auto Scene::on_runtime_start() -> void {
 
     // Characters
     world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
-        [this](const TransformComponent& tc, CharacterControllerComponent& ch) { create_character_controller(tc, ch); });
+        [this](const TransformComponent& tc, CharacterControllerComponent& ch) {
+      create_character_controller(tc, ch);
+    });
 
     physics_system->OptimizeBroadPhase();
   }
@@ -155,7 +157,8 @@ auto Scene::on_runtime_start() -> void {
   // Scripting
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_init");
-    world.query_builder<const LuaScriptComponent>().build().each([this](const flecs::entity& e, const LuaScriptComponent& lsc) {
+    world.query_builder<const LuaScriptComponent>().build().each(
+        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
       for (const auto& script : lsc.lua_systems) {
         script->reload();
         script->on_init(this, e);
@@ -165,7 +168,8 @@ auto Scene::on_runtime_start() -> void {
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_init");
-    world.query_builder<const CPPScriptComponent>().build().each([this](const flecs::entity& e, const CPPScriptComponent& csc) {
+    world.query_builder<const CPPScriptComponent>().build().each(
+        [this](const flecs::entity& e, const CPPScriptComponent& csc) {
       for (const auto& script : csc.systems) {
         script->on_init(this, e);
       }
@@ -181,7 +185,8 @@ auto Scene::on_runtime_stop() -> void {
   // Physics
   {
     const auto physics = App::get_system<Physics>(EngineSystems::Physics);
-    world.query_builder<RigidbodyComponent>().build().each([physics](const flecs::entity& e, const RigidbodyComponent& rb) {
+    world.query_builder<RigidbodyComponent>().build().each(
+        [physics](const flecs::entity& e, const RigidbodyComponent& rb) {
       if (rb.runtime_body) {
         JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
         const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
@@ -189,7 +194,8 @@ auto Scene::on_runtime_stop() -> void {
         body_interface.DestroyBody(body->GetID());
       }
     });
-    world.query_builder<CharacterControllerComponent>().build().each([physics](const flecs::entity& e, CharacterControllerComponent& ch) {
+    world.query_builder<CharacterControllerComponent>().build().each(
+        [physics](const flecs::entity& e, CharacterControllerComponent& ch) {
       if (ch.character) {
         JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
         body_interface.RemoveBody(ch.character->GetBodyID());
@@ -206,7 +212,8 @@ auto Scene::on_runtime_stop() -> void {
   // Scripting
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_release");
-    world.query_builder<const LuaScriptComponent>().build().each([this](const flecs::entity& e, const LuaScriptComponent& lsc) {
+    world.query_builder<const LuaScriptComponent>().build().each(
+        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
       for (const auto& script : lsc.lua_systems) {
         script->on_release(this, e);
       }
@@ -215,7 +222,8 @@ auto Scene::on_runtime_stop() -> void {
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_release");
-    world.query_builder<const CPPScriptComponent>().build().each([this](const flecs::entity& e, const CPPScriptComponent& csc) {
+    world.query_builder<const CPPScriptComponent>().build().each(
+        [this](const flecs::entity& e, const CPPScriptComponent& csc) {
       for (const auto& script : csc.systems) {
         script->on_release(this, e);
       }
@@ -241,7 +249,8 @@ auto Scene::get_world_transform(const flecs::entity entity) const -> glm::mat4 {
 
 auto Scene::get_local_transform(flecs::entity entity) const -> glm::mat4 {
   const auto* tc = entity.get<TransformComponent>();
-  return glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) * glm::scale(glm::mat4(1.0f), tc->scale);
+  return glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) *
+         glm::scale(glm::mat4(1.0f), tc->scale);
 }
 
 auto Scene::on_contact_added(const JPH::Body& body1,
@@ -327,7 +336,9 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::BoxShapeSettings shape_settings({glm::abs(scale.x), glm::abs(scale.y), glm::abs(scale.z)}, 0.05f, mat);
     shape_settings.SetDensity(glm::max(0.001f, bc->density));
 
-    compound_shape_settings.AddShape({bc->offset.x, bc->offset.y, bc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({bc->offset.x, bc->offset.y, bc->offset.z},
+                                     JPH::Quat::sIdentity(),
+                                     shape_settings.Create().Get());
   }
 
   if (const auto* sc = entity.get<SphereColliderComponent>()) {
@@ -337,7 +348,9 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::SphereShapeSettings shape_settings(glm::max(0.01f, radius), mat);
     shape_settings.SetDensity(glm::max(0.001f, sc->density));
 
-    compound_shape_settings.AddShape({sc->offset.x, sc->offset.y, sc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({sc->offset.x, sc->offset.y, sc->offset.z},
+                                     JPH::Quat::sIdentity(),
+                                     shape_settings.Create().Get());
   }
 
   if (const auto* cc = entity.get<CapsuleColliderComponent>()) {
@@ -347,7 +360,9 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::CapsuleShapeSettings shape_settings(glm::max(0.01f, cc->height) * 0.5f, glm::max(0.01f, radius), mat);
     shape_settings.SetDensity(glm::max(0.001f, cc->density));
 
-    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z},
+                                     JPH::Quat::sIdentity(),
+                                     shape_settings.Create().Get());
   }
 
   if (const auto* tcc = entity.get<TaperedCapsuleColliderComponent>()) {
@@ -361,7 +376,9 @@ auto Scene::create_rigidbody(flecs::entity entity,
                                                     mat);
     shape_settings.SetDensity(glm::max(0.001f, tcc->density));
 
-    compound_shape_settings.AddShape({tcc->offset.x, tcc->offset.y, tcc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({tcc->offset.x, tcc->offset.y, tcc->offset.z},
+                                     JPH::Quat::sIdentity(),
+                                     shape_settings.Create().Get());
   }
 
   if (const auto* cc = entity.get<CylinderColliderComponent>()) {
@@ -371,14 +388,17 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::CylinderShapeSettings shape_settings(glm::max(0.01f, cc->height) * 0.5f, glm::max(0.01f, radius), 0.05f, mat);
     shape_settings.SetDensity(glm::max(0.001f, cc->density));
 
-    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
+    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z},
+                                     JPH::Quat::sIdentity(),
+                                     shape_settings.Create().Get());
   }
 
   if (const auto* mc = entity.get<MeshColliderComponent>()) {
     if (const auto* mesh_component = entity.get<MeshComponent>()) {
       const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), mc->friction, mc->restitution);
 
-      // TODO: We should only get the vertices and indices for this particular MeshComponent using MeshComponent::node_index
+      // TODO: We should only get the vertices and indices for this particular MeshComponent using
+      // MeshComponent::node_index
 #if 0
       auto vertices = mesh_component->mesh_base->_vertices;
       const auto& indices = mesh_component->mesh_base->_indices;
@@ -423,7 +443,7 @@ auto Scene::create_rigidbody(flecs::entity entity,
   // Body
   auto rotation = glm::quat(transform.rotation);
 
-  uint8_t layer_index = 1; // Default Layer
+  u8 layer_index = 1; // Default Layer
   if (auto layer_component = entity.get<LayerComponent>()) {
     const auto collision_mask_it = physics->layer_collision_mask.find(layer_component->layer);
     if (collision_mask_it != physics->layer_collision_mask.end())
@@ -451,11 +471,12 @@ auto Scene::create_rigidbody(flecs::entity entity,
 
   JPH::Body* body = body_interface.CreateBody(body_settings);
 
-  JPH::EActivation activation =
-      component.awake && component.type != RigidbodyComponent::BodyType::Static ? JPH::EActivation::Activate : JPH::EActivation::DontActivate;
+  JPH::EActivation activation = component.awake && component.type != RigidbodyComponent::BodyType::Static
+                                  ? JPH::EActivation::Activate
+                                  : JPH::EActivation::DontActivate;
   body_interface.AddBody(body->GetID(), activation);
 
-  body->SetUserData((uint64)entity);
+  body->SetUserData((u64)entity);
 
   component.runtime_body = body;
 }
@@ -470,9 +491,10 @@ void Scene::create_character_controller(const TransformComponent& transform,
 
   const auto position = JPH::Vec3(transform.position.x, transform.position.y, transform.position.z);
   const auto capsule_shape =
-      JPH::RotatedTranslatedShapeSettings(JPH::Vec3(0, 0.5f * component.character_height_standing + component.character_radius_standing, 0),
-                                          JPH::Quat::sIdentity(),
-                                          new JPH::CapsuleShape(0.5f * component.character_height_standing, component.character_radius_standing))
+      JPH::RotatedTranslatedShapeSettings(
+          JPH::Vec3(0, 0.5f * component.character_height_standing + component.character_radius_standing, 0),
+          JPH::Quat::sIdentity(),
+          new JPH::CapsuleShape(0.5f * component.character_height_standing, component.character_radius_standing))
           .Create()
           .Get();
 
@@ -481,10 +503,12 @@ void Scene::create_character_controller(const TransformComponent& transform,
   settings->mMaxSlopeAngle = JPH::DegreesToRadians(45.0f);
   settings->mLayer = PhysicsLayers::MOVING;
   settings->mShape = capsule_shape;
-  settings->mFriction = 0.0f;                                                     // For now this is not set.
-  settings->mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(),
-                                           -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
-  component.character = create_shared<JPH::Character>(settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
+  settings->mFriction = 0.0f;                           // For now this is not set.
+  settings->mSupportingVolume =
+      JPH::Plane(JPH::Vec3::sAxisY(),
+                 -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
+  component.character =
+      create_shared<JPH::Character>(settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
   component.character->AddToPhysicsSystem(JPH::EActivation::Activate);
 }
 
@@ -527,11 +551,11 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
         writer.String(member_name.data());
         std::visit(ox::match{
                        [](const auto&) {},
-                       [&](const float32* v) { writer.Double(*v); },
-                       [&](const int32* v) { writer.Int(*v); },
-                       [&](const uint32* v) { writer.Uint(*v); },
-                       [&](const int64* v) { writer.Int64(*v); },
-                       [&](const uint64* v) { writer.Uint64(*v); },
+                       [&](const f32* v) { writer.Double(*v); },
+                       [&](const i32* v) { writer.Int(*v); },
+                       [&](const u32* v) { writer.Uint(*v); },
+                       [&](const i64* v) { writer.Uint64(*v); },
+                       [&](const u64* v) { writer.Uint64(*v); },
                        [&](const glm::vec2* v) { serialize_vec2(writer, *v); },
                        [&](const glm::vec3* v) { serialize_vec3(writer, *v); },
                        [&](const glm::vec4* v) { serialize_vec4(writer, *v); },
@@ -627,11 +651,11 @@ auto json_to_entity(Scene& self,
 
       auto match_result = ox::match{
           [](const auto&) {},
-          [&](float32* v) { *v = member_json.GetFloat(); },
-          [&](int32* v) { *v = member_json.GetInt(); },
-          [&](uint32* v) { *v = member_json.GetUint(); },
-          [&](int64* v) { *v = member_json.GetInt64(); },
-          [&](uint64* v) { *v = member_json.GetUint64(); },
+          [&](f32* v) { *v = member_json.GetFloat(); },
+          [&](i32* v) { *v = member_json.GetInt(); },
+          [&](u32* v) { *v = member_json.GetUint(); },
+          [&](i64* v) { *v = member_json.GetInt64(); },
+          [&](u64* v) { *v = member_json.GetUint64(); },
           [&](glm::vec2* v) { deserialize_vec2(member_json.GetArray(), v); },
           [&](glm::vec3* v) { deserialize_vec3(member_json.GetArray(), v); },
           [&](glm::vec4* v) { deserialize_vec4(member_json.GetArray(), v); },

@@ -65,7 +65,8 @@ void ui::begin_property_grid(const char* label,
 
   ImGui::PushID(label);
   if (align_text_right) {
-    const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x - ImGui::GetScrollX();
+    const auto posX =
+        ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x - ImGui::GetScrollX();
     if (posX > ImGui::GetCursorPosX())
       ImGui::SetCursorPosX(posX);
   }
@@ -232,7 +233,8 @@ bool ui::texture_property(const char* label,
   const ImVec2 x_button_size = {button_size / 4.0f, button_size};
   const float tooltip_size = frame_height * 11.0f;
 
-  ImGui::SetCursorPos({ImGui::GetContentRegionMax().x - button_size - x_button_size.x, ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y});
+  ImGui::SetCursorPos({ImGui::GetContentRegionMax().x - button_size - x_button_size.x,
+                       ImGui::GetCursorPosY() + ImGui::GetStyle().FramePadding.y});
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
   ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.25f, 0.25f, 0.25f, 1.0f});
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.35f, 0.35f, 0.35f, 1.0f});
@@ -245,7 +247,7 @@ bool ui::texture_property(const char* label,
         .kind = DialogKind::OpenFile,
         .user_data = &asset,
         .callback =
-            [](void* user_data, const char8* const* files, int32) {
+            [](void* user_data, const c8* const* files, i32) {
       auto* usr_d = static_cast<UUID*>(user_data);
       if (!files || !*files) {
         return;
@@ -258,6 +260,7 @@ bool ui::texture_property(const char* label,
       if (!path.empty()) {
         auto* asset_man = App::get_asset_manager();
         *usr_d = asset_man->create_asset(AssetType::Texture, path);
+        asset_man->load_texture(*usr_d);
       }
     },
         .title = "Texture file",
@@ -268,22 +271,24 @@ bool ui::texture_property(const char* label,
   };
 
   auto* asset_man = App::get_asset_manager();
-  if (texture_uuid) {
-    auto texture = asset_man->get_texture(texture_uuid);
-    auto texture_asset = asset_man->get_asset(texture_uuid);
+  auto* texture_asset = asset_man->get_asset(texture_uuid);
 
-    // rect button with the texture
-    if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(*texture), {button_size, button_size})) {
-      texture_load_func(new_asset);
-      changed = true;
-    }
-    // tooltip
-    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
-      ImGui::BeginTooltip();
-      ImGui::TextUnformatted(texture_asset->path.c_str());
-      ImGui::Spacing();
-      ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture), {tooltip_size, tooltip_size});
-      ImGui::EndTooltip();
+  // rect button with the texture
+  if (texture_asset) {
+    auto texture = asset_man->get_texture(texture_uuid);
+    if (texture) {
+      if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(*texture), {button_size, button_size})) {
+        texture_load_func(new_asset);
+        changed = true;
+      }
+      // tooltip
+      if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
+        ImGui::BeginTooltip();
+        ImGui::TextUnformatted(texture_asset->path.c_str());
+        ImGui::Spacing();
+        ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture), {tooltip_size, tooltip_size});
+        ImGui::EndTooltip();
+      }
     }
   } else {
     if (ImGui::Button("NO\nTEXTURE", {button_size, button_size})) {
@@ -296,6 +301,7 @@ bool ui::texture_property(const char* label,
       const auto path = get_path_from_imgui_payload(payload);
       auto* asset_man = App::get_asset_manager();
       *new_asset = asset_man->create_asset(AssetType::Texture, path);
+      asset_man->load_texture(*new_asset, {});
       changed = true;
     }
     ImGui::EndDragDropTarget();
@@ -582,7 +588,15 @@ void ui::clipped_text(const ImVec2& pos_min,
 
   const ImGuiContext& g = *GImGui;
   const ImGuiWindow* window = g.CurrentWindow;
-  clipped_text(window->DrawList, pos_min, pos_max, text, text_display_end, text_size_if_known, align, clip_rect, wrap_width);
+  clipped_text(window->DrawList,
+               pos_min,
+               pos_max,
+               text,
+               text_display_end,
+               text_size_if_known,
+               align,
+               clip_rect,
+               wrap_width);
   if (g.LogEnabled)
     ImGui::LogRenderedText(&pos_min, text, text_display_end);
 }
@@ -598,12 +612,14 @@ void ui::clipped_text(ImDrawList* draw_list,
                       const float wrap_width) {
   // Perform CPU side clipping for single clipped element to avoid ui::using scissor state
   ImVec2 pos = pos_min;
-  const ImVec2 text_size = text_size_if_known ? *text_size_if_known : ImGui::CalcTextSize(text, text_display_end, false, wrap_width);
+  const ImVec2 text_size =
+      text_size_if_known ? *text_size_if_known : ImGui::CalcTextSize(text, text_display_end, false, wrap_width);
 
   const ImVec2* clip_min = clip_rect ? &clip_rect->Min : &pos_min;
   const ImVec2* clip_max = clip_rect ? &clip_rect->Max : &pos_max;
 
-  // Align whole block. We should defer that to the better rendering function when we'll have support for individual line alignment.
+  // Align whole block. We should defer that to the better rendering function when we'll have support for individual
+  // line alignment.
   if (align.x > 0.0f)
     pos.x = ImMax(pos.x, pos.x + (pos_max.x - pos.x - text_size.x) * align.x);
 
@@ -612,7 +628,14 @@ void ui::clipped_text(ImDrawList* draw_list,
 
   // Render
   const ImVec4 fine_clip_rect(clip_min->x, clip_min->y, clip_max->x, clip_max->y);
-  draw_list->AddText(nullptr, 0.0f, pos, ImGui::GetColorU32(ImGuiCol_Text), text, text_display_end, wrap_width, &fine_clip_rect);
+  draw_list->AddText(nullptr,
+                     0.0f,
+                     pos,
+                     ImGui::GetColorU32(ImGuiCol_Text),
+                     text,
+                     text_display_end,
+                     wrap_width,
+                     &fine_clip_rect);
 }
 
 void ui::spacing(const uint32_t count) {
@@ -625,7 +648,9 @@ void ui::align_right(float item_width) {
     ImGui::SetCursorPosX(posX);
 }
 
-std::string ui::get_path_from_imgui_payload(const ImGuiPayload* payload) { return std::string(static_cast<const char*>(payload->Data)); }
+std::string ui::get_path_from_imgui_payload(const ImGuiPayload* payload) {
+  return std::string(static_cast<const char*>(payload->Data));
+}
 
 void ui::draw_gradient_shadow_bottom(const float scale) {
   const auto draw_list = ImGui::GetWindowDrawList();
@@ -652,8 +677,9 @@ void ui::draw_framerate_overlay(const ImVec2 work_pos,
                                 const ImVec2 padding,
                                 bool* visible) {
   static int corner = 1;
-  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_AlwaysAutoResize |
-                                  ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
+  ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
+                                  ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                                  ImGuiWindowFlags_NoFocusOnAppearing | ImGuiWindowFlags_NoNav;
   if (corner != -1) {
     const ImGuiViewport* viewport = ImGui::GetMainViewport();
     ImVec2 window_pos, window_pos_pivot;

@@ -26,7 +26,8 @@ static VkBool32 debug_callback(const VkDebugUtilsMessageSeverityFlagBitsEXT mess
   }
 
   std::stringstream debug_message;
-  debug_message << prefix << "[" << pCallbackData->messageIdNumber << "][" << pCallbackData->pMessageIdName << "] : " << pCallbackData->pMessage;
+  debug_message << prefix << "[" << pCallbackData->messageIdNumber << "][" << pCallbackData->pMessageIdName
+                << "] : " << pCallbackData->pMessage;
 
   if (messageSeverity & VK_DEBUG_UTILS_MESSAGE_SEVERITY_VERBOSE_BIT_EXT) {
     OX_LOG_INFO("{}", debug_message.str());
@@ -96,11 +97,15 @@ vuk::Swapchain make_swapchain(vuk::Allocator& allocator,
   return std::move(*old_swapchain);
 }
 
-void VkContext::handle_resize(uint32 width, uint32 height) {
+VkContext::~VkContext() { runtime->wait_idle(); }
+
+void VkContext::handle_resize(u32 width,
+                              u32 height) {
   if (width == 0 && height == 0) {
     suspend = true;
   } else {
-    swapchain = make_swapchain(*superframe_allocator, vkb_device, swapchain->surface, std::move(swapchain), present_mode);
+    swapchain =
+        make_swapchain(*superframe_allocator, vkb_device, swapchain->surface, std::move(swapchain), present_mode);
   }
 }
 
@@ -111,24 +116,27 @@ void VkContext::set_vsync(bool enable) {
 
 bool VkContext::is_vsync() const { return present_mode == vuk::PresentModeKHR::eFifo; }
 
-void VkContext::create_context(const Window& window, bool vulkan_validation_layers) {
+void VkContext::create_context(const Window& window,
+                               bool vulkan_validation_layers) {
   OX_SCOPED_ZONE;
   vkb::InstanceBuilder builder;
   builder.set_app_name("Oxylus").set_engine_name("Oxylus").require_api_version(1, 3, 0).set_app_version(0, 1, 0);
 
   if (vulkan_validation_layers) {
     OX_LOG_INFO("Enabled vulkan validation layers.");
-    builder.request_validation_layers().set_debug_callback([](const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
-                                                              const VkDebugUtilsMessageTypeFlagsEXT messageType,
-                                                              const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
-                                                              void* pUserData) -> VkBool32 {
+    builder.request_validation_layers().set_debug_callback(
+        [](const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,
+           const VkDebugUtilsMessageTypeFlagsEXT messageType,
+           const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
+           void* pUserData) -> VkBool32 {
       return debug_callback(messageSeverity, messageType, pCallbackData, pUserData);
     });
   }
 
   auto inst_ret = builder.build();
   if (!inst_ret) {
-    OX_LOG_ERROR("Couldn't initialize the instance! Make sure your GPU drivers are up to date and it supports Vulkan 1.3");
+    OX_LOG_ERROR(
+        "Couldn't initialize the instance! Make sure your GPU drivers are up to date and it supports Vulkan 1.3");
   }
 
   vkb_instance = inst_ret.value();
@@ -136,11 +144,11 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   vkb::PhysicalDeviceSelector selector{vkb_instance};
   surface = window.get_surface(instance);
   selector.set_surface(surface)
-    .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-    .require_present()
-    .set_minimum_version(1, 2)
-    .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
-    .add_required_extension(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
+      .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
+      .require_present()
+      .set_minimum_version(1, 2)
+      .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
+      .add_required_extension(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
 
   VkPhysicalDeviceFeatures2 vk10features{};
   vk10features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -219,8 +227,16 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   fps.load_pfns(instance, device, true);
   std::vector<std::unique_ptr<vuk::Executor>> executors;
 
-  executors.push_back(create_vkqueue_executor(fps, device, graphics_queue, graphics_queue_family_index, vuk::DomainFlagBits::eGraphicsQueue));
-  executors.push_back(create_vkqueue_executor(fps, device, transfer_queue, transfer_queue_family_index, vuk::DomainFlagBits::eTransferQueue));
+  executors.push_back(create_vkqueue_executor(fps,
+                                              device,
+                                              graphics_queue,
+                                              graphics_queue_family_index,
+                                              vuk::DomainFlagBits::eGraphicsQueue));
+  executors.push_back(create_vkqueue_executor(fps,
+                                              device,
+                                              transfer_queue,
+                                              transfer_queue_family_index,
+                                              vuk::DomainFlagBits::eTransferQueue));
   executors.push_back(std::make_unique<vuk::ThisThreadExecutor>());
 
   runtime.emplace(vuk::RuntimeCreateParameters{instance, device, physical_device, std::move(executors), fps});
@@ -259,7 +275,8 @@ vuk::Value<vuk::ImageAttachment> VkContext::new_frame() {
   return acquired_image;
 }
 
-void VkContext::end_frame(vuk::Allocator& frame_allocator_, vuk::Value<vuk::ImageAttachment> target_) {
+void VkContext::end_frame(vuk::Allocator& frame_allocator_,
+                          vuk::Value<vuk::ImageAttachment> target_) {
   auto entire_thing = vuk::enqueue_presentation(std::move(target_));
   vuk::ProfilingCallbacks cbs = tracy_profiler->setup_vuk_callback();
   entire_thing.submit(frame_allocator_, compiler, {.graph_label = {}, .callbacks = cbs});

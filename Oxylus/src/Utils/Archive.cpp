@@ -7,7 +7,10 @@ static constexpr uint64_t ARCHIVE_VERSION = 0;
 
 Archive::Archive() { create_empty(); }
 
-Archive::Archive(const std::string& file_name_, bool read_mode_) : read_mode(read_mode_), file_name(file_name_) {
+Archive::Archive(const std::string& file_name_,
+                 bool read_mode_) :
+    read_mode(read_mode_),
+    file_name(file_name_) {
   if (!file_name.empty()) {
     directory = fs::get_directory(file_name);
     if (read_mode) {
@@ -21,12 +24,12 @@ Archive::Archive(const std::string& file_name_, bool read_mode_) : read_mode(rea
   }
 }
 
-Archive::Archive(const uint8_t* data) {
+Archive::Archive(const u8* data) {
   data_ptr = data;
   set_read_mode_and_reset_pos(true);
 }
 
-void Archive::write_data(std::vector<uint8_t>& dest) const {
+void Archive::write_data(std::vector<u8>& dest) const {
   dest.resize(pos);
   std::memcpy(dest.data(), data_ptr, pos);
 }
@@ -58,7 +61,8 @@ void Archive::close() {
 
 bool Archive::save_file(const std::string_view file_path) const { return fs::write_file_binary(file_path, _data); }
 
-bool Archive::save_header_file(const std::string_view file_path, const std::string_view data_name) const {
+bool Archive::save_header_file(const std::string_view file_path,
+                               const std::string_view data_name) const {
   return fs::binary_to_header(file_path, data_name, _data);
 }
 

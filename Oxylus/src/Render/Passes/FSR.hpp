@@ -16,11 +16,13 @@ public:
   ~FSR() = default;
 
   glm::vec2 get_jitter() const;
-  vuk::Extent3D get_render_res() const { return _render_res;}
-  vuk::Extent3D get_present_res() const { return _present_res;}
+  vuk::Extent3D get_render_res() const { return _render_res; }
+  vuk::Extent3D get_present_res() const { return _present_res; }
 
-  void load_pipelines(vuk::Allocator& allocator, vuk::PipelineBaseCreateInfo& pipeline_ci);
-  void create_fs2_resources(vuk::Extent3D render_resolution, vuk::Extent3D presentation_resolution);
+  void load_pipelines(vuk::Allocator& allocator,
+                      vuk::PipelineBaseCreateInfo& pipeline_ci);
+  void create_fs2_resources(vuk::Extent3D render_resolution,
+                            vuk::Extent3D presentation_resolution);
   vuk::Value<vuk::ImageAttachment> dispatch(vuk::Value<vuk::ImageAttachment>& input_color_post_alpha,
                                             vuk::Value<vuk::ImageAttachment>& input_color_pre_alpha,
                                             vuk::Value<vuk::ImageAttachment>& output,
@@ -29,15 +31,15 @@ public:
                                             CameraComponent& camera,
                                             double dt,
                                             float sharpness,
-                                            uint32 frame_index);
+                                            u32 frame_index);
 
 private:
   struct Fsr2Constants {
     int renderSize[2];
     int displaySize[2];
-    uint32 lumaMipDimensions[2];
-    uint32 lumaMipLevelToUse;
-    uint32 frameIndex;
+    u32 lumaMipDimensions[2];
+    u32 lumaMipLevelToUse;
+    u32 frameIndex;
     float displaySizeRcp[2];
     float jitterOffset[2];
     float deviceToViewDepth[4];

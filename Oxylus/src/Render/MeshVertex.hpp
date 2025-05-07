@@ -4,7 +4,7 @@
 namespace ox {
 struct Vertex {
   glm::vec3 position;
-  uint32 normal;
+  u32 normal;
   glm::vec2 uv;
 };
 

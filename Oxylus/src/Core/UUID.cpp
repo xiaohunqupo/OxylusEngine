@@ -5,16 +5,18 @@
 namespace ox {
 thread_local std::random_device uuid_random_device;
 thread_local std::mt19937_64 uuid_random_engine(uuid_random_device());
-thread_local std::uniform_int_distribution<uint64> uuid_uniform_dist;
+thread_local std::uniform_int_distribution<u64> uuid_uniform_dist;
 
-constexpr bool is_hex_digit(char c) { return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f'); }
+constexpr bool is_hex_digit(char c) {
+  return (c >= '0' && c <= '9') || (c >= 'A' && c <= 'F') || (c >= 'a' && c <= 'f');
+}
 
-constexpr uint8 hex_to_u8(char c) {
+constexpr u8 hex_to_u8(char c) {
   if (c >= '0' && c <= '9') {
-    return static_cast<uint8>(c - '0');
+    return static_cast<u8>(c - '0');
   }
 
-  return (c >= 'A' && c <= 'F') ? static_cast<uint8>(c - 'A' + 10) : static_cast<uint8>(c - 'a' + 10);
+  return (c >= 'A' && c <= 'F') ? static_cast<u8>(c - 'A' + 10) : static_cast<u8>(c - 'a' + 10);
 }
 
 UUID UUID::generate_random() {
@@ -37,8 +39,8 @@ option<UUID> UUID::from_string(std::string_view str) {
     return nullopt;
   }
 
-  auto convert_segment = [](std::string_view target, usize offset, usize length) -> option<uint64> {
-    uint64 val = 0;
+  auto convert_segment = [](std::string_view target, usize offset, usize length) -> option<u64> {
+    u64 val = 0;
     for (usize i = 0; i < length; i++) {
       auto c = target[offset + i];
       if (!is_hex_digit(c)) {
@@ -69,10 +71,10 @@ std::string UUID::str() const {
   OX_SCOPED_ZONE;
 
   return fmt::format("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
-                     static_cast<uint32>(this->m_data.u64x2[0] >> 32_u64),
-                     static_cast<uint32>((this->m_data.u64x2[0] >> 16_u64) & 0x0000ffff_u64),
-                     static_cast<uint32>(this->m_data.u64x2[0] & 0x0000ffff_u64),
-                     static_cast<uint32>(this->m_data.u64x2[1] >> 48_u64),
+                     static_cast<u32>(this->m_data.u64x2[0] >> 32_u64),
+                     static_cast<u32>((this->m_data.u64x2[0] >> 16_u64) & 0x0000ffff_u64),
+                     static_cast<u32>(this->m_data.u64x2[0] & 0x0000ffff_u64),
+                     static_cast<u32>(this->m_data.u64x2[1] >> 48_u64),
                      this->m_data.u64x2[1] & 0x0000ffffffffffff_u64);
 }
 

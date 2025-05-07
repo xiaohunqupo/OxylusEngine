@@ -14,17 +14,17 @@
 namespace ox {
 template <>
 struct Handle<Window>::Impl {
-  uint32 width = {};
-  uint32 height = {};
+  u32 width = {};
+  u32 height = {};
 
   WindowCursor current_cursor = WindowCursor::Arrow;
   glm::uvec2 cursor_position = {};
 
   SDL_Window* handle = nullptr;
-  uint32 monitor_id = {};
+  u32 monitor_id = {};
   std::array<SDL_Cursor*, static_cast<usize>(WindowCursor::Count)> cursors = {};
-  float32 content_scale = {};
-  float32 refresh_rate = {};
+  f32 content_scale = {};
+  f32 refresh_rate = {};
 };
 
 Window Window::create(const WindowInfo& info) {
@@ -41,10 +41,10 @@ Window Window::create(const WindowInfo& info) {
     return Handle(nullptr);
   }
 
-  int32 new_pos_y = SDL_WINDOWPOS_UNDEFINED;
-  int32 new_pos_x = SDL_WINDOWPOS_UNDEFINED;
-  int32 new_width = static_cast<int32>(info.width);
-  int32 new_height = static_cast<int32>(info.height);
+  i32 new_pos_y = SDL_WINDOWPOS_UNDEFINED;
+  i32 new_pos_x = SDL_WINDOWPOS_UNDEFINED;
+  i32 new_width = static_cast<i32>(info.width);
+  i32 new_height = static_cast<i32>(info.height);
 
   if (info.flags & WindowFlag::WorkAreaRelative) {
     new_pos_x = display->work_area.x;
@@ -56,7 +56,7 @@ Window Window::create(const WindowInfo& info) {
     new_pos_y = SDL_WINDOWPOS_CENTERED;
   }
 
-  uint32 window_flags = SDL_WINDOW_VULKAN;
+  u32 window_flags = SDL_WINDOW_VULKAN;
   if (info.flags & WindowFlag::Resizable) {
     window_flags |= SDL_WINDOW_RESIZABLE;
   }
@@ -70,8 +70,8 @@ Window Window::create(const WindowInfo& info) {
   }
 
   const auto impl = new Impl;
-  impl->width = static_cast<uint32>(new_width);
-  impl->height = static_cast<uint32>(new_height);
+  impl->width = static_cast<u32>(new_width);
+  impl->height = static_cast<u32>(new_height);
   impl->monitor_id = info.monitor;
   impl->content_scale = display->content_scale;
   impl->refresh_rate = display->refresh_rate;
@@ -87,16 +87,16 @@ Window Window::create(const WindowInfo& info) {
   SDL_DestroyProperties(window_properties);
 
   impl->cursors = {
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED),
-    SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_DEFAULT),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_TEXT),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_MOVE),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NS_RESIZE),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_EW_RESIZE),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NESW_RESIZE),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NWSE_RESIZE),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_POINTER),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_NOT_ALLOWED),
+      SDL_CreateSystemCursor(SDL_SYSTEM_CURSOR_CROSSHAIR),
   };
 
   void* image_data = nullptr;
@@ -115,8 +115,8 @@ Window Window::create(const WindowInfo& info) {
     stbi_image_free(image_data);
   }
 
-  int32 real_width;
-  int32 real_height;
+  i32 real_width;
+  i32 real_height;
   SDL_GetWindowSizeInPixels(impl->handle, &real_width, &real_height);
   SDL_StartTextInput(impl->handle);
 
@@ -185,8 +185,8 @@ void Window::poll(const WindowCallbacks& callbacks) const {
   }
 }
 
-option<SystemDisplay> Window::display_at(const uint32 monitor_id) {
-  int32 display_count = 0;
+option<SystemDisplay> Window::display_at(const u32 monitor_id) {
+  i32 display_count = 0;
   auto* display_ids = SDL_GetDisplays(&display_count);
   OX_DEFER(&) { SDL_free(display_ids); };
 
@@ -217,12 +217,12 @@ option<SystemDisplay> Window::display_at(const uint32 monitor_id) {
   }
 
   return SystemDisplay{
-    .name = monitor_name,
-    .position = {position_bounds.x, position_bounds.y},
-    .work_area = {work_bounds.x, work_bounds.y, work_bounds.w, work_bounds.h},
-    .resolution = {display_mode->w, display_mode->h},
-    .refresh_rate = display_mode->refresh_rate,
-    .content_scale = scale,
+      .name = monitor_name,
+      .position = {position_bounds.x, position_bounds.y},
+      .work_area = {work_bounds.x, work_bounds.y, work_bounds.w, work_bounds.h},
+      .resolution = {display_mode->w, display_mode->h},
+      .refresh_rate = display_mode->refresh_rate,
+      .content_scale = scale,
   };
 }
 
@@ -239,7 +239,7 @@ void Window::show_dialog(const ShowDialogInfo& info) const {
   OX_DEFER(&) { SDL_DestroyProperties(props); };
 
   SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_FILTERS_POINTER, sdl_filters.data());
-  SDL_SetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, static_cast<int32>(sdl_filters.size()));
+  SDL_SetNumberProperty(props, SDL_PROP_FILE_DIALOG_NFILTERS_NUMBER, static_cast<i32>(sdl_filters.size()));
   SDL_SetPointerProperty(props, SDL_PROP_FILE_DIALOG_WINDOW_POINTER, impl->handle);
   SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_LOCATION_STRING, info.default_path.c_str());
   SDL_SetBooleanProperty(props, SDL_PROP_FILE_DIALOG_MANY_BOOLEAN, info.multi_select);
@@ -278,12 +278,12 @@ VkSurfaceKHR Window::get_surface(VkInstance instance) const {
   return surface;
 }
 
-uint32 Window::get_width() const {
+u32 Window::get_width() const {
   OX_SCOPED_ZONE
   return impl->width;
 }
 
-uint32 Window::get_height() const {
+u32 Window::get_height() const {
   OX_SCOPED_ZONE
   return impl->height;
 }
@@ -303,7 +303,5 @@ float Window::get_refresh_rate() const {
   return impl->refresh_rate;
 }
 
-void Window::set_mouse_position(const glm::vec2 position) const {
-  SDL_WarpMouseInWindow(impl->handle, position.x, position.y);
-}
+void Window::set_mouse_position(const glm::vec2 position) const { SDL_WarpMouseInWindow(impl->handle, position.x, position.y); }
 } // namespace ox

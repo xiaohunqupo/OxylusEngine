@@ -3,7 +3,6 @@
 #include <vuk/vsl/Core.hpp>
 
 #include "Core/App.hpp"
-
 #include "Utils/OxMath.hpp"
 #include "Vulkan/VkContext.hpp"
 
@@ -51,7 +50,10 @@ void DebugRenderer::reset(bool clear_depth_tested) {
   }
 }
 
-void DebugRenderer::draw_point(const glm::vec3& pos, float point_radius, const glm::vec4& color, bool depth_tested) {
+void DebugRenderer::draw_point(const glm::vec3& pos,
+                               float point_radius,
+                               const glm::vec4& color,
+                               bool depth_tested) {
   OX_SCOPED_ZONE;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_points.emplace_back(Point{pos, color, point_radius});
@@ -59,7 +61,11 @@ void DebugRenderer::draw_point(const glm::vec3& pos, float point_radius, const g
     instance->draw_list.debug_points.emplace_back(Point{pos, color, point_radius});
 }
 
-void DebugRenderer::draw_line(const glm::vec3& start, const glm::vec3& end, float line_width, const glm::vec4& color, bool depth_tested) {
+void DebugRenderer::draw_line(const glm::vec3& start,
+                              const glm::vec3& end,
+                              float line_width,
+                              const glm::vec4& color,
+                              bool depth_tested) {
   OX_SCOPED_ZONE;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_lines.emplace_back(Line{start, end, color});
@@ -67,7 +73,11 @@ void DebugRenderer::draw_line(const glm::vec3& start, const glm::vec3& end, floa
     instance->draw_list.debug_lines.emplace_back(Line{start, end, color});
 }
 
-void DebugRenderer::draw_triangle(const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec4& color, bool depth_tested) {
+void DebugRenderer::draw_triangle(const glm::vec3& v0,
+                                  const glm::vec3& v1,
+                                  const glm::vec3& v2,
+                                  const glm::vec4& color,
+                                  bool depth_tested) {
   OX_SCOPED_ZONE;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_triangles.emplace_back(Triangle{v0, v1, v2, color});
@@ -96,7 +106,10 @@ void DebugRenderer::draw_circle(int num_verts,
   }
 }
 
-void DebugRenderer::draw_sphere(float radius, const glm::vec3& position, const glm::vec4& color, bool depth_tested) {
+void DebugRenderer::draw_sphere(float radius,
+                                const glm::vec3& position,
+                                const glm::vec4& color,
+                                bool depth_tested) {
   draw_circle(20, radius, position, glm::quat(glm::vec3(0.0f, 0.0f, 0.0f)), color, depth_tested);
   draw_circle(20, radius, position, glm::quat(glm::vec3(90.0f, 0.0f, 0.0f)), color, depth_tested);
   draw_circle(20, radius, position, glm::quat(glm::vec3(0.0f, 90.0f, 90.0f)), color, depth_tested);
@@ -190,7 +203,11 @@ void DebugRenderer::draw_cone(int num_circle_verts,
   }
 }
 
-void DebugRenderer::draw_aabb(const AABB& aabb, const glm::vec4& color, bool corners_only, float width, bool depth_tested) {
+void DebugRenderer::draw_aabb(const AABB& aabb,
+                              const glm::vec4& color,
+                              bool corners_only,
+                              float width,
+                              bool depth_tested) {
   glm::vec3 uuu = aabb.max;
   glm::vec3 lll = aabb.min;
 
@@ -257,7 +274,10 @@ void DebugRenderer::draw_aabb(const AABB& aabb, const glm::vec4& color, bool cor
   }
 }
 
-void DebugRenderer::draw_frustum(const glm::mat4& frustum, const glm::vec4& color, float near, float far) {
+void DebugRenderer::draw_frustum(const glm::mat4& frustum,
+                                 const glm::vec4& color,
+                                 float near,
+                                 float far) {
   // Get frustum corners in world space
   auto tln = math::unproject_uv_zo(near, {0, 1}, frustum);
   auto trn = math::unproject_uv_zo(near, {1, 1}, frustum);
@@ -288,11 +308,16 @@ void DebugRenderer::draw_frustum(const glm::mat4& frustum, const glm::vec4& colo
   draw_line(brn, brf, 1.0f, color, true);
 }
 
-void DebugRenderer::draw_ray(const RayCast& ray, const glm::vec4& color, const float distance, const bool depth_tested) {
+void DebugRenderer::draw_ray(const RayCast& ray,
+                             const glm::vec4& color,
+                             const float distance,
+                             const bool depth_tested) {
   draw_line(ray.get_origin(), ray.get_origin() + ray.get_direction() * distance, 1.0f, color, depth_tested);
 }
 
-std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_lines(const std::vector<Line>& lines) {
+std::pair<std::vector<Vertex>,
+          uint32_t>
+DebugRenderer::get_vertices_from_lines(const std::vector<Line>& lines) {
   std::vector<Vertex> vertices = {};
   vertices.reserve(lines.size() * 2);
   uint32_t indices = 0;
@@ -308,7 +333,9 @@ std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_lines(
   return {vertices, indices};
 }
 
-std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_triangles(const std::vector<Triangle>& triangles) {
+std::pair<std::vector<Vertex>,
+          uint32_t>
+DebugRenderer::get_vertices_from_triangles(const std::vector<Triangle>& triangles) {
   std::vector<Vertex> vertices = {};
   vertices.reserve(triangles.size() * 3);
   uint32_t indices = 0;
@@ -330,11 +357,17 @@ std::pair<std::vector<Vertex>, uint32_t> DebugRenderer::get_vertices_from_triang
 
 PhysicsDebugRenderer::PhysicsDebugRenderer() { DebugRenderer::Initialize(); }
 
-void PhysicsDebugRenderer::DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) {
+void PhysicsDebugRenderer::DrawLine(JPH::RVec3Arg inFrom,
+                                    JPH::RVec3Arg inTo,
+                                    JPH::ColorArg inColor) {
   ox::DebugRenderer::draw_line(math::from_jolt(inFrom), math::from_jolt(inTo), 1.0f, math::from_jolt(inColor.ToVec4()), draw_depth_tested);
 }
 
-void PhysicsDebugRenderer::DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, JPH::RVec3Arg inV3, JPH::ColorArg inColor, ECastShadow inCastShadow) {
+void PhysicsDebugRenderer::DrawTriangle(JPH::RVec3Arg inV1,
+                                        JPH::RVec3Arg inV2,
+                                        JPH::RVec3Arg inV3,
+                                        JPH::ColorArg inColor,
+                                        ECastShadow inCastShadow) {
   ox::DebugRenderer::draw_triangle(math::from_jolt(inV1),
                                    math::from_jolt(inV2),
                                    math::from_jolt(inV3),
@@ -342,7 +375,8 @@ void PhysicsDebugRenderer::DrawTriangle(JPH::RVec3Arg inV1, JPH::RVec3Arg inV2, 
                                    draw_depth_tested);
 }
 
-JPH::DebugRenderer::Batch PhysicsDebugRenderer::CreateTriangleBatch(const Triangle* inTriangles, int inTriangleCount) {
+JPH::DebugRenderer::Batch PhysicsDebugRenderer::CreateTriangleBatch(const Triangle* inTriangles,
+                                                                    int inTriangleCount) {
   TriangleBatch* pBatch = new TriangleBatch;
   pBatch->triangles.reserve(inTriangleCount);
 
@@ -359,16 +393,16 @@ JPH::DebugRenderer::Batch PhysicsDebugRenderer::CreateTriangleBatch(const Triang
 
 JPH::DebugRenderer::Batch PhysicsDebugRenderer::CreateTriangleBatch(const Vertex* inVertices,
                                                                     int inVertexCount,
-                                                                    const uint32* inIndices,
+                                                                    const u32* inIndices,
                                                                     int inIndexCount) {
-  const uint32 numTris = inIndexCount / 3;
+  const u32 numTris = inIndexCount / 3;
 
   TriangleBatch* pBatch = new TriangleBatch;
   pBatch->triangles.reserve(numTris);
 
-  uint32 index = 0;
+  u32 index = 0;
 
-  for (uint32 i = 0; i < numTris; ++i) {
+  for (u32 i = 0; i < numTris; ++i) {
     auto& t = pBatch->triangles.emplace_back();
     t.p1 = math::from_jolt(JPH::Vec3{inVertices[inIndices[index + 0]].mPosition});
     t.p2 = math::from_jolt(JPH::Vec3{inVertices[inIndices[index + 1]].mPosition});
@@ -392,7 +426,7 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
   if (geometry == nullptr)
     return;
 
-  uint32 uiLod = 0;
+  u32 uiLod = 0;
   if (geometry->mLODs.size() > 1)
     uiLod = 1;
   if (geometry->mLODs.size() > 2)
@@ -408,7 +442,7 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
 
   if (inDrawMode == JPH::DebugRenderer::EDrawMode::Solid) {
     if (inCullMode == JPH::DebugRenderer::ECullMode::CullBackFace || inCullMode == JPH::DebugRenderer::ECullMode::Off) {
-      for (uint32 t = 0; t < pBatch->triangles.size(); ++t) {
+      for (u32 t = 0; t < pBatch->triangles.size(); ++t) {
         auto& tri = debug_renderer->draw_list.debug_triangles.emplace_back();
         tri.col = pBatch->triangles[t].col * color;
         tri.p1 = trans * glm::vec4(pBatch->triangles[t].p1, 1.f);
@@ -418,7 +452,7 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
     }
 
     if (inCullMode == JPH::DebugRenderer::ECullMode::CullFrontFace || inCullMode == JPH::DebugRenderer::ECullMode::Off) {
-      for (uint32 t = 0; t < pBatch->triangles.size(); ++t) {
+      for (u32 t = 0; t < pBatch->triangles.size(); ++t) {
         auto& tri = debug_renderer->draw_list.debug_triangles.emplace_back();
         tri.col = pBatch->triangles[t].col * color;
         tri.p1 = trans * glm::vec4(pBatch->triangles[t].p1, 1.f);
@@ -427,7 +461,7 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
       }
     }
   } else {
-    for (uint32 t = 0; t < pBatch->triangles.size(); ++t) {
+    for (u32 t = 0; t < pBatch->triangles.size(); ++t) {
       const auto& tri = pBatch->triangles[t];
       const auto col = pBatch->triangles[t].col * color;
 
@@ -442,5 +476,8 @@ void PhysicsDebugRenderer::DrawGeometry(JPH::RMat44Arg inModelMatrix,
   }
 }
 
-void PhysicsDebugRenderer::DrawText3D(JPH::RVec3Arg inPosition, const std::string_view& inString, JPH::ColorArg inColor, float inHeight) {}
+void PhysicsDebugRenderer::DrawText3D(JPH::RVec3Arg inPosition,
+                                      const std::string_view& inString,
+                                      JPH::ColorArg inColor,
+                                      float inHeight) {}
 } // namespace ox

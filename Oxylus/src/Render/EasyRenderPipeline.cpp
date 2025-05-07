@@ -3,9 +3,12 @@
 #include <Core/VFS.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include "Camera.hpp"
-#include "DebugRenderer.hpp"
-#include "RendererConfig.hpp"
+#include "Asset/AssetManager.hpp"
+#include "Asset/Material.hpp"
+#include "Render/Camera.hpp"
+#include "Render/DebugRenderer.hpp"
+#include "Render/RendererConfig.hpp"
+#include "Scene/SceneGPU.hpp"
 #include "Slang/Slang.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Utils/VukCommon.hpp"
@@ -17,25 +20,16 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
   vuk::PipelineBaseCreateInfo bindless_pci = {};
 
   auto compile_options = vuk::ShaderCompileOptions{};
-  compile_options.compiler_flags =
-      vuk::ShaderCompilerFlagBits::eGlLayout | vuk::ShaderCompilerFlagBits::eMatrixColumnMajor | vuk::ShaderCompilerFlagBits::eNoWarnings;
+  compile_options.compiler_flags = vuk::ShaderCompilerFlagBits::eGlLayout |
+                                   vuk::ShaderCompilerFlagBits::eMatrixColumnMajor |
+                                   vuk::ShaderCompilerFlagBits::eNoWarnings;
   bindless_pci.set_compile_options(compile_options);
 
   auto bindless_dslci_00 = vuk::descriptor_set_layout_create_info(
       {
-          ds_layout_binding(0, vuk::DescriptorType::eStorageBuffer, 1),
-          ds_layout_binding(1, vuk::DescriptorType::eStorageBuffer),
-          ds_layout_binding(2, vuk::DescriptorType::eStorageBuffer),
-          ds_layout_binding(3, vuk::DescriptorType::eSampledImage),
-          ds_layout_binding(4, vuk::DescriptorType::eSampledImage),
-          ds_layout_binding(5, vuk::DescriptorType::eSampledImage),
-          ds_layout_binding(6, vuk::DescriptorType::eSampledImage, 8),
-          ds_layout_binding(7, vuk::DescriptorType::eSampledImage, 8),
-          ds_layout_binding(8, vuk::DescriptorType::eStorageImage),
-          ds_layout_binding(9, vuk::DescriptorType::eStorageImage),
-          ds_layout_binding(10, vuk::DescriptorType::eSampledImage),
-          ds_layout_binding(11, vuk::DescriptorType::eSampler),
-          ds_layout_binding(12, vuk::DescriptorType::eSampler),
+          ds_layout_binding(BindlessID::Scene, vuk::DescriptorType::eStorageBuffer, 1),     // Scene
+          ds_layout_binding(BindlessID::Samplers, vuk::DescriptorType::eSampler),           // Samplers
+          ds_layout_binding(BindlessID::SampledImages, vuk::DescriptorType::eSampledImage), // SampledImages
       },
       0);
   bindless_pci.explicit_set_layouts.emplace_back(bindless_dslci_00);
@@ -47,11 +41,12 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
   Slang slang = {};
   slang.create_session({.root_directory = shaders_dir, .definitions = {}});
 
-  slang.add_shader(bindless_pci, {.path = shaders_dir + "/2DForward.slang", .entry_points = {"VSmain", "PSmain"}});
+  slang.add_shader(bindless_pci, {.path = shaders_dir + "/2d_forward.slang", .entry_points = {"VSmain", "PSmain"}});
   TRY(allocator.get_context().create_named_pipeline("2d_forward_pipeline", bindless_pci))
 
   // --- DescriptorSets ---
-  this->descriptor_set_00 = runtime.create_persistent_descriptorset(allocator, *runtime.get_named_pipeline("2d_forward_pipeline"), 0, 64);
+  this->descriptor_set_00 =
+      runtime.create_persistent_descriptorset(allocator, *runtime.get_named_pipeline("2d_forward_pipeline"), 0, 64);
 
   // --- Samplers ---
   auto hiz_sampler_ci = vuk::SamplerCreateInfo{
@@ -65,20 +60,29 @@ void EasyRenderPipeline::init(vuk::Allocator& allocator) {
       .maxLod = 16.0f,
   };
 
-  const vuk::Sampler linear_sampler_clamped = runtime.acquire_sampler(vuk::LinearSamplerClamped, runtime.get_frame_count());
-  const vuk::Sampler linear_sampler_repeated = runtime.acquire_sampler(vuk::LinearSamplerRepeated, runtime.get_frame_count());
-  const vuk::Sampler linear_sampler_repeated_anisotropy = runtime.acquire_sampler(vuk::LinearSamplerRepeatedAnisotropy, runtime.get_frame_count());
-  const vuk::Sampler nearest_sampler_clamped = runtime.acquire_sampler(vuk::NearestSamplerClamped, runtime.get_frame_count());
-  const vuk::Sampler nearest_sampler_repeated = runtime.acquire_sampler(vuk::NearestSamplerRepeated, runtime.get_frame_count());
-  const vuk::Sampler cmp_depth_sampler = runtime.acquire_sampler(vuk::CmpDepthSampler, runtime.get_frame_count());
+  const vuk::Sampler linear_sampler_clamped =
+      runtime.acquire_sampler(vuk::LinearSamplerClamped, runtime.get_frame_count());
+  const vuk::Sampler linear_sampler_repeated =
+      runtime.acquire_sampler(vuk::LinearSamplerRepeated, runtime.get_frame_count());
+  const vuk::Sampler linear_sampler_repeated_anisotropy =
+      runtime.acquire_sampler(vuk::LinearSamplerRepeatedAnisotropy, runtime.get_frame_count());
+  const vuk::Sampler nearest_sampler_clamped =
+      runtime.acquire_sampler(vuk::NearestSamplerClamped, runtime.get_frame_count());
+  const vuk::Sampler nearest_sampler_repeated =
+      runtime.acquire_sampler(vuk::NearestSamplerRepeated, runtime.get_frame_count());
   const vuk::Sampler hiz_sampler = runtime.acquire_sampler(hiz_sampler_ci, runtime.get_frame_count());
-  this->descriptor_set_00->update_sampler(11, 0, linear_sampler_clamped);
-  this->descriptor_set_00->update_sampler(11, 1, linear_sampler_repeated);
-  this->descriptor_set_00->update_sampler(11, 2, linear_sampler_repeated_anisotropy);
-  this->descriptor_set_00->update_sampler(11, 3, nearest_sampler_clamped);
-  this->descriptor_set_00->update_sampler(11, 4, nearest_sampler_repeated);
-  this->descriptor_set_00->update_sampler(11, 5, hiz_sampler);
-  this->descriptor_set_00->update_sampler(12, 0, cmp_depth_sampler);
+  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 0, linear_sampler_repeated);
+  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 1, linear_sampler_clamped);
+
+  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 2, nearest_sampler_repeated);
+  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 3, nearest_sampler_clamped);
+
+  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 4, linear_sampler_repeated_anisotropy);
+
+  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 5, hiz_sampler);
+
+  // const vuk::Sampler cmp_depth_sampler = runtime.acquire_sampler(vuk::CmpDepthSampler, runtime.get_frame_count());
+  // this->descriptor_set_00->update_sampler(12, 0, cmp_depth_sampler);
 }
 
 void EasyRenderPipeline::shutdown() {}
@@ -112,10 +116,14 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
       .output_index = 0,
   };
 
-  for (uint32 i = 0; i < 6; i++) {
+  for (u32 i = 0; i < 6; i++) {
     const auto* plane = Camera::get_frustum(cam, cam.position).planes[i];
     camera_data.frustum_planes[i] = {plane->normal, plane->distance};
   }
+
+  std::vector<CameraData> camera_datas = {};
+  camera_datas.emplace_back(camera_data);
+  auto [camera_buffer, camera_buffer_fut] = vuk::create_cpu_buffer(frame_allocator, std::span(camera_datas));
 
   const SceneData scene_data = {
       .num_lights = {},
@@ -128,30 +136,6 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
       .sun_direction = {},
       .meshlet_count = {},
       .sun_color = {},
-      .indices =
-          {
-              .albedo_image_index = ALBEDO_IMAGE_INDEX,
-              .normal_image_index = NORMAL_IMAGE_INDEX,
-              .normal_vertex_image_index = NORMAL_VERTEX_IMAGE_INDEX,
-              .depth_image_index = DEPTH_IMAGE_INDEX,
-              .bloom_image_index = BLOOM_IMAGE_INDEX,
-              .mesh_instance_buffer_index = MESH_INSTANCES_BUFFER_INDEX,
-              .entites_buffer_index = ENTITIES_BUFFER_INDEX,
-              .materials_buffer_index = MATERIALS_BUFFER_INDEX,
-              .lights_buffer_index = LIGHTS_BUFFER_INDEX,
-              .sky_env_map_index = {},
-              .sky_transmittance_lut_index = SKY_TRANSMITTANCE_LUT_INDEX,
-              .sky_multiscatter_lut_index = SKY_MULTISCATTER_LUT_INDEX,
-              .velocity_image_index = VELOCITY_IMAGE_INDEX,
-              .shadow_array_index = SHADOW_ARRAY_INDEX,
-              .gtao_buffer_image_index = GTAO_BUFFER_IMAGE_INDEX,
-              .hiz_image_index = HIZ_IMAGE_INDEX,
-              .vis_image_index = VIS_IMAGE_INDEX,
-              .emission_image_index = EMISSION_IMAGE_INDEX,
-              .metallic_roughness_ao_image_index = METALROUGHAO_IMAGE_INDEX,
-              .transforms_buffer_index = TRANSFORMS_BUFFER_INDEX,
-              .sprite_materials_buffer_index = SPRITE_MATERIALS_BUFFER_INDEX,
-          },
       .post_processing_data = {},
   };
 
@@ -162,39 +146,62 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
 
   render_queue_2d.init();
 
-#if 0
-  std::vector<SpriteMaterial::Parameters> sprite_material_parameters = {};
-  sprite_material_parameters.reserve(this->sprite_component_list.size());
+  std::vector<GPU::Material> materials = {};
+
+  std::vector<vuk::ImageView> texture_views = {};
 
   for (const auto& sprite_component : this->sprite_component_list) {
-    const auto distance = glm::distance(glm::vec3(0.f, 0.f, cam.position.z), glm::vec3(0.f, 0.f, sprite_component.get_position().z));
-    render_queue_2d.add(sprite_component, distance);
+    const auto distance =
+        glm::distance(glm::vec3(0.f, 0.f, cam.position.z), glm::vec3(0.f, 0.f, sprite_component.get_position().z));
 
-    const auto& material = sprite_component.material;
-    const auto& albedo = material->get_albedo_texture();
+    auto* asset_man = App::get_asset_manager();
 
-    if (albedo && albedo->is_valid_id())
-      this->descriptor_set_00->update_sampled_image(10, albedo->get_id(), *albedo->get_view(), vuk::ImageLayout::eReadOnlyOptimalKHR);
+    const auto add_texture_if_exists = [&](const UUID& uuid) -> ox::option<u32> {
+      if (!uuid) {
+        return ox::nullopt;
+      }
 
-    SpriteMaterial::Parameters par = material->parameters;
-    par.uv_offset = sprite_component.current_uv_offset.value_or(material->parameters.uv_offset);
-    sprite_material_parameters.emplace_back(par);
+      auto* texture = asset_man->get_texture(uuid);
+      if (!texture) {
+        return ox::nullopt;
+      }
+
+      auto index = texture_views.size();
+      texture_views.emplace_back(*texture->get_view());
+      return static_cast<u32>(index);
+    };
+
+    if (auto* material = asset_man->get_material(sprite_component.material)) {
+      auto gpu_mat =
+          GPU::Material::from_material(*material, add_texture_if_exists(material->albedo_texture).value_or(~0_u32));
+      gpu_mat.uv_offset = sprite_component.current_uv_offset.value_or(gpu_mat.uv_offset);
+      materials.emplace_back(gpu_mat);
+
+      render_queue_2d.add(sprite_component, materials.size() - 1, distance);
+    }
+  }
+
+  for (u32 i = 0; i < texture_views.size(); i++) {
+    this->descriptor_set_00->update_sampled_image(BindlessID::SampledImages,
+                                                  i,
+                                                  texture_views[i],
+                                                  vuk::ImageLayout::eReadOnlyOptimalKHR);
   }
 
   render_queue_2d.update();
   render_queue_2d.sort();
   this->sprite_component_list.clear();
 
-  if (sprite_material_parameters.empty())
-    sprite_material_parameters.emplace_back();
-  auto [sprite_mat_buffer, sprite_mat_buff_fut] = vuk::create_cpu_buffer(frame_allocator, std::span(sprite_material_parameters));
-  this->descriptor_set_00->update_storage_buffer(1, SPRITE_MATERIALS_BUFFER_INDEX, *sprite_mat_buffer);
+  if (materials.empty())
+    materials.emplace_back();
+  auto [material_buffer, material_buffer_fut] = vuk::create_cpu_buffer(frame_allocator, std::span(materials));
+
+  if (render_queue_2d.sprite_data.empty())
+    render_queue_2d.sprite_data.emplace_back();
+  auto [vertex_buffer_2d, vertex_buffer_2d_fut] =
+      vuk::create_cpu_buffer(frame_allocator, std::span(render_queue_2d.sprite_data));
 
   this->descriptor_set_00->commit(frame_allocator.get_context());
-#endif
-
-  const auto vertex_buffer_2d = *vuk::allocate_cpu_buffer(frame_allocator, sizeof(SpriteGPUData) * 3000);
-  std::memcpy(vertex_buffer_2d.mapped_ptr, render_queue_2d.sprite_data.data(), sizeof(SpriteGPUData) * render_queue_2d.sprite_data.size());
 
   const auto final_ia = vuk::ImageAttachment{
       .extent = render_info.extent,
@@ -216,9 +223,12 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
 
   auto color_output_w2d = vuk::make_pass(
       "2d_forward_pass",
-      [camera_data, render_queue_2d, &descriptor_set = *this->descriptor_set_00, vertex_buffer_2d](vuk::CommandBuffer& command_buffer,
-                                                                                                   VUK_IA(vuk::eColorWrite) target,
-                                                                                                   VUK_IA(vuk::eDepthStencilRW) depth) {
+      [render_queue_2d, &descriptor_set = *this->descriptor_set_00](vuk::CommandBuffer& command_buffer,
+                                                                    VUK_IA(vuk::eColorWrite) target,
+                                                                    VUK_IA(vuk::eDepthStencilRW) depth,
+                                                                    VUK_BA(vuk::eVertexRead) vertex_buffer,
+                                                                    VUK_BA(vuk::eVertexRead) materials,
+                                                                    VUK_BA(vuk::eVertexRead) camera) {
     const auto vertex_pack_2d = vuk::Packed{
         vuk::Format::eR32G32B32A32Sfloat, // 16 row
         vuk::Format::eR32G32B32A32Sfloat, // 16 row
@@ -243,24 +253,19 @@ vuk::Value<vuk::ImageAttachment> EasyRenderPipeline::on_render(vuk::Allocator& f
           .set_scissor(0, vuk::Rect2D::framebuffer())
           .broadcast_color_blend(vuk::BlendPreset::eAlphaBlend)
           .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-          .bind_vertex_buffer(0, vertex_buffer_2d, 0, vertex_pack_2d, vuk::VertexInputRate::eInstance)
-          .bind_persistent(0, descriptor_set);
-
-      CameraConstantBuffer camera_constant_buffer = {};
-      camera_constant_buffer.camera_data[0] = camera_data;
-      const auto cb = command_buffer.scratch_buffer<CameraConstantBuffer>(1, 0);
-      *cb = camera_constant_buffer;
-
-      command_buffer.draw(6, batch.count, 0, batch.offset);
+          .bind_vertex_buffer(0, vertex_buffer, 0, vertex_pack_2d, vuk::VertexInputRate::eInstance)
+          .bind_persistent(0, descriptor_set)
+          .push_constants(vuk::ShaderStageFlagBits::eVertex | vuk::ShaderStageFlagBits::eFragment,
+                          0,
+                          PushConstants(materials->device_address, camera->device_address))
+          .draw(6, batch.count, 0, batch.offset);
     }
 
     return target;
-  })(final_image, depth_image);
+  })(final_image, depth_image, vertex_buffer_2d_fut, material_buffer_fut, camera_buffer_fut);
 
   return color_output_w2d;
 }
-
-void EasyRenderPipeline::on_update(Scene* scene) {}
 
 void EasyRenderPipeline::submit_sprite(const SpriteComponent& sprite) {
   OX_SCOPED_ZONE;
@@ -278,7 +283,8 @@ void EasyRenderPipeline::submit_camera(const CameraComponent& camera) {
     this->saved_camera = false;
   }
 
-  if (static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get()) && static_cast<bool>(RendererCVar::cvar_draw_camera_frustum.get())) {
+  if (static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get()) &&
+      static_cast<bool>(RendererCVar::cvar_draw_camera_frustum.get())) {
     const auto proj = this->frozen_camera.get_projection_matrix() * this->frozen_camera.get_view_matrix();
     DebugRenderer::draw_frustum(proj, glm::vec4(0, 1, 0, 1), 1.0f, 0.0f); // reversed-z
   }

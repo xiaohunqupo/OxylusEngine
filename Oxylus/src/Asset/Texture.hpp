@@ -13,11 +13,11 @@ struct TextureLoadInfo {
   Preset preset = Preset::eMap2D;
   vuk::Format format = vuk::Format::eR8G8B8A8Unorm;
   enum class MimeType { Generic, KTX } mime = MimeType::Generic;
-  void* data = nullptr; // optional
+  void* data = nullptr;      // optional
   vuk::Extent2D extent = {}; // optional
 };
 
-enum class TextureID : uint64 { Invalid = std::numeric_limits<uint64>::max() };
+enum class TextureID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class Texture {
 public:
   Texture() = default;
@@ -51,13 +51,13 @@ public:
   auto set_name(std::string_view name,
                 const std::source_location& loc = std::source_location::current()) -> void;
 
-  auto get_view_id() const -> uint64 { return _view->id; }
+  auto get_view_id() const -> u64 { return _view->id; }
 
   static auto load_stb_image(const std::string& filename,
                              uint32_t* width = nullptr,
                              uint32_t* height = nullptr,
                              uint32_t* bits = nullptr,
-                             bool srgb = true) -> Unique<uint8[]>;
+                             bool srgb = true) -> Unique<u8[]>;
 
   static auto load_stb_image_from_memory(void* buffer,
                                          size_t len,
@@ -65,15 +65,15 @@ public:
                                          uint32_t* height = nullptr,
                                          uint32_t* bits = nullptr,
                                          bool flipY = false,
-                                         bool srgb = true) -> Unique<uint8[]>;
+                                         bool srgb = true) -> Unique<u8[]>;
 
   static auto get_magenta_texture(uint32_t width,
                                   uint32_t height,
-                                  uint32_t channels) -> uint8_t*;
+                                  uint32_t channels) -> u8*;
 
   static auto convert_to_four_channels(uint32_t width,
                                        uint32_t height,
-                                       const uint8_t* three_channel_data) -> uint8_t*;
+                                       const u8* three_channel_data) -> uint8_t*;
 
   static auto get_mip_count(const vuk::Extent3D extent) -> uint32_t {
     return static_cast<uint32_t>(log2f(static_cast<float>(std::max(std::max(extent.width, extent.height), extent.depth)))) + 1;

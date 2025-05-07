@@ -15,7 +15,7 @@ class Character;
 
 namespace ox {
 struct LayerComponent {
-  uint16 layer = 1;
+  u16 layer = 1;
 };
 
 struct TransformComponent {
@@ -57,7 +57,7 @@ struct MeshComponent {
 
 struct SpriteComponent {
   UUID material = {};
-  uint32 layer = 0;
+  u32 layer = 0;
 
   bool sort_y = true;
   bool flip_x = false;
@@ -76,11 +76,11 @@ struct SpriteComponent {
 };
 
 struct SpriteAnimationComponent {
-  uint32 num_frames = 0;
+  u32 num_frames = 0;
   bool loop = true;
   bool inverted = false;
-  uint32 fps = 0;
-  uint32 columns = 1;
+  u32 fps = 0;
+  u32 columns = 1;
   glm::vec2 frame_size = {};
 
   // non-serialized data
@@ -88,8 +88,8 @@ struct SpriteAnimationComponent {
 
   void reset() { current_time = 0.f; }
 
-  void set_frame_size(const uint32 width,
-                      const uint32 height) {
+  void set_frame_size(const u32 width,
+                      const u32 height) {
     if (num_frames > 0) {
       const auto horizontal = width / num_frames;
       const auto vertical = height;
@@ -100,17 +100,17 @@ struct SpriteAnimationComponent {
     }
   }
 
-  void set_num_frames(uint32 value) {
+  void set_num_frames(u32 value) {
     num_frames = value;
     reset();
   }
 
-  void set_fps(uint32 value) {
+  void set_fps(u32 value) {
     fps = value;
     reset();
   }
 
-  void set_columns(uint32 value) {
+  void set_columns(u32 value) {
     columns = value;
     reset();
   }
@@ -136,8 +136,8 @@ struct CameraComponent {
     Orthographic = 1,
   } projection = Projection::Perspective;
 
-  float32 fov = 60.0f;
-  float32 aspect = 16.0f / 9.0f;
+  f32 fov = 60.0f;
+  f32 aspect = 16.0f / 9.0f;
   float far_clip = 1000.f;
   float near_clip = 0.01f;
 
@@ -226,7 +226,7 @@ struct PostProcessProbe {
 // Physics
 struct RigidbodyComponent {
   enum class BodyType { Static = 0, Kinematic, Dynamic };
-  enum class AllowedDOFs : uint32 {
+  enum class AllowedDOFs : u32 {
     None = 0b000000,         ///< No degrees of freedom are allowed. Note that this is not valid and will crash. Use a static body instead.
     All = 0b111111,          ///< All degrees of freedom are allowed
     TranslationX = 0b000001, ///< Body can move in world space X axis

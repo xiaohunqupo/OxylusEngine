@@ -5,6 +5,7 @@
 #include <icons/MaterialDesign.inl>
 #include <imgui.h>
 #include <vuk/RenderGraph.hpp>
+#include <vuk/Types.hpp>
 #include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/vk/AllocatorHelpers.hpp>
 #include <vuk/runtime/vk/Pipeline.hpp>
@@ -55,7 +56,7 @@ void ImGuiLayer::build_fonts() {
                            .format = vuk::Format::eR8G8B8A8Srgb,
                            .mime = {},
                            .data = pixels,
-                           .extent = {static_cast<uint32>(width), static_cast<uint32>(height)},
+                           .extent = {static_cast<u32>(width), static_cast<u32>(height)},
                        });
 }
 
@@ -65,8 +66,8 @@ void ImGuiLayer::on_attach() {
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
-  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard /*| ImGuiConfigFlags_ViewportsEnable*/ | ImGuiConfigFlags_DockingEnable |
-                    ImGuiConfigFlags_DpiEnableScaleFonts;
+  io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard /*| ImGuiConfigFlags_ViewportsEnable*/ |
+                    ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleFonts;
   io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_HasMouseCursors;
   /*io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;*/
   io.BackendRendererName = "oxylus";
@@ -96,19 +97,23 @@ void ImGuiLayer::add_icon_font(float font_size) {
   icons_config.GlyphMinAdvanceX = 4.0f;
   icons_config.SizePixels = font_size;
 
-  io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &icons_config, ICONS_RANGES);
+  io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data,
+                                           MaterialDesign_compressed_size,
+                                           font_size,
+                                           &icons_config,
+                                           ICONS_RANGES);
 }
 
 void ImGuiLayer::on_detach() { ImGui::DestroyContext(); }
 
-void ImGuiLayer::begin_frame(const float64 delta_time,
+void ImGuiLayer::begin_frame(const f64 delta_time,
                              const vuk::Extent3D extent) {
   OX_SCOPED_ZONE;
 
   const App* app = App::get();
   auto& imgui = ImGui::GetIO();
-  imgui.DeltaTime = static_cast<float32>(delta_time);
-  imgui.DisplaySize = ImVec2(static_cast<float32>(extent.width), static_cast<float32>(extent.height));
+  imgui.DeltaTime = static_cast<f32>(delta_time);
+  imgui.DisplaySize = ImVec2(static_cast<f32>(extent.width), static_cast<f32>(extent.height));
 
   rendering_images.clear();
   acquired_images.clear();
@@ -157,12 +162,18 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 
   ImDrawData* draw_data = ImGui::GetDrawData();
 
-  auto reset_render_state = [this, draw_data](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
+  auto reset_render_state =
+      [this, draw_data](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
     command_buffer.bind_image(0, 0, *font_texture->get_view()).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
     if (index.size > 0) {
-      command_buffer.bind_index_buffer(index, sizeof(ImDrawIdx) == 2 ? vuk::IndexType::eUint16 : vuk::IndexType::eUint32);
+      command_buffer.bind_index_buffer(index,
+                                       sizeof(ImDrawIdx) == 2 ? vuk::IndexType::eUint16 : vuk::IndexType::eUint32);
     }
-    command_buffer.bind_vertex_buffer(0, vertex, 0, vuk::Packed{vuk::Format::eR32G32Sfloat, vuk::Format::eR32G32Sfloat, vuk::Format::eR8G8B8A8Unorm});
+    command_buffer.bind_vertex_buffer(
+        0,
+        vertex,
+        0,
+        vuk::Packed{vuk::Format::eR32G32Sfloat, vuk::Format::eR32G32Sfloat, vuk::Format::eR8G8B8A8Unorm});
     command_buffer.bind_graphics_pipeline("imgui");
     command_buffer.set_viewport(0, vuk::Rect2D::framebuffer());
     struct PC {
@@ -196,11 +207,11 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 
   auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(rendering_images));
 
-  return vuk::make_pass(
-      "imgui",
-      [verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](vuk::CommandBuffer& command_buffer,
-                                                                                VUK_IA(vuk::eColorWrite) color_rt,
-                                                                                VUK_ARG(vuk::ImageAttachment[], vuk::Access::eFragmentSampled) sis) {
+  return vuk::make_pass("imgui",
+                        [verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](
+                            vuk::CommandBuffer& command_buffer,
+                            VUK_IA(vuk::eColorWrite) color_rt,
+                            VUK_ARG(vuk::ImageAttachment[], vuk::Access::eFragmentSampled) sis) {
     command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
         .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
         .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
@@ -220,7 +231,8 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
         const ImDrawCmd* im_cmd = &cmd_list->CmdBuffer[cmd_i];
         if (im_cmd->UserCallback != nullptr) {
           // User callback, registered via ImDrawList::AddCallback()
-          // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to reset render state.)
+          // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to
+          // reset render state.)
           if (im_cmd->UserCallback == ImDrawCallback_ResetRenderState)
             reset_render_state(command_buffer, verts, inds);
           else
@@ -257,7 +269,11 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
               command_buffer.bind_image(0, 0, sis[0]);
             }
 
-            command_buffer.draw_indexed(im_cmd->ElemCount, 1, im_cmd->IdxOffset + global_idx_offset, im_cmd->VtxOffset + global_vtx_offset, 0);
+            command_buffer.draw_indexed(im_cmd->ElemCount,
+                                        1,
+                                        im_cmd->IdxOffset + global_idx_offset,
+                                        im_cmd->VtxOffset + global_vtx_offset,
+                                        0);
           }
         }
       }
@@ -293,11 +309,11 @@ void ImGuiLayer::on_mouse_pos(glm::vec2 pos) {
   imgui.AddMousePosEvent(pos.x, pos.y);
 }
 
-void ImGuiLayer::on_mouse_button(uint8 button,
+void ImGuiLayer::on_mouse_button(u8 button,
                                  bool down) {
   ZoneScoped;
 
-  int32 imgui_button = 0;
+  i32 imgui_button = 0;
   // clang-format off
     switch (button) {
         case SDL_BUTTON_LEFT: imgui_button = 0; break;
@@ -323,9 +339,9 @@ void ImGuiLayer::on_mouse_scroll(glm::vec2 offset) {
 
 ImGuiKey to_imgui_key(SDL_Keycode keycode,
                       SDL_Scancode scancode);
-void ImGuiLayer::on_key(uint32 key_code,
-                        uint32 scan_code,
-                        uint16 mods,
+void ImGuiLayer::on_key(u32 key_code,
+                        u32 scan_code,
+                        u16 mods,
                         bool down) {
   ZoneScoped;
 
@@ -337,10 +353,13 @@ void ImGuiLayer::on_key(uint32 key_code,
 
   const auto key = to_imgui_key(static_cast<SDL_Keycode>(key_code), static_cast<SDL_Scancode>(scan_code));
   imgui.AddKeyEvent(key, down);
-  imgui.SetKeyEventNativeData(key, static_cast<int32>(key_code), static_cast<int32>(scan_code), static_cast<int32>(scan_code));
+  imgui.SetKeyEventNativeData(key,
+                              static_cast<i32>(key_code),
+                              static_cast<i32>(scan_code),
+                              static_cast<i32>(scan_code));
 }
 
-void ImGuiLayer::on_text_input(const char8* text) {
+void ImGuiLayer::on_text_input(const c8* text) {
   ZoneScoped;
 
   auto& imgui = ImGui::GetIO();
@@ -673,9 +692,9 @@ void ImGuiLayer::set_style() {
     ui_frame_padding = ImVec2(4.0f, 2.0f);
     popup_item_spacing = ImVec2(6.0f, 8.0f);
 
-    constexpr ImGuiColorEditFlags color_edit_flags = ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf |
-                                                     ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB |
-                                                     ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_Uint8;
+    constexpr ImGuiColorEditFlags color_edit_flags =
+        ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf | ImGuiColorEditFlags_DisplayRGB |
+        ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_Uint8;
     ImGui::SetColorEditOptions(color_edit_flags);
 
     style->ScaleAllSizes(1.0f);

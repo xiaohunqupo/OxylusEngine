@@ -17,6 +17,6 @@ public:
   void set_velocity(const glm::vec3& velocity) const;
 
 private:
-  uint32 m_ListenerIndex = 0;
+  u32 m_ListenerIndex = 0;
 };
-}
+} // namespace ox

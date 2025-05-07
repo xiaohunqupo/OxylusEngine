@@ -71,6 +71,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   vk_context = create_shared<VkContext>();
 
   const bool enable_validation = app_spec.command_line_args.contains("vulkan-validation");
+  OX_LOG_INFO("{} validation", enable_validation);
   vk_context->create_context(window, enable_validation);
 
   DebugRenderer::init();
@@ -128,7 +129,7 @@ void App::run() {
     input_system->input_data.mouse_pos_rel = relative;
     input_system->input_data.mouse_moved = true;
   };
-  window_callbacks.on_mouse_button = [](void* user_data, const uint8 button, const bool down) {
+  window_callbacks.on_mouse_button = [](void* user_data, const u8 button, const bool down) {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_mouse_button(button, down);
 
@@ -149,8 +150,12 @@ void App::run() {
     const auto input_system = get_system<Input>(EngineSystems::Input);
     input_system->input_data.scroll_offset_y = offset.y;
   };
-  window_callbacks.on_key =
-      [](void* user_data, const SDL_Keycode key_code, const SDL_Scancode scan_code, const uint16 mods, const bool down, const bool repeat) {
+  window_callbacks.on_key = [](void* user_data,
+                               const SDL_Keycode key_code,
+                               const SDL_Scancode scan_code,
+                               const u16 mods,
+                               const bool down,
+                               const bool repeat) {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_key(key_code, scan_code, mods, down);
 
@@ -166,7 +171,7 @@ void App::run() {
       input_system->set_key_held(ox_key_code, false);
     }
   };
-  window_callbacks.on_text_input = [](void* user_data, const char8* text) {
+  window_callbacks.on_text_input = [](void* user_data, const c8* text) {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_text_input(text);
   };
@@ -177,7 +182,7 @@ void App::run() {
     window.poll(window_callbacks);
 
     auto swapchain_attachment = vk_context->new_frame();
-    swapchain_attachment = vuk::clear_image(std::move(swapchain_attachment), vuk::Black<float32>);
+    swapchain_attachment = vuk::clear_image(std::move(swapchain_attachment), vuk::Black<f32>);
 
     const auto extent = swapchain_attachment->extent;
     this->swapchain_extent = glm::vec2{extent.width, extent.height};

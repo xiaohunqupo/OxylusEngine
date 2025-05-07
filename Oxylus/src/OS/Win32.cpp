@@ -6,7 +6,7 @@
 #include <Windows.h>
 
 namespace ox {
-auto os::mem_page_size() -> uint64 {
+auto os::mem_page_size() -> u64 {
     OX_SCOPED_ZONE;
 
     SYSTEM_INFO sys_info = {};
@@ -14,25 +14,25 @@ auto os::mem_page_size() -> uint64 {
     return sys_info.dwPageSize;
 }
 
-auto os::mem_reserve(uint64 size) -> void * {
+auto os::mem_reserve(u64 size) -> void * {
     OX_SCOPED_ZONE;
 
     return VirtualAlloc(nullptr, size, MEM_RESERVE, PAGE_READWRITE);
 }
 
-auto os::mem_release(void *data, [[maybe_unused]] uint64 size) -> void {
+auto os::mem_release(void *data, [[maybe_unused]] u64 size) -> void {
     OX_SCOPED_ZONE;
     TracyFree(data);
     VirtualFree(data, 0, MEM_RELEASE);
 }
 
-auto os::mem_commit(void *data, uint64 size) -> bool {
+auto os::mem_commit(void *data, u64 size) -> bool {
     OX_SCOPED_ZONE;
     TracyAllocN(data, size, "Virtual Alloc");
     return VirtualAlloc(data, size, MEM_COMMIT, PAGE_READWRITE) != nullptr;
 }
 
-auto os::mem_decommit(void *data, [[maybe_unused]] uint64 size) -> void {
+auto os::mem_decommit(void *data, [[maybe_unused]] u64 size) -> void {
     OX_SCOPED_ZONE;
 
     VirtualFree(data, 0, MEM_DECOMMIT | MEM_RELEASE);

@@ -25,7 +25,7 @@ struct AudioSourceConfig {
   float doppler_factor = 1.0f;
 };
 
-enum class AudioID : uint64 { Invalid = std::numeric_limits<uint64>::max() };
+enum class AudioID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class AudioSource {
 public:
   AudioSource() = default;
