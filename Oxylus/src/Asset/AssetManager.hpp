@@ -42,7 +42,7 @@ public:
   auto registry() const -> const AssetRegistry&;
 
   auto create_asset(AssetType type,
-                    const std::string& path) -> UUID;
+                    const std::string& path = {}) -> UUID;
 
   auto load_asset(const UUID& uuid) -> bool;
   auto unload_asset(const UUID& uuid) -> void;

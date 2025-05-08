@@ -513,70 +513,64 @@ void Scene::create_character_controller(const TransformComponent& transform,
 }
 
 auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                    flecs::entity root) -> void {
-  const auto q = root.world() //
-                     .query_builder()
-                     .with(flecs::ChildOf, root)
-                     .build();
+                    flecs::entity e) -> void {
 
-  q.each([&](flecs::entity e) {
+  writer.StartObject();
+  writer.String("name");
+  writer.String(e.name());
+
+  std::vector<ECS::ComponentWrapper> components = {};
+  writer.String("tags");
+  writer.StartArray();
+  e.each([&](flecs::id component_id) {
+    if (!component_id.is_entity()) {
+      return;
+    }
+
+    ECS::ComponentWrapper component(e, component_id);
+    if (!component.has_component()) {
+      writer.String(component.path.c_str());
+    } else {
+      components.emplace_back(e, component_id);
+    }
+  });
+  writer.EndArray();
+
+  writer.String("components");
+  writer.StartArray();
+  for (auto& component : components) {
     writer.StartObject();
     writer.String("name");
-    writer.String(e.name());
-
-    std::vector<ECS::ComponentWrapper> components = {};
-    writer.String("tags");
-    writer.StartArray();
-    e.each([&](flecs::id component_id) {
-      if (!component_id.is_entity()) {
-        return;
-      }
-
-      ECS::ComponentWrapper component(e, component_id);
-      if (!component.has_component()) {
-        writer.String(component.path.c_str());
-      } else {
-        components.emplace_back(e, component_id);
-      }
+    writer.String(component.name.data());
+    component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+      writer.String(member_name.data());
+      std::visit(ox::match{
+                     [](const auto&) {},
+                     [&](const f32* v) { writer.Double(*v); },
+                     [&](const i32* v) { writer.Int(*v); },
+                     [&](const u32* v) { writer.Uint(*v); },
+                     [&](const i64* v) { writer.Uint64(*v); },
+                     [&](const u64* v) { writer.Uint64(*v); },
+                     [&](const glm::vec2* v) { serialize_vec2(writer, *v); },
+                     [&](const glm::vec3* v) { serialize_vec3(writer, *v); },
+                     [&](const glm::vec4* v) { serialize_vec4(writer, *v); },
+                     [&](const glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
+                     [&](glm::mat4* v) {}, // do nothing
+                     [&](const std::string* v) { writer.String(v->c_str()); },
+                     [&](UUID* v) { writer.String(v->str().c_str()); },
+                 },
+                 member);
     });
-    writer.EndArray();
-
-    writer.String("components");
-    writer.StartArray();
-    for (auto& component : components) {
-      writer.StartObject();
-      writer.String("name");
-      writer.String(component.name.data());
-      component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
-        writer.String(member_name.data());
-        std::visit(ox::match{
-                       [](const auto&) {},
-                       [&](const f32* v) { writer.Double(*v); },
-                       [&](const i32* v) { writer.Int(*v); },
-                       [&](const u32* v) { writer.Uint(*v); },
-                       [&](const i64* v) { writer.Uint64(*v); },
-                       [&](const u64* v) { writer.Uint64(*v); },
-                       [&](const glm::vec2* v) { serialize_vec2(writer, *v); },
-                       [&](const glm::vec3* v) { serialize_vec3(writer, *v); },
-                       [&](const glm::vec4* v) { serialize_vec4(writer, *v); },
-                       [&](const glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
-                       [&](glm::mat4* v) {}, // do nothing
-                       [&](const std::string* v) { writer.String(v->c_str()); },
-                       // [&](UUID* v) { member_json = v->str().c_str(); }, TODO:
-                   },
-                   member);
-      });
-      writer.EndObject();
-    }
-    writer.EndArray();
-
-    writer.String("children");
-    writer.StartArray();
-    entity_to_json(writer, e);
-    writer.EndArray();
-
     writer.EndObject();
-  });
+  }
+  writer.EndArray();
+
+  writer.String("children");
+  writer.StartArray();
+  e.children([&writer](flecs::entity c) { entity_to_json(writer, c); });
+  writer.EndArray();
+
+  writer.EndObject();
 }
 
 auto Scene::save_to_file(this const Scene& self,
@@ -592,10 +586,15 @@ auto Scene::save_to_file(this const Scene& self,
 
   writer.String("entities");
   writer.StartArray(); // entities
-  entity_to_json(writer, self.root);
-  writer.EndArray();   // entities
+  const auto q = self.world.query_builder().with<TransformComponent>().build();
+  q.each([&writer](flecs::entity e) {
+    if (e.parent() == flecs::entity::null()) {
+      entity_to_json(writer, e);
+    }
+  });
+  writer.EndArray();  // entities
 
-  writer.EndObject();  // root
+  writer.EndObject(); // root
 
   std::ofstream filestream(path);
   filestream << sb.GetString();
@@ -621,7 +620,8 @@ auto json_to_entity(Scene& self,
   }
 
   auto e = self.create_entity(std::string(entity_name));
-  e.child_of(root);
+  if (root != flecs::entity::null())
+    e.child_of(root);
 
   const auto entity_tags_json = json["tags"].GetArray();
   for (const auto& entity_tag : entity_tags_json) {
@@ -709,7 +709,7 @@ auto Scene::load_from_file(this Scene& self,
 
   std::vector<UUID> requested_assets = {};
   for (auto& entity_json : entities_array) {
-    if (!json_to_entity(self, self.root, entity_json, requested_assets)) {
+    if (!json_to_entity(self, flecs::entity::null(), entity_json, requested_assets)) {
       return false;
     }
   }

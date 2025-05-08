@@ -19,12 +19,12 @@ struct VOutput {
 };
 
 struct VertexInput {
-    [[vk::location(0)]] float4 transform0 : TRANSFORM0;
-    [[vk::location(1)]] float4 transform1 : TRANSFORM1;
-    [[vk::location(2)]] float4 transform2 : TRANSFORM2;
-    [[vk::location(3)]] float4 transform3 : TRANSFORM3;
-    [[vk::location(4)]] uint material_id16_ypos16 : MAT_INDEX;
-    [[vk::location(5)]] uint flags16_distance16 : FLAGS;
+  [[vk::location(0)]] float4 transform0 : TRANSFORM0;
+  [[vk::location(1)]] float4 transform1 : TRANSFORM1;
+  [[vk::location(2)]] float4 transform2 : TRANSFORM2;
+  [[vk::location(3)]] float4 transform3 : TRANSFORM3;
+  [[vk::location(4)]] uint material_id16_ypos16 : MAT_INDEX;
+  [[vk::location(5)]] uint flags16_distance16 : FLAGS;
 };
 
 static float3 positions[6] =
