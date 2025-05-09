@@ -1,7 +1,7 @@
 ﻿#pragma once
 #include <vuk/Value.hpp>
 
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace vuk {
 struct SampledImage;

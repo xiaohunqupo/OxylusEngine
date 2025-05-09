@@ -61,6 +61,10 @@ auto AssetManager::unload_asset(const UUID& uuid) -> void {
     case AssetType::Scene: {
       this->unload_scene(uuid);
     } break;
+    case AssetType::Audio: {
+      this->unload_audio(uuid);
+      break;
+    }
     default:;
   }
 }
@@ -282,6 +286,10 @@ auto AssetManager::unload_audio(const UUID& uuid) -> void {
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
     return;
   }
+
+  auto* audio = this->get_audio(asset->audio_id);
+  OX_CHECK_NULL(audio);
+  audio->unload();
 
   OX_LOG_INFO("Unloaded audio {}.", uuid.str());
 

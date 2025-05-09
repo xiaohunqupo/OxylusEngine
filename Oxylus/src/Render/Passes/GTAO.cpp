@@ -1,6 +1,6 @@
 ﻿#include "GTAO.hpp"
 
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
 void gtao_update_constants(GTAOConstants& consts,

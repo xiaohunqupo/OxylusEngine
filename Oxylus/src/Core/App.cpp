@@ -71,7 +71,6 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   vk_context = create_shared<VkContext>();
 
   const bool enable_validation = app_spec.command_line_args.contains("vulkan-validation");
-  OX_LOG_INFO("{} validation", enable_validation);
   vk_context->create_context(window, enable_validation);
 
   DebugRenderer::init();

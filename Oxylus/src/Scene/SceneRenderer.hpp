@@ -1,5 +1,5 @@
 ﻿#pragma once
-#include "Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "Render/RenderPipeline.hpp"
 
 namespace ox {

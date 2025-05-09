@@ -10,7 +10,6 @@
 #include "Core/Input.hpp"
 #include "Core/Project.hpp"
 #include "EditorTheme.hpp"
-#include "Panels/AssetInspectorPanel.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/EditorSettingsPanel.hpp"
 #include "Panels/InspectorPanel.hpp"
@@ -54,7 +53,6 @@ void EditorLayer::on_attach() {
   add_panel<SceneHierarchyPanel>();
   add_panel<ContentPanel>();
   add_panel<InspectorPanel>();
-  add_panel<AssetInspectorPanel>();
   add_panel<EditorSettingsPanel>();
   add_panel<RendererSettingsPanel>();
   add_panel<ProjectPanel>();
@@ -130,10 +128,11 @@ void EditorLayer::on_render(const vuk::Extent3D extent,
 
   constexpr ImGuiDockNodeFlags dockspace_flags = ImGuiDockNodeFlags_PassthruCentralNode;
 
-  constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking | ImGuiWindowFlags_NoBackground |
-                                            ImGuiWindowFlags_NoNavFocus | ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
-                                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize | ImGuiWindowFlags_NoBringToFrontOnFocus |
-                                            ImGuiWindowFlags_NoSavedSettings;
+  constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+                                            ImGuiWindowFlags_NoBackground | ImGuiWindowFlags_NoNavFocus |
+                                            ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoTitleBar |
+                                            ImGuiWindowFlags_NoMove | ImGuiWindowFlags_NoResize |
+                                            ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoSavedSettings;
 
   ImGuiViewport* viewport = ImGui::GetMainViewport();
   ImGui::SetNextWindowPos(viewport->WorkPos);
@@ -154,8 +153,8 @@ void EditorLayer::on_render(const vuk::Extent3D extent,
 
     const float frame_height = ImGui::GetFrameHeight();
 
-    constexpr ImGuiWindowFlags menu_flags =
-        ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoNavFocus;
+    constexpr ImGuiWindowFlags menu_flags = ImGuiWindowFlags_NoScrollbar | ImGuiWindowFlags_NoSavedSettings |
+                                            ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoNavFocus;
 
     ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
     ImGui::PushStyleVar(ImGuiStyleVar_FramePadding, {frame_padding.x, 4.0f});
@@ -196,7 +195,8 @@ void EditorLayer::on_render(const vuk::Extent3D extent,
         }
         if (ImGui::BeginMenu("Window")) {
           if (ImGui::MenuItem("Add viewport", nullptr)) {
-            viewport_panels.emplace_back(create_unique<ViewportPanel>())->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
+            viewport_panels.emplace_back(create_unique<ViewportPanel>())
+                ->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
           }
           ImGui::MenuItem("Inspector", nullptr, &get_panel<InspectorPanel>()->visible);
           ImGui::MenuItem("Scene hierarchy", nullptr, &get_panel<SceneHierarchyPanel>()->visible);
@@ -231,8 +231,9 @@ void EditorLayer::on_render(const vuk::Extent3D extent,
 
         {
           // Project name text
-          ImGui::SetCursorPos(
-              ImVec2(ImGui::GetMainViewport()->Size.x - 10 - ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x, 0));
+          ImGui::SetCursorPos(ImVec2(ImGui::GetMainViewport()->Size.x - 10 -
+                                         ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x,
+                                     0));
           ImGuiScoped::StyleColor b_color1(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGuiScoped::StyleColor b_color2(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGui::Button(Project::get_active()->get_config().name.c_str());
@@ -446,8 +447,10 @@ void EditorLayer::set_docking_layout(EditorLayout layout) {
   } else if (layout == EditorLayout::Classic) {
     const ImGuiID right_dock = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.2f, nullptr, &dockspace_id);
     ImGuiID left_dock = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.2f, nullptr, &dockspace_id);
-    ImGuiID left_split_vertical_dock = ImGui::DockBuilderSplitNode(left_dock, ImGuiDir_Right, 0.8f, nullptr, &left_dock);
-    const ImGuiID bottom_dock = ImGui::DockBuilderSplitNode(left_split_vertical_dock, ImGuiDir_Down, 0.3f, nullptr, &left_split_vertical_dock);
+    ImGuiID left_split_vertical_dock =
+        ImGui::DockBuilderSplitNode(left_dock, ImGuiDir_Right, 0.8f, nullptr, &left_dock);
+    const ImGuiID bottom_dock =
+        ImGui::DockBuilderSplitNode(left_split_vertical_dock, ImGuiDir_Down, 0.3f, nullptr, &left_split_vertical_dock);
     const ImGuiID left_split_dock = ImGui::DockBuilderSplitNode(left_dock, ImGuiDir_Down, 0.4f, nullptr, &left_dock);
 
     ImGui::DockBuilderDockWindow(get_panel<SceneHierarchyPanel>()->get_id(), left_dock);

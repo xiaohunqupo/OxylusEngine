@@ -11,14 +11,17 @@
 #include "Asset/Material.hpp"
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/ImGuiScoped.hpp"
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
-SceneHierarchyPanel::SceneHierarchyPanel() : EditorPanel("Scene Hierarchy", ICON_MDI_VIEW_LIST, true) {}
+SceneHierarchyPanel::SceneHierarchyPanel() :
+    EditorPanel("Scene Hierarchy",
+                ICON_MDI_VIEW_LIST,
+                true) {}
 
 auto SceneHierarchyPanel::get_selected_entity() const -> flecs::entity { return _selected_entity; }
 
@@ -29,7 +32,10 @@ auto SceneHierarchyPanel::set_scene(const Shared<Scene>& scene) -> void {
   _selected_entity = flecs::entity::null();
 }
 
-auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth, bool force_expand_tree, bool is_part_of_prefab) -> ImRect {
+auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
+                                           uint32_t depth,
+                                           bool force_expand_tree,
+                                           bool is_part_of_prefab) -> ImRect {
   ImGui::TableNextRow();
   ImGui::TableNextColumn();
 
@@ -169,7 +175,8 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
   ImGui::TableNextColumn();
   // Visibility Toggle
   {
-    ImGui::Text("  %s", reinterpret_cast<const char*>(entity.enabled() ? ICON_MDI_EYE_OUTLINE : ICON_MDI_EYE_OFF_OUTLINE));
+    ImGui::Text("  %s",
+                reinterpret_cast<const char*>(entity.enabled() ? ICON_MDI_EYE_OUTLINE : ICON_MDI_EYE_OFF_OUTLINE));
 
     if (ImGui::IsItemHovered() && (ImGui::IsMouseDragging(0) || ImGui::IsItemClicked())) {
       entity.enabled() ? entity.disable() : entity.enable();
@@ -195,7 +202,8 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity, uint32_t depth,
         default: tree_line_color = ImColor(255, 255, 255); break;
       }
 
-      entity.children([this, depth, force_expand_tree, is_part_of_prefab, vertical_line_start, tree_line_color](const flecs::entity child) {
+      entity.children([this, depth, force_expand_tree, is_part_of_prefab, vertical_line_start, tree_line_color](
+                          const flecs::entity child) {
         const float horizontal_tree_line_size = _scene->world.count(flecs::ChildOf, child) > 0 ? 9.f : 18.f;
         // chosen arbitrarily
         const ImRect child_rect = draw_entity_node(child, depth + 1, force_expand_tree, is_part_of_prefab);
@@ -235,7 +243,8 @@ void SceneHierarchyPanel::drag_drop_target() const {
         // const auto mesh = AssetManager::get_mesh_asset(path.string());
         // _scene->load_mesh(mesh);
         // const auto mesh_task = AssetManager::get_mesh_asset_future(path.string());
-        // context->trigger_future_mesh_load_event(FutureMeshLoadEvent{fs::get_name_with_extension(path.string()), mesh_task});
+        // context->trigger_future_mesh_load_event(FutureMeshLoadEvent{fs::get_name_with_extension(path.string()),
+        // mesh_task});
       }
       if (path.extension() == ".oxprefab") {
         // EntitySerializer::deserialize_entity_as_prefab(path.string().c_str(), _scene.get());
@@ -286,10 +295,6 @@ void SceneHierarchyPanel::draw_context_menu() {
       asset_man->load_material(to_select.get_mut<SpriteComponent>()->material, Material{});
     }
 
-    if (ImGui::MenuItem("Tilemap")) {
-      to_select = _scene->create_entity().add<TilemapComponent>();
-    }
-
     if (ImGui::MenuItem("Camera")) {
       to_select = _scene->create_entity();
       to_select.add<CameraComponent>().get_mut<TransformComponent>()->rotation.y = glm::radians(-90.f);
@@ -309,18 +314,24 @@ void SceneHierarchyPanel::draw_context_menu() {
 
     if (ImGui::BeginMenu("Physics")) {
       if (ImGui::MenuItem("Sphere")) {
-        to_select = _scene->create_entity().add<RigidbodyComponent>().add<SphereColliderComponent>().add<MeshComponent>();
-        // @OLD _scene->registry.emplace<MeshComponent>(to_select, AssetManager::get_mesh_asset("Resources/Objects/sphere.glb"));
+        to_select =
+            _scene->create_entity().add<RigidbodyComponent>().add<SphereColliderComponent>().add<MeshComponent>();
+        // @OLD _scene->registry.emplace<MeshComponent>(to_select,
+        // AssetManager::get_mesh_asset("Resources/Objects/sphere.glb"));
       }
 
       if (ImGui::MenuItem("Cube")) {
-        to_select = _scene->create_entity("Cube").add<RigidbodyComponent>().add<BoxColliderComponent>().add<MeshComponent>();
-        // @OLD _scene->registry.emplace<MeshComponent>(to_select, AssetManager::get_mesh_asset("Resources/Objects/cube.glb"));
+        to_select =
+            _scene->create_entity("Cube").add<RigidbodyComponent>().add<BoxColliderComponent>().add<MeshComponent>();
+        // @OLD _scene->registry.emplace<MeshComponent>(to_select,
+        // AssetManager::get_mesh_asset("Resources/Objects/cube.glb"));
       }
 
       if (ImGui::MenuItem("Character Controller")) {
-        to_select = _scene->create_entity("Character Controller").add<CharacterControllerComponent>().add<MeshComponent>();
-        // @OLD _scene->registry.emplace<MeshComponent>(to_select, AssetManager::get_mesh_asset("Resources/Objects/capsule.glb"));
+        to_select =
+            _scene->create_entity("Character Controller").add<CharacterControllerComponent>().add<MeshComponent>();
+        // @OLD _scene->registry.emplace<MeshComponent>(to_select,
+        // AssetManager::get_mesh_asset("Resources/Objects/capsule.glb"));
       }
 
       ImGui::EndMenu();
@@ -363,7 +374,8 @@ auto SceneHierarchyPanel::on_update() -> void {
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_D)) {
       _selected_entity.clone(true);
     }
-    if (ImGui::IsKeyPressed(ImGuiKey_Delete) && (_table_hovered || EditorLayer::get()->viewport_panels[0]->is_viewport_hovered)) {
+    if (ImGui::IsKeyPressed(ImGuiKey_Delete) &&
+        (_table_hovered || EditorLayer::get()->viewport_panels[0]->is_viewport_hovered)) {
       _selected_entity.destruct();
       _selected_entity = flecs::entity::null();
     }
@@ -384,24 +396,28 @@ auto SceneHierarchyPanel::on_update() -> void {
   }
 }
 
-auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) -> void {
+auto SceneHierarchyPanel::on_render(vuk::Extent3D extent,
+                                    vuk::Format format) -> void {
   ImGuiScoped::StyleVar cellpad(ImGuiStyleVar_CellPadding, {0, 0});
 
   if (on_begin(ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar)) {
     const float line_height = ImGui::GetTextLineHeight();
 
     const ImVec2 padding = ImGui::GetStyle().FramePadding;
-    constexpr ImGuiTableFlags table_flags = ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_BordersInner | ImGuiTableFlags_ScrollY;
+    constexpr ImGuiTableFlags table_flags =
+        ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_BordersInner | ImGuiTableFlags_ScrollY;
 
     const float filter_cursor_pos_x = ImGui::GetCursorPosX();
-    _filter.Draw("###HierarchyFilter", ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
+    _filter.Draw("###HierarchyFilter",
+                 ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
     ImGui::SameLine();
 
     if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLUS)))
       ImGui::OpenPopup("SceneHierarchyContextWindow");
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 8.0f));
-    if (ImGui::BeginPopupContextWindow("SceneHierarchyContextWindow", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+    if (ImGui::BeginPopupContextWindow("SceneHierarchyContextWindow",
+                                       ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
       draw_context_menu();
       ImGui::EndPopup();
     }
@@ -423,7 +439,9 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
     if (ImGui::BeginTable("HierarchyTable", 3, table_flags)) {
       ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoClip);
       ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, line_height * 3.0f);
-      ImGui::TableSetupColumn(StringUtils::from_char8_t("  " ICON_MDI_EYE_OUTLINE), ImGuiTableColumnFlags_WidthFixed, line_height * 2.0f);
+      ImGui::TableSetupColumn(StringUtils::from_char8_t("  " ICON_MDI_EYE_OUTLINE),
+                              ImGuiTableColumnFlags_WidthFixed,
+                              line_height * 2.0f);
 
       ImGui::TableSetupScrollFreeze(0, 1);
 
@@ -447,7 +465,8 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
 
       const auto pop_item_spacing = ImGuiLayer::popup_item_spacing;
       ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, pop_item_spacing);
-      if (ImGui::BeginPopupContextWindow("SceneHierarchyContextWindow", ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
+      if (ImGui::BeginPopupContextWindow("SceneHierarchyContextWindow",
+                                         ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
         _selected_entity = flecs::entity::null();
         draw_context_menu();
         ImGui::EndPopup();

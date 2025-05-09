@@ -9,7 +9,7 @@
 #include "Render/RenderPipeline.hpp"
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "Scene/SceneRenderer.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"

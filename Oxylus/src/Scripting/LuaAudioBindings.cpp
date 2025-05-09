@@ -5,7 +5,7 @@
 #include "Asset/AudioSource.hpp"
 #include "Asset/AssetManager.hpp"
 #include "LuaHelpers.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace ox::LuaBindings {
 void bind_audio(const Shared<sol::state>& state) {

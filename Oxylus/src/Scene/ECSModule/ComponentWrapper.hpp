@@ -2,11 +2,24 @@
 
 #include <flecs.h>
 
+#include "Core/UUID.hpp"
+
 namespace ox::ECS {
 struct ComponentWrapper {
-  using Member = std::
-      variant<std::monostate, f32*, i32*, u32*, i64*, u64*, glm::vec2*, glm::vec3*, glm::vec4*, glm::mat4*, glm::quat*, std::string*, UUID*>;
-
+  using Member = std::variant<std::monostate,
+                              bool*,
+                              f32*,
+                              i32*,
+                              u32*,
+                              i64*,
+                              u64*,
+                              glm::vec2*,
+                              glm::vec3*,
+                              glm::vec4*,
+                              glm::mat4*,
+                              glm::quat*,
+                              std::string*,
+                              UUID*>;
   flecs::entity component_entity = {};
   std::string path = {};
   std::string_view name = {};
@@ -20,6 +33,8 @@ struct ComponentWrapper {
     component_entity = comp_id_.entity();
     path = component_entity.path();
     name = {component_entity.name(), component_entity.name().length()};
+
+    OX_LOG_INFO("Wrapped, {} {}", path, name);
 
     if (!has_component()) {
       return;
@@ -44,7 +59,9 @@ struct ComponentWrapper {
       Member data = std::monostate{};
       auto member_type = flecs::entity(world, member.type);
 
-      if (member_type == flecs::F32) {
+      if (member_type == flecs::Bool) {
+        data = reinterpret_cast<bool*>(self.members_data + member.offset);
+      } else if (member_type == flecs::F32) {
         data = reinterpret_cast<f32*>(self.members_data + member.offset);
       } else if (member_type == flecs::I32) {
         data = reinterpret_cast<i32*>(self.members_data + member.offset);

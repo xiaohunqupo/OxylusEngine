@@ -1,19 +1,30 @@
 #pragma once
 
-#include "Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "Core/System.hpp"
 #include "Core/UUID.hpp"
 #include "Physics/PhysicsInterfaces.hpp"
 #include "SceneRenderer.hpp"
 
 namespace ox {
+struct ComponentDB {
+  std::vector<flecs::id> components = {};
+  std::vector<flecs::entity> imported_modules = {};
+
+  auto import_module(this ComponentDB&,
+                     flecs::entity module) -> void;
+  auto is_component_known(this ComponentDB&,
+                          flecs::id component_id) -> bool;
+  auto get_components(this ComponentDB&) -> std::span<flecs::id>;
+};
+
 enum class SceneID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class Scene {
 public:
   std::string scene_name = "Untitled";
 
   flecs::world world;
-  flecs::entity root = {};
+  ComponentDB component_db = {};
 
   Scene();
   explicit Scene(const std::string& name);
@@ -81,7 +92,6 @@ private:
   // Physics
   void update_physics(const Timestep& delta_time);
 
-  friend class SceneSerializer;
   friend class SceneHPanel;
 };
 } // namespace ox

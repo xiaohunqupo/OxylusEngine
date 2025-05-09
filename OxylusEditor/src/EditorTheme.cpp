@@ -4,7 +4,7 @@
 
 #include "Core/App.hpp"
 #include "Core/VFS.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "UI/ImGuiLayer.hpp"
 
 namespace ox {
@@ -58,6 +58,5 @@ void EditorTheme::init(this EditorTheme& self) {
   self.component_icon_map[typeid(ParticleSystemComponent).hash_code()] = ICON_MDI_LAMP;
   self.component_icon_map[typeid(SpriteComponent).hash_code()] = ICON_MDI_SQUARE_OUTLINE;
   self.component_icon_map[typeid(SpriteAnimationComponent).hash_code()] = ICON_MDI_SHAPE_SQUARE_PLUS;
-  self.component_icon_map[typeid(TilemapComponent).hash_code()] = ICON_MDI_SHAPE_POLYGON_PLUS;
 }
 } // namespace ox

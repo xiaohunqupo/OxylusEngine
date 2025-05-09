@@ -6,7 +6,7 @@
 #include <vuk/runtime/vk/Pipeline.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "Thread/TaskScheduler.hpp"
 
 #define FFX_FSR2_RESOURCE_IDENTIFIER_AUTO_EXPOSURE 28

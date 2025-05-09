@@ -8,7 +8,7 @@
 #include "LuaHelpers.hpp"
 #include "Physics/Physics.hpp"
 #include "Physics/RayCast.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
 void LuaBindings::bind_physics(const Shared<sol::state>& state) {

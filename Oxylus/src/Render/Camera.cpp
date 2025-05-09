@@ -30,7 +30,7 @@ void Camera::update(CameraComponent& component, const glm::vec2& screen_size) {
     component.aspect = extent.x / extent.y;
   else
     component.aspect = 1.0f;
-
+  
   if (component.projection == CameraComponent::Projection::Perspective) {
     component.matrices.projection_matrix = glm::perspective(glm::radians(component.fov),
                                                             component.aspect,

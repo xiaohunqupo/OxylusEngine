@@ -3,7 +3,7 @@
 #include "Frustum.hpp"
 
 #include "Physics/RayCast.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
 class Camera {

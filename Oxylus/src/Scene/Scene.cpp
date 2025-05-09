@@ -24,10 +24,11 @@
 #include "Physics/Physics.hpp"
 #include "Physics/PhysicsMaterial.hpp"
 #include "Render/RenderPipeline.hpp"
-#include "Scene/ComponentWrapper.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/ComponentWrapper.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "SceneRenderer.hpp"
 #include "Scripting/LuaManager.hpp"
+#include "Utils/Profiler.hpp"
 #include "Utils/Timestep.hpp"
 
 namespace ox {
@@ -82,6 +83,23 @@ auto deserialize_vec4(const rapidjson::GenericArray<true,
   v->w = static_cast<float>(array[3].GetDouble());
 }
 
+auto ComponentDB::import_module(this ComponentDB& self,
+                                flecs::entity module) -> void {
+  OX_SCOPED_ZONE;
+
+  self.imported_modules.emplace_back(module);
+  module.children([&](flecs::id id) { self.components.push_back(id); });
+}
+
+auto ComponentDB::is_component_known(this ComponentDB& self,
+                                     flecs::id component_id) -> bool {
+  OX_SCOPED_ZONE;
+
+  return std::ranges::any_of(self.components, [&](const auto& id) { return id == component_id; });
+}
+
+auto ComponentDB::get_components(this ComponentDB& self) -> std::span<flecs::id> { return self.components; }
+
 Scene::Scene() { init("Untitled"); }
 
 Scene::Scene(const std::string& name) { init(name); }
@@ -100,6 +118,23 @@ auto Scene::init(this Scene& self,
 
   self.scene_name = name;
 
+  self.component_db.import_module(self.world.import <Core>());
+  self.world
+      .observer<TransformComponent>() //
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .event(flecs::OnRemove)
+      .each([](flecs::iter& it, usize i, TransformComponent&) {
+    auto entity = it.entity(i);
+    if (it.event() == flecs::OnSet) {
+      // self.set_dirty(entity);
+    } else if (it.event() == flecs::OnAdd) {
+      // entity.add<TransformComponent>().add<LayerComponent>();
+    } else if (it.event() == flecs::OnRemove) {
+      // entity.remove<TransformComponent>().remove<LayerComponent>();
+    }
+  });
+
   // Renderer
   self.scene_renderer = create_unique<SceneRenderer>();
   self.scene_renderer->init(&self, nullptr);
@@ -108,14 +143,12 @@ auto Scene::init(this Scene& self,
 auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   OX_SCOPED_ZONE;
 
-  flecs::entity e = flecs::entity::null();
+  flecs::entity e = world.entity();
   if (name.empty()) {
     memory::ScopedStack stack;
-
-    e = world.entity();
     e.set_name(stack.format_char("Entity {}", e.raw_id()));
   } else {
-    e = world.entity(name.c_str());
+    e.set_name(name.c_str());
   }
 
   return e.add<TransformComponent>().add<LayerComponent>();
@@ -198,7 +231,8 @@ auto Scene::on_runtime_stop() -> void {
         [physics](const flecs::entity& e, CharacterControllerComponent& ch) {
       if (ch.character) {
         JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
-        body_interface.RemoveBody(ch.character->GetBodyID());
+        auto* character = reinterpret_cast<JPH::Character*>(ch.character);
+        body_interface.RemoveBody(character->GetBodyID());
         ch.character = nullptr;
       }
     });
@@ -507,14 +541,15 @@ void Scene::create_character_controller(const TransformComponent& transform,
   settings->mSupportingVolume =
       JPH::Plane(JPH::Vec3::sAxisY(),
                  -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
+  // TODO: Cleanup
   component.character =
-      create_shared<JPH::Character>(settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
-  component.character->AddToPhysicsSystem(JPH::EActivation::Activate);
+      new JPH::Character(settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
+  reinterpret_cast<JPH::Character*>(component.character)->AddToPhysicsSystem(JPH::EActivation::Activate);
 }
 
 auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
                     flecs::entity e) -> void {
-
+  OX_SCOPED_ZONE;
   writer.StartObject();
   writer.String("name");
   writer.String(e.name());
@@ -541,22 +576,23 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
   for (auto& component : components) {
     writer.StartObject();
     writer.String("name");
-    writer.String(component.name.data());
+    writer.String(component.path.data());
     component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
       writer.String(member_name.data());
       std::visit(ox::match{
                      [](const auto&) {},
-                     [&](const f32* v) { writer.Double(*v); },
-                     [&](const i32* v) { writer.Int(*v); },
-                     [&](const u32* v) { writer.Uint(*v); },
-                     [&](const i64* v) { writer.Uint64(*v); },
-                     [&](const u64* v) { writer.Uint64(*v); },
-                     [&](const glm::vec2* v) { serialize_vec2(writer, *v); },
-                     [&](const glm::vec3* v) { serialize_vec3(writer, *v); },
-                     [&](const glm::vec4* v) { serialize_vec4(writer, *v); },
-                     [&](const glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
+                     [&](bool* v) { writer.Bool(*v); },
+                     [&](f32* v) { writer.Double(*v); },
+                     [&](i32* v) { writer.Int(*v); },
+                     [&](u32* v) { writer.Uint(*v); },
+                     [&](i64* v) { writer.Uint64(*v); },
+                     [&](u64* v) { writer.Uint64(*v); },
+                     [&](glm::vec2* v) { serialize_vec2(writer, *v); },
+                     [&](glm::vec3* v) { serialize_vec3(writer, *v); },
+                     [&](glm::vec4* v) { serialize_vec4(writer, *v); },
+                     [&](glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
                      [&](glm::mat4* v) {}, // do nothing
-                     [&](const std::string* v) { writer.String(v->c_str()); },
+                     [&](std::string* v) { writer.String(v->c_str()); },
                      [&](UUID* v) { writer.String(v->str().c_str()); },
                  },
                  member);
@@ -631,19 +667,19 @@ auto json_to_entity(Scene& self,
 
   const auto components_json = json["components"].GetArray();
   for (const auto& component_json : components_json) {
-    const auto component_name = component_json["name"].GetString();
-    if (component_name == nullptr) {
+    const std::string component_name = component_json["name"].GetString();
+    if (component_name.empty()) {
       OX_LOG_ERROR("Entity '{}' has corrupt components JSON array.", e.name().c_str());
       return false;
     }
 
-    auto component_id = world.lookup(component_name);
+    auto component_id = world.lookup(component_name.c_str());
     if (!component_id) {
       OX_LOG_ERROR("Entity '{}' has invalid component named '{}'!", e.name().c_str(), component_name);
       return false;
     }
 
-    // OX_CHECK_EQ(self.get_entity_db().is_component_known(component_id));
+    OX_CHECK_EQ(self.component_db.is_component_known(component_id), true);
     e.add(component_id);
     ECS::ComponentWrapper component(e, component_id);
     component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
@@ -651,6 +687,7 @@ auto json_to_entity(Scene& self,
 
       auto match_result = ox::match{
           [](const auto&) {},
+          [&](bool* v) { *v = member_json.GetBool(); },
           [&](f32* v) { *v = member_json.GetFloat(); },
           [&](i32* v) { *v = member_json.GetInt(); },
           [&](u32* v) { *v = member_json.GetUint(); },
@@ -755,7 +792,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
 
   {
     OX_SCOPED_ZONE_N("CPPScripting/on_update");
-    cpp_scripts_query.each([delta_time](const flecs::entity& e, const CPPScriptComponent& c) {
+    cpp_scripts_query.each([delta_time](const flecs::entity&, const CPPScriptComponent& c) {
       for (const auto& system : c.systems) {
         system->on_update(delta_time);
       }
@@ -764,7 +801,7 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
 
   {
     OX_SCOPED_ZONE_N("LuaScripting/on_update");
-    lua_scripts_query.each([delta_time](const flecs::entity& e, const LuaScriptComponent& c) {
+    lua_scripts_query.each([delta_time](const flecs::entity&, const LuaScriptComponent& c) {
       for (const auto& script : c.lua_systems) {
         script->on_update(delta_time);
       }
@@ -776,13 +813,16 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
     OX_SCOPED_ZONE_N("Audio Systems");
     world.query_builder<const TransformComponent, AudioListenerComponent>().build().each(
         [this](const flecs::entity& e, const TransformComponent& tc, AudioListenerComponent& ac) {
-      ac.listener = create_shared<AudioListener>();
       if (ac.active) {
+        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
         const glm::mat4 inverted = glm::inverse(get_world_transform(e));
         const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
-        ac.listener->set_config(ac.config);
-        ac.listener->set_position(tc.position);
-        ac.listener->set_direction(-forward);
+        audio_engine->set_listener_position(ac.listener_index, tc.position);
+        audio_engine->set_listener_direction(ac.listener_index, -forward);
+        audio_engine->set_listener_cone(ac.listener_index,
+                                        ac.cone_inner_angle,
+                                        ac.cone_outer_angle,
+                                        ac.cone_outer_gain);
       }
     });
 
@@ -790,13 +830,24 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
         [this](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
       auto* asset_man = App::get_asset_manager();
       if (auto* audio = asset_man->get_audio(ac.audio_source)) {
+        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
         const glm::mat4 inverted = glm::inverse(get_world_transform(e));
         const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
-        audio->set_config(ac.config);
-        audio->set_position(tc.position);
-        audio->set_direction(forward);
-        if (ac.config.play_on_awake)
-          audio->play();
+        audio_engine->set_source_attenuation_model(audio->get_source(), ac.attenuation_model);
+        audio_engine->set_source_volume(audio->get_source(), ac.volume);
+        audio_engine->set_source_pitch(audio->get_source(), ac.pitch);
+        audio_engine->set_source_looping(audio->get_source(), ac.looping);
+        audio_engine->set_source_spatialization(audio->get_source(), ac.looping);
+        audio_engine->set_source_roll_off(audio->get_source(), ac.roll_off);
+        audio_engine->set_source_min_gain(audio->get_source(), ac.min_gain);
+        audio_engine->set_source_max_gain(audio->get_source(), ac.max_gain);
+        audio_engine->set_source_min_distance(audio->get_source(), ac.min_distance);
+        audio_engine->set_source_max_distance(audio->get_source(), ac.max_distance);
+        audio_engine->set_source_cone(audio->get_source(),
+                                      ac.cone_inner_angle,
+                                      ac.cone_outer_angle,
+                                      ac.cone_outer_gain);
+        audio_engine->set_source_doppler_factor(audio->get_source(), ac.doppler_factor);
       }
     });
   }
@@ -911,11 +962,12 @@ auto Scene::update_physics(const Timestep& delta_time) -> void {
   {
     world.query_builder<TransformComponent, CharacterControllerComponent>().build().each(
         [stepped, interpolation_factor](TransformComponent& tc, CharacterControllerComponent& ch) {
-      ch.character->PostSimulation(ch.collision_tolerance);
+      auto* character = reinterpret_cast<JPH::Character*>(ch.character);
+      character->PostSimulation(ch.collision_tolerance);
       if (ch.interpolation) {
         if (stepped) {
-          const JPH::Vec3 position = ch.character->GetPosition();
-          const JPH::Vec3 rotation = ch.character->GetRotation().GetEulerAngles();
+          const JPH::Vec3 position = character->GetPosition();
+          const JPH::Vec3 rotation = character->GetRotation().GetEulerAngles();
 
           ch.previous_translation = ch.translation;
           ch.previous_rotation = ch.rotation;
@@ -926,8 +978,8 @@ auto Scene::update_physics(const Timestep& delta_time) -> void {
         tc.position = glm::lerp(ch.previous_translation, ch.translation, interpolation_factor);
         tc.rotation = glm::eulerAngles(glm::slerp(ch.previous_rotation, ch.rotation, interpolation_factor));
       } else {
-        const JPH::Vec3 position = ch.character->GetPosition();
-        const JPH::Vec3 rotation = ch.character->GetRotation().GetEulerAngles();
+        const JPH::Vec3 position = character->GetPosition();
+        const JPH::Vec3 rotation = character->GetRotation().GetEulerAngles();
 
         ch.previous_translation = ch.translation;
         ch.previous_rotation = ch.rotation;

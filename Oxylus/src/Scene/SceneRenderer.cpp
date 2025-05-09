@@ -9,7 +9,7 @@
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Scene.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
 void SceneRenderer::init(Scene* scene,
@@ -32,7 +32,8 @@ void SceneRenderer::update(const Timestep& delta_time) const {
   // Camera
   {
     OX_SCOPED_ZONE_N("Camera System");
-    _scene->world.query_builder<const TransformComponent, CameraComponent>().build().each([this](const TransformComponent& tc, CameraComponent& cc) {
+    _scene->world.query_builder<const TransformComponent, CameraComponent>().build().each(
+        [this](const TransformComponent& tc, CameraComponent& cc) {
       const auto screen_extent = App::get()->get_swapchain_extent();
       cc.position = tc.position;
       cc.pitch = tc.rotation.x;
@@ -44,7 +45,8 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
   {
     OX_SCOPED_ZONE_N("Mesh System");
-    _scene->world.query_builder<const TransformComponent, MeshComponent>().build().each([this](const TransformComponent& tc, MeshComponent& cc) {});
+    _scene->world.query_builder<const TransformComponent, MeshComponent>().build().each(
+        [this](const TransformComponent& tc, MeshComponent& cc) {});
 #if 0
     const auto mesh_view = _scene->registry.view<TransformComponent, MeshComponent, TagComponent>();
     for (const auto&& [entity, transform, mesh_component, tag] : mesh_view.each()) {
@@ -73,7 +75,8 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       const auto asset_manager = App::get_system<AssetManager>(EngineSystems::AssetManager);
       auto* material = asset_manager->get_material(sprite.material);
 
-      if (sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 || !material || !material->albedo_texture)
+      if (sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 || !material ||
+          !material->albedo_texture)
         return;
 
       const auto dt = glm::clamp(static_cast<float>(delta_time.get_seconds()), 0.0f, 0.25f);
@@ -108,14 +111,16 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       auto& uv_size = material->uv_size;
 
       auto texture_size = glm::vec2(albedo_texture->get_extent().width, albedo_texture->get_extent().height);
-      uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0], sprite_animation.frame_size[1] * 1.f / texture_size[1]};
+      uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0],
+                 sprite_animation.frame_size[1] * 1.f / texture_size[1]};
       sprite.current_uv_offset = material->uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
     });
   }
 
   {
     OX_SCOPED_ZONE_N("Sprite System");
-    _scene->world.query_builder<SpriteComponent>().build().each([this](const flecs::entity entity, SpriteComponent& sprite) {
+    _scene->world.query_builder<SpriteComponent>().build().each(
+        [this](const flecs::entity entity, SpriteComponent& sprite) {
       const auto world_transform = _scene->get_world_transform(entity);
       sprite.transform = world_transform;
       sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
@@ -130,26 +135,6 @@ void SceneRenderer::update(const Timestep& delta_time) const {
   }
 
   {
-    OX_SCOPED_ZONE_N("Tilemap System");
-    _scene->world.query_builder<TransformComponent, TilemapComponent>().build().each(
-        [this](TransformComponent& transform, TilemapComponent& tilemap) {
-      // TODO: Tilemaps can also be just submitted as sprites into the renderer until we have the layering system.
-      SpriteComponent sprite{};
-      if (!tilemap.layers.empty())
-        sprite.material = tilemap.layers.begin()->second;
-      sprite.sort_y = false;
-
-      // FIXME: don't care about parents for now
-      transform.scale = {tilemap.tilemap_size, 1};
-      sprite.transform = transform.get_local_transform();
-      sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
-      sprite.rect = sprite.rect.get_transformed(sprite.transform);
-
-      _render_pipeline->submit_sprite(sprite);
-    });
-  }
-
-  {
     OX_SCOPED_ZONE_N("Physics Debug Renderer");
     if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
       auto physics = App::get_system<Physics>(EngineSystems::Physics);
@@ -159,7 +144,8 @@ void SceneRenderer::update(const Timestep& delta_time) const {
 
   {
     OX_SCOPED_ZONE_N("Lighting System");
-    _scene->world.query_builder<const TransformComponent, LightComponent>().build().each([this](const TransformComponent& tc, LightComponent& lc) {
+    _scene->world.query_builder<const TransformComponent, LightComponent>().build().each(
+        [this](const TransformComponent& tc, LightComponent& lc) {
       lc.position = tc.position;
       lc.rotation = tc.rotation;
       lc.direction = glm::normalize(math::transform_normal(glm::vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));

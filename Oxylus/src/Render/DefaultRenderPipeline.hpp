@@ -9,7 +9,7 @@
 #include "Passes/SPD.hpp"
 #include "RenderPipeline.hpp"
 #include "RendererConfig.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "Utils/OxMath.hpp"
 
 #if 0

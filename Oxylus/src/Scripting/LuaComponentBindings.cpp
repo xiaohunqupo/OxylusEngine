@@ -3,7 +3,7 @@
 #include <sol/state.hpp>
 
 #include "LuaHelpers.hpp"
-#include "Scene/Components.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
 void LuaBindings::bind_components(const Shared<sol::state>& state) {

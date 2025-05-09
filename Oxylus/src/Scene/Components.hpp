@@ -1,7 +1,6 @@
-#pragma once
-
-#include "Asset/AudioSource.hpp"
-#include "Audio/AudioListener.hpp"
+// clang-format off
+#ifndef ECS_REFLECT_TYPES
+#include "Audio/AudioEngine.hpp"
 #include "Core/App.hpp"
 #include "Core/SystemManager.hpp"
 #include "Core/UUID.hpp"
@@ -9,20 +8,38 @@
 #include "Scripting/LuaSystem.hpp"
 #include "Utils/OxMath.hpp"
 
-namespace JPH {
-class Character;
-}
+#ifndef ECS_COMPONENT_BEGIN
+#define ECS_COMPONENT_BEGIN(...)
+#endif
 
+#ifndef ECS_COMPONENT_END
+#define ECS_COMPONENT_END(...)
+#endif
+
+#ifndef ECS_COMPONENT_MEMBER
+#define ECS_COMPONENT_MEMBER(...)
+#endif
+
+#ifndef ECS_COMPONENT_TAG
+#define ECS_COMPONENT_TAG(...)
+#endif
+
+#endif
+
+#ifndef ECS_REFLECT_TYPES
 namespace ox {
-struct LayerComponent {
-  u16 layer = 1;
-};
+#endif
 
-struct TransformComponent {
-  glm::vec3 position = glm::vec3(0);
-  glm::vec3 rotation = glm::vec3(0); // Stored in radians
-  glm::vec3 scale = glm::vec3(1);
+ECS_COMPONENT_BEGIN(LayerComponent)
+  ECS_COMPONENT_MEMBER(layer, u32, 1)
+ECS_COMPONENT_END();
 
+ECS_COMPONENT_BEGIN(TransformComponent)
+  ECS_COMPONENT_MEMBER(position, glm::vec3, {})
+  ECS_COMPONENT_MEMBER(rotation, glm::vec3, {})
+  ECS_COMPONENT_MEMBER(scale, glm::vec3, {1.0f, 1.0f, 1.0f})
+
+#ifndef ECS_REFLECT_TYPES
   TransformComponent() = default;
   TransformComponent(const glm::vec3& translation) : position(translation) {}
 
@@ -37,32 +54,32 @@ struct TransformComponent {
   }
 
   glm::mat4 get_local_transform() const {
-    return glm::translate(glm::mat4(1.0f), position) * glm::toMat4(glm::quat(rotation)) * glm::scale(glm::mat4(1.0f), scale);
+    return glm::translate(glm::mat4(1.0f), position) * glm::toMat4(glm::quat(rotation)) *
+           glm::scale(glm::mat4(1.0f), scale);
   }
-};
+#endif
+
+ECS_COMPONENT_END();
 
 // Rendering
-struct MeshComponent {
-  UUID mesh_id = {};
-  bool cast_shadows = true;
-  bool stationary = false;
+ECS_COMPONENT_BEGIN(MeshComponent)
+  ECS_COMPONENT_MEMBER(mesh_id, UUID, {})
+  ECS_COMPONENT_MEMBER(cast_shadows, bool, true)
+  ECS_COMPONENT_MEMBER(stationary, bool, false)
 
-  // non-serialized data
+#ifndef ECS_REFLECT_TYPES
   glm::mat4 transform = glm::mat4{1};
   AABB aabb = {};
-  bool dirty = true;
+#endif
+ECS_COMPONENT_END();
 
-  MeshComponent() = default;
-};
+ECS_COMPONENT_BEGIN(SpriteComponent)
+  ECS_COMPONENT_MEMBER(material, ox::UUID, {})
+  ECS_COMPONENT_MEMBER(layer, u32, 0)
+  ECS_COMPONENT_MEMBER(sort_y, bool, true)
+  ECS_COMPONENT_MEMBER(flip_x, bool, false)
 
-struct SpriteComponent {
-  UUID material = {};
-  u32 layer = 0;
-
-  bool sort_y = true;
-  bool flip_x = false;
-
-  // non-serialized data
+#ifndef ECS_REFLECT_TYPES
   glm::mat4 transform = {};
   AABB rect = {};
 
@@ -73,17 +90,18 @@ struct SpriteComponent {
 
   glm::vec3 get_position() const { return glm::vec3(transform[3]); }
   glm::vec2 get_size() const { return {glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1]))}; }
-};
+#endif
+ECS_COMPONENT_END();
 
-struct SpriteAnimationComponent {
-  u32 num_frames = 0;
-  bool loop = true;
-  bool inverted = false;
-  u32 fps = 0;
-  u32 columns = 1;
-  glm::vec2 frame_size = {};
+ECS_COMPONENT_BEGIN(SpriteAnimationComponent)
+  ECS_COMPONENT_MEMBER(num_frames, u32, 0)
+  ECS_COMPONENT_MEMBER(loop, bool, true)
+  ECS_COMPONENT_MEMBER(inverted, bool, false)
+  ECS_COMPONENT_MEMBER(fps, u32, 0)
+  ECS_COMPONENT_MEMBER(columns, u32, 1)
+  ECS_COMPONENT_MEMBER(frame_size, glm::vec2, {})
 
-  // non-serialized data
+#ifndef ECS_REFLECT_TYPES
   float current_time = 0.f;
 
   void reset() { current_time = 0.f; }
@@ -114,39 +132,28 @@ struct SpriteAnimationComponent {
     columns = value;
     reset();
   }
-};
+#endif
+ECS_COMPONENT_END();
 
-struct TilemapComponent {
-  std::string path = {};
-  ankerl::unordered_dense::map<std::string, UUID> layers = {};
-  glm::ivec2 tilemap_size = {64, 64};
-
-  TilemapComponent() {}
-
-  void load(const std::string& _path) {
-    path = _path;
-    // TilemapSerializer serializer(this);
-    // serializer.deserialize(path);
-  }
-};
-
-struct CameraComponent {
+ECS_COMPONENT_BEGIN(CameraComponent)
+#ifndef ECS_REFLECT_TYPES
   enum class Projection {
     Perspective = 0,
     Orthographic = 1,
-  } projection = Projection::Perspective;
+  };
+#endif
+  ECS_COMPONENT_MEMBER(projection, CameraComponent::Projection, Projection::Perspective)
+  ECS_COMPONENT_MEMBER(fov, f32, 60.f)
+  ECS_COMPONENT_MEMBER(aspect, f32, 16.f / 9.f)
+  ECS_COMPONENT_MEMBER(far_clip, f32, 1000.f)
+  ECS_COMPONENT_MEMBER(near_clip, f32, 0.01f)
 
-  f32 fov = 60.0f;
-  f32 aspect = 16.0f / 9.0f;
-  float far_clip = 1000.f;
-  float near_clip = 0.01f;
+  ECS_COMPONENT_MEMBER(yaw, f32, -1.5708f) // - 90
+  ECS_COMPONENT_MEMBER(pitch, f32, 0.0f)
+  ECS_COMPONENT_MEMBER(tilt, f32, 0.0f)
+  ECS_COMPONENT_MEMBER(zoom, f32, 1.0f)
 
-  float yaw = -1.5708f; // - 90
-  float pitch = 0.0f;
-  float tilt = 0.0f;
-  float zoom = 1.0f;
-
-  // --- non-serialized data ---
+#ifndef ECS_REFLECT_TYPES
   glm::vec2 jitter = {};
   glm::vec2 jitter_prev = {};
 
@@ -162,95 +169,98 @@ struct CameraComponent {
   glm::vec3 forward = {};
   glm::vec3 up = {};
   glm::vec3 right = {};
-  // ------
 
   glm::mat4 get_projection_matrix() const { return matrices.projection_matrix; }
   glm::mat4 get_inv_projection_matrix() const { return glm::inverse(matrices.projection_matrix); }
   glm::mat4 get_view_matrix() const { return matrices.view_matrix; }
   glm::mat4 get_inv_view_matrix() const { return glm::inverse(matrices.view_matrix); }
-  glm::mat4 get_inverse_projection_view() const { return glm::inverse(matrices.projection_matrix * matrices.view_matrix); }
+  glm::mat4 get_inverse_projection_view() const {
+    return glm::inverse(matrices.projection_matrix * matrices.view_matrix);
+  }
 
   glm::mat4 get_previous_projection_matrix() const { return matrices_prev.projection_matrix; }
   glm::mat4 get_previous_inv_projection_matrix() const { return glm::inverse(matrices_prev.projection_matrix); }
   glm::mat4 get_previous_view_matrix() const { return matrices_prev.view_matrix; }
   glm::mat4 get_previous_inv_view_matrix() const { return glm::inverse(matrices_prev.view_matrix); }
-  glm::mat4 get_previous_inverse_projection_view() const { return glm::inverse(matrices_prev.projection_matrix * matrices_prev.view_matrix); }
-};
+  glm::mat4 get_previous_inverse_projection_view() const {
+    return glm::inverse(matrices_prev.projection_matrix * matrices_prev.view_matrix);
+  }
+#endif
+ECS_COMPONENT_END();
 
-struct ParticleSystemComponent {
-  // Shared<ParticleSystem> system = nullptr;
+ECS_COMPONENT_BEGIN(ParticleSystemComponent)
+ECS_COMPONENT_END();
 
-  // ParticleSystemComponent() : system(create_shared<ParticleSystem>()) {}
-};
-
-struct LightComponent {
+ECS_COMPONENT_BEGIN(LightComponent)
+#ifndef ECS_REFLECT_TYPES
   enum LightType { Directional = 0, Point, Spot };
+  ECS_COMPONENT_MEMBER(type, LightComponent::LightType, Point)
+#endif
+  ECS_COMPONENT_MEMBER(color_temperature_mode, bool, false)
+  ECS_COMPONENT_MEMBER(temperature, u32, 6570)
+  ECS_COMPONENT_MEMBER(color, glm::vec3, {1.0f, 1.0f, 1.0f})
+  ECS_COMPONENT_MEMBER(intensity, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(range, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(radius, f32, 0.025f)
+  ECS_COMPONENT_MEMBER(length, f32, 0.0f)
+  ECS_COMPONENT_MEMBER(outer_cone_angle, f32, glm::pi<float>() / 4.0f)
+  ECS_COMPONENT_MEMBER(inner_cone_angle, f32, 0.0f)
+  ECS_COMPONENT_MEMBER(cast_shadows, bool, true)
+  ECS_COMPONENT_MEMBER(shadow_map_res, u32, 1024)
 
-  LightType type = Point;
-  bool color_temperature_mode = false;
-  uint32_t temperature = 6570;
-  glm::vec3 color = glm::vec3(1.0f);
-  float intensity = 1.0f;
+#ifndef ECS_REFLECT_TYPES
+  ECS_COMPONENT_MEMBER(cascade_distances, std::vector<f32>, {8, 80, 800})
+#endif
 
-  float range = 1.0f;
-  float radius = 0.025f;
-  float length = 0;
-  float outer_cone_angle = glm::pi<float>() / 4.0f;
-  float inner_cone_angle = 0;
-
-  bool cast_shadows = true;
-  uint32_t shadow_map_res = 0;
-  std::vector<float> cascade_distances = {8, 80, 800};
-
-  // non-serialized data
+#ifndef ECS_REFLECT_TYPES
   glm::vec3 position = {};
   glm::vec3 rotation = {};
   glm::vec3 direction = {};
   RectPacker::Rect shadow_rect = {};
-};
+#endif
+ECS_COMPONENT_END();
 
-struct PostProcessProbe {
-  bool vignette_enabled = false;
-  float vignette_intensity = 0.25f;
-
-  bool film_grain_enabled = false;
-  float film_grain_intensity = 0.2f;
-
-  bool chromatic_aberration_enabled = false;
-  float chromatic_aberration_intensity = 0.5f;
-
-  bool sharpen_enabled = false;
-  float sharpen_intensity = 0.5f;
-};
+ECS_COMPONENT_BEGIN(PostProcessProbe)
+  ECS_COMPONENT_MEMBER(vignette_enabled, bool, false)
+  ECS_COMPONENT_MEMBER(vignette_intensity, f32, 0.25f)
+  ECS_COMPONENT_MEMBER(film_grain_enabled, bool, false)
+  ECS_COMPONENT_MEMBER(film_grain_intensity, f32, 0.2f)
+  ECS_COMPONENT_MEMBER(chromatic_aberration_enabled, bool, false)
+  ECS_COMPONENT_MEMBER(chromatic_aberration_intensity, f32, 0.5f)
+  ECS_COMPONENT_MEMBER(sharpen_enabled, bool, false)
+  ECS_COMPONENT_MEMBER(sharpen_intensity, f32, 0.5f)
+ECS_COMPONENT_END();
 
 // Physics
-struct RigidbodyComponent {
+ECS_COMPONENT_BEGIN(RigidbodyComponent)
+#ifndef ECS_REFLECT_TYPES
   enum class BodyType { Static = 0, Kinematic, Dynamic };
   enum class AllowedDOFs : u32 {
-    None = 0b000000,         ///< No degrees of freedom are allowed. Note that this is not valid and will crash. Use a static body instead.
-    All = 0b111111,          ///< All degrees of freedom are allowed
-    TranslationX = 0b000001, ///< Body can move in world space X axis
-    TranslationY = 0b000010, ///< Body can move in world space Y axis
-    TranslationZ = 0b000100, ///< Body can move in world space Z axis
-    RotationX = 0b001000,    ///< Body can rotate around world space X axis
-    RotationY = 0b010000,    ///< Body can rotate around world space Y axis
-    RotationZ = 0b100000,    ///< Body can rotate around world space Z axis
+    None = 0b000000, ///< No degrees of freedom are allowed. Note that this is not valid and will crash. Use a static
+                     ///< body instead.
+    All = 0b111111,  ///< All degrees of freedom are allowed
+    TranslationX = 0b000001,                           ///< Body can move in world space X axis
+    TranslationY = 0b000010,                           ///< Body can move in world space Y axis
+    TranslationZ = 0b000100,                           ///< Body can move in world space Z axis
+    RotationX = 0b001000,                              ///< Body can rotate around world space X axis
+    RotationY = 0b010000,                              ///< Body can rotate around world space Y axis
+    RotationZ = 0b100000,                              ///< Body can rotate around world space Z axis
     Plane2D = TranslationX | TranslationY | RotationZ, ///< Body can only move in X and Y axis and rotate around Z axis
   };
+#endif
+  ECS_COMPONENT_MEMBER(allowed_dofs, RigidbodyComponent::AllowedDOFs, AllowedDOFs::All)
+  ECS_COMPONENT_MEMBER(type, RigidbodyComponent::BodyType, BodyType::Dynamic)
+  ECS_COMPONENT_MEMBER(mass, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(linear_drag, f32, 0.0f)
+  ECS_COMPONENT_MEMBER(angular_drag, f32, 0.05f)
+  ECS_COMPONENT_MEMBER(gravity_scale, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(allow_sleep, bool, true)
+  ECS_COMPONENT_MEMBER(awake, bool, true)
+  ECS_COMPONENT_MEMBER(continuous, bool, false)
+  ECS_COMPONENT_MEMBER(interpolation, bool, false)
+  ECS_COMPONENT_MEMBER(is_sensor, bool, false)
 
-  AllowedDOFs allowed_dofs = AllowedDOFs::All;
-  BodyType type = BodyType::Dynamic;
-  float mass = 1.0f;
-  float linear_drag = 0.0f;
-  float angular_drag = 0.05f;
-  float gravity_scale = 1.0f;
-  bool allow_sleep = true;
-  bool awake = true;
-  bool continuous = false;
-  bool interpolation = false;
-
-  bool is_sensor = false;
-
+#ifndef ECS_REFLECT_TYPES
   // Stored as JPH::Body
   void* runtime_body = nullptr;
 
@@ -261,65 +271,61 @@ struct RigidbodyComponent {
   glm::quat rotation = glm::vec3(0.0f);
 
   JPH::Body* get_body() const { return static_cast<JPH::Body*>(runtime_body); }
-};
+#endif
+ECS_COMPONENT_END();
 
-struct BoxColliderComponent {
-  glm::vec3 size = {0.5f, 0.5f, 0.5f};
-  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
-  float density = 1.0f;
+ECS_COMPONENT_BEGIN(BoxColliderComponent)
+  ECS_COMPONENT_MEMBER(size, glm::vec3, {0.5f, 0.5f, 0.5f})
+  ECS_COMPONENT_MEMBER(offset, glm::vec3, {0.f, 0.f, 0.f})
+  ECS_COMPONENT_MEMBER(density, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(friction, f32, 0.5f)
+  ECS_COMPONENT_MEMBER(restitution, f32, 0.0f)
+ECS_COMPONENT_END();
 
-  float friction = 0.5f;
-  float restitution = 0.0f;
-};
+ECS_COMPONENT_BEGIN(SphereColliderComponent)
+  ECS_COMPONENT_MEMBER(radius, f32, .5f)
+  ECS_COMPONENT_MEMBER(offset, glm::vec3, {0.f, 0.f, 0.f})
+  ECS_COMPONENT_MEMBER(density, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(friction, f32, 0.5f)
+  ECS_COMPONENT_MEMBER(restitution, f32, 0.0f)
+ECS_COMPONENT_END();
 
-struct SphereColliderComponent {
-  float radius = 0.5f;
-  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
-  float density = 1.0f;
+ECS_COMPONENT_BEGIN(CapsuleColliderComponent)
+  ECS_COMPONENT_MEMBER(height, f32, 1.f)
+  ECS_COMPONENT_MEMBER(radius, f32, .5f)
+  ECS_COMPONENT_MEMBER(offset, glm::vec3, {0.f, 0.f, 0.f})
+  ECS_COMPONENT_MEMBER(density, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(friction, f32, 0.5f)
+  ECS_COMPONENT_MEMBER(restitution, f32, 0.0f)
+ECS_COMPONENT_END();
 
-  float friction = 0.5f;
-  float restitution = 0.0f;
-};
+ECS_COMPONENT_BEGIN(TaperedCapsuleColliderComponent)
+  ECS_COMPONENT_MEMBER(height, f32, 1.f)
+  ECS_COMPONENT_MEMBER(top_radius, f32, .5f)
+  ECS_COMPONENT_MEMBER(bottom_radius, f32, .5f)
+  ECS_COMPONENT_MEMBER(offset, glm::vec3, {0.f, 0.f, 0.f})
+  ECS_COMPONENT_MEMBER(density, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(friction, f32, 0.5f)
+  ECS_COMPONENT_MEMBER(restitution, f32, 0.0f)
+ECS_COMPONENT_END();
 
-struct CapsuleColliderComponent {
-  float height = 1.0f;
-  float radius = 0.5f;
-  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
-  float density = 1.0f;
+ECS_COMPONENT_BEGIN(CylinderColliderComponent)
+  ECS_COMPONENT_MEMBER(height, f32, 1.f)
+  ECS_COMPONENT_MEMBER(radius, f32, .5f)
+  ECS_COMPONENT_MEMBER(offset, glm::vec3, {0.f, 0.f, 0.f})
+  ECS_COMPONENT_MEMBER(density, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(friction, f32, 0.5f)
+  ECS_COMPONENT_MEMBER(restitution, f32, 0.0f)
+ECS_COMPONENT_END();
 
-  float friction = 0.5f;
-  float restitution = 0.0f;
-};
-
-struct TaperedCapsuleColliderComponent {
-  float height = 1.0f;
-  float top_radius = 0.5f;
-  float bottom_radius = 0.5f;
-  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
-  float density = 1.0f;
-
-  float friction = 0.5f;
-  float restitution = 0.0f;
-};
-
-struct CylinderColliderComponent {
-  float height = 1.0f;
-  float radius = 0.5f;
-  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
-  float density = 1.0f;
-
-  float friction = 0.5f;
-  float restitution = 0.0f;
-};
-
-struct MeshColliderComponent {
-  glm::vec3 offset = {0.0f, 0.0f, 0.0f};
-  float friction = 0.5f;
-  float restitution = 0.0f;
-};
+ECS_COMPONENT_BEGIN(MeshColliderComponent)
+  ECS_COMPONENT_MEMBER(offset, glm::vec3, {0.f, 0.f, 0.f})
+  ECS_COMPONENT_MEMBER(friction, f32, 0.5f)
+  ECS_COMPONENT_MEMBER(restitution, f32, 0.0f)
+ECS_COMPONENT_END();
 
 struct CharacterControllerComponent {
-  Shared<JPH::Character> character = nullptr;
+  void* character = nullptr; // Stored as JPHCharacter
 
   // Size
   float character_height_standing = 1.35f;
@@ -365,31 +371,57 @@ struct CharacterControllerComponent {
 };
 
 // Audio
-struct AudioSourceComponent {
-  AudioSourceConfig config;
+ECS_COMPONENT_BEGIN(AudioSourceComponent)
+  ECS_COMPONENT_MEMBER(attenuation_model, AttenuationModelType, AttenuationModelType::Inverse)
+  ECS_COMPONENT_MEMBER(volume, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(pitch, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(play_on_awake, bool, true)
+  ECS_COMPONENT_MEMBER(looping, bool, false)
 
-  UUID audio_source = {};
-};
+  ECS_COMPONENT_MEMBER(spatialization, bool , false)
+  ECS_COMPONENT_MEMBER(roll_off, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(min_gain, f32, 0.0f)
+  ECS_COMPONENT_MEMBER(max_gain, f32, 1.0f)
+  ECS_COMPONENT_MEMBER(min_distance, f32, 0.3f)
+  ECS_COMPONENT_MEMBER(max_distance, f32, 1000.0f)
 
-struct AudioListenerComponent {
-  bool active = true;
-  AudioListenerConfig config;
+  ECS_COMPONENT_MEMBER(cone_inner_angle, f32, glm::radians(360.0f))
+  ECS_COMPONENT_MEMBER(cone_outer_angle, f32, glm::radians(360.0f))
+  ECS_COMPONENT_MEMBER(cone_outer_gain, f32, 0.0f)
 
-  Shared<AudioListener> listener;
-};
+  ECS_COMPONENT_MEMBER(doppler_factor, f32, 1.0f)
+
+  ECS_COMPONENT_MEMBER(audio_source, UUID, {})
+ECS_COMPONENT_END();
+
+ECS_COMPONENT_BEGIN(AudioListenerComponent)
+  ECS_COMPONENT_MEMBER(active, bool, false)
+  ECS_COMPONENT_MEMBER(listener_index, u32, 0)
+  ECS_COMPONENT_MEMBER(cone_inner_angle, f32, glm::radians(360.0f))
+  ECS_COMPONENT_MEMBER(cone_outer_angle, f32, glm::radians(360.0f))
+  ECS_COMPONENT_MEMBER(cone_outer_gain, f32, 0.0f)
+ECS_COMPONENT_END();
 
 // Scripting
-struct LuaScriptComponent {
-  std::vector<Shared<LuaSystem>> lua_systems = {};
-};
+ECS_COMPONENT_BEGIN(LuaScriptComponent)
+#ifndef ECS_REFLECT_TYPES
+  ECS_COMPONENT_MEMBER(lua_systems, std::vector<Shared<LuaSystem>>, {})
+#endif
+ECS_COMPONENT_END();
 
-struct CPPScriptComponent {
-  std::vector<Shared<System>> systems = {};
+ECS_COMPONENT_BEGIN(CPPScriptComponent)
+#ifndef ECS_REFLECT_TYPES
+  ECS_COMPONENT_MEMBER(systems, std::vector<Shared<System>>, {})
 
   template <typename T>
   void add_system() {
     auto system = App::get_system<SystemManager>(EngineSystems::SystemManager)->register_system<T>();
     systems.emplace(system);
   }
-};
+#endif
+ECS_COMPONENT_END();
+
+#ifndef ECS_REFLECT_TYPES
 } // namespace ox
+#endif
+// clang-format on
