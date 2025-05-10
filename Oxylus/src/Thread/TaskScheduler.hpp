@@ -16,8 +16,10 @@ class TaskScheduler : public ESystem {
 public:
   TaskScheduler() = default;
 
-  void init() override;
-  void deinit() override;
+  auto init() -> std::expected<void,
+                               std::string> override;
+  auto deinit() -> std::expected<void,
+                                 std::string> override;
 
   Unique<enki::TaskScheduler>& get_underlying() { return task_scheduler; }
 

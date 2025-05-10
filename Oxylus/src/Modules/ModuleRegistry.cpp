@@ -3,11 +3,19 @@
 #include "ModuleInterface.hpp"
 
 namespace ox {
-void ModuleRegistry::init() {}
+auto ModuleRegistry::init() -> std::expected<void,
+                                             std::string> {
+  return {};
+}
 
-void ModuleRegistry::deinit() { clear(); }
+auto ModuleRegistry::deinit() -> std::expected<void,
+                                               std::string> {
+  clear();
+  return {};
+}
 
-Module* ModuleRegistry::add_lib(const std::string& name, std::string_view path) {
+Module* ModuleRegistry::add_lib(const std::string& name,
+                                std::string_view path) {
   try {
     const std::string path_str = std::string(path);
     const auto file_name = path_str + dylib::filename_components::suffix;

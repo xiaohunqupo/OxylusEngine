@@ -28,61 +28,11 @@
 #include "Scene/ECSModule/Core.hpp"
 #include "SceneRenderer.hpp"
 #include "Scripting/LuaManager.hpp"
+#include "Utils/JsonHelpers.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/Timestep.hpp"
 
 namespace ox {
-void serialize_vec2(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                    const glm::vec2& vec) {
-  writer.StartArray();
-  writer.Double(vec.x);
-  writer.Double(vec.y);
-  writer.EndArray();
-}
-
-void serialize_vec3(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                    const glm::vec3& vec) {
-  writer.StartArray();
-  writer.Double(vec.x);
-  writer.Double(vec.y);
-  writer.Double(vec.z);
-  writer.EndArray();
-}
-
-void serialize_vec4(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                    const glm::vec4& vec) {
-  writer.StartArray();
-  writer.Double(vec.x);
-  writer.Double(vec.y);
-  writer.Double(vec.z);
-  writer.Double(vec.w);
-  writer.EndArray();
-}
-
-auto deserialize_vec2(const rapidjson::GenericArray<true,
-                                                    rapidjson::GenericValue<rapidjson::UTF8<>>>& array,
-                      glm::vec2* v) -> void {
-  v->x = static_cast<float>(array[0].GetDouble());
-  v->y = static_cast<float>(array[1].GetDouble());
-}
-
-auto deserialize_vec3(const rapidjson::GenericArray<true,
-                                                    rapidjson::GenericValue<rapidjson::UTF8<>>>& array,
-                      glm::vec3* v) -> void {
-  v->x = static_cast<float>(array[0].GetDouble());
-  v->y = static_cast<float>(array[1].GetDouble());
-  v->z = static_cast<float>(array[2].GetDouble());
-}
-
-auto deserialize_vec4(const rapidjson::GenericArray<true,
-                                                    rapidjson::GenericValue<rapidjson::UTF8<>>>& array,
-                      glm::vec4* v) -> void {
-  v->x = static_cast<float>(array[0].GetDouble());
-  v->y = static_cast<float>(array[1].GetDouble());
-  v->z = static_cast<float>(array[2].GetDouble());
-  v->w = static_cast<float>(array[3].GetDouble());
-}
-
 auto ComponentDB::import_module(this ComponentDB& self,
                                 flecs::entity module) -> void {
   OX_SCOPED_ZONE;
@@ -548,6 +498,7 @@ void Scene::create_character_controller(const TransformComponent& transform,
 }
 
 auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                    std::vector<UUID>& claimed_assets,
                     flecs::entity e) -> void {
   OX_SCOPED_ZONE;
   writer.StartObject();
@@ -579,23 +530,26 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
     writer.String(component.path.data());
     component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
       writer.String(member_name.data());
-      std::visit(ox::match{
-                     [](const auto&) {},
-                     [&](bool* v) { writer.Bool(*v); },
-                     [&](f32* v) { writer.Double(*v); },
-                     [&](i32* v) { writer.Int(*v); },
-                     [&](u32* v) { writer.Uint(*v); },
-                     [&](i64* v) { writer.Uint64(*v); },
-                     [&](u64* v) { writer.Uint64(*v); },
-                     [&](glm::vec2* v) { serialize_vec2(writer, *v); },
-                     [&](glm::vec3* v) { serialize_vec3(writer, *v); },
-                     [&](glm::vec4* v) { serialize_vec4(writer, *v); },
-                     [&](glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
-                     [&](glm::mat4* v) {}, // do nothing
-                     [&](std::string* v) { writer.String(v->c_str()); },
-                     [&](UUID* v) { writer.String(v->str().c_str()); },
-                 },
-                 member);
+      auto match_result = ox::match{
+          [&claimed_assets](const auto&) {},
+          [&](bool* v) { writer.Bool(*v); },
+          [&](f32* v) { writer.Double(*v); },
+          [&](i32* v) { writer.Int(*v); },
+          [&](u32* v) { writer.Uint(*v); },
+          [&](i64* v) { writer.Uint64(*v); },
+          [&](u64* v) { writer.Uint64(*v); },
+          [&](glm::vec2* v) { serialize_vec2(writer, *v); },
+          [&](glm::vec3* v) { serialize_vec3(writer, *v); },
+          [&](glm::vec4* v) { serialize_vec4(writer, *v); },
+          [&](glm::quat* v) { serialize_vec4(writer, glm::vec4{v->x, v->y, v->z, v->w}); },
+          [&](glm::mat4* v) {}, // do nothing
+          [&](std::string* v) { writer.String(v->c_str()); },
+          [&](UUID* v) {
+        writer.String(v->str().c_str());
+        claimed_assets.emplace_back(*v);
+      },
+      };
+      std::visit(match_result, member);
     });
     writer.EndObject();
   }
@@ -603,7 +557,7 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
 
   writer.String("children");
   writer.StartArray();
-  e.children([&writer](flecs::entity c) { entity_to_json(writer, c); });
+  e.children([&writer, &claimed_assets](flecs::entity c) { entity_to_json(writer, claimed_assets, c); });
   writer.EndArray();
 
   writer.EndObject();
@@ -620,12 +574,14 @@ auto Scene::save_to_file(this const Scene& self,
   writer.String("name");
   writer.String(self.scene_name.c_str());
 
+  std::vector<UUID> claimed_assets = {};
+
   writer.String("entities");
   writer.StartArray(); // entities
   const auto q = self.world.query_builder().with<TransformComponent>().build();
-  q.each([&writer](flecs::entity e) {
+  q.each([&writer, &claimed_assets](flecs::entity e) {
     if (e.parent() == flecs::entity::null()) {
-      entity_to_json(writer, e);
+      entity_to_json(writer, claimed_assets, e);
     }
   });
   writer.EndArray();  // entities
@@ -634,6 +590,12 @@ auto Scene::save_to_file(this const Scene& self,
 
   std::ofstream filestream(path);
   filestream << sb.GetString();
+
+  auto* asset_man = App::get_asset_manager();
+  for (const auto& claimed_asset : claimed_assets) {
+    auto* asset = asset_man->get_asset(claimed_asset);
+    asset_man->export_asset(claimed_asset, asset->path);
+  }
 
   OX_LOG_INFO("Saved scene {0}.", self.scene_name);
 

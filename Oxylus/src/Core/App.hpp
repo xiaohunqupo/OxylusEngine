@@ -1,5 +1,7 @@
 #pragma once
 
+#include <flecs.h>
+
 #include "ESystem.hpp"
 #include "Render/Window.hpp"
 #include "Utils/Timestep.hpp"
@@ -83,12 +85,23 @@ enum class EngineSystems {
   Count,
 };
 
-using SystemRegistry = ankerl::unordered_dense::map<EngineSystems, Shared<ESystem>>;
+namespace Event {
+struct DialogLoadEvent {
+  std::string path = {};
+};
 
+struct DialogSaveEvent {
+  std::string path = {};
+};
+} // namespace Event
+
+using SystemRegistry = ankerl::unordered_dense::map<EngineSystems, Shared<ESystem>>;
 class App {
 public:
   App(const AppSpec& spec);
   virtual ~App();
+
+  flecs::world world;
 
   static App* get() { return _instance; }
   static void set_instance(App* instance);

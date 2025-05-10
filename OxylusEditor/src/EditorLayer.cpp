@@ -6,6 +6,7 @@
 #include <ranges>
 
 #include "Asset/AssetManager.hpp"
+#include "Core/Base.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
 #include "Core/Project.hpp"
@@ -38,7 +39,7 @@ void EditorLayer::on_attach() {
 
   editor_theme.init();
 
-  Project::create_new();
+  active_project = create_unique<Project>();
 
   editor_config.load_config();
 
@@ -74,10 +75,13 @@ void EditorLayer::on_attach() {
   }
 }
 
-void EditorLayer::on_detach() { editor_config.save_config(); }
+void EditorLayer::on_detach() {
+  editor_config.save_config();
+  active_project->unload_module();
+}
 
 void EditorLayer::on_update(const Timestep& delta_time) {
-  Project::get_active()->check_module();
+  active_project->check_module();
 
   for (const auto& panel : viewport_panels) {
     if (panel->fullscreen_viewport) {
@@ -189,7 +193,7 @@ void EditorLayer::on_render(const vuk::Extent3D extent,
             get_panel<EditorSettingsPanel>()->visible = true;
           }
           if (ImGui::MenuItem("Reload project module")) {
-            Project::get_active()->load_module();
+            active_project->load_module();
           }
           ImGui::EndMenu();
         }
@@ -231,12 +235,12 @@ void EditorLayer::on_render(const vuk::Extent3D extent,
 
         {
           // Project name text
-          ImGui::SetCursorPos(ImVec2(ImGui::GetMainViewport()->Size.x - 10 -
-                                         ImGui::CalcTextSize(Project::get_active()->get_config().name.c_str()).x,
-                                     0));
+          const std::string& project_name = active_project->get_config().name;
+          ImGui::SetCursorPos(
+              ImVec2(ImGui::GetMainViewport()->Size.x - 10 - ImGui::CalcTextSize(project_name.c_str()).x, 0));
           ImGuiScoped::StyleColor b_color1(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
           ImGuiScoped::StyleColor b_color2(ImGuiCol_ButtonHovered, ImVec4(0.2f, 0.2f, 0.2f, 0.7f));
-          ImGui::Button(Project::get_active()->get_config().name.c_str());
+          ImGui::Button(project_name.c_str());
         }
 
         ImGui::EndMenuBar();
@@ -476,7 +480,5 @@ Archive& EditorLayer::advance_history() {
   return history.back();
 }
 
-void EditorLayer::new_project() { Project::create_new(); }
-
-void EditorLayer::save_project(const std::string& path) { Project::save_active(path); }
+void EditorLayer::new_project() { OX_UNIMPLEMENTED(EditorLayer::new_project()); }
 } // namespace ox

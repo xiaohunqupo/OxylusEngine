@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Core/Layer.hpp"
+#include "Core/Project.hpp"
 #include "EditorContext.hpp"
 #include "EditorTheme.hpp"
 #include "Panels/ContentPanel.hpp"
@@ -45,6 +46,8 @@ public:
     return dynamic_cast<T*>(editor_panels[hash_code].get());
   }
 
+  Unique<Project> active_project = nullptr;
+
   EditorTheme editor_theme;
 
   // Logo
@@ -60,7 +63,8 @@ public:
   void on_detach() override;
 
   void on_update(const Timestep& delta_time) override;
-  void on_render(vuk::Extent3D extent, vuk::Format format) override;
+  void on_render(vuk::Extent3D extent,
+                 vuk::Format format) override;
 
   void new_scene();
   void open_scene_file_dialog();
@@ -72,7 +76,11 @@ public:
 
   static EditorLayer* get() { return instance; }
 
-  void set_context(EditorContextType type, const char* data, size_t size) { editor_context.set(type, data, size); }
+  void set_context(EditorContextType type,
+                   const char* data,
+                   size_t size) {
+    editor_context.set(type, data, size);
+  }
   void set_context_as_asset_with_path(const std::string& path) {
     editor_context.set(EditorContextType::Asset, path.c_str(), sizeof(char) * (path.length() + 1));
   }
@@ -100,8 +108,7 @@ public:
 
 private:
   // Project
-  static void new_project();
-  static void save_project(const std::string& path);
+  void save_project(const std::string& path);
 
   // Scene
   std::string last_save_scene_path{};

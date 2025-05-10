@@ -1,17 +1,21 @@
 ﻿#include "TaskScheduler.hpp"
 
 namespace ox {
-void TaskScheduler::init() {
+
+auto TaskScheduler::init() -> std::expected<void,
+                                            std::string> {
   OX_SCOPED_ZONE;
   task_scheduler = create_unique<enki::TaskScheduler>();
   task_scheduler->Initialize();
   task_sets.reserve(100);
 
-  OX_LOG_INFO("TaskScheduler initalized.");
+  return {};
 }
 
-void TaskScheduler::deinit() {
+auto TaskScheduler::deinit() -> std::expected<void,
+                                              std::string> {
   task_scheduler->WaitforAllAndShutdown();
+  return {};
 }
 
 void TaskScheduler::wait_for_all() {
@@ -19,4 +23,4 @@ void TaskScheduler::wait_for_all() {
 
   task_sets.clear();
 }
-}
+} // namespace ox

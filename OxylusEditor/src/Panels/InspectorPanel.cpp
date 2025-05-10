@@ -6,10 +6,12 @@
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "Asset/AssetManager.hpp"
+#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/SystemManager.hpp"
 #include "EditorLayer.hpp"
 #include "EditorTheme.hpp"
+#include "Panels/ContentPanel.hpp"
 #include "Render/ParticleSystem.hpp"
 #include "Scene/ECSModule/Core.hpp"
 #include "UI/OxUI.hpp"
@@ -93,14 +95,115 @@ void draw_component(const char* name,
     entity.remove<T>();
 }
 
-void InspectorPanel::draw_material_properties(Material* material) {
+void InspectorPanel::draw_material_properties(Material* material,
+                                              const UUID& uuid,
+                                              flecs::entity load_event) {
+  if (uuid) {
+    const auto& window = App::get()->get_window();
+    static auto uuid_copy = uuid;
+    static auto load_event_copy = load_event;
+
+    auto uuid_str = fmt::format("UUID: {}", uuid.str());
+    ImGui::TextUnformatted(uuid_str.c_str());
+
+    auto load_str = fmt::format("{} Load", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
+
+    const float x = ImGui::GetContentRegionAvail().x / 2;
+    const float y = ImGui::GetFrameHeight();
+    if (ui::button(load_str.c_str(), {x, y})) {
+      FileDialogFilter dialog_filters[] = {{.name = "Asset (.oxasset)", .pattern = "oxasset"}};
+      window.show_dialog({
+          .kind = DialogKind::OpenFile,
+          .user_data = &load_event,
+          .callback =
+              [](void* user_data, const c8* const* files, i32) {
+        if (!files || !*files) {
+          return;
+        }
+
+        const auto first_path_cstr = *files;
+        const auto first_path_len = std::strlen(first_path_cstr);
+        auto path = std::string(first_path_cstr, first_path_len);
+
+        load_event_copy.emit<Event::DialogLoadEvent>({path});
+      },
+          .title = "Open material asset file...",
+          .default_path = fs::current_path(),
+          .filters = dialog_filters,
+          .multi_select = false,
+      });
+    }
+    if (ImGui::BeginDragDropTarget()) {
+      if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(ContentPanel::DRAG_DROP_SOURCE)) {
+        const ::fs::path path = ui::get_path_from_imgui_payload(payload);
+        if (const std::string ext = path.extension().string(); ext == ".oxasset") {
+          load_event.emit<Event::DialogLoadEvent>({path});
+        }
+      }
+      ImGui::EndDragDropTarget();
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
+      ImGui::BeginTooltip();
+      ImGui::Text("You can drag&drop here to load a material.");
+      ImGui::EndTooltip();
+    }
+
+    ImGui::SameLine();
+
+    auto save_str = fmt::format("{} Save", StringUtils::from_char8_t(ICON_MDI_FILE_DOWNLOAD));
+    if (ui::button(save_str.c_str(), {x, y})) {
+      FileDialogFilter dialog_filters[] = {{.name = "Asset (.oxasset)", .pattern = "oxasset"}};
+      window.show_dialog({
+          .kind = DialogKind::SaveFile,
+          .user_data = nullptr,
+          .callback =
+              [](void* user_data, const c8* const* files, i32) {
+        if (!files || !*files || !uuid_copy) {
+          return;
+        }
+
+        const auto first_path_cstr = *files;
+        const auto first_path_len = std::strlen(first_path_cstr);
+        auto path = std::string(first_path_cstr, first_path_len);
+
+        load_event_copy.emit<Event::DialogSaveEvent>({path});
+      },
+          .title = "Open material asset file...",
+          .default_path = fs::current_path(),
+          .filters = dialog_filters,
+          .multi_select = false,
+      });
+    }
+
+    if (ImGui::BeginDragDropSource()) {
+      std::string path_str = fmt::format("new_material");
+      ContentPanel::PayloadData payload = {uuid, path_str};
+      ImGui::SetDragDropPayload(ContentPanel::DRAG_DROP_TARGET, &payload, payload.size());
+      ImGui::TextUnformatted(path_str.c_str());
+      ImGui::EndDragDropSource();
+    }
+
+    if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
+      ImGui::BeginTooltip();
+      ImGui::Text("You can drag&drop this into content window to save the material.");
+      ImGui::EndTooltip();
+    }
+  }
+
   ui::begin_properties(ui::default_properties_flags);
 
   const char* alpha_modes[] = {"Opaque", "Mash", "Blend"};
   ui::property("Alpha mode", reinterpret_cast<int*>(&material->alpha_mode), alpha_modes, 3);
 
-  const char* samplers[] = {"Nearest", "Linear", "Anisotropy"};
-  ui::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 3);
+  const char* samplers[] = {
+      "LinearRepeated",
+      "LinearClamped",
+      "NearestRepeated",
+      "NearestClamped",
+      "LinearRepeatedAnisotropy",
+  };
+  ui::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 5);
 
   ui::property_vector<glm::vec2>("UV Size", material->uv_size, 0.1f, 10.f);
   ui::property_vector<glm::vec2>("UV Offset", material->uv_offset, -10.0f, 10.f);
@@ -289,9 +392,23 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
     ImGui::SeparatorText("Material");
 
-    auto* asset_man = App::get_asset_manager();
-    if (auto* material = asset_man->get_material(component.material))
-      draw_material_properties(material);
+    auto load_event = App::get()->world.entity("sprite_material_load_event");
+    load_event.observe<Event::DialogLoadEvent>([&component](Event::DialogLoadEvent& e) {
+      auto* asset_man = App::get_asset_manager();
+      if (auto imported = asset_man->import_asset(e.path)) {
+        component.material = imported;
+        asset_man->unload_asset(component.material);
+      }
+    });
+
+    load_event.observe<Event::DialogSaveEvent>([&component](Event::DialogSaveEvent& e) {
+      auto* asset_man = App::get_asset_manager();
+      asset_man->export_asset(component.material, e.path);
+    });
+
+    if (auto* material = App::get_asset_manager()->get_material(component.material)) {
+      draw_material_properties(material, component.material, load_event);
+    }
   });
 
   draw_component<SpriteAnimationComponent>(" Sprite Animation Component",

@@ -11,15 +11,18 @@ class Input : public ESystem {
 public:
   enum class CursorState { Disabled = 0x00034003, Normal = 0x00034001, Hidden = 0x00034002 };
 
-  void init() override;
-  void deinit() override;
+  auto init() -> std::expected<void,
+                               std::string> override;
+  auto deinit() -> std::expected<void,
+                                 std::string> override;
 
   static void set_instance();
 
   void reset_pressed();
   void reset();
 
-  static KeyCode to_keycode(SDL_Keycode keycode, SDL_Scancode scancode);
+  static KeyCode to_keycode(SDL_Keycode keycode,
+                            SDL_Scancode scancode);
   static MouseCode to_mouse_code(SDL_MouseButtonFlags key);
 
   /// Keyboard
@@ -33,7 +36,8 @@ public:
   /// Mouse
   static glm::vec2 get_mouse_position();
   static glm::vec2 get_mouse_position_rel();
-  static void set_mouse_position(float x, float y);
+  static void set_mouse_position(float x,
+                                 float y);
   static float get_mouse_offset_x();
   static float get_mouse_offset_y();
   static float get_mouse_scroll_offset_y();
@@ -63,10 +67,25 @@ private:
 
   CursorState cursor_state = CursorState::Normal;
 
-  void set_key_pressed(const KeyCode key, const bool a) { input_data.key_pressed[int(key)] = a; }
-  void set_key_released(const KeyCode key, const bool a) { input_data.key_released[int(key)] = a; }
-  void set_key_held(const KeyCode key, const bool a) { input_data.key_held[int(key)] = a; }
-  void set_mouse_clicked(const MouseCode key, const bool a) { input_data.mouse_clicked[int(key)] = a; }
-  void set_mouse_held(const MouseCode key, const bool a) { input_data.mouse_held[int(key)] = a; }
+  void set_key_pressed(const KeyCode key,
+                       const bool a) {
+    input_data.key_pressed[int(key)] = a;
+  }
+  void set_key_released(const KeyCode key,
+                        const bool a) {
+    input_data.key_released[int(key)] = a;
+  }
+  void set_key_held(const KeyCode key,
+                    const bool a) {
+    input_data.key_held[int(key)] = a;
+  }
+  void set_mouse_clicked(const MouseCode key,
+                         const bool a) {
+    input_data.mouse_clicked[int(key)] = a;
+  }
+  void set_mouse_held(const MouseCode key,
+                      const bool a) {
+    input_data.mouse_held[int(key)] = a;
+  }
 };
 } // namespace ox

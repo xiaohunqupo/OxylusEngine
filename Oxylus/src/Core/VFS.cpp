@@ -3,21 +3,34 @@
 #include "Core/FileSystem.hpp"
 
 namespace ox {
-void VFS::init() {}
+auto VFS::init() -> std::expected<void,
+                                  std::string> {
+  return {};
+}
 
-void VFS::deinit() {}
+auto VFS::deinit() -> std::expected<void,
+                                    std::string> {
+  return {};
+}
 
-void VFS::mount_dir(const std::string& virtual_dir, const std::string& physical_dir) {
+auto VFS::is_mounted_dir(const std::string& virtual_dir) -> bool {
+  OX_SCOPED_ZONE;
+  return mapped_dirs.contains(virtual_dir);
+}
+
+auto VFS::mount_dir(const std::string& virtual_dir,
+                    const std::string& physical_dir) -> void {
   OX_SCOPED_ZONE;
   mapped_dirs.emplace(virtual_dir, physical_dir);
 }
 
-void VFS::unmount_dir(const std::string& virtual_dir) {
+auto VFS::unmount_dir(const std::string& virtual_dir) -> void {
   OX_SCOPED_ZONE;
   mapped_dirs.erase(virtual_dir);
 }
 
-std::string VFS::resolve_physical_dir(const std::string& virtual_dir, const std::string& file_path) {
+auto VFS::resolve_physical_dir(const std::string& virtual_dir,
+                               const std::string& file_path) -> std::string {
   OX_SCOPED_ZONE;
   if (!mapped_dirs.contains(virtual_dir)) {
     OX_LOG_ERROR("Not a mounted virtual dir: {}", virtual_dir);
@@ -29,7 +42,7 @@ std::string VFS::resolve_physical_dir(const std::string& virtual_dir, const std:
   return fs::append_paths(physical_dir, file_path);
 }
 
-std::string VFS::resolve_virtual_dir(const std::string& file_path) {
+auto VFS::resolve_virtual_dir(const std::string& file_path) -> std::string {
   OX_SCOPED_ZONE;
 
   for (const auto& [virtual_dir, physical_dir] : mapped_dirs) {

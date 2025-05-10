@@ -1,5 +1,7 @@
 #pragma once
 
+#include <rapidjson/prettywriter.h>
+
 #include "Asset/AssetFile.hpp"
 #include "Asset/AudioSource.hpp"
 #include "Asset/Material.hpp"
@@ -36,13 +38,50 @@ struct Asset {
 using AssetRegistry = ankerl::unordered_dense::map<UUID, Asset>;
 class AssetManager : public ESystem {
 public:
-  void init() override;
-  void deinit() override;
+  auto init() -> std::expected<void,
+                               std::string> override;
+  auto deinit() -> std::expected<void,
+                                 std::string> override;
 
   auto registry() const -> const AssetRegistry&;
 
+  auto load_deferred_assets() -> void;
+
   auto create_asset(AssetType type,
                     const std::string& path = {}) -> UUID;
+
+  auto to_asset_file_type(const std::string& path) -> AssetFileType;
+  auto to_asset_type_sv(AssetType type) -> std::string_view;
+
+  auto import_asset(const std::string& path) -> UUID;
+
+  auto delete_asset(const UUID& uuid) -> void;
+
+  //  ── Registered Assets ─────────────────────────────────────────────────
+  // Assets that already exist in project root and have meta file with
+  // valid UUID's.
+  //
+  // Add already existing asset into the registry.
+  // File must end with `.oxasset` extension.
+  auto register_asset(const std::string& path) -> UUID;
+  auto register_asset(const UUID& uuid,
+                      AssetType type,
+                      const std::string& path) -> bool;
+
+  auto export_asset(const UUID& uuid,
+                    const std::string& path) -> bool;
+  auto export_texture(const UUID& uuid,
+                      rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                      const std::string& path) -> bool;
+  auto export_mesh(const UUID& uuid,
+                   rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                   const std::string& path) -> bool;
+  auto export_scene(const UUID& uuid,
+                    rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                    const std::string& path) -> bool;
+  auto export_material(const UUID& uuid,
+                       rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                       const std::string& path) -> bool;
 
   auto load_asset(const UUID& uuid) -> bool;
   auto unload_asset(const UUID& uuid) -> void;
@@ -92,5 +131,7 @@ private:
   SlotMap<Material, MaterialID> material_map = {};
   SlotMap<std::unique_ptr<Scene>, SceneID> scene_map = {};
   SlotMap<AudioSource, AudioID> audio_map = {};
+
+  std::vector<std::function<void()>> deferred_load_queue = {};
 };
 } // namespace ox

@@ -34,7 +34,8 @@ static bool AssertFailedImpl(const char* inExpression,
 };
 #endif
 
-void Physics::init() {
+auto Physics::init() -> std::expected<void,
+                                      std::string> {
   // TODO: Override default allocators with Oxylus allocators.
   JPH::RegisterDefaultAllocator();
 
@@ -61,6 +62,21 @@ void Physics::init() {
                        layer_interface,
                        object_vs_broad_phase_layer_filter_interface,
                        object_layer_pair_filter_interface);
+
+  return {};
+}
+
+auto Physics::deinit() -> std::expected<void,
+                                        std::string> {
+  JPH::UnregisterTypes();
+  delete JPH::Factory::sInstance;
+  JPH::Factory::sInstance = nullptr;
+  delete temp_allocator;
+  delete physics_system;
+  delete job_system;
+  delete debug_renderer;
+
+  return {};
 }
 
 void Physics::set_instance() {
@@ -84,16 +100,6 @@ void Physics::debug_draw() {
   settings.mDrawShapeWireframe = true;
 
   physics_system->DrawBodies(settings, debug_renderer);
-}
-
-void Physics::deinit() {
-  JPH::UnregisterTypes();
-  delete JPH::Factory::sInstance;
-  JPH::Factory::sInstance = nullptr;
-  delete temp_allocator;
-  delete physics_system;
-  delete job_system;
-  delete debug_renderer;
 }
 
 JPH::PhysicsSystem* Physics::get_physics_system() {

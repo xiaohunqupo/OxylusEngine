@@ -18,21 +18,25 @@ static ma_attenuation_model get_attenuation_model(const AttenuationModelType mod
   return ma_attenuation_model_none;
 }
 
-void AudioEngine::init() {
+auto AudioEngine::init() -> std::expected<void,
+                                          std::string> {
   OX_SCOPED_ZONE;
   ma_engine_config config = ma_engine_config_init();
   config.listenerCount = 1;
 
   engine = new ma_engine();
   const ma_result result = ma_engine_init(&config, engine);
-  OX_CHECK_EQ(result, MA_SUCCESS, "Failed to initialize audio engine!");
+  if (result != MA_SUCCESS)
+    return std::unexpected{"ma_engine_init failed!"};
 
-  OX_LOG_INFO("Initalized audio engine.");
+  return {};
 }
 
-void AudioEngine::deinit() {
+auto AudioEngine::deinit() -> std::expected<void,
+                                            std::string> {
   ma_engine_uninit(engine);
   delete engine;
+  return {};
 }
 
 auto AudioEngine::get_engine() const -> ma_engine* { return engine; }

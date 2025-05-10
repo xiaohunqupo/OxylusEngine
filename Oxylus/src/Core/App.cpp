@@ -26,6 +26,23 @@
 #include "VFS.hpp"
 
 namespace ox {
+auto engine_system_to_sv(EngineSystems type) -> std::string_view {
+  switch (type) {
+    case EngineSystems::AssetManager  : return "AssetManager";
+    case EngineSystems::VFS           : return "VFS";
+    case EngineSystems::Random        : return "Random";
+    case EngineSystems::TaskScheduler : return "TaskScheduler";
+    case EngineSystems::AudioEngine   : return "AudioEngine";
+    case EngineSystems::LuaManager    : return "LuaManager";
+    case EngineSystems::ModuleRegistry: return "ModuleRegistry";
+    case EngineSystems::RendererConfig: return "RendererConfig";
+    case EngineSystems::SystemManager : return "SystemManager";
+    case EngineSystems::Physics       : return "Physics";
+    case EngineSystems::Input         : return "Input";
+    case EngineSystems::Count         : return "";
+  }
+}
+
 App* App::_instance = nullptr;
 
 App::App(const AppSpec& spec) : app_spec(spec) {
@@ -60,8 +77,13 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   register_system<Input>(EngineSystems::Input);
 
-  for (const auto& system : system_registry | std::views::values) {
-    system->init();
+  for (const auto& [type, system] : system_registry) {
+    auto result = system->init();
+    if (!result) {
+      OX_LOG_ERROR("{} System failed to initialize: {}", engine_system_to_sv(type), result.error());
+    } else {
+      OX_LOG_INFO("{} System initialized.", engine_system_to_sv(type));
+    }
   }
 
   // Shortcut for commonly used Systems
@@ -106,6 +128,7 @@ App& App::push_overlay(Layer* layer) {
 
 void App::run() {
   const auto input_sys = get_system<Input>(EngineSystems::Input);
+  const auto asset_man = get_system<AssetManager>(EngineSystems::AssetManager);
 
   WindowCallbacks window_callbacks = {};
   window_callbacks.user_data = this;
@@ -205,15 +228,20 @@ void App::run() {
     vk_context->end_frame(frame_allocator.value(), swapchain_attachment);
 
     input_sys->reset_pressed();
+
+    asset_man->load_deferred_assets();
   }
 
   layer_stack.reset();
 
-  if (Project::get_active())
-    Project::get_active()->unload_module();
-
-  for (const auto& system : system_registry | std::views::values)
-    system->deinit();
+  for (const auto& [type, system] : system_registry) {
+    auto result = system->deinit();
+    if (!result) {
+      OX_LOG_ERROR("{} System failed to deinitalize: {}", engine_system_to_sv(type), result.error());
+    } else {
+      OX_LOG_INFO("{} System deinitialized.", engine_system_to_sv(type));
+    }
+  }
 
   system_registry.clear();
 

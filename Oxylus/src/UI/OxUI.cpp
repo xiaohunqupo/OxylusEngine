@@ -271,7 +271,8 @@ bool ui::texture_property(const char* label,
   };
 
   auto* asset_man = App::get_asset_manager();
-  auto* texture_asset = asset_man->get_asset(texture_uuid);
+
+  auto* texture_asset = texture_uuid ? asset_man->get_asset(texture_uuid) : nullptr;
 
   // rect button with the texture
   if (texture_asset) {

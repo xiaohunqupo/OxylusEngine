@@ -6,14 +6,25 @@
 #include "Utils/Toml.hpp"
 
 namespace ox {
-void RendererConfig::init() {
+
+auto RendererConfig::init() -> std::expected<void,
+                                             std::string> {
   if (!load_config("renderer_config.toml"))
-    save_config("renderer_config.toml");
+    if (!save_config("renderer_config.toml"))
+      return std::unexpected{"Couldn't load/save renderer_config.toml"};
+
+  return {};
 }
 
-void RendererConfig::deinit() { save_config("renderer_config.toml"); }
+auto RendererConfig::deinit() -> std::expected<void,
+                                               std::string> {
+  if (!save_config("renderer_config.toml"))
+    return std::unexpected{"Couldn't save renderer_config.toml"};
 
-void RendererConfig::save_config(const char* path) const {
+  return {};
+}
+
+bool RendererConfig::save_config(const char* path) const {
   OX_SCOPED_ZONE;
 
   const auto root = toml::table{
@@ -68,7 +79,7 @@ void RendererConfig::save_config(const char* path) const {
       },
   };
 
-  fs::write_file(path, root, "# Oxylus renderer config file"); // TODO: check result
+  return fs::write_file(path, root, "# Oxylus renderer config file");
 }
 
 bool RendererConfig::load_config(const char* path) {

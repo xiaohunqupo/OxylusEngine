@@ -8,10 +8,17 @@ class SystemManager : public ESystem {
 public:
   SystemManager() = default;
 
-  void init() override {}
-  void deinit() override {}
+  auto init() -> std::expected<void,
+                               std::string> override {
+    return {};
+  }
+  auto deinit() -> std::expected<void,
+                                 std::string> override {
+    return {};
+  }
 
-  template <typename T, typename... Args>
+  template <typename T,
+            typename... Args>
   Shared<System> register_system(Args&&... args) {
     auto hash_code = typeid(T).hash_code();
     if (system_registry.contains(hash_code))

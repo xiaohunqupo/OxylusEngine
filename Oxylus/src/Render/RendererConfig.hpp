@@ -1,11 +1,11 @@
 #pragma once
 
 #include "Core/ESystem.hpp"
-
 #include "Utils/CVars.hpp"
 
 namespace ox {
 namespace RendererCVar {
+// clang-format off
 inline AutoCVar_Int cvar_vsync("rr.vsync", "toggle vsync", 1);
 
 inline AutoCVar_Int cvar_shadows_size("rr.shadows_size", "cascaded shadow map size", 2048);
@@ -48,6 +48,7 @@ inline AutoCVar_Float cvar_fsr_sharpness("pp.fsr_sharpness", "sharpness for FSR"
 inline AutoCVar_Int cvar_tonemapper("pp.tonemapper", "tonemapper preset", 0);
 inline AutoCVar_Float cvar_exposure("pp.exposure", "tonemapping exposure", 1.0f);
 inline AutoCVar_Float cvar_gamma("pp.gamma", "screen gamma", 2.2f);
+// clang-format on
 } // namespace RendererCVar
 
 class RendererConfig : public ESystem {
@@ -62,10 +63,12 @@ public:
 
   RendererConfig() = default;
 
-  void init() override;
-  void deinit() override;
+  auto init() -> std::expected<void,
+                               std::string> override;
+  auto deinit() -> std::expected<void,
+                                 std::string> override;
 
-  void save_config(const char* path) const;
+  bool save_config(const char* path) const;
   bool load_config(const char* path);
 };
 } // namespace ox

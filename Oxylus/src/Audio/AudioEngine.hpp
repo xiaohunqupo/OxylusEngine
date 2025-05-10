@@ -8,8 +8,10 @@ enum class AttenuationModelType { None = 0, Inverse, Linear, Exponential };
 
 class AudioEngine : public ESystem {
 public:
-  void init() override;
-  void deinit() override;
+  auto init() -> std::expected<void,
+                               std::string> override;
+  auto deinit() -> std::expected<void,
+                                 std::string> override;
 
   auto get_engine() const -> ma_engine*;
 

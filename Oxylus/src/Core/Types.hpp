@@ -40,6 +40,18 @@ constexpr c8 operator""_c8(const unsigned long long n) { return static_cast<c8>(
 constexpr c16 operator""_c16(const unsigned long long n) { return static_cast<c16>(n); }
 constexpr c32 operator""_c32(const unsigned long long n) { return static_cast<c32>(n); }
 
+// MINMAX
+template <typename T>
+const T& min(const T& a,
+             const T& b) {
+  return (b < a) ? b : a;
+}
+
+template <typename T>
+const T& max(const T& a,
+             const T& b) {
+  return (a < b) ? b : a;
+}
 template <typename T>
 constexpr T align_up(T size,
                      u64 alignment) {

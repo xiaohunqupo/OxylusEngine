@@ -22,11 +22,12 @@ ProjectPanel::ProjectPanel() :
 void ProjectPanel::on_update() {}
 
 void ProjectPanel::load_project_for_editor(const std::string& filepath) {
-  if (Project::load(filepath)) {
+  const auto& active_project = EditorLayer::get()->active_project;
+  if (active_project->load(filepath)) {
     auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
-    const auto start_scene = vfs->resolve_physical_dir(VFS::PROJECT_DIR, Project::get_active()->get_config().start_scene);
+    const auto start_scene = vfs->resolve_physical_dir(VFS::PROJECT_DIR, active_project->get_config().start_scene);
     EditorLayer::get()->open_scene(start_scene);
-    EditorConfig::get()->add_recent_project(Project::get_active().get());
+    EditorConfig::get()->add_recent_project(active_project.get());
     EditorLayer::get()->get_panel<ContentPanel>()->invalidate();
     visible = false;
   }
@@ -35,18 +36,17 @@ void ProjectPanel::load_project_for_editor(const std::string& filepath) {
 void ProjectPanel::new_project(const std::string& project_dir,
                                const std::string& project_name,
                                const std::string& project_asset_dir) {
-  const auto project = Project::new_project(project_dir, project_name, project_asset_dir);
-
-  if (project)
-    EditorConfig::get()->add_recent_project(project.get());
+  const auto& active_project = EditorLayer::get()->active_project;
+  if (active_project->new_project(project_dir, project_name, project_asset_dir))
+    EditorConfig::get()->add_recent_project(active_project.get());
 }
 
 void ProjectPanel::on_render(vuk::Extent3D extent,
                              vuk::Format format) {
   if (visible && !ImGui::IsPopupOpen("ProjectSelector"))
     ImGui::OpenPopup("ProjectSelector");
-  constexpr auto flags =
-      ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking;
+  constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |
+                         ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking;
   static bool draw_new_project_panel = false;
 
   ui::center_next_window();
@@ -59,7 +59,8 @@ void ProjectPanel::on_render(vuk::Extent3D extent,
     const auto& window = App::get()->get_window();
     const f32 scale = window.get_content_scale();
 
-    ui::image(*EditorLayer::get()->engine_banner, {static_cast<float>(banner_size.width) * scale, static_cast<float>(banner_size.height) * scale});
+    ui::image(*EditorLayer::get()->engine_banner,
+              {static_cast<float>(banner_size.width) * scale, static_cast<float>(banner_size.height) * scale});
     ui::spacing(2);
     ImGui::SeparatorText("Projects");
     ui::spacing(2);

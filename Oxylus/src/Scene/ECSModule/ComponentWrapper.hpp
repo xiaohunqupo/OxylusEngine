@@ -34,8 +34,6 @@ struct ComponentWrapper {
     path = component_entity.path();
     name = {component_entity.name(), component_entity.name().length()};
 
-    OX_LOG_INFO("Wrapped, {} {}", path, name);
-
     if (!has_component()) {
       return;
     }
