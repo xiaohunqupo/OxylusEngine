@@ -10,6 +10,7 @@ enum class AssetType : u32 {
   Font,
   Scene,
   Audio,
+  Script,
 };
 
 // List of file extensions supported by Engine.
@@ -23,6 +24,7 @@ enum class AssetFileType : u32 {
   JPEG,
   JSON,
   KTX2,
+  LUA,
 };
 
 enum class AssetFileFlags : u64 {

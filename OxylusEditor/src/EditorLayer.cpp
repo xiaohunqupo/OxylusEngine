@@ -479,6 +479,4 @@ Archive& EditorLayer::advance_history() {
 
   return history.back();
 }
-
-void EditorLayer::new_project() { OX_UNIMPLEMENTED(EditorLayer::new_project()); }
 } // namespace ox

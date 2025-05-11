@@ -46,8 +46,6 @@ private:
   int _gizmo_type = -1;
   int _gizmo_mode = 0;
 
-  ankerl::unordered_dense::map<size_t, Shared<Texture>> _gizmo_image_map;
-
   std::vector<vuk::Unique<vuk::Buffer>> id_buffers = {};
 
   // Camera

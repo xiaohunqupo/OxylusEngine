@@ -10,6 +10,7 @@
 #include "Core/FileSystem.hpp"
 #include "Memory/Hasher.hpp"
 #include "Memory/Stack.hpp"
+#include "Scripting/LuaSystem.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Utils/JsonHelpers.hpp"
 #include "Utils/Log.hpp"
@@ -157,6 +158,13 @@ auto write_scene_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr
   return true;
 }
 
+auto write_script_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>&,
+                             LuaSystem*) -> bool {
+  OX_SCOPED_ZONE;
+
+  return true;
+}
+
 auto end_asset_meta(rapidjson::StringBuffer& sb,
                     rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
                     const std::string& path) -> bool {
@@ -199,6 +207,7 @@ auto AssetManager::to_asset_file_type(const std::string& path) -> AssetFileType 
     case fnv64_c("JSON")   : return AssetFileType::JSON;
     case fnv64_c("OXASSET"): return AssetFileType::Meta;
     case fnv64_c("KTX2")   : return AssetFileType::KTX2;
+    case fnv64_c("LUA")    : return AssetFileType::LUA;
     default                : return AssetFileType::None;
   }
 }
@@ -215,6 +224,7 @@ auto AssetManager::to_asset_type_sv(AssetType type) -> std::string_view {
     case AssetType::Font    : return "Font";
     case AssetType::Scene   : return "Scene";
     case AssetType::Audio   : return "Audio";
+    case AssetType::Script  : return "Script";
   }
 }
 
@@ -258,6 +268,10 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
     case AssetFileType::JPEG:
     case AssetFileType::KTX2: {
       asset_type = AssetType::Texture;
+      break;
+    }
+    case ox::AssetFileType::LUA: {
+      asset_type = AssetType::Script;
       break;
     }
     default: {
@@ -343,6 +357,10 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
 
       write_texture_asset_meta(writer, &texture);
     } break;
+    case ox::AssetType::Script: {
+      write_script_asset_meta(writer, nullptr);
+      break;
+    }
     default:;
   }
 
@@ -473,6 +491,11 @@ auto AssetManager::export_asset(const UUID& uuid,
         return false;
       }
     } break;
+    case ox::AssetType::Script: {
+      if (!this->export_script(asset->uuid, writer, path)) {
+        return false;
+      }
+    } break;
     default: return false;
   }
 
@@ -527,6 +550,14 @@ auto AssetManager::export_material(const UUID& uuid,
   auto* material = this->get_material(uuid);
   OX_CHECK_NULL(material);
   return write_material_asset_meta(writer, uuid, *material);
+}
+
+auto AssetManager::export_script(const UUID& uuid,
+                                 rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                                 const std::string& path) -> bool {
+  OX_SCOPED_ZONE;
+
+  return write_texture_asset_meta(writer, nullptr);
 }
 
 auto AssetManager::load_asset(const UUID& uuid) -> bool {
@@ -799,6 +830,25 @@ auto AssetManager::unload_audio(const UUID& uuid) -> void {
   asset->audio_id = AudioID::Invalid;
 }
 
+auto AssetManager::load_script(const UUID& uuid) -> bool {
+  OX_SCOPED_ZONE;
+
+  auto* asset = this->get_asset(uuid);
+  OX_CHECK_NULL(asset);
+  asset->acquire_ref();
+
+  if (asset->is_loaded())
+    return true;
+
+  asset->script_id = script_map.create_slot(std::make_unique<LuaSystem>());
+  auto* system = script_map.slot(asset->script_id);
+  system->get()->load(asset->path);
+
+  OX_LOG_INFO("Loaded script {} {}.", asset->uuid.str(), SlotMap_decode_id(asset->script_id).index);
+
+  return true;
+}
+
 auto AssetManager::get_asset(const UUID& uuid) -> Asset* {
   const auto it = asset_registry.find(uuid);
   if (it == asset_registry.end()) {
@@ -936,4 +986,27 @@ auto AssetManager::get_audio(const AudioID audio_id) -> AudioSource* {
   return audio_map.slot(audio_id);
 }
 
+auto AssetManager::get_script(const UUID& uuid) -> LuaSystem* {
+  const auto* asset = this->get_asset(uuid);
+  if (asset == nullptr) {
+    return nullptr;
+  }
+
+  OX_CHECK_EQ(asset->type, AssetType::Script);
+  if (asset->type != AssetType::Script || asset->audio_id == AudioID::Invalid) {
+    return nullptr;
+  }
+
+  return script_map.slot(asset->script_id)->get();
+}
+
+auto AssetManager::get_script(ScriptID script_id) -> LuaSystem* {
+  OX_SCOPED_ZONE;
+
+  if (script_id == ScriptID::Invalid) {
+    return nullptr;
+  }
+
+  return script_map.slot(script_id)->get();
+}
 } // namespace ox

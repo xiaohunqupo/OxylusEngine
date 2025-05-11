@@ -21,10 +21,9 @@
 
 namespace ox {
 template <typename T>
-void show_component_gizmo(ankerl::unordered_dense::map<size_t,
-                                                       Shared<Texture>>& gizmo_image_map,
+void show_component_gizmo(const char8_t* icon,
                           SceneHierarchyPanel* scene_hierarchy_panel,
-                          const std::string_view name,
+                          const std::string& name,
                           const float width,
                           const float height,
                           const float xpos,
@@ -32,30 +31,29 @@ void show_component_gizmo(ankerl::unordered_dense::map<size_t,
                           const glm::mat4& view_proj,
                           const Frustum& frustum,
                           Scene* scene) {
-  const auto id = typeid(T).hash_code();
-  if (gizmo_image_map[id]) {
+  scene->world.query_builder<T>().build().each(
+      [view_proj, width, height, xpos, ypos, scene, frustum, icon, scene_hierarchy_panel, name](flecs::entity entity,
+                                                                                                const T&) {
+    const glm::vec3 pos = scene->get_world_transform(entity)[3];
 
-    scene->world.query_builder<T>().build().each(
-        [view_proj, width, height, xpos, ypos, scene, frustum, &gizmo_image_map, scene_hierarchy_panel, id, name](flecs::entity entity, const T&) {
-      const glm::vec3 pos = scene->get_world_transform(entity)[3];
+    if (frustum.is_inside(pos) == (uint32_t)Intersection::Outside)
+      return;
 
-      if (frustum.is_inside(pos) == (uint32_t)Intersection::Outside)
-        return;
+    const glm::vec2 screen_pos = math::world_to_screen(pos, view_proj, width, height, xpos, ypos);
+    ImGui::SetCursorPos({screen_pos.x - ImGui::GetFontSize() * 0.5f, screen_pos.y - ImGui::GetFontSize() * 0.5f});
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
-      const glm::vec2 screen_pos = math::world_to_screen(pos, view_proj, width, height, xpos, ypos);
-      ImGui::SetCursorPos({screen_pos.x - ImGui::GetFontSize() * 0.5f, screen_pos.y - ImGui::GetFontSize() * 0.5f});
-      ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
-      ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
+    ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
+    if (ImGui::Button(StringUtils::from_char8_t(icon), {50.f, 50.f})) {
+      scene_hierarchy_panel->set_selected_entity(entity);
+    }
+    ImGui::PopFont();
 
-      if (ui::image_button("##", *gizmo_image_map[id], {40.f, 40.f})) {
-        scene_hierarchy_panel->set_selected_entity(entity);
-      }
+    ImGui::PopStyleColor(2);
 
-      ImGui::PopStyleColor(2);
-
-      ui::tooltip_hover(name.data());
-    });
-  }
+    ui::tooltip_hover(name.data());
+  });
 }
 
 ViewportPanel::ViewportPanel() :
@@ -63,16 +61,6 @@ ViewportPanel::ViewportPanel() :
                 ICON_MDI_TERRAIN,
                 true) {
   OX_SCOPED_ZONE;
-
-  auto* vfs = App::get_vfs();
-
-  const auto light_image = create_shared<Texture>();
-  light_image->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/PointLightIcon.png"), {.preset = Preset::eRTT2DUnmipped});
-  _gizmo_image_map[typeid(LightComponent).hash_code()] = light_image;
-
-  const auto camera_image = create_shared<Texture>();
-  camera_image->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/CameraIcon.png"), {.preset = Preset::eRTT2DUnmipped});
-  _gizmo_image_map[typeid(CameraComponent).hash_code()] = camera_image;
 }
 
 void ViewportPanel::on_render(const vuk::Extent3D extent,
@@ -136,7 +124,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
     const auto fixed_width = _viewport_size.y * sixteen_nine_ar;
     ImGui::SetCursorPosX((_viewport_panel_size.x - fixed_width) * 0.5f);
 
-    const auto off = (_viewport_panel_size.x - fixed_width) * 0.5f; // add offset since we render image with fixed aspect ratio
+    const auto off =
+        (_viewport_panel_size.x - fixed_width) * 0.5f; // add offset since we render image with fixed aspect ratio
     _viewport_offset = {_viewport_bounds[0].x + off * 0.5f, _viewport_bounds[0].y};
 
     const auto* app = App::get();
@@ -148,8 +137,10 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
           .format = format,
           .picking_texel = {},
       };
-      const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), render_info);
-      ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)), ImVec2{fixed_width, _viewport_panel_size.y});
+      const auto scene_view_image =
+          scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), render_info);
+      ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)),
+                   ImVec2{fixed_width, _viewport_panel_size.y});
     } else {
       const auto warning_text = "No scene render output!";
       const auto text_width = ImGui::CalcTextSize(warning_text).x;
@@ -167,7 +158,9 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
       glm::mat4 view_proj = projection * editor_camera.get_view_matrix();
       const Frustum& frustum = Camera::get_frustum(editor_camera, editor_camera.position);
 
-      show_component_gizmo<LightComponent>(_gizmo_image_map,
+      const auto& editor_theme = EditorLayer::get()->editor_theme;
+
+      show_component_gizmo<LightComponent>(editor_theme.component_icon_map.at(typeid(LightComponent).hash_code()),
                                            _scene_hierarchy_panel,
                                            "LightComponent",
                                            fixed_width,
@@ -177,27 +170,29 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
                                            view_proj,
                                            frustum,
                                            _scene.get());
-      show_component_gizmo<AudioSourceComponent>(_gizmo_image_map,
-                                                 _scene_hierarchy_panel,
-                                                 "AudioSourceComponent",
-                                                 fixed_width,
-                                                 _viewport_panel_size.y,
-                                                 0,
-                                                 0,
-                                                 view_proj,
-                                                 frustum,
-                                                 _scene.get());
-      show_component_gizmo<AudioListenerComponent>(_gizmo_image_map,
-                                                   _scene_hierarchy_panel,
-                                                   "AudioListenerComponent",
-                                                   fixed_width,
-                                                   _viewport_panel_size.y,
-                                                   0,
-                                                   0,
-                                                   view_proj,
-                                                   frustum,
-                                                   _scene.get());
-      show_component_gizmo<CameraComponent>(_gizmo_image_map,
+      show_component_gizmo<AudioSourceComponent>(
+          editor_theme.component_icon_map.at(typeid(AudioSourceComponent).hash_code()),
+          _scene_hierarchy_panel,
+          "AudioSourceComponent",
+          fixed_width,
+          _viewport_panel_size.y,
+          0,
+          0,
+          view_proj,
+          frustum,
+          _scene.get());
+      show_component_gizmo<AudioListenerComponent>(
+          editor_theme.component_icon_map.at(typeid(AudioListenerComponent).hash_code()),
+          _scene_hierarchy_panel,
+          "AudioListenerComponent",
+          fixed_width,
+          _viewport_panel_size.y,
+          0,
+          0,
+          view_proj,
+          frustum,
+          _scene.get());
+      show_component_gizmo<CameraComponent>(editor_theme.component_icon_map.at(typeid(CameraComponent).hash_code()),
                                             _scene_hierarchy_panel,
                                             "CameraComponent",
                                             fixed_width,
@@ -216,7 +211,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
       const ImVec2 frame_padding = ImGui::GetStyle().FramePadding;
       const ImVec2 button_size = {frame_height, frame_height};
       constexpr float button_count = 8.0f;
-      const ImVec2 gizmo_position = {_viewport_bounds[0].x + _gizmo_position.x, _viewport_bounds[0].y + _gizmo_position.y};
+      const ImVec2 gizmo_position = {_viewport_bounds[0].x + _gizmo_position.x,
+                                     _viewport_bounds[0].y + _gizmo_position.y};
       const ImRect bb(gizmo_position.x,
                       gizmo_position.y,
                       gizmo_position.x + button_size.x + 8,
@@ -226,7 +222,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
       ImGui::RenderFrame(bb.Min, bb.Max, ImGui::GetColorU32(frame_color), false, ImGui::GetStyle().FrameRounding);
       const glm::vec2 temp_gizmo_position = _gizmo_position;
 
-      ImGui::SetCursorPos({start_cursor_pos.x + temp_gizmo_position.x + frame_padding.x, start_cursor_pos.y + temp_gizmo_position.y});
+      ImGui::SetCursorPos(
+          {start_cursor_pos.x + temp_gizmo_position.x + frame_padding.x, start_cursor_pos.y + temp_gizmo_position.y});
       ImGui::BeginGroup();
       {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
@@ -248,15 +245,35 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
         last_mouse_position = mouse_pos;
 
         constexpr float alpha = 0.6f;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW), _gizmo_type == ImGuizmo::TRANSLATE, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW),
+                              _gizmo_type == ImGuizmo::TRANSLATE,
+                              button_size,
+                              alpha,
+                              alpha))
           _gizmo_type = ImGuizmo::TRANSLATE;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D), _gizmo_type == ImGuizmo::ROTATE, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D),
+                              _gizmo_type == ImGuizmo::ROTATE,
+                              button_size,
+                              alpha,
+                              alpha))
           _gizmo_type = ImGuizmo::ROTATE;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND), _gizmo_type == ImGuizmo::SCALE, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND),
+                              _gizmo_type == ImGuizmo::SCALE,
+                              button_size,
+                              alpha,
+                              alpha))
           _gizmo_type = ImGuizmo::SCALE;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE), _gizmo_type == ImGuizmo::BOUNDS, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE),
+                              _gizmo_type == ImGuizmo::BOUNDS,
+                              button_size,
+                              alpha,
+                              alpha))
           _gizmo_type = ImGuizmo::BOUNDS;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL), _gizmo_type == ImGuizmo::UNIVERSAL, button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL),
+                              _gizmo_type == ImGuizmo::UNIVERSAL,
+                              button_size,
+                              alpha,
+                              alpha))
           _gizmo_type = ImGuizmo::UNIVERSAL;
         if (ui::toggle_button(_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
                                                              : StringUtils::from_char8_t(ICON_MDI_EARTH_OFF),
@@ -265,7 +282,11 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
                               alpha,
                               alpha))
           _gizmo_mode = _gizmo_mode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID), RendererCVar::cvar_draw_grid.get(), button_size, alpha, alpha))
+        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID),
+                              RendererCVar::cvar_draw_grid.get(),
+                              button_size,
+                              alpha,
+                              alpha))
           RendererCVar::cvar_draw_grid.toggle();
         if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
                               editor_camera.projection == CameraComponent::Projection::Orthographic,
@@ -295,7 +316,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
 
         const bool highlight = EditorLayer::get()->scene_state == EditorLayer::SceneState::Play;
-        const char8_t* icon = EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY : ICON_MDI_STOP;
+        const char8_t* icon =
+            EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY : ICON_MDI_STOP;
         if (ui::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
           if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit)
             EditorLayer::get()->on_scene_play();
@@ -355,7 +377,8 @@ void ViewportPanel::on_update() {
         final_yaw_pitch.y = glm::clamp(final_yaw_pitch.y - change.y, glm::radians(-89.9f), glm::radians(89.9f));
       }
 
-      const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
+      const float max_move_speed =
+          EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
       if (Input::get_key_held(KeyCode::W))
         final_position += editor_camera.forward * max_move_speed;
       else if (Input::get_key_held(KeyCode::S))
@@ -379,7 +402,8 @@ void ViewportPanel::on_update() {
       const glm::vec2 change = (new_mouse_position - _locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
 
       if (Input::get_mouse_moved()) {
-        const float max_move_speed = EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
+        const float max_move_speed =
+            EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
         final_position += editor_camera.forward * change.y * max_move_speed;
         final_position += editor_camera.right * change.x * max_move_speed;
       }
@@ -466,7 +490,8 @@ void ViewportPanel::draw_gizmos() {
 
     if (ImGuizmo::IsUsing()) {
       const flecs::entity parent = selected_entity.parent();
-      const glm::mat4& parent_world_transform = parent != flecs::entity::null() ? _scene->get_world_transform(parent) : glm::mat4(1.0f);
+      const glm::mat4& parent_world_transform =
+          parent != flecs::entity::null() ? _scene->get_world_transform(parent) : glm::mat4(1.0f);
       glm::vec3 translation, rotation, scale;
       if (math::decompose_transform(inverse(parent_world_transform) * transform, translation, rotation, scale)) {
         tc->position = translation;

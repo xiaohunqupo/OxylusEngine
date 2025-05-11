@@ -3,6 +3,7 @@
 #include <Core/VFS.hpp>
 #include <filesystem>
 #include <icons/IconsMaterialDesignIcons.h>
+#include <imgui.h>
 
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
@@ -21,61 +22,60 @@
 namespace ox {
 static const ankerl::unordered_dense::map<FileType, const char*> FILE_TYPES_TO_STRING = {
     {FileType::Unknown, "Unknown"},
+    {FileType::Directory, "Directory"},
 
+    {FileType::Meta, "Meta"},
     {FileType::Scene, "Scene"},
     {FileType::Prefab, "Prefab"},
     {FileType::Shader, "Shader"},
     {FileType::Texture, "Texture"},
-    {FileType::Cubemap, "Cubemap"},
-    {FileType::Model, "Model"},
+    {FileType::Mesh, "Mesh"},
     {FileType::Script, "Script"},
     {FileType::Audio, "Audio"},
 };
 
 static const ankerl::unordered_dense::map<std::string, FileType> FILE_TYPES = {
-    {".oxscene", FileType::Scene}, {".oxprefab", FileType::Prefab}, {".hlsl", FileType::Shader},
-    {".hlsli", FileType::Shader},  {".glsl", FileType::Shader},     {".frag", FileType::Shader},
-    {".vert", FileType::Shader},
+    {"", FileType::Directory},                                                                   //
+    {".oxasset", FileType::Meta},                                                                //
+    {".oxscene", FileType::Scene},                                                               //
+    {".oxprefab", FileType::Prefab},                                                             //
+    {".hlsl", FileType::Shader},     {".hlsli", FileType::Shader}, {".glsl", FileType::Shader},  //
+    {".frag", FileType::Shader},     {".vert", FileType::Shader},  {".slang", FileType::Shader}, //
 
-    {".png", FileType::Texture},   {".jpg", FileType::Texture},     {".jpeg", FileType::Texture},
-    {".bmp", FileType::Texture},   {".gif", FileType::Texture},     {".ktx", FileType::Texture},
-    {".ktx2", FileType::Texture},  {".tiff", FileType::Texture},
+    {".png", FileType::Texture},     {".jpg", FileType::Texture},  {".jpeg", FileType::Texture}, //
+    {".bmp", FileType::Texture},     {".gif", FileType::Texture},  {".ktx", FileType::Texture},  //
+    {".ktx2", FileType::Texture},    {".tiff", FileType::Texture},                               //
 
-    {".hdr", FileType::Cubemap},   {".tga", FileType::Cubemap},
+    {".gltf", FileType::Mesh},       {".glb", FileType::Mesh},                                   //
 
-    {".gltf", FileType::Model},    {".glb", FileType::Model},       {".oxmat", FileType::Material},
+    {".mp3", FileType::Audio},       {".m4a", FileType::Audio},    {".wav", FileType::Audio},    //
+    {".ogg", FileType::Audio},                                                                   //
 
-    {".mp3", FileType::Audio},     {".m4a", FileType::Audio},       {".wav", FileType::Audio},
-    {".ogg", FileType::Audio},
-
-    {".lua", FileType::Script},
+    {".lua", FileType::Script},                                                                  //
 };
 
 static const ankerl::unordered_dense::map<FileType, ImVec4> TYPE_COLORS = {
+    {FileType::Meta, {0.75f, 0.35f, 0.20f, 1.00f}},
     {FileType::Scene, {0.75f, 0.35f, 0.20f, 1.00f}},
     {FileType::Prefab, {0.10f, 0.50f, 0.80f, 1.00f}},
     {FileType::Shader, {0.10f, 0.50f, 0.80f, 1.00f}},
-    {FileType::Material, {0.80f, 0.20f, 0.30f, 1.00f}},
     {FileType::Texture, {0.80f, 0.20f, 0.30f, 1.00f}},
-    {FileType::Cubemap, {0.80f, 0.20f, 0.30f, 1.00f}},
-    {FileType::Model, {0.20f, 0.80f, 0.75f, 1.00f}},
+    {FileType::Mesh, {0.20f, 0.80f, 0.75f, 1.00f}},
     {FileType::Audio, {0.20f, 0.80f, 0.50f, 1.00f}},
     {FileType::Script, {0.0f, 16.0f, 121.0f, 1.00f}},
 };
 
 static const ankerl::unordered_dense::map<FileType, const char8_t*> FILE_TYPES_TO_ICON = {
     {FileType::Unknown, ICON_MDI_FILE},
-
+    {FileType::Directory, ICON_MDI_FOLDER},
+    {FileType::Meta, ICON_MDI_FILE_DOCUMENT},
     {FileType::Scene, ICON_MDI_FILE},
     {FileType::Prefab, ICON_MDI_FILE},
     {FileType::Shader, ICON_MDI_IMAGE_FILTER_BLACK_WHITE},
-
-    {FileType::Material, ICON_MDI_SPRAY_BOTTLE},
     {FileType::Texture, ICON_MDI_FILE_IMAGE},
-    {FileType::Cubemap, ICON_MDI_IMAGE_FILTER_HDR},
-    {FileType::Model, ICON_MDI_VECTOR_POLYGON},
-
+    {FileType::Mesh, ICON_MDI_VECTOR_POLYGON},
     {FileType::Audio, ICON_MDI_MICROPHONE},
+    {FileType::Script, ICON_MDI_LANGUAGE_LUA},
 };
 
 static bool drag_drop_target(const std::filesystem::path& drop_path) {
@@ -125,18 +125,11 @@ static void open_file(const std::filesystem::path& path) {
         EditorLayer::get()->open_scene(filepath);
         break;
       }
-      case FileType::Unknown : break;
-      case FileType::Prefab  : break;
-      case FileType::Texture : break;
-      case FileType::Cubemap : break;
-      case FileType::Model   : break;
-      case FileType::Material: {
-        EditorLayer::get()->set_context_as_asset_with_path(path.string());
-        break;
-      }
-      case FileType::Audio : [[fallthrough]];
-      case FileType::Shader: [[fallthrough]];
-      case FileType::Script: {
+      case FileType::Unknown: break;
+      case FileType::Prefab : break;
+      case FileType::Texture: break;
+      case FileType::Shader : [[fallthrough]];
+      case FileType::Script : {
         fs::open_file_externally(filepath);
         break;
       }
@@ -262,22 +255,6 @@ ContentPanel::ContentPanel() :
                           .mime = {},
                           .data = white_texture_data,
                           .extent = {16, 16}});
-
-  auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
-
-  auto file_icon = create_shared<Texture>();
-  file_icon->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FileIcon.png"), {.preset = Preset::eRTT2DUnmipped});
-  thumbnail_cache.emplace("file_icon", file_icon);
-
-  auto directory_icon = create_shared<Texture>();
-  directory_icon->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/FolderIcon.png"),
-                         {.preset = Preset::eRTT2DUnmipped});
-  thumbnail_cache.emplace("folder_icon", directory_icon);
-
-  auto mesh_icon = create_shared<Texture>();
-  mesh_icon->create(vfs->resolve_physical_dir(VFS::APP_DIR, "Icons/MeshFileIcon.png"),
-                    {.preset = Preset::eRTT2DUnmipped});
-  thumbnail_cache.emplace("mesh_icon", mesh_icon);
 }
 
 void ContentPanel::init() {
@@ -563,17 +540,15 @@ void ContentPanel::render_body(bool grid) {
       const bool is_dir = file.is_directory;
       const char* filename = file.name.c_str();
 
-      std::string texture_name = "folder_icon";
+      std::string texture_name = {};
       if (!is_dir) {
-        if ((file.type == FileType::Texture || file.type == FileType::Cubemap) &&
-            EditorCVar::cvar_file_thumbnails.get()) {
+        if ((file.type == FileType::Texture) && EditorCVar::cvar_file_thumbnails.get()) {
           if (thumbnail_cache.contains(file.file_path)) {
             texture_name = file.file_path;
           } else {
-            const auto& file_path = file.file_path;
             // make sure this runs only if it's not already queued
             if (ThreadManager::get()->asset_thread.get_queue_size() == 0) {
-              ThreadManager::get()->asset_thread.queue_job([this, file_path] {
+              ThreadManager::get()->asset_thread.queue_job([this, file_path = file.file_path] {
                 auto thumbnail_texture = create_shared<Texture>();
                 thumbnail_texture->create(file_path, {.preset = Preset::eRTT2DUnmipped});
                 thumbnail_cache.emplace(file_path, thumbnail_texture);
@@ -581,11 +556,12 @@ void ContentPanel::render_body(bool grid) {
             }
             texture_name = file.file_path;
           }
-        } else if (file.type == FileType::Model) {
-          texture_name = "mesh_icon";
-        } else {
-          texture_name = "file_icon";
         }
+        // else if (file.type == FileType::Mesh) {
+        //   texture_name = "mesh_icon";
+        // } else {
+        //   texture_name = "file_icon";
+        // }
       }
 
       ImGui::TableNextColumn();
@@ -655,8 +631,15 @@ void ContentPanel::render_body(bool grid) {
         // Thumbnail Image
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
         ImGui::SetItemAllowOverlap();
-        if (thumbnail_cache.contains(texture_name))
+        if (thumbnail_cache.contains(texture_name)) {
+
           ui::image(*thumbnail_cache[texture_name], {thumb_image_size, thumb_image_size});
+        } else {
+          ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
+          ImGui::TextUnformatted(StringUtils::from_char8_t(
+              FILE_TYPES_TO_ICON.at(FILE_TYPES.at(file.extension.empty() ? "" : file.extension))));
+          ImGui::PopFont();
+        }
 
         // Type Color frame
         const ImVec2 type_color_frame_size = {scaled_thumbnail_size_x, scaled_thumbnail_size_x * 0.03f};
@@ -713,8 +696,12 @@ void ContentPanel::render_body(bool grid) {
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - line_height);
-        if (thumbnail_cache.contains(texture_name))
-          ui::image(*thumbnail_cache[texture_name], {line_height, line_height});
+        if (thumbnail_cache.contains(texture_name)) {
+          ui::image(*thumbnail_cache[texture_name], {thumb_image_size, thumb_image_size});
+        } else {
+          ImGui::TextUnformatted(StringUtils::from_char8_t(
+              FILE_TYPES_TO_ICON.at(FILE_TYPES.at(file.extension.empty() ? "" : file.extension))));
+        }
         ImGui::SameLine();
         ImGui::TextUnformatted(filename);
 

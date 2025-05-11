@@ -26,15 +26,17 @@ void EditorTheme::init(this EditorTheme& self) {
 
   fonts_config.SizePixels = 16.0f;
   self.regular_font = imguilayer->load_font(regular_font_path, fonts_config);
-  imguilayer->add_icon_font(fonts_config.SizePixels);
+  imguilayer->add_icon_font(fonts_config.SizePixels, true);
 
   fonts_config.SizePixels = 12.0f;
   self.small_font = imguilayer->load_font(regular_font_path, fonts_config);
-  imguilayer->add_icon_font(fonts_config.SizePixels);
+  imguilayer->add_icon_font(fonts_config.SizePixels, true);
 
   fonts_config.SizePixels = 16.0f;
   self.bold_font = imguilayer->load_font(bold_font_path, fonts_config);
-  imguilayer->add_icon_font(fonts_config.SizePixels);
+  imguilayer->add_icon_font(fonts_config.SizePixels, true);
+
+  self.big_icons = imguilayer->add_icon_font(48, false);
 
   imguilayer->build_fonts();
 

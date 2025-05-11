@@ -12,7 +12,8 @@
 namespace ox {
 LuaSystem::LuaSystem(std::string path) : file_path(std::move(path)) { init_script(file_path); }
 
-void LuaSystem::check_result(const sol::protected_function_result& result, const char* func_name) {
+void LuaSystem::check_result(const sol::protected_function_result& result,
+                             const char* func_name) {
   if (!result.valid()) {
     const sol::error err = result;
     OX_LOG_ERROR("Error in {0}: {1}", func_name, err.what());
@@ -82,7 +83,8 @@ void LuaSystem::init_script(const std::string& path) {
   state->collect_gc();
 }
 
-void LuaSystem::on_init(Scene* scene, flecs::entity entity) {
+void LuaSystem::on_init(Scene* scene,
+                        flecs::entity entity) {
   OX_SCOPED_ZONE;
   if (on_init_func) {
     bind_globals(scene, entity, App::get_timestep());
@@ -107,7 +109,8 @@ void LuaSystem::on_fixed_update(float delta_time) {
   }
 }
 
-void LuaSystem::on_release(Scene* scene, flecs::entity entity) {
+void LuaSystem::on_release(Scene* scene,
+                           flecs::entity entity) {
   OX_SCOPED_ZONE;
   if (on_release_func) {
     const auto result = on_release_func->call();
@@ -118,7 +121,8 @@ void LuaSystem::on_release(Scene* scene, flecs::entity entity) {
   App::get_system<LuaManager>(EngineSystems::LuaManager)->get_state()->collect_gc();
 }
 
-void LuaSystem::on_render(vuk::Extent3D extent, vuk::Format format) {
+void LuaSystem::on_render(vuk::Extent3D extent,
+                          vuk::Format format) {
   OX_SCOPED_ZONE;
   if (on_render_func) {
     const auto result = on_render_func->call(extent, format);
@@ -170,7 +174,9 @@ void LuaSystem::reload() {
   init_script(file_path);
 }
 
-void LuaSystem::bind_globals(Scene* scene, flecs::entity entity, const Timestep& timestep) const {
+void LuaSystem::bind_globals(Scene* scene,
+                             flecs::entity entity,
+                             const Timestep& timestep) const {
   (*environment)["scene"] = scene;
   (*environment)["world"] = std::ref(scene->world);
   (*environment)["this"] = entity;

@@ -13,6 +13,7 @@ public:
   ImFont* regular_font = nullptr;
   ImFont* small_font = nullptr;
   ImFont* bold_font = nullptr;
+  ImFont* big_icons = nullptr;
 
   ankerl::unordered_dense::map<size_t, const char8_t*> component_icon_map = {};
 

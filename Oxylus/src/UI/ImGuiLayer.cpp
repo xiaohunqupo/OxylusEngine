@@ -84,24 +84,24 @@ void ImGuiLayer::on_attach() {
   set_style();
 }
 
-void ImGuiLayer::add_icon_font(float font_size) {
+ImFont* ImGuiLayer::add_icon_font(float font_size,
+                                  bool merge) {
   OX_SCOPED_ZONE;
   const ImGuiIO& io = ImGui::GetIO();
   static constexpr ImWchar ICONS_RANGES[] = {ICON_MIN_MDI, ICON_MAX_MDI, 0};
   ImFontConfig icons_config;
-  // merge in icons from Font Awesome
-  icons_config.MergeMode = true;
+  icons_config.MergeMode = merge;
   icons_config.PixelSnapH = true;
   icons_config.GlyphOffset.y = 0.5f;
   icons_config.OversampleH = icons_config.OversampleV = 3;
-  icons_config.GlyphMinAdvanceX = 4.0f;
+  icons_config.GlyphMinAdvanceX = 0.0f;
   icons_config.SizePixels = font_size;
 
-  io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data,
-                                           MaterialDesign_compressed_size,
-                                           font_size,
-                                           &icons_config,
-                                           ICONS_RANGES);
+  return io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data,
+                                                  MaterialDesign_compressed_size,
+                                                  font_size,
+                                                  &icons_config,
+                                                  ICONS_RANGES);
 }
 
 void ImGuiLayer::on_detach() { ImGui::DestroyContext(); }

@@ -314,7 +314,7 @@ bool ui::texture_property(const char* label,
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.3f, 0.3f, 0.3f, 1.0f});
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.2f, 0.2f, 0.2f, 1.0f});
   if (ImGui::Button("x", x_button_size)) {
-    asset_man->unload_asset(texture_uuid);
+    *new_asset = UUID(nullptr);
     changed = true;
   }
   ImGui::PopStyleColor(3);

@@ -15,21 +15,28 @@ class Body;
 namespace ox {
 class Scene;
 
+enum class ScriptID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class LuaSystem {
 public:
+  LuaSystem() = default;
   explicit LuaSystem(std::string path);
   ~LuaSystem() = default;
 
   auto load(const std::string& path) -> void;
   auto reload() -> void;
 
-  auto bind_globals(Scene* scene, flecs::entity entity, const Timestep& timestep) const -> void;
+  auto bind_globals(Scene* scene,
+                    flecs::entity entity,
+                    const Timestep& timestep) const -> void;
 
-  auto on_init(Scene* scene, flecs::entity entity) -> void;
+  auto on_init(Scene* scene,
+               flecs::entity entity) -> void;
   auto on_update(const Timestep& delta_time) -> void;
   auto on_fixed_update(float delta_time) -> void;
-  auto on_release(Scene* scene, flecs::entity entity) -> void;
-  auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
+  auto on_release(Scene* scene,
+                  flecs::entity entity) -> void;
+  auto on_render(vuk::Extent3D extent,
+                 vuk::Format format) -> void;
 
   auto on_contact_added(Scene* scene,
                         flecs::entity e,
@@ -60,6 +67,7 @@ private:
   Unique<sol::protected_function> on_contact_persisted_func = nullptr;
 
   void init_script(const std::string& path);
-  void check_result(const sol::protected_function_result& result, const char* func_name);
+  void check_result(const sol::protected_function_result& result,
+                    const char* func_name);
 };
 } // namespace ox

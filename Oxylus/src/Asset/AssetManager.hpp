@@ -1,6 +1,7 @@
 #pragma once
 
 #include <rapidjson/prettywriter.h>
+#include <rapidjson/stringbuffer.h>
 
 #include "Asset/AssetFile.hpp"
 #include "Asset/AudioSource.hpp"
@@ -23,6 +24,7 @@ struct Asset {
     MaterialID material_id;
     SceneID scene_id;
     AudioID audio_id;
+    ScriptID script_id;
   };
 
   // Reference count of loads
@@ -82,6 +84,9 @@ public:
   auto export_material(const UUID& uuid,
                        rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
                        const std::string& path) -> bool;
+  auto export_script(const UUID& uuid,
+                     rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+                     const std::string& path) -> bool;
 
   auto load_asset(const UUID& uuid) -> bool;
   auto unload_asset(const UUID& uuid) -> void;
@@ -103,6 +108,9 @@ public:
   auto load_audio(const UUID& uuid) -> bool;
   auto unload_audio(const UUID& uuid) -> void;
 
+  auto load_script(const UUID& uuid) -> bool;
+  auto unload_script(const UUID& uuid) -> bool;
+
   auto get_asset(const UUID& uuid) -> Asset*;
 
   auto get_mesh(const UUID& uuid) -> Mesh*;
@@ -120,6 +128,9 @@ public:
   auto get_audio(const UUID& uuid) -> AudioSource*;
   auto get_audio(AudioID audio_id) -> AudioSource*;
 
+  auto get_script(const UUID& uuid) -> LuaSystem*;
+  auto get_script(ScriptID script_id) -> LuaSystem*;
+
 private:
   AssetRegistry asset_registry = {};
 
@@ -131,6 +142,7 @@ private:
   SlotMap<Material, MaterialID> material_map = {};
   SlotMap<std::unique_ptr<Scene>, SceneID> scene_map = {};
   SlotMap<AudioSource, AudioID> audio_map = {};
+  SlotMap<std::unique_ptr<LuaSystem>, ScriptID> script_map = {};
 
   std::vector<std::function<void()>> deferred_load_queue = {};
 };

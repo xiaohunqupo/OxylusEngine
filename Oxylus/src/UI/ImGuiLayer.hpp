@@ -47,7 +47,8 @@ public:
 
   ImFont* load_font(const std::string& path,
                     ImFontConfig font_config);
-  void add_icon_font(float font_size);
+  ImFont* add_icon_font(float font_size,
+                        bool merge);
   void build_fonts();
 
   void on_mouse_pos(glm::vec2 pos);
