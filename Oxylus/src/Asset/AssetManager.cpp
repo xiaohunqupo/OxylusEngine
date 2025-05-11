@@ -815,6 +815,8 @@ auto AssetManager::load_audio(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::unload_audio(const UUID& uuid) -> void {
+  OX_SCOPED_ZONE;
+
   auto* asset = this->get_asset(uuid);
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
     return;
@@ -847,6 +849,20 @@ auto AssetManager::load_script(const UUID& uuid) -> bool {
   OX_LOG_INFO("Loaded script {} {}.", asset->uuid.str(), SlotMap_decode_id(asset->script_id).index);
 
   return true;
+}
+
+auto AssetManager::unload_script(const UUID& uuid) -> void {
+  OX_SCOPED_ZONE;
+
+  auto* asset = this->get_asset(uuid);
+  if (!asset || !(asset->is_loaded() && asset->release_ref())) {
+    return;
+  }
+
+  script_map.destroy_slot(asset->script_id);
+  asset->script_id = ScriptID::Invalid;
+
+  OX_LOG_INFO("Unloaded script {}.", uuid.str());
 }
 
 auto AssetManager::get_asset(const UUID& uuid) -> Asset* {

@@ -109,7 +109,7 @@ public:
   auto unload_audio(const UUID& uuid) -> void;
 
   auto load_script(const UUID& uuid) -> bool;
-  auto unload_script(const UUID& uuid) -> bool;
+  auto unload_script(const UUID& uuid) -> void;
 
   auto get_asset(const UUID& uuid) -> Asset*;
 
