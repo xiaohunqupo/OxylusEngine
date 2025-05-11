@@ -74,7 +74,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
     bool viewport_settings_popup = false;
     ImVec2 start_cursor_pos = ImGui::GetCursorPos();
 
-    const auto popup_item_spacing = ImGuiLayer::popup_item_spacing;
+    auto& editor_theme = EditorLayer::get()->editor_theme;
+    const auto popup_item_spacing = editor_theme.popup_item_spacing;
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, popup_item_spacing);
     if (ImGui::BeginPopupContextItem("RightClick")) {
       if (ImGui::MenuItem("Fullscreen"))

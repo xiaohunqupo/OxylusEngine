@@ -146,6 +146,9 @@ ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
                                             int* selectionMask,
                                             ImGuiTreeNodeFlags flags) {
   OX_SCOPED_ZONE;
+
+  auto& editor_theme = EditorLayer::get()->editor_theme;
+
   bool anyNodeClicked = false;
   uint32_t nodeClicked = 0;
 
@@ -167,10 +170,10 @@ ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
     const bool selected = (*selectionMask & BIT(*count)) != 0;
     if (selected) {
       nodeFlags |= ImGuiTreeNodeFlags_Selected;
-      ImGui::PushStyleColor(ImGuiCol_Header, ImGuiLayer::header_selected_color);
-      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGuiLayer::header_selected_color);
+      ImGui::PushStyleColor(ImGuiCol_Header, editor_theme.header_selected_color);
+      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, editor_theme.header_selected_color);
     } else {
-      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGuiLayer::header_hovered_color);
+      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, editor_theme.header_hovered_color);
     }
 
     const uint64_t id = *count;
@@ -208,7 +211,7 @@ ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
     }
 
     ImGui::SameLine();
-    ImGui::PushStyleColor(ImGuiCol_Text, ImGuiLayer::asset_icon_color);
+    ImGui::PushStyleColor(ImGuiCol_Text, editor_theme.asset_icon_color);
     ImGui::TextUnformatted(StringUtils::from_char8_t(folderIcon));
     ImGui::PopStyleColor();
     ImGui::SameLine();
@@ -433,14 +436,16 @@ void ContentPanel::render_side_view() {
     ImGui::TableNextRow();
     ImGui::TableNextColumn();
 
+    const auto& editor_theme = EditorLayer::get()->editor_theme;
+
     ImGuiTreeNodeFlags nodeFlags = treeNodeFlags;
     const bool selected = _current_directory == _assets_directory && selectionMask == 0;
     if (selected) {
       nodeFlags |= ImGuiTreeNodeFlags_Selected;
-      ImGui::PushStyleColor(ImGuiCol_Header, ImGuiLayer::header_selected_color);
-      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGuiLayer::header_selected_color);
+      ImGui::PushStyleColor(ImGuiCol_Header, editor_theme.header_selected_color);
+      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, editor_theme.header_selected_color);
     } else {
-      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, ImGuiLayer::header_hovered_color);
+      ImGui::PushStyleColor(ImGuiCol_HeaderHovered, editor_theme.header_hovered_color);
     }
 
     const bool opened = ImGui::TreeNodeEx(_assets_directory.string().c_str(), nodeFlags, "");
@@ -455,7 +460,7 @@ void ContentPanel::render_side_view() {
     }
     const char8_t* folderIcon = opened ? ICON_MDI_FOLDER_OPEN : ICON_MDI_FOLDER;
     ImGui::SameLine();
-    ImGui::PushStyleColor(ImGuiCol_Text, ImGuiLayer::asset_icon_color);
+    ImGui::PushStyleColor(ImGuiCol_Text, editor_theme.asset_icon_color);
     ImGui::TextUnformatted(StringUtils::from_char8_t(folderIcon));
     ImGui::PopStyleColor();
     ImGui::SameLine();
@@ -488,6 +493,8 @@ void ContentPanel::render_side_view() {
 }
 
 void ContentPanel::render_body(bool grid) {
+  const auto& editor_theme = EditorLayer::get()->editor_theme;
+
   std::filesystem::path directory_to_open;
 
   constexpr float padding = 2.0f;
@@ -585,7 +592,7 @@ void ContentPanel::render_body(bool grid) {
         if (_elapsed_time > 0.25f && clicked) {
           EditorLayer::get()->set_context_as_file_with_path(strPath);
         }
-        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImGuiLayer::popup_item_spacing);
+        ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, editor_theme.popup_item_spacing);
         if (ImGui::BeginPopupContextItem()) {
           if (ImGui::MenuItem("Delete")) {
             _directory_to_delete = path;
@@ -626,7 +633,7 @@ void ContentPanel::render_body(bool grid) {
                   {background_thumbnail_size.x - padding * 2.0f, background_thumbnail_size.y - padding * 2.0f},
                   {},
                   {},
-                  ImGuiLayer::window_bg_alternative_color);
+                  EditorLayer::get()->editor_theme.window_bg_alternative_color);
 
         // Thumbnail Image
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
@@ -649,8 +656,6 @@ void ContentPanel::render_body(bool grid) {
                   {0, 0},
                   {1, 1},
                   is_dir ? ImVec4(0.0f, 0.0f, 0.0f, 0.0f) : file.file_type_indicator_color);
-
-        const auto& editor_theme = EditorLayer::get()->editor_theme;
 
         const ImVec2 rect_min = ImGui::GetItemRectMin();
         const ImVec2 rect_size = ImGui::GetItemRectSize();
@@ -713,7 +718,7 @@ void ContentPanel::render_body(bool grid) {
       ++i;
     }
 
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImGuiLayer::popup_item_spacing);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, editor_theme.popup_item_spacing);
     if (ImGui::BeginPopupContextWindow("AssetPanelHierarchyContextWindow",
                                        ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
       EditorLayer::get()->reset_context();

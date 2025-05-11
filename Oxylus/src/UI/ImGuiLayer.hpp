@@ -20,17 +20,6 @@ public:
   std::vector<vuk::Value<vuk::ImageAttachment>> rendering_images;
   ankerl::unordered_dense::map<u64, ImTextureID> acquired_images;
 
-  inline static ImVec4 header_selected_color;
-  inline static ImVec4 header_hovered_color;
-  inline static ImVec4 window_bg_color;
-  inline static ImVec4 window_bg_alternative_color;
-  inline static ImVec4 asset_icon_color;
-  inline static ImVec4 text_color;
-  inline static ImVec4 text_disabled_color;
-
-  inline static ImVec2 ui_frame_padding;
-  inline static ImVec2 popup_item_spacing;
-
   ImGuiLayer();
   ~ImGuiLayer() override = default;
 
@@ -60,8 +49,5 @@ public:
               u16 mods,
               bool down);
   void on_text_input(const c8* text);
-
-  static void apply_theme(bool dark = true);
-  static void set_style();
 };
 } // namespace ox

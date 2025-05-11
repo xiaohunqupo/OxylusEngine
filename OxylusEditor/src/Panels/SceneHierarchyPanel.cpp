@@ -36,6 +36,8 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
                                            uint32_t depth,
                                            bool force_expand_tree,
                                            bool is_part_of_prefab) -> ImRect {
+  const auto& editor_theme = EditorLayer::get()->editor_theme;
+
   ImGui::TableNextRow();
   ImGui::TableNextColumn();
 
@@ -58,8 +60,8 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
   }
 
   const bool highlight = is_selected;
-  const auto header_selected_color = ImGuiLayer::header_selected_color;
-  const auto popup_item_spacing = ImGuiLayer::popup_item_spacing;
+  const auto header_selected_color = editor_theme.header_selected_color;
+  const auto popup_item_spacing = editor_theme.popup_item_spacing;
   if (highlight) {
     ImGui::TableSetBgColor(ImGuiTableBgTarget_RowBg0, ImGui::GetColorU32(header_selected_color));
     ImGui::PushStyleColor(ImGuiCol_Header, header_selected_color);
@@ -398,6 +400,8 @@ auto SceneHierarchyPanel::on_update() -> void {
 
 auto SceneHierarchyPanel::on_render(vuk::Extent3D extent,
                                     vuk::Format format) -> void {
+  const auto& editor_theme = EditorLayer::get()->editor_theme;
+
   ImGuiScoped::StyleVar cellpad(ImGuiStyleVar_CellPadding, {0, 0});
 
   if (on_begin(ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar)) {
@@ -463,7 +467,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent,
       });
       ImGui::PopStyleVar();
 
-      const auto pop_item_spacing = ImGuiLayer::popup_item_spacing;
+      const auto pop_item_spacing = editor_theme.popup_item_spacing;
       ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, pop_item_spacing);
       if (ImGui::BeginPopupContextWindow("SceneHierarchyContextWindow",
                                          ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
