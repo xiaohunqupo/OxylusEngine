@@ -613,46 +613,6 @@ auto EasyRenderPipeline::sky_pass(vuk::Allocator& frame_allocator,
 auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
   OX_SCOPED_ZONE;
 
-  option<GPU::Atmosphere> atmosphere_data = nullopt;
-  GPU::Sun sun_data = {};
-
-  scene->world
-      .query_builder<const TransformComponent, const LightComponent>() //
-      .build()
-      .each([&sun_data, &atmosphere_data](flecs::entity e, const TransformComponent& tc, const LightComponent& lc) {
-    if (lc.type == LightComponent::LightType::Directional) {
-      sun_data.direction.x = glm::cos(tc.rotation.x) * glm::sin(tc.rotation.y);
-      sun_data.direction.y = glm::sin(tc.rotation.x) * glm::sin(tc.rotation.y);
-      sun_data.direction.z = glm::cos(tc.rotation.y);
-      sun_data.intensity = lc.intensity;
-    }
-
-    if (e.has<AtmosphereComponent>()) {
-      const auto& atmos_info = *e.get<AtmosphereComponent>();
-      auto& atmos = atmosphere_data.emplace();
-      atmos.rayleigh_scatter = atmos_info.rayleigh_scattering * 1e-3f;
-      atmos.rayleigh_density = atmos_info.rayleigh_density;
-      atmos.mie_scatter = atmos_info.mie_scattering * 1e-3f;
-      atmos.mie_density = atmos_info.mie_density;
-      atmos.mie_extinction = atmos_info.mie_extinction * 1e-3f;
-      atmos.mie_asymmetry = atmos_info.mie_asymmetry;
-      atmos.ozone_absorption = atmos_info.ozone_absorption * 1e-3f;
-      atmos.ozone_height = atmos_info.ozone_height;
-      atmos.ozone_thickness = atmos_info.ozone_thickness;
-      atmos.aerial_gain_per_slice = atmos_info.aerial_gain_per_slice;
-    }
-  });
-
-  this->atmosphere = atmosphere_data;
-  this->sun = sun_data;
-
-  scene->world
-      .query_builder<const TransformComponent, const SpriteComponent>() //
-      .build()
-      .each([list = &this->sprite_component_list](flecs::entity e,
-                                                  const TransformComponent& tc,
-                                                  const SpriteComponent& c) { list->emplace_back(c); });
-
   scene->world
       .query_builder<const TransformComponent, const CameraComponent>() //
       .build()
@@ -673,6 +633,52 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
 
     this->current_camera = c;
   });
+
+  option<GPU::Atmosphere> atmosphere_data = nullopt;
+  GPU::Sun sun_data = {};
+
+  scene->world
+      .query_builder<const TransformComponent, const LightComponent>() //
+      .build()
+      .each([&sun_data, &atmosphere_data, cam = &this->current_camera](flecs::entity e,
+                                                                       const TransformComponent& tc,
+                                                                       const LightComponent& lc) {
+    if (lc.type == LightComponent::LightType::Directional) {
+      sun_data.direction.x = glm::cos(tc.rotation.x) * glm::sin(tc.rotation.y);
+      sun_data.direction.y = glm::sin(tc.rotation.x) * glm::sin(tc.rotation.y);
+      sun_data.direction.z = glm::cos(tc.rotation.y);
+      sun_data.intensity = lc.intensity;
+    }
+
+    if (e.has<AtmosphereComponent>()) {
+      const auto& atmos_info = *e.get<AtmosphereComponent>();
+      auto& atmos = atmosphere_data.emplace();
+      atmos.rayleigh_scatter = atmos_info.rayleigh_scattering * 1e-3f;
+      atmos.rayleigh_density = atmos_info.rayleigh_density;
+      atmos.mie_scatter = atmos_info.mie_scattering * 1e-3f;
+      atmos.mie_density = atmos_info.mie_density;
+      atmos.mie_extinction = atmos_info.mie_extinction * 1e-3f;
+      atmos.mie_asymmetry = atmos_info.mie_asymmetry;
+      atmos.ozone_absorption = atmos_info.ozone_absorption * 1e-3f;
+      atmos.ozone_height = atmos_info.ozone_height;
+      atmos.ozone_thickness = atmos_info.ozone_thickness;
+      atmos.aerial_perspective_start_km = atmos_info.aerial_perspective_start_km;
+
+      f32 eye_altitude = cam->position.y * GPU::CAMERA_SCALE_UNIT;
+      eye_altitude += atmos.planet_radius + GPU::PLANET_RADIUS_OFFSET;
+      atmos.eye_position = glm::vec3(0.0f, eye_altitude, 0.0f);
+    }
+  });
+
+  this->atmosphere = atmosphere_data;
+  this->sun = sun_data;
+
+  scene->world
+      .query_builder<const TransformComponent, const SpriteComponent>() //
+      .build()
+      .each([list = &this->sprite_component_list](flecs::entity e,
+                                                  const TransformComponent& tc,
+                                                  const SpriteComponent& c) { list->emplace_back(c); });
 
   option<GPU::HistogramInfo> hist_info = nullopt;
 

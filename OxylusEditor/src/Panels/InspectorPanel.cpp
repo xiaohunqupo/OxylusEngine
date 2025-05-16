@@ -655,7 +655,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ui::property_vector("Ozone Absorption", component.ozone_absorption, false);
     ui::property("Ozone Height", &component.ozone_height, 0.0f, 30.0f);
     ui::property("Ozone Thickness", &component.ozone_thickness, 0.0f, 20.0f);
-    ui::property("Aerial Gain Per Slice", &component.aerial_gain_per_slice, 0.0f, 10.0f);
+    ui::property("Aerial Perspective Start KM", &component.aerial_perspective_start_km, 0.0f, 100.0f);
 
     ui::end_properties();
   });

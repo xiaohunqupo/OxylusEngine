@@ -241,15 +241,18 @@ auto SlangSession::load_module(const SlangModuleInfo& info) -> option<SlangModul
   memory::ScopedStack stack;
 
   slang::IModule* slang_module = {};
-  Slang::ComPtr<slang::IBlob> diagnostics_blob;
   const auto& path_str = info.path;
   const auto source_data = fs::read_file(info.path);
   if (source_data.empty()) {
     OX_LOG_ERROR("Failed to read shader file '{}'!", path_str.c_str());
     return nullopt;
   }
-  slang_module =
-      impl->session->loadModuleFromSourceString(info.module_name.c_str(), path_str.c_str(), source_data.c_str(), diagnostics_blob.writeRef());
+
+  Slang::ComPtr<slang::IBlob> diagnostics_blob;
+  slang_module = impl->session->loadModuleFromSourceString(info.module_name.c_str(),
+                                                           path_str.c_str(),
+                                                           source_data.c_str(),
+                                                           diagnostics_blob.writeRef());
 
   if (diagnostics_blob) {
     OX_LOG_INFO("{}", (const char*)diagnostics_blob->getBufferPointer());
@@ -287,11 +290,16 @@ auto SlangCompiler::new_session(const SlangSessionInfo& info) -> option<SlangSes
       {.name = slang::CompilerOptionName::DebugInformationFormat,
        .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = SLANG_DEBUG_INFO_FORMAT_C7}},
 #endif
-      {.name = slang::CompilerOptionName::UseUpToDateBinaryModule, .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
-      {.name = slang::CompilerOptionName::GLSLForceScalarLayout, .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
-      {.name = slang::CompilerOptionName::Language, .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "slang"}},
-      {.name = slang::CompilerOptionName::VulkanUseEntryPointName, .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
-      {.name = slang::CompilerOptionName::DisableWarnings, .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "39001,41012"}},
+      {.name = slang::CompilerOptionName::UseUpToDateBinaryModule,
+       .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
+      {.name = slang::CompilerOptionName::GLSLForceScalarLayout,
+       .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
+      {.name = slang::CompilerOptionName::Language,
+       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "slang"}},
+      {.name = slang::CompilerOptionName::VulkanUseEntryPointName,
+       .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
+      {.name = slang::CompilerOptionName::DisableWarnings,
+       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "39001,41012"}},
   };
   std::vector<slang::PreprocessorMacroDesc> macros;
   macros.reserve(info.definitions.size());

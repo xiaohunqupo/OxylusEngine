@@ -140,6 +140,8 @@ public struct Sun {
 };
 
 public struct Atmosphere {
+    public f32x3 eye_pos;
+
     public f32x3 rayleigh_scatter;
     public f32   rayleigh_density;
 
@@ -153,9 +155,9 @@ public struct Atmosphere {
     public f32   ozone_thickness;
 
     public f32x3 terrain_albedo;
-    public f32   aerial_gain_per_slice;
     public f32   planet_radius;
     public f32   atmos_radius;
+    public f32   aerial_perspective_start_km;
 
     public i32x3 transmittance_lut_size;
     public i32x3 sky_view_lut_size;
