@@ -13,12 +13,11 @@
 
 #include "Core/App.hpp"
 #include "ImGuizmo.h"
+#include "Render/Slang/Slang.hpp"
 #include "Render/Utils/VukCommon.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
 #include "Utils/Profiler.hpp"
-#include "imgui_frag.hpp"
-#include "imgui_vert.hpp"
 
 namespace ox {
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
@@ -47,7 +46,7 @@ void ImGuiLayer::build_fonts() {
                            .format = vuk::Format::eR8G8B8A8Srgb,
                            .mime = {},
                            .data = pixels,
-                           .extent = {static_cast<u32>(width), static_cast<u32>(height)},
+                           .extent = {static_cast<u32>(width), static_cast<u32>(height), 1u},
                        });
 }
 
@@ -58,7 +57,7 @@ void ImGuiLayer::on_attach() {
   ImGuiIO& io = ImGui::GetIO();
   io.IniFilename = nullptr;
   io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard /*| ImGuiConfigFlags_ViewportsEnable*/ |
-                    ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleFonts;
+                    ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleFonts | ImGuiConfigFlags_IsSRGB;
   io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_HasMouseCursors;
   /*io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;*/
   io.BackendRendererName = "oxylus";
@@ -66,10 +65,17 @@ void ImGuiLayer::on_attach() {
 
   auto& allocator = *App::get_vkcontext().superframe_allocator;
   auto& ctx = allocator.get_context();
-  vuk::PipelineBaseCreateInfo pci;
-  pci.add_static_spirv(imgui_vert, sizeof(imgui_vert) / 4, "imgui.vert");
-  pci.add_static_spirv(imgui_frag, sizeof(imgui_frag) / 4, "imgui.frag");
-  ctx.create_named_pipeline("imgui", pci);
+
+  auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
+  auto shaders_dir = vfs->resolve_physical_dir(VFS::APP_DIR, "Shaders");
+
+  Slang slang = {};
+  slang.create_session({.root_directory = shaders_dir, .definitions = {}});
+
+  slang.create_pipeline(ctx,
+                        "imgui",
+                        {},
+                        {.path = shaders_dir + "/passes/imgui.slang", .entry_points = {"vs_main", "fs_main"}});
 }
 
 ImFont* ImGuiLayer::add_icon_font(float font_size,
@@ -152,21 +158,24 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 
   auto reset_render_state =
       [this, draw_data](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
-    command_buffer.bind_image(0, 0, *font_texture->get_view()).bind_sampler(0, 0, vuk::LinearSamplerRepeated);
+    command_buffer //
+        .bind_sampler(0, 0, vuk::LinearSamplerRepeated)
+        .bind_image(0, 1, *font_texture->get_view());
     if (index.size > 0) {
       command_buffer.bind_index_buffer(index,
                                        sizeof(ImDrawIdx) == 2 ? vuk::IndexType::eUint16 : vuk::IndexType::eUint32);
     }
-    command_buffer.bind_vertex_buffer(
-        0,
-        vertex,
-        0,
-        vuk::Packed{vuk::Format::eR32G32Sfloat, vuk::Format::eR32G32Sfloat, vuk::Format::eR8G8B8A8Unorm});
-    command_buffer.bind_graphics_pipeline("imgui");
-    command_buffer.set_viewport(0, vuk::Rect2D::framebuffer());
+    command_buffer
+        .bind_vertex_buffer(
+            0,
+            vertex,
+            0,
+            vuk::Packed{vuk::Format::eR32G32Sfloat, vuk::Format::eR32G32Sfloat, vuk::Format::eR8G8B8A8Unorm})
+        .bind_graphics_pipeline("imgui")
+        .set_viewport(0, vuk::Rect2D::framebuffer());
     struct PC {
-      float scale[2];
       float translate[2];
+      float scale[2];
     } pc;
     pc.scale[0] = 2.0f / draw_data->DisplaySize.x;
     pc.scale[1] = 2.0f / draw_data->DisplaySize.y;
@@ -252,9 +261,9 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
             if (im_cmd->TextureId != 0) {
               const auto index = im_cmd->TextureId - 1;
               const auto& image = sis[index];
-              command_buffer.bind_image(0, 0, image);
+              command_buffer.bind_image(0, 1, image);
             } else {
-              command_buffer.bind_image(0, 0, sis[0]);
+              command_buffer.bind_image(0, 1, sis[0]);
             }
 
             command_buffer.draw_indexed(im_cmd->ElemCount,
@@ -302,16 +311,14 @@ void ImGuiLayer::on_mouse_button(u8 button,
   ZoneScoped;
 
   i32 imgui_button = 0;
-  // clang-format off
-    switch (button) {
-        case SDL_BUTTON_LEFT: imgui_button = 0; break;
-        case SDL_BUTTON_RIGHT: imgui_button = 1; break;
-        case SDL_BUTTON_MIDDLE: imgui_button = 2; break;
-        case SDL_BUTTON_X1: imgui_button = 3; break;
-        case SDL_BUTTON_X2: imgui_button = 4; break;
-        default: return;
-    }
-  // clang-format on
+  switch (button) {
+    case SDL_BUTTON_LEFT  : imgui_button = 0; break;
+    case SDL_BUTTON_RIGHT : imgui_button = 1; break;
+    case SDL_BUTTON_MIDDLE: imgui_button = 2; break;
+    case SDL_BUTTON_X1    : imgui_button = 3; break;
+    case SDL_BUTTON_X2    : imgui_button = 4; break;
+    default               : return;
+  }
 
   auto& imgui = ImGui::GetIO();
   imgui.AddMouseButtonEvent(imgui_button, down);

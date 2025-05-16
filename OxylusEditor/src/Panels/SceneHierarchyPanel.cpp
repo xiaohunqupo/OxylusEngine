@@ -36,6 +36,9 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
                                            uint32_t depth,
                                            bool force_expand_tree,
                                            bool is_part_of_prefab) -> ImRect {
+  if (entity.has<Hidden>())
+    return {0, 0, 0, 0};
+
   const auto& editor_theme = EditorLayer::get()->editor_theme;
 
   ImGui::TableNextRow();
@@ -318,21 +321,21 @@ void SceneHierarchyPanel::draw_context_menu() {
       if (ImGui::MenuItem("Sphere")) {
         to_select =
             _scene->create_entity().add<RigidbodyComponent>().add<SphereColliderComponent>().add<MeshComponent>();
-        // @OLD _scene->registry.emplace<MeshComponent>(to_select,
+        // TODO _scene->registry.emplace<MeshComponent>(to_select,
         // AssetManager::get_mesh_asset("Resources/Objects/sphere.glb"));
       }
 
       if (ImGui::MenuItem("Cube")) {
         to_select =
             _scene->create_entity("Cube").add<RigidbodyComponent>().add<BoxColliderComponent>().add<MeshComponent>();
-        // @OLD _scene->registry.emplace<MeshComponent>(to_select,
+        // TODO _scene->registry.emplace<MeshComponent>(to_select,
         // AssetManager::get_mesh_asset("Resources/Objects/cube.glb"));
       }
 
       if (ImGui::MenuItem("Character Controller")) {
         to_select =
             _scene->create_entity("Character Controller").add<CharacterControllerComponent>().add<MeshComponent>();
-        // @OLD _scene->registry.emplace<MeshComponent>(to_select,
+        // TODO _scene->registry.emplace<MeshComponent>(to_select,
         // AssetManager::get_mesh_asset("Resources/Objects/capsule.glb"));
       }
 
@@ -352,9 +355,6 @@ void SceneHierarchyPanel::draw_context_menu() {
     }
 
     if (ImGui::BeginMenu("Effects")) {
-      if (ImGui::MenuItem("PostProcess Probe")) {
-        to_select = _scene->create_entity("PostProcess Probe").add<PostProcessProbe>();
-      }
       if (ImGui::MenuItem("Particle System")) {
         to_select = _scene->create_entity("Particle System").add<ParticleSystemComponent>();
       }

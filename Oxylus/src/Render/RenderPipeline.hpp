@@ -3,13 +3,7 @@
 
 #include "Scene/ECSModule/Core.hpp"
 
-namespace vuk {
-struct SampledImage;
-}
-
 namespace ox {
-class Scene;
-
 class RenderPipeline {
 public:
   struct RenderInfo {
@@ -22,21 +16,15 @@ public:
 
   virtual ~RenderPipeline() = default;
 
-  virtual void init(vuk::Allocator& allocator) = 0;
-  virtual void shutdown() = 0;
+  virtual auto init(vuk::Allocator& allocator) -> void = 0;
+  virtual auto shutdown() -> void = 0;
 
-  [[nodiscard]] virtual vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator,
-                                                                   const RenderInfo& render_info) = 0;
+  [[nodiscard]] virtual auto on_render(vuk::Allocator& frame_allocator,
+                                       const RenderInfo& render_info) -> vuk::Value<vuk::ImageAttachment> = 0;
 
-  virtual void on_update(Scene* scene) {}
-  virtual void on_submit() {} // TODO: Not called anymore!! Old Code!!
+  virtual auto on_update(Scene* scene) -> void = 0;
 
-  virtual void submit_mesh_component(const MeshComponent& render_object) {}
-  virtual void submit_light(const LightComponent& light) {}
-  virtual void submit_camera(const CameraComponent& camera) {}
-  virtual void submit_sprite(const SpriteComponent& sprite) {}
-
-  virtual const std::string& get_name() { return _name; }
+  virtual auto get_name() -> const std::string& { return _name; }
 
 protected:
   std::string _name = {};

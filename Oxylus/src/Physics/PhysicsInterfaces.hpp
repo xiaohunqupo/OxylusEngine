@@ -18,7 +18,8 @@ static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
 // Class that determines if two object layers can collide
 class ObjectLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter {
 public:
-  bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override;
+  bool ShouldCollide(JPH::ObjectLayer inObject1,
+                     JPH::ObjectLayer inObject2) const override;
 };
 
 // Each broadphase layer results in a separate bounding volume tree in the broad phase. You at least want to have
@@ -32,6 +33,7 @@ static constexpr JPH::BroadPhaseLayer MOVING(1);
 static constexpr JPH::uint NUM_LAYERS(2);
 }; // namespace BroadPhaseLayers
 
+namespace ox {
 // BroadPhaseLayerInterface implementation
 // This defines a mapping between object and broadphase layers.
 class BPLayerInterfaceImpl final : public JPH::BroadPhaseLayerInterface {
@@ -53,19 +55,22 @@ private:
 // Class that determines if an object layer can collide with a broadphase layer
 class ObjectVsBroadPhaseLayerFilterImpl : public JPH::ObjectVsBroadPhaseLayerFilter {
 public:
-  bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
+  bool ShouldCollide(JPH::ObjectLayer inLayer1,
+                     JPH::BroadPhaseLayer inLayer2) const override;
 };
 
 class Physics3DBodyActivationListener : public JPH::BodyActivationListener {
 public:
-  void OnBodyActivated([[maybe_unused]] const JPH::BodyID& inBodyID, [[maybe_unused]] JPH::uint64 inBodyUserData) override;
+  void OnBodyActivated([[maybe_unused]] const JPH::BodyID& inBodyID,
+                       [[maybe_unused]] JPH::uint64 inBodyUserData) override;
 
-  void OnBodyDeactivated([[maybe_unused]] const JPH::BodyID& inBodyID, [[maybe_unused]] JPH::uint64 inBodyUserData) override;
+  void OnBodyDeactivated([[maybe_unused]] const JPH::BodyID& inBodyID,
+                         [[maybe_unused]] JPH::uint64 inBodyUserData) override;
 };
 
 class Physics3DContactListener : public JPH::ContactListener {
 public:
-  Physics3DContactListener(ox::Scene* scene) : m_Scene(scene) {}
+  Physics3DContactListener(ox::Scene* scene) : _scene(scene) {}
   JPH::ValidateResult OnContactValidate(const JPH::Body& inBody1,
                                         const JPH::Body& inBody2,
                                         JPH::RVec3Arg inBaseOffset,
@@ -84,11 +89,15 @@ public:
   void OnContactRemoved([[maybe_unused]] const JPH::SubShapeIDPair& inSubShapePair) override;
 
 private:
-  ox::Scene* m_Scene = nullptr;
-  static void GetFrictionAndRestitution(const JPH::Body& inBody, const JPH::SubShapeID& inSubShapeID, float& outFriction, float& outRestitution);
+  ox::Scene* _scene = nullptr;
+  static void GetFrictionAndRestitution(const JPH::Body& inBody,
+                                        const JPH::SubShapeID& inSubShapeID,
+                                        float& outFriction,
+                                        float& outRestitution);
 
   static void OverrideContactSettings(const JPH::Body& inBody1,
                                       const JPH::Body& inBody2,
                                       const JPH::ContactManifold& inManifold,
                                       JPH::ContactSettings& ioSettings);
 };
+} // namespace ox

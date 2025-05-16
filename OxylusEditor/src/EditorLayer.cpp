@@ -19,6 +19,7 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
+#include "Scene/SceneRenderer.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/CVars.hpp"
@@ -46,10 +47,10 @@ void EditorLayer::on_attach() {
   engine_banner = create_shared<Texture>();
   engine_banner->create({},
                         {.preset = Preset::eRTT2DUnmipped,
-                         .format = vuk::Format::eR8G8B8A8Unorm,
+                         .format = vuk::Format::eR8G8B8A8Srgb,
                          .mime = {},
                          .data = EngineBanner,
-                         .extent = {EngineBannerWidth, EngineBannerHeight}});
+                         .extent = {.width = EngineBannerWidth, .height = EngineBannerHeight, .depth = 1u}});
 
   add_panel<SceneHierarchyPanel>();
   add_panel<ContentPanel>();
@@ -104,7 +105,7 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 
   switch (scene_state) {
     case SceneState::Edit: {
-      editor_scene->on_editor_update(delta_time, viewport_panels[0]->editor_camera);
+      editor_scene->get_renderer()->update(delta_time);
       break;
     }
     case SceneState::Play: {
@@ -112,7 +113,7 @@ void EditorLayer::on_update(const Timestep& delta_time) {
       break;
     }
     case SceneState::Simulate: {
-      active_scene->on_editor_update(delta_time, viewport_panels[0]->editor_camera);
+      editor_scene->get_renderer()->update(delta_time);
       break;
     }
   }
@@ -282,17 +283,6 @@ void EditorLayer::editor_shortcuts() {
     }
     if (Input::get_key_held(KeyCode::LeftShift) && Input::get_key_pressed(KeyCode::S)) {
       save_scene_as();
-    }
-  }
-
-  if (Input::get_key_pressed(KeyCode::F)) {
-    const auto entity = get_selected_entity();
-    if (entity != flecs::entity::null()) {
-      const auto tc = entity.get<TransformComponent>();
-      auto& camera = viewport_panels[0]->editor_camera;
-      auto final_pos = tc->position + camera.forward;
-      final_pos += -5.0f * camera.forward * glm::vec3(1.0f);
-      camera.position = final_pos;
     }
   }
 }

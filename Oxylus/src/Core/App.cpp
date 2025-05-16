@@ -97,11 +97,11 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   DebugRenderer::init();
 
-  imgui_layer = new ImGuiLayer();
-  push_overlay(imgui_layer);
-
   auto* vfs = get_system<VFS>(EngineSystems::VFS);
   vfs->mount_dir(VFS::APP_DIR, fs::absolute(app_spec.assets_path));
+
+  imgui_layer = new ImGuiLayer();
+  push_overlay(imgui_layer);
 }
 
 App::~App() { close(); }
@@ -211,7 +211,7 @@ void App::run() {
 
     imgui_layer->begin_frame(timestep.get_seconds(), extent);
 
-    for (Layer* layer : *layer_stack.get()) {
+    for (auto* layer : *layer_stack.get()) {
       layer->on_update(timestep);
       layer->on_render(extent, swapchain_attachment->format);
     }

@@ -326,8 +326,8 @@ void draw_add_component(const flecs::entity entity,
 }
 
 void InspectorPanel::draw_components(const flecs::entity entity) {
-  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.75f);
-  static std::string new_name = {};
+  ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.9f);
+  static std::string new_name = entity.name().c_str();
   if (_rename_entity)
     ImGui::SetKeyboardFocusHere();
   if (ui::input_text("##Tag", &new_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
@@ -340,13 +340,13 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ImGui::OpenPopup("Add Component");
   }
   if (ImGui::BeginPopup("Add Component")) {
+    // TODO: Use flecs reflections for easy iteration over components.
     draw_add_component<MeshComponent>(selected_entity, "Mesh Renderer");
     draw_add_component<AudioSourceComponent>(selected_entity, "Audio Source");
     draw_add_component<AudioListenerComponent>(selected_entity, "Audio Listener");
     draw_add_component<LightComponent>(selected_entity, "Light");
     draw_add_component<ParticleSystemComponent>(selected_entity, "Particle System");
     draw_add_component<CameraComponent>(selected_entity, "Camera");
-    draw_add_component<PostProcessProbe>(selected_entity, "PostProcess Probe");
     draw_add_component<RigidbodyComponent>(selected_entity, "Rigidbody");
     draw_add_component<BoxColliderComponent>(entity, "Box Collider");
     draw_add_component<SphereColliderComponent>(entity, "Sphere Collider");
@@ -359,13 +359,10 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     draw_add_component<CPPScriptComponent>(entity, "CPP Script Component");
     draw_add_component<SpriteComponent>(entity, "Sprite Component");
     draw_add_component<SpriteAnimationComponent>(entity, "Sprite Animation Component");
+    draw_add_component<AtmosphereComponent>(entity, "Atmosphere Component");
+    draw_add_component<AutoExposureComponent>(entity, "Auto Exposure Component");
     ImGui::EndPopup();
   }
-
-  ImGui::SameLine();
-
-  const auto uuidstr = fmt::format("EntityID: {}", entity.id());
-  ImGui::TextUnformatted(uuidstr.c_str());
 
   draw_component<TransformComponent>(" Transform Component",
                                      entity,
@@ -393,17 +390,17 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ImGui::SeparatorText("Material");
 
     auto load_event = App::get()->world.entity("sprite_material_load_event");
-    load_event.observe<Event::DialogLoadEvent>([&component](Event::DialogLoadEvent& e) {
+    load_event.observe<Event::DialogLoadEvent>([&component](Event::DialogLoadEvent& en) {
       auto* asset_man = App::get_asset_manager();
-      if (auto imported = asset_man->import_asset(e.path)) {
+      if (auto imported = asset_man->import_asset(en.path)) {
         component.material = imported;
         asset_man->unload_asset(component.material);
       }
     });
 
-    load_event.observe<Event::DialogSaveEvent>([&component](Event::DialogSaveEvent& e) {
+    load_event.observe<Event::DialogSaveEvent>([&component](Event::DialogSaveEvent& en) {
       auto* asset_man = App::get_asset_manager();
-      asset_man->export_asset(component.material, e.path);
+      asset_man->export_asset(component.material, en.path);
     });
 
     if (auto* material = App::get_asset_manager()->get_material(component.material)) {
@@ -413,7 +410,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
   draw_component<SpriteAnimationComponent>(" Sprite Animation Component",
                                            entity,
-                                           [this](SpriteAnimationComponent& component, flecs::entity e) {
+                                           [](SpriteAnimationComponent& component, flecs::entity e) {
     ui::begin_properties();
     if (ui::property("Number of frames", &component.num_frames))
       component.reset();
@@ -443,41 +440,20 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     ui::end_properties();
   });
 
-  draw_component<PostProcessProbe>(" PostProcess Probe Component",
-                                   entity,
-                                   [](PostProcessProbe& component, flecs::entity e) {
-    ImGui::Text("Vignette");
+  draw_component<AutoExposureComponent>(" Auto Exposure Component",
+                                        entity,
+                                        [](AutoExposureComponent& component, flecs::entity e) {
     ui::begin_properties();
-    ui::property("Enable", &component.vignette_enabled);
-    ui::property("Intensity", &component.vignette_intensity);
+    ui::property("Min Exposure", &component.min_exposure);
+    ui::property("Max Exposure", &component.max_exposure);
+    ui::property("Adaptation Speed", &component.adaptation_speed);
+    ui::property("EV100 Bias", &component.ev100_bias);
     ui::end_properties();
-    ImGui::Separator();
-
-    ImGui::Text("FilmGrain");
-    ui::begin_properties();
-    ui::property("Enable", &component.film_grain_enabled);
-    ui::property("Intensity", &component.film_grain_intensity);
-    ui::end_properties();
-    ImGui::Separator();
-
-    ImGui::Text("ChromaticAberration");
-    ui::begin_properties();
-    ui::property("Enable", &component.chromatic_aberration_enabled);
-    ui::property("Intensity", &component.chromatic_aberration_intensity);
-    ui::end_properties();
-    ImGui::Separator();
-
-    ImGui::Text("Sharpen");
-    ui::begin_properties();
-    ui::property("Enable", &component.sharpen_enabled);
-    ui::property("Intensity", &component.sharpen_intensity);
-    ui::end_properties();
-    ImGui::Separator();
   });
 
   draw_component<AudioSourceComponent>(" Audio Source Component",
                                        entity,
-                                       [&entity, this](AudioSourceComponent& component, flecs::entity e) {
+                                       [](AudioSourceComponent& component, flecs::entity e) {
     auto* asset_man = App::get_asset_manager();
     auto* asset = asset_man->get_asset(component.audio_source);
 
@@ -661,6 +637,25 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
       for (u32 i = 0; i < (u32)component.cascade_distances.size(); ++i)
         ui::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
     }
+
+    ui::end_properties();
+  });
+
+  draw_component<AtmosphereComponent>(" Atmosphere Component",
+                                      entity,
+                                      [](AtmosphereComponent& component, flecs::entity e) {
+    ui::begin_properties();
+
+    ui::property_vector("Rayleigh Scattering", component.rayleigh_scattering, false);
+    ui::property("Rayleigh Density", &component.rayleigh_density, 0.0f, 10.0f);
+    ui::property_vector("Mie Scattering", component.mie_scattering, false);
+    ui::property("Mie Density", &component.mie_density, 0.0f, 2.0f);
+    ui::property("Mie Extinction", &component.mie_extinction, 0.0f, 5.0f);
+    ui::property("Mie Asymmetry", &component.mie_asymmetry, 0.0f, 5.0f);
+    ui::property_vector("Ozone Absorption", component.ozone_absorption, false);
+    ui::property("Ozone Height", &component.ozone_height, 0.0f, 30.0f);
+    ui::property("Ozone Thickness", &component.ozone_thickness, 0.0f, 20.0f);
+    ui::property("Aerial Gain Per Slice", &component.aerial_gain_per_slice, 0.0f, 10.0f);
 
     ui::end_properties();
   });

@@ -32,7 +32,7 @@ static float3 positions[6] =
 static float2 uvs[6] = {float2(0.0, 1.0), float2(1.0, 1.0), float2(1.0, 0.0), float2(1.0, 0.0), float2(0.0, 0.0), float2(0.0, 1.0)};
 
 [[shader("vertex")]]
-VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
+VOutput vs_main(VertexInput input, uint vertex_id : SV_VertexID) {
   VOutput output = (VOutput)0;
 
   const u32 flags = com::unpack_u32_low(input.flags16_distance16);
@@ -67,7 +67,7 @@ VOutput VSmain(VertexInput input, uint vertex_id : SV_VertexID) {
 }
 
 [[shader("fragment")]]
-float4 PSmain(VOutput input) : SV_Target0 {
+float4 ps_main(VOutput input) : SV_Target0 {
   const Material material = C.materials[input.material_index];
 
   float2 uv = input.uv_alpha.xy;

@@ -56,7 +56,6 @@ void EditorTheme::init(this EditorTheme& self) {
   self.component_icon_map[typeid(MeshComponent).hash_code()] = ICON_MDI_VECTOR_SQUARE;
   self.component_icon_map[typeid(LuaScriptComponent).hash_code()] = ICON_MDI_LANGUAGE_LUA;
   self.component_icon_map[typeid(CPPScriptComponent).hash_code()] = ICON_MDI_LANGUAGE_CPP;
-  self.component_icon_map[typeid(PostProcessProbe).hash_code()] = ICON_MDI_SPRAY;
   self.component_icon_map[typeid(AudioListenerComponent).hash_code()] = ICON_MDI_CIRCLE_SLICE_8;
   self.component_icon_map[typeid(RigidbodyComponent).hash_code()] = ICON_MDI_SOCCER;
   self.component_icon_map[typeid(BoxColliderComponent).hash_code()] = ICON_MDI_CHECKBOX_BLANK_OUTLINE;
@@ -69,6 +68,8 @@ void EditorTheme::init(this EditorTheme& self) {
   self.component_icon_map[typeid(ParticleSystemComponent).hash_code()] = ICON_MDI_LAMP;
   self.component_icon_map[typeid(SpriteComponent).hash_code()] = ICON_MDI_SQUARE_OUTLINE;
   self.component_icon_map[typeid(SpriteAnimationComponent).hash_code()] = ICON_MDI_SHAPE_SQUARE_PLUS;
+  self.component_icon_map[typeid(AtmosphereComponent).hash_code()] = ICON_MDI_WEATHER_CLOUDY;
+  self.component_icon_map[typeid(AutoExposureComponent).hash_code()] = ICON_MDI_CAMERA_ENHANCE;
 
   self.apply_theme();
   self.set_style();

@@ -122,14 +122,6 @@ inline SamplerCreateInfo CmpDepthSampler = {
     .maxLod = 0.0f,
 };
 
-inline vuk::ImageAttachment dummy_attachment = {
-    .extent = {1, 1, 1},
-    .format = vuk::Format::eR8G8B8A8Unorm,
-    .sample_count = vuk::SampleCountFlagBits::e1,
-    .level_count = 1,
-    .layer_count = 1,
-};
-
 inline vuk::Extent3D operator/(const vuk::Extent3D& ext,
                                float rhs) {
   return {unsigned((float)ext.width / rhs), unsigned((float)ext.height / rhs), 1u};
@@ -178,8 +170,9 @@ inline VkDescriptorSetLayoutBinding ds_layout_binding(uint32_t binding,
   };
 }
 
-inline vuk::DescriptorSetLayoutCreateInfo descriptor_set_layout_create_info(const std::vector<VkDescriptorSetLayoutBinding>& bindings,
-                                                                            const uint32_t index) {
+inline vuk::DescriptorSetLayoutCreateInfo
+descriptor_set_layout_create_info(const std::vector<VkDescriptorSetLayoutBinding>& bindings,
+                                  const uint32_t index) {
   vuk::DescriptorSetLayoutCreateInfo ci = {};
   ci.bindings = bindings;
   ci.index = index;

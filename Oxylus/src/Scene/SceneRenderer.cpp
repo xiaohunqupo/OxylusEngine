@@ -33,20 +33,19 @@ void SceneRenderer::update(const Timestep& delta_time) const {
   {
     OX_SCOPED_ZONE_N("Camera System");
     _scene->world.query_builder<const TransformComponent, CameraComponent>().build().each(
-        [this](const TransformComponent& tc, CameraComponent& cc) {
+        [](const TransformComponent& tc, CameraComponent& cc) {
       const auto screen_extent = App::get()->get_swapchain_extent();
       cc.position = tc.position;
       cc.pitch = tc.rotation.x;
       cc.yaw = tc.rotation.y;
       Camera::update(cc, screen_extent);
-      _render_pipeline->submit_camera(cc);
     });
   }
 
   {
     OX_SCOPED_ZONE_N("Mesh System");
     _scene->world.query_builder<const TransformComponent, MeshComponent>().build().each(
-        [this](const TransformComponent& tc, MeshComponent& cc) {});
+        [](const TransformComponent& tc, MeshComponent& cc) {});
 #if 0
     const auto mesh_view = _scene->registry.view<TransformComponent, MeshComponent, TagComponent>();
     for (const auto&& [entity, transform, mesh_component, tag] : mesh_view.each()) {
@@ -71,7 +70,7 @@ void SceneRenderer::update(const Timestep& delta_time) const {
   {
     OX_SCOPED_ZONE_N("Sprite Animation System");
     _scene->world.query_builder<SpriteComponent, SpriteAnimationComponent>().build().each(
-        [this, &delta_time](SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
+        [&delta_time](SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
       const auto asset_manager = App::get_system<AssetManager>(EngineSystems::AssetManager);
       auto* material = asset_manager->get_material(sprite.material);
 
@@ -126,8 +125,6 @@ void SceneRenderer::update(const Timestep& delta_time) const {
       sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
       sprite.rect = sprite.rect.get_transformed(world_transform);
 
-      _render_pipeline->submit_sprite(sprite);
-
       if (RendererCVar::cvar_draw_bounding_boxes.get()) {
         DebugRenderer::draw_aabb(sprite.rect, glm::vec4(1, 1, 1, 1.0f));
       }
@@ -145,12 +142,10 @@ void SceneRenderer::update(const Timestep& delta_time) const {
   {
     OX_SCOPED_ZONE_N("Lighting System");
     _scene->world.query_builder<const TransformComponent, LightComponent>().build().each(
-        [this](const TransformComponent& tc, LightComponent& lc) {
+        [](const TransformComponent& tc, LightComponent& lc) {
       lc.position = tc.position;
       lc.rotation = tc.rotation;
       lc.direction = glm::normalize(math::transform_normal(glm::vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
-
-      _render_pipeline->submit_light(lc);
     });
   }
 

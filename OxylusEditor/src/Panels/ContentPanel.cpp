@@ -69,7 +69,7 @@ static const ankerl::unordered_dense::map<FileType, const char8_t*> FILE_TYPES_T
     {FileType::Unknown, ICON_MDI_FILE},
     {FileType::Directory, ICON_MDI_FOLDER},
     {FileType::Meta, ICON_MDI_FILE_DOCUMENT},
-    {FileType::Scene, ICON_MDI_FILE},
+    {FileType::Scene, ICON_MDI_IMAGE_FILTER_HDR},
     {FileType::Prefab, ICON_MDI_FILE},
     {FileType::Shader, ICON_MDI_IMAGE_FILTER_BLACK_WHITE},
     {FileType::Texture, ICON_MDI_FILE_IMAGE},
@@ -257,7 +257,7 @@ ContentPanel::ContentPanel() :
                           .format = vuk::Format::eR8G8B8A8Unorm,
                           .mime = {},
                           .data = white_texture_data,
-                          .extent = {16, 16}});
+                          .extent = {.width = 16u, .height = 16u, .depth = 1u}});
 }
 
 void ContentPanel::init() {
@@ -564,11 +564,6 @@ void ContentPanel::render_body(bool grid) {
             texture_name = file.file_path;
           }
         }
-        // else if (file.type == FileType::Mesh) {
-        //   texture_name = "mesh_icon";
-        // } else {
-        //   texture_name = "file_icon";
-        // }
       }
 
       ImGui::TableNextColumn();

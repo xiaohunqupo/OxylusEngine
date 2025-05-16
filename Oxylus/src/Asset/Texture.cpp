@@ -70,28 +70,42 @@ void Texture::create(const std::string& path,
     final_data = is_generic ? stb_data.get() : ktx_data.get()->kvData;
   }
 
-  auto ia = vuk::ImageAttachment::from_preset(load_info.preset, format, {width, height, 1}, vuk::Samples::e1);
+  auto ia = vuk::ImageAttachment::from_preset(load_info.preset,
+                                              format,
+                                              {width, height, load_info.extent.depth},
+                                              vuk::Samples::e1);
   ia.usage |= vuk::ImageUsageFlagBits::eTransferDst | vuk::ImageUsageFlagBits::eTransferSrc;
 
-  auto [tex, view, fut] =
-      vuk::create_image_and_view_with_data(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, final_data);
+  auto image = *vuk::allocate_image(*allocator, ia);
+  ia.image = *image;
+  auto view = *vuk::allocate_image_view(*allocator, ia);
+  ia.image_view = *view;
 
-  if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
-    if (ia.level_count > 1)
-      fut = vuk::generate_mips(fut, ia.level_count);
-  } else {
-    fut = RendererCommon::generate_cubemap_from_equirectangular(fut);
+  if (final_data != nullptr) {
+    auto fut = vuk::host_data_to_image(*allocator, vuk::DomainFlagBits::eTransferOnTransfer, ia, final_data);
+
+    if (load_info.preset != Preset::eRTTCube && load_info.preset != Preset::eMapCube) {
+      if (ia.level_count > 1)
+        fut = vuk::generate_mips(fut, ia.level_count);
+    } else {
+      fut = RendererCommon::generate_cubemap_from_equirectangular(fut);
+    }
+
+    vuk::Compiler compiler{};
+
+    if (ia.usage & vuk::ImageUsageFlagBits::eStorage && ia.usage & vuk::ImageUsageFlagBits::eSampled) {
+    } else {
+      fut = fut.as_released(vuk::eFragmentSampled, vuk::DomainFlagBits::eGraphicsQueue);
+    }
+
+    fut.wait(*allocator, compiler);
   }
 
-  vuk::Compiler compiler{};
-  // TODO: Not cool!!
-  fut.as_released(vuk::eFragmentSampled, vuk::DomainFlagBits::eGraphicsQueue).wait(*allocator, compiler);
-
-  _image = std::move(tex);
+  _image = std::move(image);
   _view = std::move(view);
   _attachment = ia;
 
-  set_name({}, loc);
+  set_name(_name, loc);
 }
 
 vuk::Value<vuk::ImageAttachment> Texture::acquire(const vuk::Name name,

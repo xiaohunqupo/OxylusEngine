@@ -4,15 +4,13 @@
 #include <vuk/runtime/vk/Query.hpp>
 
 #include "EditorPanel.hpp"
-#include "Render/Camera.hpp"
 #include "Scene/Scene.hpp"
 #include "SceneHierarchyPanel.hpp"
-#include "UI/OxUI.hpp"
 
 namespace ox {
 class ViewportPanel : public EditorPanel {
 public:
-  CameraComponent editor_camera = {};
+  flecs::entity editor_camera = {};
 
   bool performance_overlay_visible = true;
   bool fullscreen_viewport = false;

@@ -3,6 +3,10 @@
 import common;
 import gpu;
 
+public const static f32 CAMERA_SCALE_UNIT     = 0.01;
+public const static f32 INV_CAMERA_SCALE_UNIT = 1.0 / CAMERA_SCALE_UNIT;
+public const static f32 PLANET_RADIUS_OFFSET  = 0.001;
+
 public enum AlphaMode : u32 {
     Opaque = 0,
     Mask,
@@ -130,11 +134,40 @@ public struct Scene {
   f32x2 sharpen = {};            
 };
 
+public struct Sun {
+    public f32x3 direction;
+    public f32   intensity;
+};
+
+public struct Atmosphere {
+    public f32x3 rayleigh_scatter;
+    public f32   rayleigh_density;
+
+    public f32x3 mie_scatter;
+    public f32   mie_density;
+    public f32   mie_extinction;
+    public f32   mie_asymmetry;
+
+    public f32x3 ozone_absorption;
+    public f32   ozone_height;
+    public f32   ozone_thickness;
+
+    public f32x3 terrain_albedo;
+    public f32   aerial_gain_per_slice;
+    public f32   planet_radius;
+    public f32   atmos_radius;
+
+    public i32x3 transmittance_lut_size;
+    public i32x3 sky_view_lut_size;
+    public i32x3 multiscattering_lut_size;
+    public i32x3 aerial_perspective_lut_size;
+};
+
 // --- Bindings ---
 
 [[vk::binding(0, 0)]]
-StructuredBuffer<Scene> scene;
+public StructuredBuffer<Scene> scene;
 [[vk::binding(1, 0)]]
-Sampler material_sampler[];
+public Sampler material_sampler[];
 [[vk::binding(2, 0)]]
-Image2D<f32x4> material_images[];
+public Image2D<f32x4> material_images[];

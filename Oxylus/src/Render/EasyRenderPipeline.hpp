@@ -1,9 +1,14 @@
 #pragma once
 
+#include <vuk/Types.hpp>
+#include <vuk/Value.hpp>
+#include <vuk/runtime/vk/Allocator.hpp>
 #include <vuk/runtime/vk/Descriptor.hpp>
 
+#include "Asset/Texture.hpp"
 #include "RenderPipeline.hpp"
 #include "RendererConfig.hpp"
+#include "Scene/SceneGPU.hpp"
 
 namespace ox {
 class EasyRenderPipeline : public RenderPipeline {
@@ -11,14 +16,13 @@ public:
   explicit EasyRenderPipeline(const std::string& name) : RenderPipeline(name) {}
   ~EasyRenderPipeline() override = default;
 
-  void init(vuk::Allocator& allocator) override;
-  void shutdown() override;
+  auto init(vuk::Allocator& allocator) -> void override;
+  auto shutdown() -> void override;
 
-  [[nodiscard]] vuk::Value<vuk::ImageAttachment> on_render(vuk::Allocator& frame_allocator,
-                                                           const RenderInfo& render_info) override;
+  auto on_render(vuk::Allocator& frame_allocator,
+                 const RenderInfo& render_info) -> vuk::Value<vuk::ImageAttachment> override;
 
-  void submit_sprite(const SpriteComponent& sprite) override;
-  void submit_camera(const CameraComponent& camera) override;
+  auto on_update(Scene* scene) -> void override;
 
 private:
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_00 = vuk::Unique<vuk::PersistentDescriptorSet>();
@@ -28,6 +32,15 @@ private:
   CameraComponent current_camera = {};
   CameraComponent frozen_camera = {};
   bool saved_camera = false;
+
+  option<GPU::Atmosphere> atmosphere = nullopt;
+  GPU::Sun sun = {};
+  option<GPU::HistogramInfo> histogram_info = nullopt;
+
+  Texture sky_transmittance_lut_view;
+  Texture sky_multiscatter_lut_view;
+
+  vuk::Unique<vuk::Buffer> exposure_buffer{};
 
   enum BindlessID : u32 {
     Scene = 0,
@@ -107,7 +120,7 @@ private:
     // TODO: sort pipelines
     void update() {
       const vuk::Name pipeline_name =
-          "2d_forward_pipeline"; // FIXME: hardcoded until we have a modular material shader system
+          "2d_forward_pipeline"; // TODO: hardcoded until we have a modular material shader system
       if (current_pipeline_name != pipeline_name) {
         batches.emplace_back(DrawBatch2D{.pipeline_name = pipeline_name,
                                          .offset = previous_offset,
@@ -155,37 +168,6 @@ private:
     }
   };
 
-  struct CameraData {
-    glm::vec4 position = {};
-
-    glm::mat4 projection = {};
-    glm::mat4 inv_projection = {};
-    glm::mat4 view = {};
-    glm::mat4 inv_view = {};
-    glm::mat4 projection_view = {};
-    glm::mat4 inv_projection_view = {};
-
-    glm::mat4 previous_projection = {};
-    glm::mat4 previous_inv_projection = {};
-    glm::mat4 previous_view = {};
-    glm::mat4 previous_inv_view = {};
-    glm::mat4 previous_projection_view = {};
-    glm::mat4 previous_inv_projection_view = {};
-
-    glm::vec2 temporalaa_jitter = {};
-    glm::vec2 temporalaa_jitter_prev = {};
-
-    glm::vec4 frustum_planes[6] = {};
-
-    glm::vec3 up = {};
-    f32 near_clip = 0;
-    glm::vec3 forward = {};
-    f32 far_clip = 0;
-    glm::vec3 right = {};
-    f32 fov = 0;
-    u32 output_index = 0;
-  };
-
   struct SceneData {
     u32 num_lights = {};
     f32 grid_max_distance = {};
@@ -195,26 +177,12 @@ private:
     glm::vec2 screen_size_rcp = {};
     glm::uvec2 shadow_atlas_res = {};
 
-    glm::vec3 sun_direction = {};
     u32 meshlet_count = {};
-
-    glm::vec4 sun_color = {}; // pre-multipled with intensity
-
-    struct PostProcessingData {
-      i32 tonemapper = RendererConfig::TONEMAP_ACES;
-      f32 exposure = 1.0f;
-      f32 gamma = 2.5f;
-
-      i32 enable_bloom = 1;
-      i32 enable_ssr = 1;
-      i32 enable_gtao = 1;
-
-      glm::vec4 vignette_color = glm::vec4(0.0f, 0.0f, 0.0f, 0.25f); // rgb: color, a: intensity
-      glm::vec4 vignette_offset = glm::vec4(0.0f, 0.0f, 0.0f, 0.0f); // xy: offset, z: useMask, w: enable effect
-      glm::vec2 film_grain = {};                                     // x: enable, y: amount
-      glm::vec2 chromatic_aberration = {};                           // x: enable, y: amount
-      glm::vec2 sharpen = {};                                        // x: enable, y: amount
-    } post_processing_data = {};
   };
+
+  auto sky_pass(vuk::Allocator& frame_allocator,
+                vuk::Value<vuk::Buffer>& camera_buffer,
+                vuk::Value<vuk::ImageAttachment>& final_attachment,
+                vuk::Value<vuk::ImageAttachment>& depth_attachment) -> void;
 };
 } // namespace ox

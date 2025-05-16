@@ -12,8 +12,8 @@ target("Oxylus")
     add_options("profile")
     if not has_config("lua_bindings") then
         remove_files("./src/Scripting/*Bindings*")
-	else
-		add_defines("OX_LUA_BINDINGS")
+    else
+        add_defines("OX_LUA_BINDINGS")
     end
 
     if is_plat("windows") then
@@ -66,11 +66,6 @@ target("Oxylus")
         "/bigobj",
         "-wd4100",
         { force = true, public = true, tools = { "msvc", "cl", "clang_cl", "clang-cl" } })
-
-    add_cxxflags(
-        "-Wno-unused-parameter",
-        "-Wno-unused-variable",
-        { force = true, public = true, tools = { "clang", "gcc" } })
 
     add_packages(
         "stb",

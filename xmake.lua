@@ -15,13 +15,15 @@ set_warnings("allextra", "pedantic")
 add_cxxflags(
     "-Wshadow",
     "-Wno-missing-braces",
-    { tools = { "clang", "gcc" } })
+    "-Wno-unused-parameter",
+    "-Wno-unused-variable",
+    { tools = { "clang", "clangxx", "gcc" } })
 add_cxxflags(
     "-Wshadow-all",
     "-Wno-gnu-line-marker",
     "-Wno-gnu-anonymous-struct",
     "-Wno-gnu-zero-variadic-macro-arguments",
-    { tools = { "clang" } })
+    { tools = { "clang", "clangxx" } })
 
 includes("xmake/options.lua")
 includes("xmake/rules.lua")

@@ -1,12 +1,14 @@
 #pragma once
 
-#include "Scene/ECSModule/Core.hpp"
 #include "Core/System.hpp"
 #include "Core/UUID.hpp"
-#include "Physics/PhysicsInterfaces.hpp"
-#include "SceneRenderer.hpp"
+#include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
+class SceneRenderer;
+class Physics3DContactListener;
+class Physics3DBodyActivationListener;
+
 struct ComponentDB {
   std::vector<flecs::id> components = {};
   std::vector<flecs::entity> imported_modules = {};
@@ -34,16 +36,13 @@ public:
   auto init(this Scene& self,
             const std::string& name) -> void;
 
+  auto is_running() const -> bool { return running; }
+
   auto create_entity(const std::string& name = "") const -> flecs::entity;
 
   auto on_runtime_start() -> void;
   auto on_runtime_stop() -> void;
-
-  auto is_running() const -> bool { return running; }
-
   auto on_runtime_update(const Timestep& delta_time) -> void;
-  auto on_editor_update(const Timestep& delta_time,
-                        const CameraComponent& camera) const -> void;
 
   auto on_render(vuk::Extent3D extent,
                  vuk::Format format) -> void;
@@ -82,16 +81,14 @@ private:
   bool running = false;
 
   // Renderer
-  Unique<SceneRenderer> scene_renderer = nullptr;
+  Unique<SceneRenderer> scene_renderer;
 
   // Physics
-  Physics3DContactListener* contact_listener_3d = nullptr;
-  Physics3DBodyActivationListener* body_activation_listener_3d = nullptr;
+  Physics3DContactListener* contact_listener_3d;
+  Physics3DBodyActivationListener* body_activation_listener_3d;
   float physics_frame_accumulator = 0.0f;
 
   // Physics
   void update_physics(const Timestep& delta_time);
-
-  friend class SceneHPanel;
 };
 } // namespace ox

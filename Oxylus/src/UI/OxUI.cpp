@@ -300,7 +300,6 @@ bool ui::texture_property(const char* label,
   if (ImGui::BeginDragDropTarget()) {
     if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
       const auto path = get_path_from_imgui_payload(payload);
-      auto* asset_man = App::get_asset_manager();
       *new_asset = asset_man->create_asset(AssetType::Texture, path);
       asset_man->load_texture(*new_asset, {});
       changed = true;

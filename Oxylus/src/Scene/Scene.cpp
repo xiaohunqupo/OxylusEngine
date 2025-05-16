@@ -22,6 +22,7 @@
 #include "Core/App.hpp"
 #include "Memory/Stack.hpp"
 #include "Physics/Physics.hpp"
+#include "Physics/PhysicsInterfaces.hpp"
 #include "Physics/PhysicsMaterial.hpp"
 #include "Render/RenderPipeline.hpp"
 #include "Scene/ECSModule/ComponentWrapper.hpp"
@@ -836,13 +837,6 @@ void Scene::on_render(const vuk::Extent3D extent,
       }
     });
   }
-}
-
-void Scene::on_editor_update(const Timestep& delta_time,
-                             const CameraComponent& camera) const {
-  OX_SCOPED_ZONE;
-  scene_renderer->get_render_pipeline()->submit_camera(camera);
-  scene_renderer->update(delta_time);
 }
 
 auto Scene::update_physics(const Timestep& delta_time) -> void {

@@ -47,14 +47,13 @@ vuk::Swapchain make_swapchain(vuk::Allocator& allocator,
                               VkSurfaceKHR surface,
                               option<vuk::Swapchain> old_swapchain,
                               vuk::PresentModeKHR present_mode) {
-  vkb::SwapchainBuilder swb(vkbdevice);
-  swb.set_desired_format(vuk::SurfaceFormatKHR{vuk::Format::eR8G8B8A8Unorm, vuk::ColorSpaceKHR::eSrgbNonlinear});
-  swb.set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT);
-  swb.set_desired_present_mode(static_cast<VkPresentModeKHR>(present_mode));
-
-  // TODO:
-  // swb.set_desired_format(vuk::SurfaceFormatKHR{vuk::Format::eR8G8B8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear});
-  // swb.add_fallback_format(vuk::SurfaceFormatKHR{vuk::Format::eB8G8R8A8Srgb, vuk::ColorSpaceKHR::eSrgbNonlinear});
+  vkb::SwapchainBuilder swb(vkbdevice, surface);
+  swb.set_desired_format(
+         vuk::SurfaceFormatKHR{.format = vuk::Format::eR8G8B8A8Srgb, .colorSpace = vuk::ColorSpaceKHR::eSrgbNonlinear})
+      .add_fallback_format(
+          vuk::SurfaceFormatKHR{.format = vuk::Format::eB8G8R8A8Srgb, .colorSpace = vuk::ColorSpaceKHR::eSrgbNonlinear})
+      .set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
+      .set_desired_present_mode(static_cast<VkPresentModeKHR>(present_mode));
 
   bool recycling = false;
   vkb::Result vkswapchain = {vkb::Swapchain{}};
@@ -80,20 +79,25 @@ vuk::Swapchain make_swapchain(vuk::Allocator& allocator,
   old_swapchain->images.clear();
 
   for (uint32_t i = 0; i < (uint32_t)images.size(); i++) {
-    vuk::ImageAttachment ia;
-    ia.extent = {vkswapchain->extent.width, vkswapchain->extent.height, 1};
-    ia.format = (vuk::Format)vkswapchain->image_format;
-    ia.image = vuk::Image{images[i], nullptr};
-    ia.image_view = vuk::ImageView{{0}, views[i]};
-    ia.view_type = vuk::ImageViewType::e2D;
-    ia.sample_count = vuk::Samples::e1;
-    ia.base_level = ia.base_layer = 0;
-    ia.level_count = ia.layer_count = 1;
-    old_swapchain->images.push_back(ia);
+    vuk::ImageAttachment attachment = {
+        .image = vuk::Image{.image = images[i], .allocation = nullptr},
+        .image_view = vuk::ImageView{{0}, views[i]},
+        .extent = {.width = vkswapchain->extent.width, .height = vkswapchain->extent.height, .depth = 1},
+        .format = static_cast<vuk::Format>(vkswapchain->image_format),
+        .sample_count = vuk::Samples::e1,
+        .view_type = vuk::ImageViewType::e2D,
+        .components = {},
+        .base_level = 0,
+        .level_count = 1,
+        .base_layer = 0,
+        .layer_count = 1,
+    };
+    old_swapchain->images.push_back(attachment);
   }
 
   old_swapchain->swapchain = vkswapchain->swapchain;
   old_swapchain->surface = surface;
+
   return std::move(*old_swapchain);
 }
 
@@ -120,7 +124,11 @@ void VkContext::create_context(const Window& window,
                                bool vulkan_validation_layers) {
   OX_SCOPED_ZONE;
   vkb::InstanceBuilder builder;
-  builder.set_app_name("Oxylus").set_engine_name("Oxylus").require_api_version(1, 3, 0).set_app_version(0, 1, 0);
+  builder //
+      .set_app_name("Oxylus App")
+      .set_engine_name("Oxylus")
+      .require_api_version(1, 3, 0)
+      .set_app_version(0, 1, 0);
 
   if (vulkan_validation_layers) {
     OX_LOG_INFO("Enabled vulkan validation layers.");
@@ -133,6 +141,11 @@ void VkContext::create_context(const Window& window,
     });
   }
 
+  std::vector<const c8*> instance_extensions;
+  instance_extensions.push_back(VK_KHR_SURFACE_EXTENSION_NAME);
+  instance_extensions.push_back(VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME);
+  builder.enable_extensions(instance_extensions);
+
   auto inst_ret = builder.build();
   if (!inst_ret) {
     OX_LOG_ERROR(
@@ -143,63 +156,18 @@ void VkContext::create_context(const Window& window,
   auto instance = vkb_instance.instance;
   vkb::PhysicalDeviceSelector selector{vkb_instance};
   surface = window.get_surface(instance);
-  selector.set_surface(surface)
+  selector //
+      .set_surface(surface)
       .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
-      .require_present()
-      .set_minimum_version(1, 2)
-      .add_required_extension(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME)
-      .add_required_extension(VK_EXT_SHADER_VIEWPORT_INDEX_LAYER_EXTENSION_NAME);
+      .set_minimum_version(1, 3);
 
-  VkPhysicalDeviceFeatures2 vk10features{};
-  vk10features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
-  vk10features.features.geometryShader = true;
-  vk10features.features.shaderInt64 = true;
-  vk10features.features.shaderStorageImageWriteWithoutFormat = true;
-  vk10features.features.depthClamp = true;
-  vk10features.features.shaderStorageImageReadWithoutFormat = true;
-  vk10features.features.fillModeNonSolid = true;
-  vk10features.features.multiViewport = true;
-  vk10features.features.samplerAnisotropy = true;
-  vk10features.features.multiDrawIndirect = true;
-  vk10features.features.shaderCullDistance = true;
-  vk10features.features.shaderClipDistance = true;
-  selector.set_required_features(vk10features.features);
-
-  VkPhysicalDeviceVulkan11Features vk11features{};
-  vk11features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
-  vk11features.shaderDrawParameters = true;
-  selector.set_required_features_11(vk11features);
-
-  VkPhysicalDeviceVulkan12Features vk12features{};
-  vk12features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
-  vk12features.shaderInt8 = true;
-  vk12features.uniformAndStorageBuffer8BitAccess = true;
-  vk12features.storageBuffer8BitAccess = true;
-  vk12features.timelineSemaphore = true;
-  vk12features.descriptorBindingPartiallyBound = true;
-  vk12features.descriptorBindingUpdateUnusedWhilePending = true;
-  vk12features.runtimeDescriptorArray = true;
-  vk12features.descriptorBindingVariableDescriptorCount = true;
-  vk12features.hostQueryReset = true;
-  vk12features.bufferDeviceAddress = true;
-  vk12features.shaderOutputLayer = true;
-  vk12features.descriptorIndexing = true;
-  vk12features.samplerFilterMinmax = true;
-  vk12features.shaderUniformBufferArrayNonUniformIndexing = true;
-  vk12features.shaderSampledImageArrayNonUniformIndexing = true;
-  vk12features.shaderStorageBufferArrayNonUniformIndexing = true;
-  vk12features.shaderStorageImageArrayNonUniformIndexing = true;
-  vk12features.shaderInputAttachmentArrayNonUniformIndexing = true;
-  vk12features.shaderUniformTexelBufferArrayNonUniformIndexing = true;
-  vk12features.shaderStorageTexelBufferArrayNonUniformIndexing = true;
-  vk12features.shaderOutputViewportIndex = true;
-  selector.set_required_features_12(vk12features);
-
-  VkPhysicalDeviceSynchronization2FeaturesKHR sync_feat{};
-  sync_feat.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SYNCHRONIZATION_2_FEATURES_KHR;
-  sync_feat.synchronization2 = true;
-
-  selector.add_required_extension_features<>(sync_feat);
+  std::vector<const c8*> device_extensions;
+  device_extensions.push_back(VK_KHR_SWAPCHAIN_EXTENSION_NAME);
+  device_extensions.push_back(VK_KHR_SYNCHRONIZATION_2_EXTENSION_NAME);
+  device_extensions.push_back(VK_KHR_PUSH_DESCRIPTOR_EXTENSION_NAME);
+  device_extensions.push_back(VK_EXT_SHADER_IMAGE_ATOMIC_INT64_EXTENSION_NAME);
+  // device_extensions.push_back(VK_KHR_MAINTENANCE_8_EXTENSION_NAME);
+  selector.add_required_extensions(device_extensions);
 
   if (auto phys_ret = selector.select(); !phys_ret) {
     OX_LOG_ERROR("{}", phys_ret.full_error().type.message());
@@ -211,10 +179,70 @@ void VkContext::create_context(const Window& window,
   physical_device = vkbphysical_device.physical_device;
   vkb::DeviceBuilder device_builder{vkbphysical_device};
 
+  VkPhysicalDeviceFeatures2 vk10_features{};
+  vk10_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
+  vk10_features.features.shaderInt64 = true;
+  vk10_features.features.vertexPipelineStoresAndAtomics = true;
+  vk10_features.features.depthClamp = true;
+  vk10_features.features.fillModeNonSolid = true;
+  vk10_features.features.multiViewport = true;
+  vk10_features.features.samplerAnisotropy = true;
+  vk10_features.features.multiDrawIndirect = true;
+
+  VkPhysicalDeviceVulkan11Features vk11_features{};
+  vk11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;
+  vk11_features.shaderDrawParameters = true;
+  vk11_features.variablePointers = true;
+  vk11_features.variablePointersStorageBuffer = true;
+
+  VkPhysicalDeviceVulkan12Features vk12_features{};
+  vk12_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_2_FEATURES;
+  vk12_features.descriptorIndexing = true;
+  vk12_features.shaderOutputLayer = true;
+  vk12_features.shaderSampledImageArrayNonUniformIndexing = true;
+  vk12_features.shaderStorageBufferArrayNonUniformIndexing = true;
+  vk12_features.descriptorBindingSampledImageUpdateAfterBind = true;
+  vk12_features.descriptorBindingStorageImageUpdateAfterBind = true;
+  vk12_features.descriptorBindingStorageBufferUpdateAfterBind = true;
+  vk12_features.descriptorBindingUpdateUnusedWhilePending = true;
+  vk12_features.descriptorBindingPartiallyBound = true;
+  vk12_features.descriptorBindingVariableDescriptorCount = true;
+  vk12_features.runtimeDescriptorArray = true;
+  vk12_features.timelineSemaphore = true;
+  vk12_features.bufferDeviceAddress = true;
+  vk12_features.hostQueryReset = true;
+  // Shader features
+  vk12_features.vulkanMemoryModel = true;
+  vk12_features.storageBuffer8BitAccess = true;
+  vk12_features.scalarBlockLayout = true;
+  vk12_features.shaderInt8 = true;
+  vk12_features.shaderSubgroupExtendedTypes = true;
+
+  VkPhysicalDeviceVulkan13Features vk13_features = {};
+  vk13_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_3_FEATURES;
+  vk13_features.synchronization2 = true;
+  vk13_features.shaderDemoteToHelperInvocation = true;
+
+  VkPhysicalDeviceShaderImageAtomicInt64FeaturesEXT image_atomic_int64_features = {};
+  image_atomic_int64_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_SHADER_IMAGE_ATOMIC_INT64_FEATURES_EXT;
+  image_atomic_int64_features.shaderImageInt64Atomics = true;
+
+  VkPhysicalDeviceVulkan14Features vk14_features = {};
+  vk14_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_4_FEATURES;
+  vk14_features.pushDescriptor = true;
+  device_builder //
+      .add_pNext(&vk14_features)
+      .add_pNext(&vk13_features)
+      .add_pNext(&vk12_features)
+      .add_pNext(&vk11_features)
+      .add_pNext(&image_atomic_int64_features)
+      .add_pNext(&vk10_features);
+
   auto dev_ret = device_builder.build();
   if (!dev_ret) {
     OX_LOG_ERROR("Couldn't create device");
   }
+
   vkb_device = dev_ret.value();
   graphics_queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
   graphics_queue_family_index = vkb_device.get_queue_index(vkb::QueueType::graphics).value();

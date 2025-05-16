@@ -11,17 +11,17 @@ using Preset = vuk::ImageAttachment::Preset;
 namespace ox {
 struct TextureLoadInfo {
   Preset preset = Preset::eMap2D;
-  vuk::Format format = vuk::Format::eR8G8B8A8Unorm;
+  vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
   enum class MimeType { Generic, KTX } mime = MimeType::Generic;
-  void* data = nullptr;      // optional
-  vuk::Extent2D extent = {}; // optional
+  void* data = nullptr;             // optional
+  vuk::Extent3D extent = {0, 0, 1}; // optional
 };
 
 enum class TextureID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class Texture {
 public:
   Texture() = default;
-  ~Texture() = default;
+  Texture(const std::string& name) : _name(name) {}
 
   Texture& operator=(Texture&& other) noexcept {
     if (this != &other) {
@@ -34,6 +34,8 @@ public:
   }
 
   Texture(Texture&& other) noexcept { *this = std::move(other); }
+
+  ~Texture() = default;
 
   auto create(const std::string& path,
               const TextureLoadInfo& load_info,
@@ -76,7 +78,9 @@ public:
                                        const u8* three_channel_data) -> uint8_t*;
 
   static auto get_mip_count(const vuk::Extent3D extent) -> uint32_t {
-    return static_cast<uint32_t>(log2f(static_cast<float>(std::max(std::max(extent.width, extent.height), extent.depth)))) + 1;
+    return static_cast<uint32_t>(
+               log2f(static_cast<float>(std::max(std::max(extent.width, extent.height), extent.depth)))) +
+           1;
   }
 
 private:

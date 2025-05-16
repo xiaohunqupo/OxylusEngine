@@ -148,14 +148,14 @@ ECS_COMPONENT_BEGIN(CameraComponent)
   ECS_COMPONENT_MEMBER(far_clip, f32, 1000.f)
   ECS_COMPONENT_MEMBER(near_clip, f32, 0.01f)
 
-  ECS_COMPONENT_MEMBER(yaw, f32, -1.5708f) // - 90
-  ECS_COMPONENT_MEMBER(pitch, f32, 0.0f)
   ECS_COMPONENT_MEMBER(tilt, f32, 0.0f)
   ECS_COMPONENT_MEMBER(zoom, f32, 1.0f)
 
 #ifndef ECS_REFLECT_TYPES
   glm::vec2 jitter = {};
   glm::vec2 jitter_prev = {};
+  f32 yaw = -1.5708f;
+  f32 pitch = 0.f;
 
   struct Matrices {
     glm::mat4 view_matrix = {};
@@ -220,15 +220,24 @@ ECS_COMPONENT_BEGIN(LightComponent)
 #endif
 ECS_COMPONENT_END();
 
-ECS_COMPONENT_BEGIN(PostProcessProbe)
-  ECS_COMPONENT_MEMBER(vignette_enabled, bool, false)
-  ECS_COMPONENT_MEMBER(vignette_intensity, f32, 0.25f)
-  ECS_COMPONENT_MEMBER(film_grain_enabled, bool, false)
-  ECS_COMPONENT_MEMBER(film_grain_intensity, f32, 0.2f)
-  ECS_COMPONENT_MEMBER(chromatic_aberration_enabled, bool, false)
-  ECS_COMPONENT_MEMBER(chromatic_aberration_intensity, f32, 0.5f)
-  ECS_COMPONENT_MEMBER(sharpen_enabled, bool, false)
-  ECS_COMPONENT_MEMBER(sharpen_intensity, f32, 0.5f)
+ECS_COMPONENT_BEGIN(AtmosphereComponent)
+  ECS_COMPONENT_MEMBER(rayleigh_scattering, glm::vec3, { 5.802f, 13.558f, 33.100f })
+  ECS_COMPONENT_MEMBER(rayleigh_density, f32, 8.0)
+  ECS_COMPONENT_MEMBER(mie_scattering, glm::vec3, { 3.996f, 3.996f, 3.996f })
+  ECS_COMPONENT_MEMBER(mie_density, f32, 1.2f)
+  ECS_COMPONENT_MEMBER(mie_extinction, f32, 4.44f)
+  ECS_COMPONENT_MEMBER(mie_asymmetry, f32, 3.6f)
+  ECS_COMPONENT_MEMBER(ozone_absorption, glm::vec3, { 0.650f, 1.881f, 0.085f })
+  ECS_COMPONENT_MEMBER(ozone_height, f32, 25.0f)
+  ECS_COMPONENT_MEMBER(ozone_thickness, f32, 15.0f)
+  ECS_COMPONENT_MEMBER(aerial_gain_per_slice, f32, 8.0f)
+ECS_COMPONENT_END();
+
+ECS_COMPONENT_BEGIN(AutoExposureComponent)
+  ECS_COMPONENT_MEMBER(min_exposure, f32, -6.f)
+  ECS_COMPONENT_MEMBER(max_exposure, f32, 18.f)
+  ECS_COMPONENT_MEMBER(adaptation_speed, f32, 1.1f)
+  ECS_COMPONENT_MEMBER(ev100_bias, f32, 1.f)
 ECS_COMPONENT_END();
 
 // Physics
@@ -420,6 +429,8 @@ ECS_COMPONENT_BEGIN(CPPScriptComponent)
   }
 #endif
 ECS_COMPONENT_END();
+
+ECS_COMPONENT_TAG(Hidden);
 
 #ifndef ECS_REFLECT_TYPES
 } // namespace ox

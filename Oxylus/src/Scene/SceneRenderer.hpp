@@ -1,8 +1,9 @@
 ﻿#pragma once
-#include "Scene/ECSModule/Core.hpp"
-#include "Render/RenderPipeline.hpp"
+
+#include "Utils/Timestep.hpp"
 
 namespace ox {
+class RenderPipeline;
 class Scene;
 
 class SceneRenderer {
