@@ -4,8 +4,7 @@ namespace ox {
 class Archive {
 public:
   Archive();
-  Archive(const std::string& file_name,
-          bool read_mode = true);
+  Archive(const std::string& file_name, bool read_mode = true);
   Archive(const u8* data);
   ~Archive() { close(); }
 
@@ -34,8 +33,7 @@ public:
   // @brief Write the archive contents into a C++ header file
   /// @param data_name : it will be the name of the byte data array in the header, that can be memory mapped
   /// @param file_path : file name to be saved
-  bool save_header_file(std::string_view file_path,
-                        std::string_view data_name) const;
+  bool save_header_file(std::string_view file_path, std::string_view data_name) const;
 
   /// @brief If the archive was opened from a file, this will return the file's directory
   const std::string& get_source_directory() const;

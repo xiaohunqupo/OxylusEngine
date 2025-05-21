@@ -3,11 +3,10 @@
 #include <icons/IconsMaterialDesignIcons.h>
 
 #include "Core/App.hpp"
-#include "imgui.h"
-
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "UI/OxUI.hpp"
+#include "imgui.h"
 
 namespace ox {
 RendererSettingsPanel::RendererSettingsPanel() : EditorPanel("Renderer Settings", ICON_MDI_GPU, true) {}
@@ -58,10 +57,13 @@ void RendererSettingsPanel::on_render(vuk::Extent3D extent, vuk::Format format) 
       ui::property<int>("Denoise Passes", RendererCVar::cvar_gtao_denoise_passes.get_ptr(), 1, 5);
       ui::property<float>("Radius", RendererCVar::cvar_gtao_radius.get_ptr(), 0, 1);
       ui::property<float>("Falloff Range", RendererCVar::cvar_gtao_falloff_range.get_ptr(), 0, 1);
-      ui::property<float>("Sample Distribution Power", RendererCVar::cvar_gtao_sample_distribution_power.get_ptr(), 0, 5);
-      ui::property<float>("Thin Occluder Compensation", RendererCVar::cvar_gtao_thin_occluder_compensation.get_ptr(), 0, 5);
+      ui::property<float>(
+          "Sample Distribution Power", RendererCVar::cvar_gtao_sample_distribution_power.get_ptr(), 0, 5);
+      ui::property<float>(
+          "Thin Occluder Compensation", RendererCVar::cvar_gtao_thin_occluder_compensation.get_ptr(), 0, 5);
       ui::property<float>("Final Value Power", RendererCVar::cvar_gtao_final_value_power.get_ptr(), 0, 5);
-      ui::property<float>("Depth Mip Sampling Offset", RendererCVar::cvar_gtao_depth_mip_sampling_offset.get_ptr(), 0, 5);
+      ui::property<float>(
+          "Depth Mip Sampling Offset", RendererCVar::cvar_gtao_depth_mip_sampling_offset.get_ptr(), 0, 5);
       ui::end_properties();
     }
 

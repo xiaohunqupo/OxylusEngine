@@ -111,29 +111,6 @@ public struct Camera {
   public u32 output_index = 0;
 };
 
-public struct Scene {
-  u32 num_lights = {};
-  f32 grid_max_distance = {};
-  u32x2 screen_size = {};
-  i32 draw_meshlet_aabbs = {};
-  f32x2 screen_size_rcp = {};
-  u32x2 shadow_atlas_res = {};
-  f32x3 sun_direction = {};
-  u32 meshlet_count = {};
-  f32x4 sun_color = {}; // pre-multipled with intensity
-  i32 tonemapper = {};
-  f32 exposure = {};
-  f32 gamma = {};
-  i32 enable_bloom = {};
-  i32 enable_ssr = {};
-  i32 enable_gtao = {};
-  f32x4 vignette_color = {}; 
-  f32x4 vignette_offset = {};
-  f32x2 film_grain = {};                                 
-  f32x2 chromatic_aberration = {};                       
-  f32x2 sharpen = {};            
-};
-
 public struct Sun {
     public f32x3 direction;
     public f32   intensity;
@@ -168,8 +145,6 @@ public struct Atmosphere {
 // --- Bindings ---
 
 [[vk::binding(0, 0)]]
-public StructuredBuffer<Scene> scene;
-[[vk::binding(1, 0)]]
 public Sampler material_sampler[];
-[[vk::binding(2, 0)]]
+[[vk::binding(1, 0)]]
 public Image2D<f32x4> material_images[];

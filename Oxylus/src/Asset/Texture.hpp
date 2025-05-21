@@ -13,8 +13,8 @@ struct TextureLoadInfo {
   Preset preset = Preset::eMap2D;
   vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
   enum class MimeType { Generic, KTX } mime = MimeType::Generic;
-  void* data = nullptr;             // optional
-  vuk::Extent3D extent = {0, 0, 1}; // optional
+  option<void*> data = ox::nullopt;
+  option<vuk::Extent3D> extent = ox::nullopt;
 };
 
 enum class TextureID : u64 { Invalid = std::numeric_limits<u64>::max() };
@@ -41,17 +41,20 @@ public:
               const TextureLoadInfo& load_info,
               const std::source_location& loc = std::source_location::current()) -> void;
 
+  static auto from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> Unique<Texture>;
+
   auto attachment() const -> vuk::ImageAttachment { return _attachment; }
-  auto acquire(vuk::Name name = {},
-               vuk::Access last_access = vuk::Access::eFragmentSampled) const -> vuk::Value<vuk::ImageAttachment>;
+  auto acquire(vuk::Name name = {}, vuk::Access last_access = vuk::Access::eFragmentSampled) const
+      -> vuk::Value<vuk::ImageAttachment>;
   auto discard(vuk::Name name = {}) const -> vuk::Value<vuk::ImageAttachment>;
 
   auto get_image() const -> const vuk::Unique<vuk::Image>& { return _image; }
   auto get_view() const -> const vuk::Unique<vuk::ImageView>& { return _view; }
   auto get_extent() const -> const vuk::Extent3D& { return _attachment.extent; }
 
-  auto set_name(std::string_view name,
-                const std::source_location& loc = std::source_location::current()) -> void;
+  auto reset_view(vuk::Allocator& allocator) -> void;
+
+  auto set_name(std::string_view name, const std::source_location& loc = std::source_location::current()) -> void;
 
   auto get_view_id() const -> u64 { return _view->id; }
 
@@ -69,13 +72,9 @@ public:
                                          bool flipY = false,
                                          bool srgb = true) -> Unique<u8[]>;
 
-  static auto get_magenta_texture(uint32_t width,
-                                  uint32_t height,
-                                  uint32_t channels) -> u8*;
+  static auto get_magenta_texture(uint32_t width, uint32_t height, uint32_t channels) -> u8*;
 
-  static auto convert_to_four_channels(uint32_t width,
-                                       uint32_t height,
-                                       const u8* three_channel_data) -> uint8_t*;
+  static auto convert_to_four_channels(uint32_t width, uint32_t height, const u8* three_channel_data) -> uint8_t*;
 
   static auto get_mip_count(const vuk::Extent3D extent) -> uint32_t {
     return static_cast<uint32_t>(

@@ -18,8 +18,7 @@ static constexpr JPH::ObjectLayer NUM_LAYERS = 2;
 // Class that determines if two object layers can collide
 class ObjectLayerPairFilterImpl final : public JPH::ObjectLayerPairFilter {
 public:
-  bool ShouldCollide(JPH::ObjectLayer inObject1,
-                     JPH::ObjectLayer inObject2) const override;
+  bool ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const override;
 };
 
 // Each broadphase layer results in a separate bounding volume tree in the broad phase. You at least want to have
@@ -55,8 +54,7 @@ private:
 // Class that determines if an object layer can collide with a broadphase layer
 class ObjectVsBroadPhaseLayerFilterImpl : public JPH::ObjectVsBroadPhaseLayerFilter {
 public:
-  bool ShouldCollide(JPH::ObjectLayer inLayer1,
-                     JPH::BroadPhaseLayer inLayer2) const override;
+  bool ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const override;
 };
 
 class Physics3DBodyActivationListener : public JPH::BodyActivationListener {

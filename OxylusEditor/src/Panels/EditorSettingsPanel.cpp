@@ -6,13 +6,9 @@
 #include "icons/IconsMaterialDesignIcons.h"
 
 namespace ox {
-EditorSettingsPanel::EditorSettingsPanel() :
-    EditorPanel("Editor Settings",
-                ICON_MDI_COGS,
-                false) {}
+EditorSettingsPanel::EditorSettingsPanel() : EditorPanel("Editor Settings", ICON_MDI_COGS, false) {}
 
-void EditorSettingsPanel::on_render(vuk::Extent3D,
-                                    vuk::Format) {
+void EditorSettingsPanel::on_render(vuk::Extent3D, vuk::Format) {
   auto& editor_theme = EditorLayer::get()->editor_theme;
 
   constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;

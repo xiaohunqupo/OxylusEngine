@@ -11,9 +11,7 @@
 namespace ox {
 std::string fs::current_path() { return std::filesystem::current_path().generic_string(); }
 
-std::pair<std::string,
-          std::string>
-fs::split_path(const std::string_view full_path) {
+std::pair<std::string, std::string> fs::split_path(const std::string_view full_path) {
   const size_t found = full_path.find_last_of("/\\");
   return {
       std::string(full_path.substr(0, found + 1)), // directory
@@ -42,8 +40,7 @@ std::string fs::get_directory(const std::string_view path) {
   return std::filesystem::path(path).parent_path().generic_string();
 }
 
-std::string fs::append_paths(const std::string_view path,
-                             const std::string_view second_path) {
+std::string fs::append_paths(const std::string_view path, const std::string_view second_path) {
   if (path.empty() || second_path.empty())
     return std::string(path);
 
@@ -52,7 +49,9 @@ std::string fs::append_paths(const std::string_view path,
   return preferred_path(new_path);
 }
 
-std::string fs::preferred_path(const std::string_view path) { return std::filesystem::path(path).make_preferred().generic_string(); }
+std::string fs::preferred_path(const std::string_view path) {
+  return std::filesystem::path(path).make_preferred().generic_string();
+}
 
 void fs::open_folder_select_file(const std::string_view path) {
 #ifdef OX_PLATFORM_WINDOWS
@@ -77,8 +76,7 @@ void fs::open_file_externally(const std::string_view path) {
 #endif
 }
 
-void fs::copy_file(const std::string_view from,
-                   const std::string_view to) {
+void fs::copy_file(const std::string_view from, const std::string_view to) {
   try {
     std::filesystem::copy(from, to);
   } catch (std::exception& exception) {
@@ -129,8 +127,7 @@ std::vector<u8> fs::read_file_binary(const std::string_view file_path) {
   return data;
 }
 
-bool fs::write_file_binary(const std::string_view file_path,
-                           const std::vector<u8>& data) {
+bool fs::write_file_binary(const std::string_view file_path, const std::vector<u8>& data) {
   std::ofstream file(file_path.data(), std::ios::binary | std::ios::trunc);
   if (file.is_open()) {
     file.write(reinterpret_cast<const char*>(data.data()), (std::streamsize)data.size());
@@ -140,9 +137,8 @@ bool fs::write_file_binary(const std::string_view file_path,
   return false;
 }
 
-bool fs::binary_to_header(const std::string_view file_path,
-                          const std::string_view data_name,
-                          const std::vector<u8>& data) {
+bool
+fs::binary_to_header(const std::string_view file_path, const std::string_view data_name, const std::vector<u8>& data) {
   std::string ss;
   ss += "const u8 ";
   ss += data_name;

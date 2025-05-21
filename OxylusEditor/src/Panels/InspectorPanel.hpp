@@ -2,6 +2,7 @@
 
 #include <flecs.h>
 
+#include "Asset/AssetManager.hpp"
 #include "Core/UUID.hpp"
 #include "EditorPanel.hpp"
 
@@ -12,17 +13,14 @@ class InspectorPanel : public EditorPanel {
 public:
   InspectorPanel();
 
-  void on_render(vuk::Extent3D extent,
-                 vuk::Format format) override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
-  static void draw_material_properties(Material* material,
-                                       const UUID& uuid,
-                                       flecs::entity load_event);
+  static void draw_material_properties(Material* material, const UUID& uuid, flecs::entity load_event);
 
 private:
   void draw_components(flecs::entity entity);
+  void draw_asset_info(Asset* asset);
 
-  flecs::entity selected_entity = {};
   Scene* _scene;
   bool _rename_entity = false;
 };

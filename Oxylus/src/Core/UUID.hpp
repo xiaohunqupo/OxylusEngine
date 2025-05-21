@@ -27,17 +27,11 @@ public:
   UUID& operator=(UUID&& other) = default;
 
   std::string str() const;
-  const std::array<u8,
-                   16>
-  bytes() const {
-    return m_data.arr;
+  const std::array<u8, 16> bytes() const { return m_data.arr; }
+  std::array<u8, 16> bytes() { return m_data.arr; }
+  constexpr bool operator==(const UUID& other) const {
+    return m_data.u64x2[0] == other.m_data.u64x2[0] && m_data.u64x2[1] == other.m_data.u64x2[1];
   }
-  std::array<u8,
-             16>
-  bytes() {
-    return m_data.arr;
-  }
-  constexpr bool operator==(const UUID& other) const { return m_data.u64x2[0] == other.m_data.u64x2[0] && m_data.u64x2[1] == other.m_data.u64x2[1]; }
   explicit operator bool() const { return m_data.u64x2[0] != 0 && m_data.u64x2[1] != 0; }
 };
 } // namespace ox

@@ -12,4 +12,3 @@
 #define CFIELD(type, field) .set(#field, &type::field)
 #define CTOR(...) sol::constructors<sol::types<>, sol::types<__VA_ARGS__>>()
 #define CTORS(...) __VA_ARGS__
-

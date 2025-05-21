@@ -27,7 +27,8 @@ public:
   RuntimeConsole();
   ~RuntimeConsole();
 
-  void register_command(const std::string& command, const std::string& on_succes_log, const std::function<void()>& action);
+  void
+  register_command(const std::string& command, const std::string& on_succes_log, const std::function<void()>& action);
   void register_command(const std::string& command, const std::string& on_succes_log, int32_t* value);
   void register_command(const std::string& command, const std::string& on_succes_log, std::string* value);
   void register_command(const std::string& command, const std::string& on_succes_log, bool* value);
@@ -76,4 +77,4 @@ private:
   loguru::Verbosity text_filter = loguru::Verbosity_OFF;
   float animation_counter = 0.0f;
 };
-}
+} // namespace ox

@@ -2,8 +2,7 @@
 
 namespace ox {
 
-auto TaskScheduler::init() -> std::expected<void,
-                                            std::string> {
+auto TaskScheduler::init() -> std::expected<void, std::string> {
   OX_SCOPED_ZONE;
   task_scheduler = create_unique<enki::TaskScheduler>();
   task_scheduler->Initialize();
@@ -12,8 +11,7 @@ auto TaskScheduler::init() -> std::expected<void,
   return {};
 }
 
-auto TaskScheduler::deinit() -> std::expected<void,
-                                              std::string> {
+auto TaskScheduler::deinit() -> std::expected<void, std::string> {
   task_scheduler->WaitforAllAndShutdown();
   return {};
 }

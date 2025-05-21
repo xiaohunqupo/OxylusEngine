@@ -1,15 +1,14 @@
 ﻿#pragma once
 
 #define OX_BUILD_DLL
-#include "Linker.hpp"
-
-#include "Core/App.hpp"
-#include "Core/SystemManager.hpp"
-
 #include <entt/locator/locator.hpp>
 #include <entt/meta/context.hpp>
 #include <imgui_internal.h>
 #include <sol/state.hpp>
+
+#include "Core/App.hpp"
+#include "Core/SystemManager.hpp"
+#include "Linker.hpp"
 
 namespace ox {
 class OX_SHARED ModuleInterface {

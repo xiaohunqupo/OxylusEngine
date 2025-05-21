@@ -2,7 +2,10 @@
 
 #include <vuk/ImageAttachment.hpp>
 #include <vuk/RenderGraph.hpp>
+#include <vuk/runtime/CommandBuffer.hpp>
 #include <vuk/runtime/ThisThreadExecutor.hpp>
+#include <vuk/runtime/vk/Allocator.hpp>
+#include <vuk/runtime/vk/AllocatorHelpers.hpp>
 #include <vuk/runtime/vk/PipelineInstance.hpp>
 #include <vuk/runtime/vk/Query.hpp>
 
@@ -46,10 +49,12 @@ vuk::Swapchain make_swapchain(vuk::Allocator& allocator,
                               vkb::Device& vkbdevice,
                               VkSurfaceKHR surface,
                               option<vuk::Swapchain> old_swapchain,
-                              vuk::PresentModeKHR present_mode) {
+                              vuk::PresentModeKHR present_mode,
+                              u32 frame_count) {
   vkb::SwapchainBuilder swb(vkbdevice, surface);
-  swb.set_desired_format(
-         vuk::SurfaceFormatKHR{.format = vuk::Format::eR8G8B8A8Srgb, .colorSpace = vuk::ColorSpaceKHR::eSrgbNonlinear})
+  swb.set_desired_min_image_count(frame_count)
+      .set_desired_format(
+          vuk::SurfaceFormatKHR{.format = vuk::Format::eR8G8B8A8Srgb, .colorSpace = vuk::ColorSpaceKHR::eSrgbNonlinear})
       .add_fallback_format(
           vuk::SurfaceFormatKHR{.format = vuk::Format::eB8G8R8A8Srgb, .colorSpace = vuk::ColorSpaceKHR::eSrgbNonlinear})
       .set_image_usage_flags(VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT | VK_IMAGE_USAGE_TRANSFER_DST_BIT)
@@ -103,13 +108,12 @@ vuk::Swapchain make_swapchain(vuk::Allocator& allocator,
 
 VkContext::~VkContext() { runtime->wait_idle(); }
 
-void VkContext::handle_resize(u32 width,
-                              u32 height) {
+void VkContext::handle_resize(u32 width, u32 height) {
   if (width == 0 && height == 0) {
     suspend = true;
   } else {
-    swapchain =
-        make_swapchain(*superframe_allocator, vkb_device, swapchain->surface, std::move(swapchain), present_mode);
+    swapchain = make_swapchain(
+        *superframe_allocator, vkb_device, swapchain->surface, std::move(swapchain), present_mode, num_inflight_frames);
   }
 }
 
@@ -120,8 +124,7 @@ void VkContext::set_vsync(bool enable) {
 
 bool VkContext::is_vsync() const { return present_mode == vuk::PresentModeKHR::eFifo; }
 
-void VkContext::create_context(const Window& window,
-                               bool vulkan_validation_layers) {
+void VkContext::create_context(const Window& window, bool vulkan_validation_layers) {
   OX_SCOPED_ZONE;
   vkb::InstanceBuilder builder;
   builder //
@@ -137,8 +140,8 @@ void VkContext::create_context(const Window& window,
            const VkDebugUtilsMessageTypeFlagsEXT messageType,
            const VkDebugUtilsMessengerCallbackDataEXT* pCallbackData,
            void* pUserData) -> VkBool32 {
-      return debug_callback(messageSeverity, messageType, pCallbackData, pUserData);
-    });
+          return debug_callback(messageSeverity, messageType, pCallbackData, pUserData);
+        });
   }
 
   std::vector<const c8*> instance_extensions;
@@ -255,16 +258,10 @@ void VkContext::create_context(const Window& window,
   fps.load_pfns(instance, device, true);
   std::vector<std::unique_ptr<vuk::Executor>> executors;
 
-  executors.push_back(create_vkqueue_executor(fps,
-                                              device,
-                                              graphics_queue,
-                                              graphics_queue_family_index,
-                                              vuk::DomainFlagBits::eGraphicsQueue));
-  executors.push_back(create_vkqueue_executor(fps,
-                                              device,
-                                              transfer_queue,
-                                              transfer_queue_family_index,
-                                              vuk::DomainFlagBits::eTransferQueue));
+  executors.push_back(create_vkqueue_executor(
+      fps, device, graphics_queue, graphics_queue_family_index, vuk::DomainFlagBits::eGraphicsQueue));
+  executors.push_back(create_vkqueue_executor(
+      fps, device, transfer_queue, transfer_queue_family_index, vuk::DomainFlagBits::eTransferQueue));
   executors.push_back(std::make_unique<vuk::ThisThreadExecutor>());
 
   runtime.emplace(vuk::RuntimeCreateParameters{instance, device, physical_device, std::move(executors), fps});
@@ -273,11 +270,14 @@ void VkContext::create_context(const Window& window,
 
   superframe_resource.emplace(*runtime, num_inflight_frames);
   superframe_allocator.emplace(*superframe_resource);
-  swapchain = make_swapchain(*superframe_allocator, vkb_device, surface, {}, present_mode);
+  swapchain = make_swapchain(*superframe_allocator, vkb_device, surface, {}, present_mode, num_inflight_frames);
   present_ready = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
   render_complete = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
 
-  // runtime->set_shader_target_version(VK_API_VERSION_1_3);
+  auto& frame_resource = superframe_resource->get_next_frame();
+  frame_allocator.emplace(frame_resource);
+
+  runtime->set_shader_target_version(VK_API_VERSION_1_3);
 
   shader_compiler = SlangCompiler::create().value();
 
@@ -290,29 +290,152 @@ void VkContext::create_context(const Window& window,
   OX_LOG_INFO("Vulkan context initialized using device: {}", device_name);
 }
 
-vuk::Value<vuk::ImageAttachment> VkContext::new_frame() {
+vuk::Value<vuk::ImageAttachment> VkContext::new_frame(this VkContext& self) {
   OX_SCOPED_ZONE;
-  runtime->next_frame();
 
-  auto acquired_swapchain = vuk::acquire_swapchain(*swapchain);
+  if (self.frame_allocator) {
+    self.frame_allocator.reset();
+  }
+
+  auto& frame_resource = self.superframe_resource->get_next_frame();
+  self.frame_allocator.emplace(frame_resource);
+  self.runtime->next_frame();
+
+  auto acquired_swapchain = vuk::acquire_swapchain(*self.swapchain);
   auto acquired_image = vuk::acquire_next_image("present_image", std::move(acquired_swapchain));
-
-  auto& frame_resource = superframe_resource->get_next_frame();
-  frame_allocator = vuk::Allocator(frame_resource);
 
   return acquired_image;
 }
 
-void VkContext::end_frame(vuk::Allocator& frame_allocator_,
-                          vuk::Value<vuk::ImageAttachment> target_) {
+void VkContext::end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment> target_) {
   auto entire_thing = vuk::enqueue_presentation(std::move(target_));
-  vuk::ProfilingCallbacks cbs = tracy_profiler->setup_vuk_callback();
-  entire_thing.submit(frame_allocator_, compiler, {.graph_label = {}, .callbacks = cbs});
+  vuk::ProfilingCallbacks cbs = self.tracy_profiler->setup_vuk_callback();
+  entire_thing.submit(*self.frame_allocator, self.compiler, {.graph_label = {}, .callbacks = cbs});
 
-  current_frame = (current_frame + 1) % num_inflight_frames;
-  num_frames = runtime->get_frame_count();
+  self.current_frame = (self.current_frame + 1) % self.num_inflight_frames;
+  self.num_frames = self.runtime->get_frame_count();
 }
 
-option<vuk::Allocator>& VkContext::get_frame_allocator() { return this->frame_allocator; }
+auto VkContext::allocate_buffer(vuk::MemoryUsage usage, u64 size, u64 alignment) -> vuk::Unique<vuk::Buffer> {
+  return *vuk::allocate_buffer(frame_allocator.value(), {.mem_usage = usage, .size = size, .alignment = alignment});
+}
 
+auto
+VkContext::alloc_transient_buffer_raw(vuk::MemoryUsage usage, usize size, usize alignment, vuk::source_location LOC)
+    -> vuk::Buffer {
+  ZoneScoped;
+
+  std::unique_lock _(mutex);
+
+  auto buffer = *vuk::allocate_buffer(
+      frame_allocator.value(), {.mem_usage = usage, .size = size, .alignment = alignment}, LOC);
+  return *buffer;
+}
+
+auto VkContext::alloc_transient_buffer(vuk::MemoryUsage usage, usize size, usize alignment, vuk::source_location LOC)
+    -> vuk::Value<vuk::Buffer> {
+  ZoneScoped;
+
+  auto buffer = alloc_transient_buffer_raw(usage, size, alignment, LOC);
+  return vuk::acquire_buf("transient buffer", buffer, vuk::Access::eNone, LOC);
+}
+
+auto VkContext::upload_staging(vuk::Value<vuk::Buffer>&& src, vuk::Value<vuk::Buffer>&& dst, vuk::source_location LOC)
+    -> vuk::Value<vuk::Buffer> {
+  ZoneScoped;
+
+  auto upload_pass = vuk::make_pass(
+      "upload staging",
+      [](vuk::CommandBuffer& cmd_list,
+         VUK_BA(vuk::Access::eTransferRead) src_ba,
+         VUK_BA(vuk::Access::eTransferWrite) dst_ba) {
+        cmd_list.copy_buffer(src_ba, dst_ba);
+        return dst_ba;
+      },
+      vuk::DomainFlagBits::eAny,
+      LOC);
+
+  return upload_pass(std::move(src), std::move(dst));
+}
+
+auto
+VkContext::upload_staging(vuk::Value<vuk::Buffer>&& src, vuk::Buffer& dst, u64 dst_offset, vuk::source_location LOC)
+    -> vuk::Value<vuk::Buffer> {
+  ZoneScoped;
+
+  auto dst_buffer = vuk::discard_buf("dst", dst.subrange(dst_offset, src->size), LOC);
+  return upload_staging(std::move(src), std::move(dst_buffer), LOC);
+}
+
+auto VkContext::upload_staging(void* data,
+                               u64 data_size,
+                               vuk::Value<vuk::Buffer>&& dst,
+                               u64 dst_offset,
+                               vuk::source_location LOC) -> vuk::Value<vuk::Buffer> {
+  ZoneScoped;
+
+  auto cpu_buffer = alloc_transient_buffer(vuk::MemoryUsage::eCPUonly, data_size, 8, LOC);
+  std::memcpy(cpu_buffer->mapped_ptr, data, data_size);
+
+  auto dst_buffer = vuk::discard_buf("dst", dst->subrange(dst_offset, cpu_buffer->size), LOC);
+  return upload_staging(std::move(cpu_buffer), std::move(dst_buffer), LOC);
+}
+
+auto VkContext::upload_staging(void* data, u64 data_size, vuk::Buffer& dst, u64 dst_offset, vuk::source_location LOC)
+    -> vuk::Value<vuk::Buffer> {
+  ZoneScoped;
+
+  auto cpu_buffer = alloc_transient_buffer(vuk::MemoryUsage::eCPUonly, data_size, 8, LOC);
+  std::memcpy(cpu_buffer->mapped_ptr, data, data_size);
+
+  auto dst_buffer = vuk::discard_buf("dst", dst.subrange(dst_offset, cpu_buffer->size), LOC);
+  return upload_staging(std::move(cpu_buffer), std::move(dst_buffer), LOC);
+}
+
+auto VkContext::scratch_buffer(const void* data, u64 size, usize alignment, vuk::source_location LOC)
+    -> vuk::Value<vuk::Buffer> {
+  ZoneScoped;
+
+#define SCRATCH_BUFFER_USE_BAR
+#ifndef SCRATCH_BUFFER_USE_BAR
+  auto cpu_buffer = alloc_transient_buffer(vuk::MemoryUsage::eCPUonly, size, alignment, LOC);
+  std::memcpy(cpu_buffer->mapped_ptr, data, size);
+  auto gpu_buffer = alloc_transient_buffer(vuk::MemoryUsage::eGPUonly, size, alignment, LOC);
+
+  auto upload_pass = vuk::make_pass(
+      "scratch_buffer",
+      [](vuk::CommandBuffer& cmd_list,
+         VUK_BA(vuk::Access::eTransferRead) src,
+         VUK_BA(vuk::Access::eTransferWrite) dst) {
+        cmd_list.copy_buffer(src, dst);
+        return dst;
+      },
+      vuk::DomainFlagBits::eAny,
+      LOC);
+
+  return upload_pass(std::move(cpu_buffer), std::move(gpu_buffer));
+#else
+  auto buffer = alloc_transient_buffer(vuk::MemoryUsage::eGPUtoCPU, size, alignment, LOC);
+  std::memcpy(buffer->mapped_ptr, data, size);
+  return buffer;
+#endif
+}
+
+auto VkContext::wait_on(vuk::UntypedValue&& fut) -> void {
+  ZoneScoped;
+
+  thread_local vuk::Compiler _compiler;
+  fut.wait(frame_allocator.value(), _compiler);
+}
+
+auto VkContext::wait_on_rg(vuk::Value<vuk::ImageAttachment>&& fut, bool frame) -> vuk::ImageAttachment {
+  OX_SCOPED_ZONE;
+
+  auto& allocator = superframe_allocator.value();
+  if (frame && frame_allocator.has_value())
+    allocator = frame_allocator.value();
+
+  thread_local vuk::Compiler _compiler;
+  return *fut.get(allocator, _compiler);
+}
 } // namespace ox

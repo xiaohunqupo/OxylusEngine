@@ -34,7 +34,7 @@ struct ComponentWrapper {
     path = component_entity.path();
     name = {component_entity.name(), component_entity.name().length()};
 
-    if (!has_component()) {
+    if (!is_component()) {
       return;
     }
 
@@ -44,7 +44,7 @@ struct ComponentWrapper {
     members_data = static_cast<u8*>(holder_.get_mut(comp_id_));
   }
 
-  inline bool has_component() { return component_entity.has<flecs::Struct>(); }
+  inline bool is_component() { return component_entity.has<flecs::Struct>(); }
   template <typename FuncT>
   inline void for_each(this ComponentWrapper& self,
                        const FuncT& fn) {

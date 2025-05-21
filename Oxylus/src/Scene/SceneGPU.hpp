@@ -3,6 +3,58 @@
 #include "Asset/Material.hpp"
 
 namespace ox::GPU {
+enum class DebugView : i32 {
+  None = 0,
+  Triangles,
+  Meshlets,
+  Overdraw,
+  Albedo,
+  Normal,
+  Emissive,
+  Metallic,
+  Roughness,
+  Occlusion,
+
+  Count,
+};
+
+enum class CullFlags : u32 {
+  MeshletFrustum = 1 << 0,
+  TriangleBackFace = 1 << 1,
+  MicroTriangles = 1 << 2,
+
+  All = MeshletFrustum | TriangleBackFace | MicroTriangles,
+};
+
+struct Meshlet {
+  alignas(4) u32 vertex_offset = 0;
+  alignas(4) u32 index_offset = 0;
+  alignas(4) u32 triangle_offset = 0;
+  alignas(4) u32 triangle_count = 0;
+};
+
+struct MeshletBounds {
+  alignas(4) glm::vec3 aabb_min = {};
+  alignas(4) glm::vec3 aabb_max = {};
+};
+
+struct MeshletInstance {
+  alignas(4) u32 mesh_index = 0;
+  alignas(4) u32 material_index = 0;
+  alignas(4) u32 transform_index = 0;
+  alignas(4) u32 meshlet_index = 0;
+};
+
+struct Mesh {
+  alignas(8) u64 indices = 0;
+  alignas(8) u64 vertex_positions = 0;
+  alignas(8) u64 vertex_normals = 0;
+  alignas(8) u64 texture_coords = 0;
+  alignas(8) u64 meshlets = 0;
+  alignas(8) u64 meshlet_bounds = 0;
+  alignas(8) u64 local_triangle_indices = 0;
+};
+
 struct Material {
   alignas(4) glm::vec4 albedo_color = glm::vec4(1.0f);
   alignas(4) glm::vec2 uv_size = glm::vec3(1.0f);
@@ -56,27 +108,19 @@ constexpr static f32 PLANET_RADIUS_OFFSET = 0.001;
 struct Atmosphere {
   alignas(4) glm::vec3 eye_position = {}; // this is camera pos but its always above planet_radius
 
-  alignas(4) glm::vec3 rayleigh_scatter = {0.005802f,
-                                           0.013558f,
-                                           0.033100f};
+  alignas(4) glm::vec3 rayleigh_scatter = {0.005802f, 0.013558f, 0.033100f};
   alignas(4) f32 rayleigh_density = 8.0f;
 
-  alignas(4) glm::vec3 mie_scatter = {0.003996f,
-                                      0.003996f,
-                                      0.003996f};
+  alignas(4) glm::vec3 mie_scatter = {0.003996f, 0.003996f, 0.003996f};
   alignas(4) f32 mie_density = 1.2f;
   alignas(4) f32 mie_extinction = 0.004440f;
   alignas(4) f32 mie_asymmetry = 3.6f;
 
-  alignas(4) glm::vec3 ozone_absorption = {0.000650f,
-                                           0.001881f,
-                                           0.000085f};
+  alignas(4) glm::vec3 ozone_absorption = {0.000650f, 0.001881f, 0.000085f};
   alignas(4) f32 ozone_height = 25.0f;
   alignas(4) f32 ozone_thickness = 15.0f;
 
-  alignas(4) glm::vec3 terrain_albedo = {0.3f,
-                                         0.3f,
-                                         0.3f};
+  alignas(4) glm::vec3 terrain_albedo = {0.3f, 0.3f, 0.3f};
   alignas(4) f32 planet_radius = 6360.0f;
   alignas(4) f32 atmos_radius = 6460.0f;
   alignas(4) f32 aerial_perspective_start_km = 8.0f;
@@ -88,34 +132,34 @@ struct Atmosphere {
 };
 
 struct CameraData {
-  glm::vec4 position = {};
+  alignas(4) glm::vec4 position = {};
 
-  glm::mat4 projection = {};
-  glm::mat4 inv_projection = {};
-  glm::mat4 view = {};
-  glm::mat4 inv_view = {};
-  glm::mat4 projection_view = {};
-  glm::mat4 inv_projection_view = {};
+  alignas(4) glm::mat4 projection = {};
+  alignas(4) glm::mat4 inv_projection = {};
+  alignas(4) glm::mat4 view = {};
+  alignas(4) glm::mat4 inv_view = {};
+  alignas(4) glm::mat4 projection_view = {};
+  alignas(4) glm::mat4 inv_projection_view = {};
 
-  glm::mat4 previous_projection = {};
-  glm::mat4 previous_inv_projection = {};
-  glm::mat4 previous_view = {};
-  glm::mat4 previous_inv_view = {};
-  glm::mat4 previous_projection_view = {};
-  glm::mat4 previous_inv_projection_view = {};
+  alignas(4) glm::mat4 previous_projection = {};
+  alignas(4) glm::mat4 previous_inv_projection = {};
+  alignas(4) glm::mat4 previous_view = {};
+  alignas(4) glm::mat4 previous_inv_view = {};
+  alignas(4) glm::mat4 previous_projection_view = {};
+  alignas(4) glm::mat4 previous_inv_projection_view = {};
 
-  glm::vec2 temporalaa_jitter = {};
-  glm::vec2 temporalaa_jitter_prev = {};
+  alignas(4) glm::vec2 temporalaa_jitter = {};
+  alignas(4) glm::vec2 temporalaa_jitter_prev = {};
 
-  glm::vec4 frustum_planes[6] = {};
+  alignas(4) glm::vec4 frustum_planes[6] = {};
 
-  glm::vec3 up = {};
-  f32 near_clip = 0;
-  glm::vec3 forward = {};
-  f32 far_clip = 0;
-  glm::vec3 right = {};
-  f32 fov = 0;
-  u32 output_index = 0;
+  alignas(4) glm::vec3 up = {};
+  alignas(4) f32 near_clip = 0;
+  alignas(4) glm::vec3 forward = {};
+  alignas(4) f32 far_clip = 0;
+  alignas(4) glm::vec3 right = {};
+  alignas(4) f32 fov = 0;
+  alignas(4) u32 output_index = 0;
 };
 
 constexpr static u32 HISTOGRAM_THREADS_X = 16;

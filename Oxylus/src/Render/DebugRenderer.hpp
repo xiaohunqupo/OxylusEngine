@@ -45,10 +45,7 @@ public:
   /// Draw Point (circle)
   static void draw_point(const glm::vec3& pos,
                          float point_radius,
-                         const glm::vec4& color = glm::vec4(1.0f,
-                                                            1.0f,
-                                                            1.0f,
-                                                            1.0f),
+                         const glm::vec4& color = glm::vec4(1.0f, 1.0f, 1.0f, 1.0f),
                          bool depth_tested = false);
 
   /// Draw Line with a given thickness
@@ -57,11 +54,8 @@ public:
                         float line_width,
                         const glm::vec4& color = glm::vec4(1),
                         bool depth_tested = false);
-  static void draw_triangle(const glm::vec3& v0,
-                            const glm::vec3& v1,
-                            const glm::vec3& v2,
-                            const glm::vec4& color,
-                            bool depth_tested = false);
+  static void draw_triangle(
+      const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec4& color, bool depth_tested = false);
 
   static void draw_circle(int num_verts,
                           float radius,
@@ -69,10 +63,7 @@ public:
                           const glm::quat& rotation,
                           const glm::vec4& color,
                           bool depth_tested = false);
-  static void draw_sphere(float radius,
-                          const glm::vec3& position,
-                          const glm::vec4& color,
-                          bool depth_tested = false);
+  static void draw_sphere(float radius, const glm::vec3& position, const glm::vec4& color, bool depth_tested = false);
   static void draw_capsule(const glm::vec3& position,
                            const glm::quat& rotation,
                            float height,
@@ -92,14 +83,9 @@ public:
                         bool corners_only = false,
                         float width = 1.0f,
                         bool depth_tested = false);
-  static void draw_frustum(const glm::mat4& frustum,
-                           const glm::vec4& color,
-                           float near,
-                           float far);
-  static void draw_ray(const RayCast& ray,
-                       const glm::vec4& color,
-                       const float distance,
-                       const bool depth_tested = false);
+  static void draw_frustum(const glm::mat4& frustum, const glm::vec4& color, float near, float far);
+  static void
+  draw_ray(const RayCast& ray, const glm::vec4& color, const float distance, const bool depth_tested = false);
 
   static DebugRenderer* get_instance() { return instance; }
   const std::vector<Line>& get_lines(bool depth_tested = true) const {
@@ -114,12 +100,8 @@ public:
 
   const vuk::Unique<vuk::Buffer>& get_global_index_buffer() const { return debug_renderer_context.index_buffer; }
 
-  static std::pair<std::vector<Vertex>,
-                   uint32_t>
-  get_vertices_from_lines(const std::vector<Line>& lines);
-  static std::pair<std::vector<Vertex>,
-                   uint32_t>
-  get_vertices_from_triangles(const std::vector<Triangle>& triangles);
+  static std::pair<std::vector<Vertex>, uint32_t> get_vertices_from_lines(const std::vector<Line>& lines);
+  static std::pair<std::vector<Vertex>, uint32_t> get_vertices_from_triangles(const std::vector<Triangle>& triangles);
 
 private:
   static DebugRenderer* instance;
@@ -163,20 +145,15 @@ public:
 
   PhysicsDebugRenderer();
 
-  virtual void DrawLine(JPH::RVec3Arg inFrom,
-                        JPH::RVec3Arg inTo,
-                        JPH::ColorArg inColor) override;
+  virtual void DrawLine(JPH::RVec3Arg inFrom, JPH::RVec3Arg inTo, JPH::ColorArg inColor) override;
   virtual void DrawTriangle(JPH::RVec3Arg inV1,
                             JPH::RVec3Arg inV2,
                             JPH::RVec3Arg inV3,
                             JPH::ColorArg inColor,
                             ECastShadow inCastShadow = ECastShadow::Off) override;
-  virtual Batch CreateTriangleBatch(const Triangle* inTriangles,
-                                    int inTriangleCount) override;
-  virtual Batch CreateTriangleBatch(const Vertex* inVertices,
-                                    int inVertexCount,
-                                    const u32* inIndices,
-                                    int inIndexCount) override;
+  virtual Batch CreateTriangleBatch(const Triangle* inTriangles, int inTriangleCount) override;
+  virtual Batch
+  CreateTriangleBatch(const Vertex* inVertices, int inVertexCount, const u32* inIndices, int inIndexCount) override;
   virtual void DrawGeometry(JPH::RMat44Arg inModelMatrix,
                             const JPH::AABox& inWorldSpaceBounds,
                             float inLODScaleSq,

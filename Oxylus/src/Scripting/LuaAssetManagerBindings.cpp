@@ -5,7 +5,5 @@
 #include "Asset/AssetManager.hpp"
 
 namespace ox::LuaBindings {
-void bind_asset_manager(const Shared<sol::state>& state) {
-  auto asset_table = state->create_table("Assets");
-}
+void bind_asset_manager(const Shared<sol::state>& state) { auto asset_table = state->create_table("Assets"); }
 } // namespace ox::LuaBindings

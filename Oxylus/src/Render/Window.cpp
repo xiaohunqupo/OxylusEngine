@@ -102,7 +102,8 @@ Window Window::create(const WindowInfo& info) {
   void* image_data = nullptr;
   int width = {}, height = {}, channels = {};
   if (info.icon.data != nullptr && info.icon.data_length > 0) {
-    image_data = stbi_load_from_memory(info.icon.data, static_cast<int>(info.icon.data_length), &width, &height, &channels, 4);
+    image_data = stbi_load_from_memory(
+        info.icon.data, static_cast<int>(info.icon.data_length), &width, &height, &channels, 4);
   } else if (!info.icon.path.empty()) {
     image_data = stbi_load(info.icon.path.c_str(), &width, &height, &channels, 4);
   }
@@ -246,9 +247,15 @@ void Window::show_dialog(const ShowDialogInfo& info) const {
   SDL_SetStringProperty(props, SDL_PROP_FILE_DIALOG_TITLE_STRING, stack.null_terminate_cstr(info.title));
 
   switch (info.kind) {
-    case DialogKind::OpenFile  : SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFILE, info.callback, info.user_data, props); break;
-    case DialogKind::SaveFile  : SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_SAVEFILE, info.callback, info.user_data, props); break;
-    case DialogKind::OpenFolder: SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFOLDER, info.callback, info.user_data, props); break;
+    case DialogKind::OpenFile:
+      SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFILE, info.callback, info.user_data, props);
+      break;
+    case DialogKind::SaveFile:
+      SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_SAVEFILE, info.callback, info.user_data, props);
+      break;
+    case DialogKind::OpenFolder:
+      SDL_ShowFileDialogWithProperties(SDL_FILEDIALOG_OPENFOLDER, info.callback, info.user_data, props);
+      break;
   }
 }
 
@@ -303,5 +310,7 @@ float Window::get_refresh_rate() const {
   return impl->refresh_rate;
 }
 
-void Window::set_mouse_position(const glm::vec2 position) const { SDL_WarpMouseInWindow(impl->handle, position.x, position.y); }
+void Window::set_mouse_position(const glm::vec2 position) const {
+  SDL_WarpMouseInWindow(impl->handle, position.x, position.y);
+}
 } // namespace ox

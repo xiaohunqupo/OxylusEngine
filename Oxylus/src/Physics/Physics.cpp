@@ -13,8 +13,7 @@
 namespace ox {
 Physics* Physics::_instance = nullptr;
 
-static void TraceImpl(const char* inFMT,
-                      ...) {
+static void TraceImpl(const char* inFMT, ...) {
   va_list list;
   va_start(list, inFMT);
   char buffer[1024];
@@ -25,17 +24,13 @@ static void TraceImpl(const char* inFMT,
 }
 
 #ifdef JPH_ENABLE_ASSERTS
-static bool AssertFailedImpl(const char* inExpression,
-                             const char* inMessage,
-                             const char* inFile,
-                             JPH::uint inLine) {
+static bool AssertFailedImpl(const char* inExpression, const char* inMessage, const char* inFile, JPH::uint inLine) {
   OX_LOG_ERROR("{0}:{1}:{2} {3}", inFile, inLine, inExpression, inMessage != nullptr ? inMessage : "");
   return true;
 };
 #endif
 
-auto Physics::init() -> std::expected<void,
-                                      std::string> {
+auto Physics::init() -> std::expected<void, std::string> {
   // TODO: Override default allocators with Oxylus allocators.
   JPH::RegisterDefaultAllocator();
 
@@ -66,8 +61,7 @@ auto Physics::init() -> std::expected<void,
   return {};
 }
 
-auto Physics::deinit() -> std::expected<void,
-                                        std::string> {
+auto Physics::deinit() -> std::expected<void, std::string> {
   JPH::UnregisterTypes();
   delete JPH::Factory::sInstance;
   JPH::Factory::sInstance = nullptr;

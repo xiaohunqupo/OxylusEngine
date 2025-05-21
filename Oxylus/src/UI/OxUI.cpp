@@ -27,9 +27,7 @@ void ui::pop_id() {
   --ui_context_id;
 }
 
-bool ui::begin_properties(const ImGuiTableFlags flags,
-                          bool fixed_width,
-                          float width) {
+bool ui::begin_properties(const ImGuiTableFlags flags, bool fixed_width, float width) {
   id_buffer[0] = '#';
   id_buffer[1] = '#';
   memset(id_buffer + 2, 0, 14);
@@ -51,9 +49,7 @@ bool ui::begin_properties(const ImGuiTableFlags flags,
 
 void ui::end_properties() { ImGui::EndTable(); }
 
-void ui::begin_property_grid(const char* label,
-                             const char* tooltip,
-                             const bool align_text_right) {
+void ui::begin_property_grid(const char* label, const char* tooltip, const bool align_text_right) {
   push_id();
 
   push_frame_style();
@@ -65,8 +61,8 @@ void ui::begin_property_grid(const char* label,
 
   ImGui::PushID(label);
   if (align_text_right) {
-    const auto posX =
-        ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x - ImGui::GetScrollX();
+    const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - ImGui::CalcTextSize(label).x -
+                      ImGui::GetScrollX();
     if (posX > ImGui::GetCursorPosX())
       ImGui::SetCursorPosX(posX);
   }
@@ -95,9 +91,7 @@ void ui::end_property_grid() {
 void ui::push_frame_style(bool on) { ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, on ? 1.f : 0.f); }
 void ui::pop_frame_style() { ImGui::PopStyleVar(); }
 
-bool ui::button(const char* label,
-                const ImVec2& size,
-                const char* tooltip) {
+bool ui::button(const char* label, const ImVec2& size, const char* tooltip) {
   push_frame_style();
   bool changed = ImGui::Button(label, size);
   tooltip_hover(tooltip);
@@ -105,19 +99,14 @@ bool ui::button(const char* label,
   return changed;
 }
 
-bool ui::checkbox(const char* label,
-                  bool* v) {
+bool ui::checkbox(const char* label, bool* v) {
   push_frame_style();
   bool changed = ImGui::Checkbox(label, v);
   pop_frame_style();
   return changed;
 }
 
-bool ui::combo(const char* label,
-               int* value,
-               const char** dropdown_strings,
-               int count,
-               const char* tooltip) {
+bool ui::combo(const char* label, int* value, const char** dropdown_strings, int count, const char* tooltip) {
   push_frame_style();
 
   bool modified = false;
@@ -145,49 +134,35 @@ bool ui::combo(const char* label,
   return modified;
 }
 
-bool ui::input_text(const char* label,
-                    std::string* str,
-                    ImGuiInputTextFlags flags,
-                    ImGuiInputTextCallback callback,
-                    void* user_data) {
+bool ui::input_text(
+    const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
   push_frame_style();
   bool changed = ImGui::InputText(label, str, flags, callback, user_data);
   pop_frame_style();
   return changed;
 }
 
-void ui::text(const char* text1,
-              const char* text2,
-              const char* tooltip) {
+void ui::text(const char* text1, const char* text2, const char* tooltip) {
   begin_property_grid(text1, tooltip);
   ImGui::Text("%s", text2);
   end_property_grid();
 }
 
-bool ui::property(const char* label,
-                  bool* flag,
-                  const char* tooltip) {
+bool ui::property(const char* label, bool* flag, const char* tooltip) {
   begin_property_grid(label, tooltip);
   const bool modified = ImGui::Checkbox(id_buffer, flag);
   end_property_grid();
   return modified;
 }
 
-bool ui::property(const char* label,
-                  std::string* text,
-                  const ImGuiInputFlags flags,
-                  const char* tooltip) {
+bool ui::property(const char* label, std::string* text, const ImGuiInputFlags flags, const char* tooltip) {
   begin_property_grid(label, tooltip);
   const bool modified = ImGui::InputText(id_buffer, text, flags);
   end_property_grid();
   return modified;
 }
 
-bool ui::property(const char* label,
-                  int* value,
-                  const char** dropdown_strings,
-                  const int count,
-                  const char* tooltip) {
+bool ui::property(const char* label, int* value, const char** dropdown_strings, const int count, const char* tooltip) {
   begin_property_grid(label, tooltip);
 
   bool modified = false;
@@ -221,10 +196,7 @@ void ui::tooltip_hover(const char* text) {
   }
 }
 
-bool ui::texture_property(const char* label,
-                          UUID& texture_uuid,
-                          UUID* new_asset,
-                          const char* tooltip) {
+bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset, const char* tooltip) {
   begin_property_grid(label, tooltip);
   bool changed = false;
 
@@ -298,12 +270,13 @@ bool ui::texture_property(const char* label,
     }
   }
   if (ImGui::BeginDragDropTarget()) {
-    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-      const auto path = get_path_from_imgui_payload(payload);
-      *new_asset = asset_man->create_asset(AssetType::Texture, path);
-      asset_man->load_texture(*new_asset, {});
-      changed = true;
-    }
+    // TODO: maybe take a callback for this
+    // if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
+    //   const auto path = get_path_from_imgui_payload(payload);
+    //   *new_asset = asset_man->create_asset(AssetType::Texture, path);
+    //   asset_man->load_texture(*new_asset, {});
+    //   changed = true;
+    // }
     ImGui::EndDragDropTarget();
   }
   ImGui::PopStyleColor(3);
@@ -351,10 +324,7 @@ bool ui::image_button(const char* id,
   return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, bg_col, tint_col);
 }
 
-bool ui::draw_vec2_control(const char* label,
-                           glm::vec2& values,
-                           const char* tooltip,
-                           const float reset_value) {
+bool ui::draw_vec2_control(const char* label, glm::vec2& values, const char* tooltip, const float reset_value) {
   bool changed = false;
 
   begin_property_grid(label, tooltip);
@@ -416,10 +386,7 @@ bool ui::draw_vec2_control(const char* label,
   return changed;
 }
 
-bool ui::draw_vec3_control(const char* label,
-                           glm::vec3& values,
-                           const char* tooltip,
-                           const float reset_value) {
+bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* tooltip, const float reset_value) {
   bool changed = false;
 
   begin_property_grid(label, tooltip);
@@ -533,8 +500,7 @@ bool ui::toggle_button(const char* label,
   return clicked;
 }
 
-ImVec2 ui::get_icon_button_size(const char8_t* icon,
-                                const char* label) {
+ImVec2 ui::get_icon_button_size(const char8_t* icon, const char* label) {
   const float line_height = ImGui::GetTextLineHeight();
   const ImVec2 padding = ImGui::GetStyle().FramePadding;
 
@@ -545,9 +511,7 @@ ImVec2 ui::get_icon_button_size(const char8_t* icon,
   return {width, line_height + padding.y * 2.0f};
 }
 
-bool ui::icon_button(const char8_t* icon,
-                     const char* label,
-                     const ImVec4 icon_color) {
+bool ui::icon_button(const char8_t* icon, const char* label, const ImVec4 icon_color) {
   ImGui::PushID(label);
 
   const float line_height = ImGui::GetTextLineHeight();
@@ -588,15 +552,8 @@ void ui::clipped_text(const ImVec2& pos_min,
 
   const ImGuiContext& g = *GImGui;
   const ImGuiWindow* window = g.CurrentWindow;
-  clipped_text(window->DrawList,
-               pos_min,
-               pos_max,
-               text,
-               text_display_end,
-               text_size_if_known,
-               align,
-               clip_rect,
-               wrap_width);
+  clipped_text(
+      window->DrawList, pos_min, pos_max, text, text_display_end, text_size_if_known, align, clip_rect, wrap_width);
   if (g.LogEnabled)
     ImGui::LogRenderedText(&pos_min, text, text_display_end);
 }
@@ -612,8 +569,8 @@ void ui::clipped_text(ImDrawList* draw_list,
                       const float wrap_width) {
   // Perform CPU side clipping for single clipped element to avoid ui::using scissor state
   ImVec2 pos = pos_min;
-  const ImVec2 text_size =
-      text_size_if_known ? *text_size_if_known : ImGui::CalcTextSize(text, text_display_end, false, wrap_width);
+  const ImVec2 text_size = text_size_if_known ? *text_size_if_known
+                                              : ImGui::CalcTextSize(text, text_display_end, false, wrap_width);
 
   const ImVec2* clip_min = clip_rect ? &clip_rect->Min : &pos_min;
   const ImVec2* clip_max = clip_rect ? &clip_rect->Max : &pos_max;
@@ -628,14 +585,8 @@ void ui::clipped_text(ImDrawList* draw_list,
 
   // Render
   const ImVec4 fine_clip_rect(clip_min->x, clip_min->y, clip_max->x, clip_max->y);
-  draw_list->AddText(nullptr,
-                     0.0f,
-                     pos,
-                     ImGui::GetColorU32(ImGuiCol_Text),
-                     text,
-                     text_display_end,
-                     wrap_width,
-                     &fine_clip_rect);
+  draw_list->AddText(
+      nullptr, 0.0f, pos, ImGui::GetColorU32(ImGuiCol_Text), text, text_display_end, wrap_width, &fine_clip_rect);
 }
 
 void ui::spacing(const uint32_t count) {
@@ -646,10 +597,6 @@ void ui::align_right(float item_width) {
   const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - item_width - ImGui::GetScrollX();
   if (posX > ImGui::GetCursorPosX())
     ImGui::SetCursorPosX(posX);
-}
-
-std::string ui::get_path_from_imgui_payload(const ImGuiPayload* payload) {
-  return std::string(static_cast<const char*>(payload->Data));
 }
 
 void ui::draw_gradient_shadow_bottom(const float scale) {
@@ -672,10 +619,7 @@ void ui::center_next_window() {
   ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
 }
 
-void ui::draw_framerate_overlay(const ImVec2 work_pos,
-                                const ImVec2 work_size,
-                                const ImVec2 padding,
-                                bool* visible) {
+void ui::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size, const ImVec2 padding, bool* visible) {
   static int corner = 1;
   ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |

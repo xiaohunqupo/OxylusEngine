@@ -63,10 +63,8 @@ public:
 
   RendererConfig() = default;
 
-  auto init() -> std::expected<void,
-                               std::string> override;
-  auto deinit() -> std::expected<void,
-                                 std::string> override;
+  auto init() -> std::expected<void, std::string> override;
+  auto deinit() -> std::expected<void, std::string> override;
 
   bool save_config(const char* path) const;
   bool load_config(const char* path);

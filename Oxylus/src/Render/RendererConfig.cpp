@@ -7,8 +7,7 @@
 
 namespace ox {
 
-auto RendererConfig::init() -> std::expected<void,
-                                             std::string> {
+auto RendererConfig::init() -> std::expected<void, std::string> {
   if (!load_config("renderer_config.toml"))
     if (!save_config("renderer_config.toml"))
       return std::unexpected{"Couldn't load/save renderer_config.toml"};
@@ -16,8 +15,7 @@ auto RendererConfig::init() -> std::expected<void,
   return {};
 }
 
-auto RendererConfig::deinit() -> std::expected<void,
-                                               std::string> {
+auto RendererConfig::deinit() -> std::expected<void, std::string> {
   if (!save_config("renderer_config.toml"))
     return std::unexpected{"Couldn't save renderer_config.toml"};
 

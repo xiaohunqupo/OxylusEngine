@@ -63,8 +63,7 @@ public:
   void on_detach() override;
 
   void on_update(const Timestep& delta_time) override;
-  void on_render(vuk::Extent3D extent,
-                 vuk::Format format) override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   void new_scene();
   void open_scene_file_dialog();
@@ -76,20 +75,7 @@ public:
 
   static EditorLayer* get() { return instance; }
 
-  void set_context(EditorContextType type,
-                   const char* data,
-                   size_t size) {
-    editor_context.set(type, data, size);
-  }
-  void set_context_as_asset_with_path(const std::string& path) {
-    editor_context.set(EditorContextType::Asset, path.c_str(), sizeof(char) * (path.length() + 1));
-  }
-  void set_context_as_file_with_path(const std::string& path) {
-    editor_context.set(EditorContextType::File, path.c_str(), sizeof(char) * (path.length() + 1));
-  }
-
-  void reset_context() { editor_context.reset(); }
-  const EditorContext& get_context() const { return editor_context; }
+  EditorContext& get_context() { return editor_context; }
 
   void editor_shortcuts();
   Shared<Scene> get_active_scene();
@@ -97,9 +83,7 @@ public:
   bool open_scene(const std::filesystem::path& path);
   static void load_default_scene(const std::shared_ptr<Scene>& scene);
 
-  flecs::entity get_selected_entity() { return get_panel<SceneHierarchyPanel>()->get_selected_entity(); }
   Shared<Scene> get_selected_scene() { return get_panel<SceneHierarchyPanel>()->get_scene(); }
-  void clear_selected_entity();
 
   void set_scene_state(SceneState state);
   void set_docking_layout(EditorLayout layout);

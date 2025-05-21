@@ -10,8 +10,8 @@ AudioSource::~AudioSource() { ma_sound_uninit(&_sound); }
 auto AudioSource::load(const std::string& path) -> bool {
   OX_SCOPED_ZONE;
   auto* engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine)->get_engine();
-  const ma_result result =
-      ma_sound_init_from_file(engine, path.c_str(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, nullptr, &_sound);
+  const ma_result result = ma_sound_init_from_file(
+      engine, path.c_str(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, nullptr, &_sound);
   if (result != MA_SUCCESS) {
     OX_LOG_ERROR("Failed to load sound: {}", path);
     return false;

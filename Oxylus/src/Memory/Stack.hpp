@@ -48,8 +48,7 @@ struct ScopedStack {
     return {v, count};
   }
 
-  template <typename T,
-            typename... ArgsT>
+  template <typename T, typename... ArgsT>
   std::span<T> alloc_n(ArgsT&&... args) {
     ZoneScoped;
 
@@ -61,8 +60,7 @@ struct ScopedStack {
   }
 
   template <typename... ArgsT>
-  std::string_view format(const fmt::format_string<ArgsT...> fmt,
-                          ArgsT&&... args) {
+  std::string_view format(const fmt::format_string<ArgsT...> fmt, ArgsT&&... args) {
     ZoneScoped;
 
     auto& stack = get_thread_stack();
@@ -75,8 +73,7 @@ struct ScopedStack {
   }
 
   template <typename... ArgsT>
-  const c8* format_char(const fmt::format_string<ArgsT...> fmt,
-                           ArgsT&&... args) {
+  const c8* format_char(const fmt::format_string<ArgsT...> fmt, ArgsT&&... args) {
     ZoneScoped;
 
     auto& stack = get_thread_stack();

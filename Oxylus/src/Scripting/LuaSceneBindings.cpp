@@ -11,6 +11,7 @@ namespace ox::LuaBindings {
 void bind_scene(const Shared<sol::state>& state) {
   OX_SCOPED_ZONE;
   sol::usertype<Scene> scene_type = state->new_usertype<Scene>("Scene");
-  scene_type.set_function("create_entity", [](const Scene& self, const std::string& name = "") { return self.create_entity(name); });
+  scene_type.set_function("create_entity",
+                          [](const Scene& self, const std::string& name = "") { return self.create_entity(name); });
 }
 } // namespace ox::LuaBindings

@@ -3,10 +3,8 @@
 #include <icons/IconsMaterialDesignIcons.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include "ImGuiLayer.hpp"
-
 #include "Core/App.hpp"
-
+#include "ImGuiLayer.hpp"
 #include "Utils/CVars.hpp"
 #include "Utils/StringUtils.hpp"
 
@@ -47,7 +45,9 @@ RuntimeConsole::RuntimeConsole() {
 
 RuntimeConsole::~RuntimeConsole() { Log::remove_callback("runtime_console"); }
 
-void RuntimeConsole::register_command(const std::string& command, const std::string& on_succes_log, const std::function<void()>& action) {
+void RuntimeConsole::register_command(const std::string& command,
+                                      const std::string& on_succes_log,
+                                      const std::function<void()>& action) {
   command_map.emplace(command, ConsoleCommand{nullptr, nullptr, nullptr, action, on_succes_log});
 }
 
@@ -55,7 +55,8 @@ void RuntimeConsole::register_command(const std::string& command, const std::str
   command_map.emplace(command, ConsoleCommand{value, nullptr, nullptr, nullptr, on_succes_log});
 }
 
-void RuntimeConsole::register_command(const std::string& command, const std::string& on_succes_log, std::string* value) {
+void
+RuntimeConsole::register_command(const std::string& command, const std::string& on_succes_log, std::string* value) {
   command_map.emplace(command, ConsoleCommand{nullptr, value, nullptr, nullptr, on_succes_log});
 }
 
@@ -88,8 +89,8 @@ void RuntimeConsole::on_imgui_render() {
     ImVec2 size = {ImGui::GetMainViewport()->WorkSize.x, ImGui::GetMainViewport()->WorkSize.y * animation_counter};
     ImGui::SetNextWindowSize(size, ImGuiCond_Always);
 
-    constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_MenuBar |
-                                             ImGuiWindowFlags_NoCollapse;
+    constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoNavInputs | ImGuiWindowFlags_NoDecoration |
+                                             ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoCollapse;
     ImGui::PushStyleVar(ImGuiStyleVar_WindowRounding, 0.0f);
     // ImGui::PushStyleColor(ImGuiCol_FrameBg, ImVec4(0.000f, 0.000f, 0.000f, 1.000f));
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.000f, 0.000f, 0.000f, 0.784f));
@@ -101,13 +102,16 @@ void RuntimeConsole::on_imgui_render() {
         if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_TRASH_CAN))) {
           clear_log();
         }
-        if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_INFORMATION), nullptr, text_filter == loguru::Verbosity_INFO)) {
+        if (ImGui::MenuItem(
+                StringUtils::from_char8_t(ICON_MDI_INFORMATION), nullptr, text_filter == loguru::Verbosity_INFO)) {
           text_filter = text_filter == loguru::Verbosity_INFO ? loguru::Verbosity_OFF : loguru::Verbosity_INFO;
         }
-        if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_ALERT), nullptr, text_filter == loguru::Verbosity_WARNING)) {
+        if (ImGui::MenuItem(
+                StringUtils::from_char8_t(ICON_MDI_ALERT), nullptr, text_filter == loguru::Verbosity_WARNING)) {
           text_filter = text_filter == loguru::Verbosity_WARNING ? loguru::Verbosity_OFF : loguru::Verbosity_WARNING;
         }
-        if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_CLOSE_OCTAGON), nullptr, text_filter == loguru::Verbosity_ERROR)) {
+        if (ImGui::MenuItem(
+                StringUtils::from_char8_t(ICON_MDI_CLOSE_OCTAGON), nullptr, text_filter == loguru::Verbosity_ERROR)) {
           text_filter = text_filter == loguru::Verbosity_ERROR ? loguru::Verbosity_OFF : loguru::Verbosity_ERROR;
         }
 
@@ -136,8 +140,10 @@ void RuntimeConsole::on_imgui_render() {
 
       ImGui::Separator();
       ImGui::PushItemWidth(width);
-      constexpr ImGuiInputTextFlags input_flags = ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory |
-                                                  ImGuiInputTextFlags_CallbackCompletion | ImGuiInputTextFlags_EscapeClearsAll;
+      constexpr ImGuiInputTextFlags input_flags = ImGuiInputTextFlags_EnterReturnsTrue |
+                                                  ImGuiInputTextFlags_CallbackHistory |
+                                                  ImGuiInputTextFlags_CallbackCompletion |
+                                                  ImGuiInputTextFlags_EscapeClearsAll;
       // ImGui::PushFont(ImGuiLayer::bold_font);
 
       auto callback = [](ImGuiInputTextCallbackData* data) {
@@ -186,7 +192,8 @@ void RuntimeConsole::render_console_text(const std::string& text_, const int32_t
 
 template <typename T>
 void log_cvar_change(RuntimeConsole* console, const char* cvar_name, T current_value, bool changed) {
-  const std::string log_text = changed ? fmt::format("Changed {} to {}", cvar_name, current_value) : fmt::format("{} {}", cvar_name, current_value);
+  const std::string log_text = changed ? fmt::format("Changed {} to {}", cvar_name, current_value)
+                                       : fmt::format("{} {}", cvar_name, current_value);
   console->add_log(log_text.c_str(), loguru::Verbosity_INFO);
 }
 

@@ -3,16 +3,9 @@
 #include "Timer.hpp"
 
 namespace ox {
-Timestep::Timestep()
-  : m_timestep(0.0)
-    , m_last_time(0.0)
-    , m_elapsed(0.0) {
-  m_Timer = new Timer();
-}
+Timestep::Timestep() : m_timestep(0.0), m_last_time(0.0), m_elapsed(0.0) { m_Timer = new Timer(); }
 
-Timestep::~Timestep() {
-  delete m_Timer;
-}
+Timestep::~Timestep() { delete m_Timer; }
 
 void Timestep::on_update() {
   double currentTime = m_Timer->get_elapsed_msd();
@@ -31,4 +24,4 @@ void Timestep::on_update() {
   m_last_time = currentTime;
   m_elapsed += m_timestep;
 }
-}
+} // namespace ox

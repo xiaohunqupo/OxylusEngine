@@ -7,10 +7,7 @@ static constexpr uint64_t ARCHIVE_VERSION = 0;
 
 Archive::Archive() { create_empty(); }
 
-Archive::Archive(const std::string& file_name_,
-                 bool read_mode_) :
-    read_mode(read_mode_),
-    file_name(file_name_) {
+Archive::Archive(const std::string& file_name_, bool read_mode_) : read_mode(read_mode_), file_name(file_name_) {
   if (!file_name.empty()) {
     directory = fs::get_directory(file_name);
     if (read_mode) {
@@ -61,8 +58,7 @@ void Archive::close() {
 
 bool Archive::save_file(const std::string_view file_path) const { return fs::write_file_binary(file_path, _data); }
 
-bool Archive::save_header_file(const std::string_view file_path,
-                               const std::string_view data_name) const {
+bool Archive::save_header_file(const std::string_view file_path, const std::string_view data_name) const {
   return fs::binary_to_header(file_path, data_name, _data);
 }
 

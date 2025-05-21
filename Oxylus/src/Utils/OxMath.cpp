@@ -1,8 +1,10 @@
 #include "OxMath.hpp"
 
-#include <glm/gtx/matrix_decompose.hpp>
+// clang-format off
 #include <Jolt/Jolt.h>
 #include <Jolt/Geometry/AABox.h>
+#include <glm/gtx/matrix_decompose.hpp>
+// clang-format on
 
 namespace ox::math {
 bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale) {
@@ -17,7 +19,8 @@ bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm
     return false;
 
   // First, isolate perspective.  This is the messiest.
-  if (epsilonNotEqual(local_matrix[0][3], static_cast<T>(0), epsilon<T>()) || epsilonNotEqual(local_matrix[1][3], static_cast<T>(0), epsilon<T>()) ||
+  if (epsilonNotEqual(local_matrix[0][3], static_cast<T>(0), epsilon<T>()) ||
+      epsilonNotEqual(local_matrix[1][3], static_cast<T>(0), epsilon<T>()) ||
       epsilonNotEqual(local_matrix[2][3], static_cast<T>(0), epsilon<T>())) {
     // Clear the perspective partition
     local_matrix[0][3] = local_matrix[1][3] = local_matrix[2][3] = static_cast<T>(0);
@@ -73,7 +76,12 @@ float inverse_lerp_clamped(float a, float b, float value) {
   return glm::clamp((value - a) / den, 0.0f, 1.0f);
 }
 
-glm::vec2 world_to_screen(const glm::vec3& world_pos, const glm::mat4& mvp, const float width, float height, const float win_pos_x, const float win_pos_y) {
+glm::vec2 world_to_screen(const glm::vec3& world_pos,
+                          const glm::mat4& mvp,
+                          const float width,
+                          float height,
+                          const float win_pos_x,
+                          const float win_pos_y) {
   glm::vec4 trans = mvp * glm::vec4(world_pos, 1.0f);
   trans *= 0.5f / trans.w;
   trans += glm::vec4(0.5f, 0.5f, 0.0f, 0.0f);

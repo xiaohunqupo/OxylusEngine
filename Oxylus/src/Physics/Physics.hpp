@@ -38,10 +38,8 @@ public:
   ObjectVsBroadPhaseLayerFilterImpl object_vs_broad_phase_layer_filter_interface;
   ObjectLayerPairFilterImpl object_layer_pair_filter_interface;
 
-  auto init() -> std::expected<void,
-                               std::string> override;
-  auto deinit() -> std::expected<void,
-                                 std::string> override;
+  auto init() -> std::expected<void, std::string> override;
+  auto deinit() -> std::expected<void, std::string> override;
   static void set_instance();
   void step(float physicsTs);
   void debug_draw();

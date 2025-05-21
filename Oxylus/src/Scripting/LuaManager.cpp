@@ -18,16 +18,11 @@
 
 namespace ox {
 
-auto LuaManager::init() -> std::expected<void,
-                                         std::string> {
+auto LuaManager::init() -> std::expected<void, std::string> {
   OX_SCOPED_ZONE;
   m_state = create_shared<sol::state>();
-  m_state->open_libraries(sol::lib::base,
-                          sol::lib::package,
-                          sol::lib::math,
-                          sol::lib::table,
-                          sol::lib::os,
-                          sol::lib::string);
+  m_state->open_libraries(
+      sol::lib::base, sol::lib::package, sol::lib::math, sol::lib::table, sol::lib::os, sol::lib::string);
 
 #ifdef OX_LUA_BINDINGS
   bind_log();
@@ -47,8 +42,7 @@ auto LuaManager::init() -> std::expected<void,
   return {};
 }
 
-auto LuaManager::deinit() -> std::expected<void,
-                                           std::string> {
+auto LuaManager::deinit() -> std::expected<void, std::string> {
   m_state->collect_gc();
   m_state.reset();
 
@@ -56,9 +50,8 @@ auto LuaManager::deinit() -> std::expected<void,
 }
 
 #define SET_LOG_FUNCTIONS(table, name, log_func)                                                                       \
-  table.set_function(name, sol::overload([](const std::string_view message) {                                          \
-    log_func("{}", message);                                                                                           \
-  }, [](const glm::vec4& vec4) {                                                                                       \
+  table.set_function(                                                                                                  \
+      name, sol::overload([](const std::string_view message) { log_func("{}", message); }, [](const glm::vec4& vec4) { \
     log_func("x: {} y: {} z: {} w: {}", vec4.x, vec4.y, vec4.z, vec4.w);                                               \
   }, [](const glm::vec3& vec3) { log_func("x: {} y: {} z: {}", vec3.x, vec3.y, vec3.z); }, [](const glm::vec2& vec2) { \
     log_func("x: {} y: {}", vec2.x, vec2.y);                                                                           \

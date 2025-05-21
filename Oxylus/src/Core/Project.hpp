@@ -17,19 +17,15 @@ struct AssetDirectory {
   std::deque<std::unique_ptr<AssetDirectory>> subdirs = {};
   ankerl::unordered_dense::set<UUID> asset_uuids = {};
 
-  AssetDirectory(::fs::path path_,
-                 AssetDirectory* parent_);
+  AssetDirectory(::fs::path path_, AssetDirectory* parent_);
 
   ~AssetDirectory();
 
-  auto add_subdir(this AssetDirectory& self,
-                  const ::fs::path& path) -> AssetDirectory*;
+  auto add_subdir(this AssetDirectory& self, const ::fs::path& path) -> AssetDirectory*;
 
-  auto add_subdir(this AssetDirectory& self,
-                  std::unique_ptr<AssetDirectory>&& directory) -> AssetDirectory*;
+  auto add_subdir(this AssetDirectory& self, std::unique_ptr<AssetDirectory>&& directory) -> AssetDirectory*;
 
-  auto add_asset(this AssetDirectory& self,
-                 const ::fs::path& path) -> UUID;
+  auto add_asset(this AssetDirectory& self, const ::fs::path& path) -> UUID;
 
   auto refresh(this AssetDirectory& self) -> void;
 };
@@ -42,10 +38,8 @@ public:
                    const std::string& project_dir,
                    const std::string& project_name,
                    const std::string& project_asset_dir) -> bool;
-  auto load(this Project& self,
-            const std::string& path) -> bool;
-  auto save(this Project& self,
-            const std::string& path) -> bool;
+  auto load(this Project& self, const std::string& path) -> bool;
+  auto save(this Project& self, const std::string& path) -> bool;
 
   auto get_config() -> ProjectConfig& { return project_config; }
 

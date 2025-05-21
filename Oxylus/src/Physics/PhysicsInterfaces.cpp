@@ -5,8 +5,7 @@
 #include "PhysicsMaterial.hpp"
 #include "Scene/Scene.hpp"
 
-bool ObjectLayerPairFilterImpl::ShouldCollide(JPH::ObjectLayer inObject1,
-                                              JPH::ObjectLayer inObject2) const {
+bool ObjectLayerPairFilterImpl::ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const {
   using namespace JPH;
   switch (inObject1) {
     case PhysicsLayers::NON_MOVING: return inObject2 == PhysicsLayers::MOVING; // Non moving only collides with moving
@@ -41,8 +40,7 @@ const char* BPLayerInterfaceImpl::GetBroadPhaseLayerName(JPH::BroadPhaseLayer in
 }
 #endif
 
-bool ObjectVsBroadPhaseLayerFilterImpl::ShouldCollide(JPH::ObjectLayer inLayer1,
-                                                      JPH::BroadPhaseLayer inLayer2) const {
+bool ObjectVsBroadPhaseLayerFilterImpl::ShouldCollide(JPH::ObjectLayer inLayer1, JPH::BroadPhaseLayer inLayer2) const {
   using namespace JPH;
   switch (inLayer1) {
     case PhysicsLayers::NON_MOVING: return inLayer2 == BroadPhaseLayers::MOVING;
@@ -51,15 +49,13 @@ bool ObjectVsBroadPhaseLayerFilterImpl::ShouldCollide(JPH::ObjectLayer inLayer1,
   }
 }
 
-void Physics3DBodyActivationListener::OnBodyActivated(const JPH::BodyID& inBodyID,
-                                                      JPH::uint64 inBodyUserData) {
+void Physics3DBodyActivationListener::OnBodyActivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) {
   OX_SCOPED_ZONE;
 
   /* Body Activated */
 }
 
-void Physics3DBodyActivationListener::OnBodyDeactivated(const JPH::BodyID& inBodyID,
-                                                        JPH::uint64 inBodyUserData) {
+void Physics3DBodyActivationListener::OnBodyDeactivated(const JPH::BodyID& inBodyID, JPH::uint64 inBodyUserData) {
   OX_SCOPED_ZONE;
 
   /* Body Deactivated */

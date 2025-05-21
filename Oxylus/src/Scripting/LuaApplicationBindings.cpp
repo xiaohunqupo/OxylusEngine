@@ -2,9 +2,8 @@
 
 #include <sol/state.hpp>
 
-#include "LuaHelpers.hpp"
-
 #include "Core/App.hpp"
+#include "LuaHelpers.hpp"
 
 namespace ox::LuaBindings {
 void bind_application(const Shared<sol::state>& state) {}

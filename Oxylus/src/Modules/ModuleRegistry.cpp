@@ -3,19 +3,14 @@
 #include "ModuleInterface.hpp"
 
 namespace ox {
-auto ModuleRegistry::init() -> std::expected<void,
-                                             std::string> {
-  return {};
-}
+auto ModuleRegistry::init() -> std::expected<void, std::string> { return {}; }
 
-auto ModuleRegistry::deinit() -> std::expected<void,
-                                               std::string> {
+auto ModuleRegistry::deinit() -> std::expected<void, std::string> {
   clear();
   return {};
 }
 
-Module* ModuleRegistry::add_lib(const std::string& name,
-                                std::string_view path) {
+Module* ModuleRegistry::add_lib(const std::string& name, std::string_view path) {
   try {
     const std::string path_str = std::string(path);
     const auto file_name = path_str + dylib::filename_components::suffix;
@@ -49,7 +44,8 @@ Module* ModuleRegistry::add_lib(const std::string& name,
 Module* ModuleRegistry::get_lib(const std::string& name) {
   try {
     return libs.at(name).get();
-  } catch ([[maybe_unused]] const std::exception& exc) {
+  } catch ([[maybe_unused]]
+           const std::exception& exc) {
     OX_LOG_ERROR("Module {} doesn't exists or has not been registered.", name);
     return nullptr;
   }

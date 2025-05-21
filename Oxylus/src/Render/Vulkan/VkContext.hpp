@@ -21,8 +21,11 @@ public:
   uint32_t graphics_queue_family_index = 0;
   VkQueue transfer_queue = nullptr;
   std::optional<vuk::Runtime> runtime;
-  std::optional<vuk::DeviceSuperFrameResource> superframe_resource;
-  std::optional<vuk::Allocator> superframe_allocator;
+
+  option<vuk::DeviceSuperFrameResource> superframe_resource;
+  option<vuk::Allocator> superframe_allocator = nullopt;
+  option<vuk::Allocator> frame_allocator = nullopt;
+
   bool suspend = false;
   vuk::PresentModeKHR present_mode = vuk::PresentModeKHR::eFifo;
   std::optional<vuk::Swapchain> swapchain;
@@ -36,7 +39,6 @@ public:
   vuk::Unique<std::array<VkSemaphore, 3>> render_complete;
   Shared<TracyProfiler> tracy_profiler = {};
   vuk::Compiler compiler = {};
-  option<vuk::Allocator> frame_allocator = nullopt;
   SlangCompiler shader_compiler = {};
 
   std::string device_name = {};
@@ -44,17 +46,88 @@ public:
   VkContext() = default;
   ~VkContext();
 
-  void create_context(const Window& window,
-                      bool vulkan_validation_layers);
-  vuk::Value<vuk::ImageAttachment> new_frame();
-  void end_frame(vuk::Allocator& frame_allocator,
-                 vuk::Value<vuk::ImageAttachment> target);
-  void handle_resize(u32 width,
-                     u32 height);
+  void create_context(const Window& window, bool vulkan_validation_layers);
+
+  vuk::Value<vuk::ImageAttachment> new_frame(this VkContext& self);
+
+  void end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment> target);
+
+  void handle_resize(u32 width, u32 height);
   void set_vsync(bool enable);
+
   bool is_vsync() const;
-  option<vuk::Allocator>& get_frame_allocator();
 
   uint32_t get_max_viewport_count() const { return vkbphysical_device.properties.limits.maxViewports; }
+
+  [[nodiscard]]
+  auto allocate_buffer(vuk::MemoryUsage usage, u64 size, u64 alignment = 1) -> vuk::Unique<vuk::Buffer>;
+
+  [[nodiscard]]
+  auto alloc_transient_buffer_raw(vuk::MemoryUsage usage, usize size, usize alignment = 8, OX_THISCALL) -> vuk::Buffer;
+
+  [[nodiscard]]
+  auto alloc_transient_buffer(vuk::MemoryUsage usage, usize size, usize alignment = 8, OX_THISCALL)
+      -> vuk::Value<vuk::Buffer>;
+
+  [[nodiscard]]
+  auto upload_staging(vuk::Value<vuk::Buffer>&& src, vuk::Value<vuk::Buffer>&& dst, OX_THISCALL)
+      -> vuk::Value<vuk::Buffer>;
+
+  [[nodiscard]]
+  auto upload_staging(vuk::Value<vuk::Buffer>&& src, vuk::Buffer& dst, u64 dst_offset = 0, OX_THISCALL)
+      -> vuk::Value<vuk::Buffer>;
+
+  [[nodiscard]]
+  auto upload_staging(void* data, u64 data_size, vuk::Value<vuk::Buffer>&& dst, u64 dst_offset = 0, OX_THISCALL)
+      -> vuk::Value<vuk::Buffer>;
+
+  [[nodiscard]]
+  auto upload_staging(void* data, u64 data_size, vuk::Buffer& dst, u64 dst_offset = 0, OX_THISCALL)
+      -> vuk::Value<vuk::Buffer>;
+
+  template <typename T>
+  [[nodiscard]]
+  auto upload_staging(std::span<T> span, vuk::Buffer& dst, u64 dst_offset = 0, OX_THISCALL) -> vuk::Value<vuk::Buffer> {
+    ZoneScoped;
+
+    return upload_staging(reinterpret_cast<void*>(span.data()), span.size_bytes(), dst, dst_offset, LOC);
+  }
+
+  template <typename T>
+  [[nodiscard]]
+  auto upload_staging(std::span<T> span, vuk::Value<vuk::Buffer>&& dst, u64 dst_offset = 0, OX_THISCALL)
+      -> vuk::Value<vuk::Buffer> {
+    ZoneScoped;
+
+    return upload_staging(reinterpret_cast<void*>(span.data()), span.size_bytes(), std::move(dst), dst_offset, LOC);
+  }
+
+  template <typename T>
+  [[nodiscard]]
+  auto scratch_buffer(const T& val = {}, usize alignment = 8, OX_THISCALL) -> vuk::Value<vuk::Buffer> {
+    ZoneScoped;
+
+    return scratch_buffer(&val, sizeof(T), alignment, LOC);
+  }
+
+  template <typename T>
+  [[nodiscard]]
+  auto scratch_buffer(const std::span<T>& val = {}, usize alignment = 8, OX_THISCALL) -> vuk::Value<vuk::Buffer> {
+    ZoneScoped;
+    if (val.empty())
+      return vuk::Value<vuk::Buffer>{};
+
+    return scratch_buffer(val.data(), sizeof(T) * val.size(), alignment, LOC);
+  }
+
+  auto wait_on(vuk::UntypedValue&& fut) -> void;
+
+  auto wait_on_rg(vuk::Value<vuk::ImageAttachment>&& fut, bool frame) -> vuk::ImageAttachment;
+
+private:
+  [[nodiscard]]
+  auto scratch_buffer(const void* data, u64 size, usize alignment, OX_THISCALL) -> vuk::Value<vuk::Buffer>;
+
+  mutable std::shared_mutex mutex = {};
 };
 } // namespace ox

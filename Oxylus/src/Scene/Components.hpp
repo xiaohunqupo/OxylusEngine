@@ -63,7 +63,8 @@ ECS_COMPONENT_END();
 
 // Rendering
 ECS_COMPONENT_BEGIN(MeshComponent)
-  ECS_COMPONENT_MEMBER(mesh_id, UUID, {})
+  ECS_COMPONENT_MEMBER(mesh_uuid, UUID, {})
+  ECS_COMPONENT_MEMBER(mesh_index, u32, {})
   ECS_COMPONENT_MEMBER(cast_shadows, bool, true)
   ECS_COMPONENT_MEMBER(stationary, bool, false)
 
@@ -413,6 +414,7 @@ ECS_COMPONENT_END();
 
 // Scripting
 ECS_COMPONENT_BEGIN(LuaScriptComponent)
+  ECS_COMPONENT_MEMBER(script_uuid, UUID, {})
 #ifndef ECS_REFLECT_TYPES
   ECS_COMPONENT_MEMBER(lua_systems, std::vector<Shared<LuaSystem>>, {})
 #endif

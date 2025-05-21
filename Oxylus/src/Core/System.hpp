@@ -20,12 +20,10 @@ public:
   virtual ~System() = default;
 
   /// Called right after when the scene gets initialized.
-  virtual void on_init(Scene* scene,
-                       flecs::entity e) {}
+  virtual void on_init(Scene* scene, flecs::entity e) {}
 
   /// Called when the system is destroyed.
-  virtual void on_release(Scene* scene,
-                          flecs::entity e) {}
+  virtual void on_release(Scene* scene, flecs::entity e) {}
 
   /// Called after physic system is updated.
   virtual void on_update(const Timestep& delta_time) {}
@@ -34,8 +32,7 @@ public:
   virtual void on_fixed_update(float delta_time) {}
 
   /// Called after on_update
-  virtual void on_render(vuk::Extent3D extent,
-                         vuk::Format format) {}
+  virtual void on_render(vuk::Extent3D extent, vuk::Format format) {}
 
   /// Called right after main loop is finished before the core shutdown process.
   virtual void on_shutdown() {}
@@ -54,9 +51,7 @@ public:
                                     const JPH::ContactManifold& manifold,
                                     const JPH::ContactSettings& settings) {}
 
-  void bind_globals(this System& self,
-                    Scene* scene,
-                    const flecs::entity entity) {
+  void bind_globals(this System& self, Scene* scene, const flecs::entity entity) {
     self._scene = scene;
     self._entity = entity;
   }

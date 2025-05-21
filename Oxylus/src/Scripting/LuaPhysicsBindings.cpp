@@ -17,7 +17,8 @@ void LuaBindings::bind_physics(const Shared<sol::state>& state) {
   SET_TYPE_FUNCTION(raycast_type, RayCast, get_direction);
   SET_TYPE_FUNCTION(raycast_type, RayCast, get_origin);
 
-  auto collector_type = state->new_usertype<JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector>>("RayCastCollector");
+  auto collector_type = state->new_usertype<JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector>>(
+      "RayCastCollector");
   collector_type.set_function("had_hit", &JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector>::HadHit);
   collector_type.set_function("sort", &JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector>::Sort);
 
@@ -26,17 +27,19 @@ void LuaBindings::bind_physics(const Shared<sol::state>& state) {
 
   auto physics_table = state->create_table("Physics");
   physics_table.set_function("cast_ray",
-                             [](const RayCast& ray) -> JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> { return Physics::cast_ray(ray); });
-  physics_table.set_function("get_hits",
-                             [](const JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector>& collector) -> std::vector<JPH::BroadPhaseCastResult> {
-    return {collector.mHits.begin(), collector.mHits.end()};
+                             [](const RayCast& ray) -> JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> {
+    return Physics::cast_ray(ray);
   });
+  physics_table.set_function(
+      "get_hits",
+      [](const JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector>& collector)
+          -> std::vector<JPH::BroadPhaseCastResult> { return {collector.mHits.begin(), collector.mHits.end()}; });
 
   // -- Components ---
   const std::initializer_list<std::pair<sol::string_view, RigidbodyComponent::BodyType>> rigidbody_body_type = {
-    ENUM_FIELD(RigidbodyComponent::BodyType, Static),
-    ENUM_FIELD(RigidbodyComponent::BodyType, Kinematic),
-    ENUM_FIELD(RigidbodyComponent::BodyType, Dynamic),
+      ENUM_FIELD(RigidbodyComponent::BodyType, Static),
+      ENUM_FIELD(RigidbodyComponent::BodyType, Kinematic),
+      ENUM_FIELD(RigidbodyComponent::BodyType, Dynamic),
   };
   state->new_enum<RigidbodyComponent::BodyType, true>("RigidbodyBodyType", rigidbody_body_type);
 

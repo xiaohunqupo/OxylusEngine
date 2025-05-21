@@ -42,25 +42,21 @@ constexpr c32 operator""_c32(const unsigned long long n) { return static_cast<c3
 
 // MINMAX
 template <typename T>
-const T& min(const T& a,
-             const T& b) {
+const T& min(const T& a, const T& b) {
   return (b < a) ? b : a;
 }
 
 template <typename T>
-const T& max(const T& a,
-             const T& b) {
+const T& max(const T& a, const T& b) {
   return (a < b) ? b : a;
 }
 template <typename T>
-constexpr T align_up(T size,
-                     u64 alignment) {
+constexpr T align_up(T size, u64 alignment) {
   return T((u64(size) + (alignment - 1)) & ~(alignment - 1));
 }
 
 template <typename T>
-constexpr T align_down(T size,
-                       u64 alignment) {
+constexpr T align_down(T size, u64 alignment) {
   return T(u64(size) & ~(alignment - 1));
 }
 
@@ -79,14 +75,21 @@ struct match : T... {
   using T::operator()...;
 };
 
-template <typename T,
-          usize N>
+template <typename T, usize N>
 constexpr usize count_of(T (&)[N]) {
   return N;
 }
 
-constexpr void hash_combine(usize& seed,
-                            const usize v) noexcept {
-  seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2);
+template <typename T>
+concept Container = requires(T& t) {
+  { t.begin() } -> std::same_as<typename T::iterator>;
+  { t.end() } -> std::same_as<typename T::iterator>;
+};
+
+template <Container T>
+inline usize size_bytes(const T& v) {
+  return v.size() * sizeof(typename T::value_type);
 }
+
+constexpr void hash_combine(usize& seed, const usize v) noexcept { seed ^= v + 0x9e3779b9 + (seed << 6) + (seed >> 2); }
 } // namespace ox

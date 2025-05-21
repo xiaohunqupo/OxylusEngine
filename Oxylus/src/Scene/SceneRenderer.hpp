@@ -11,8 +11,7 @@ public:
   SceneRenderer() = default;
   ~SceneRenderer() = default;
 
-  void init(Scene* scene,
-            const Shared<RenderPipeline>& render_pipeline = nullptr);
+  void init(Scene* scene, const Shared<RenderPipeline>& render_pipeline = nullptr);
   void update(const Timestep& delta_time) const;
 
   const Shared<RenderPipeline>& get_render_pipeline() const { return _render_pipeline; }

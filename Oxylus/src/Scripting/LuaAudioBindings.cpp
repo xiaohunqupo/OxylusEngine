@@ -2,8 +2,8 @@
 
 #include <sol/state.hpp>
 
-#include "Asset/AudioSource.hpp"
 #include "Asset/AssetManager.hpp"
+#include "Asset/AudioSource.hpp"
 #include "LuaHelpers.hpp"
 #include "Scene/ECSModule/Core.hpp"
 
@@ -32,13 +32,13 @@ void bind_audio(const Shared<sol::state>& state) {
   SET_TYPE_FUNCTION(audio_source, AudioSource, set_direction);
   SET_TYPE_FUNCTION(audio_source, AudioSource, set_velocity);
 
-// #define ASC AudioSourceComponent
+  // #define ASC AudioSourceComponent
   // REGISTER_COMPONENT(state, ASC, FIELD(ASC, config), FIELD(ASC, source));
 
   const std::initializer_list<std::pair<sol::string_view, AttenuationModelType>> attenuation_model_type = {
-    ENUM_FIELD(AttenuationModelType, Inverse),
-    ENUM_FIELD(AttenuationModelType, Linear),
-    ENUM_FIELD(AttenuationModelType, Exponential),
+      ENUM_FIELD(AttenuationModelType, Inverse),
+      ENUM_FIELD(AttenuationModelType, Linear),
+      ENUM_FIELD(AttenuationModelType, Exponential),
   };
   state->new_enum<AttenuationModelType, true>("AttenuationModelType", attenuation_model_type);
 
@@ -59,10 +59,11 @@ void bind_audio(const Shared<sol::state>& state) {
   SET_TYPE_FIELD(audio_source_config_type, AudioSourceConfig, cone_outer_gain);
   SET_TYPE_FIELD(audio_source_config_type, AudioSourceConfig, doppler_factor);
 
-// #define ALC AudioListenerComponent
+  // #define ALC AudioListenerComponent
   // REGISTER_COMPONENT(state, ALC, FIELD(ALC, active), FIELD(ALC, config), FIELD(ALC, listener));
 
-  sol::usertype<AudioListenerConfig> audio_listener_config_type = state->new_usertype<AudioListenerConfig>("AudioListenerConfig");
+  sol::usertype<AudioListenerConfig> audio_listener_config_type = state->new_usertype<AudioListenerConfig>(
+      "AudioListenerConfig");
   SET_TYPE_FIELD(audio_listener_config_type, AudioListenerConfig, cone_inner_angle);
   SET_TYPE_FIELD(audio_listener_config_type, AudioListenerConfig, cone_outer_angle);
   SET_TYPE_FIELD(audio_listener_config_type, AudioListenerConfig, cone_outer_gain);

@@ -45,12 +45,13 @@ void EditorLayer::on_attach() {
   editor_config.load_config();
 
   engine_banner = create_shared<Texture>();
-  engine_banner->create({},
-                        {.preset = Preset::eRTT2DUnmipped,
-                         .format = vuk::Format::eR8G8B8A8Srgb,
-                         .mime = {},
-                         .data = EngineBanner,
-                         .extent = {.width = EngineBannerWidth, .height = EngineBannerHeight, .depth = 1u}});
+  engine_banner->create(
+      {},
+      {.preset = Preset::eRTT2DUnmipped,
+       .format = vuk::Format::eR8G8B8A8Srgb,
+       .mime = {},
+       .data = EngineBanner,
+       .extent = vuk::Extent3D{.width = EngineBannerWidth, .height = EngineBannerHeight, .depth = 1u}});
 
   add_panel<SceneHierarchyPanel>();
   add_panel<ContentPanel>();
@@ -119,8 +120,7 @@ void EditorLayer::on_update(const Timestep& delta_time) {
   }
 }
 
-void EditorLayer::on_render(const vuk::Extent3D extent,
-                            const vuk::Format format) {
+void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   if (const auto scene = get_active_scene(); active_scene)
     scene->on_render(extent, format);
 
@@ -346,8 +346,6 @@ void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   sun.set<LightComponent>({.type = LightComponent::LightType::Directional, .intensity = 10.f});
 }
 
-void EditorLayer::clear_selected_entity() { get_panel<SceneHierarchyPanel>()->clear_selected_entity(); }
-
 void EditorLayer::save_scene() {
   if (!last_save_scene_path.empty()) {
     editor_scene->save_to_file(last_save_scene_path);
@@ -386,7 +384,7 @@ void EditorLayer::save_scene_as() {
 }
 
 void EditorLayer::on_scene_play() {
-  reset_context();
+  editor_context.reset();
   set_scene_state(SceneState::Play);
   active_scene = Scene::copy(editor_scene);
   set_editor_context(active_scene);
@@ -394,7 +392,7 @@ void EditorLayer::on_scene_play() {
 }
 
 void EditorLayer::on_scene_stop() {
-  reset_context();
+  editor_context.reset();
   set_scene_state(SceneState::Edit);
   active_scene->on_runtime_stop();
   active_scene = nullptr;
@@ -402,7 +400,7 @@ void EditorLayer::on_scene_stop() {
 }
 
 void EditorLayer::on_scene_simulate() {
-  reset_context();
+  editor_context.reset();
   set_scene_state(SceneState::Simulate);
   active_scene = Scene::copy(editor_scene);
   set_editor_context(active_scene);
@@ -441,10 +439,10 @@ void EditorLayer::set_docking_layout(EditorLayout layout) {
   } else if (layout == EditorLayout::Classic) {
     const ImGuiID right_dock = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Right, 0.2f, nullptr, &dockspace_id);
     ImGuiID left_dock = ImGui::DockBuilderSplitNode(dockspace_id, ImGuiDir_Left, 0.2f, nullptr, &dockspace_id);
-    ImGuiID left_split_vertical_dock =
-        ImGui::DockBuilderSplitNode(left_dock, ImGuiDir_Right, 0.8f, nullptr, &left_dock);
-    const ImGuiID bottom_dock =
-        ImGui::DockBuilderSplitNode(left_split_vertical_dock, ImGuiDir_Down, 0.3f, nullptr, &left_split_vertical_dock);
+    ImGuiID left_split_vertical_dock = ImGui::DockBuilderSplitNode(
+        left_dock, ImGuiDir_Right, 0.8f, nullptr, &left_dock);
+    const ImGuiID bottom_dock = ImGui::DockBuilderSplitNode(
+        left_split_vertical_dock, ImGuiDir_Down, 0.3f, nullptr, &left_split_vertical_dock);
     const ImGuiID left_split_dock = ImGui::DockBuilderSplitNode(left_dock, ImGuiDir_Down, 0.4f, nullptr, &left_dock);
 
     ImGui::DockBuilderDockWindow(get_panel<SceneHierarchyPanel>()->get_id(), left_dock);

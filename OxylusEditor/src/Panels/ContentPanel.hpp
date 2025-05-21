@@ -6,29 +6,21 @@
 #include <mutex>
 #include <stack>
 #include <vector>
+#include <vuk/Types.hpp>
+#include <vuk/Value.hpp>
 
 #include "Core/Base.hpp"
-#include "Core/UUID.hpp"
 #include "EditorPanel.hpp"
+#include "ThumbnailRenderPipeline.hpp"
 
 namespace ox {
 class Texture;
 
-enum class FileType { Unknown = 0, Directory, Meta, Scene, Prefab, Shader, Texture, Mesh, Audio, Script };
+enum class FileType { Unknown = 0, Directory, Meta, Scene, Prefab, Shader, Texture, Mesh, Audio, Script, Material };
 
 class ContentPanel : public EditorPanel {
 public:
   ContentPanel();
-
-  struct PayloadData {
-    UUID uuid;
-    std::string str;
-
-    auto size() -> usize { return sizeof(UUID) + str.length() + 1; }
-  };
-
-  static constexpr auto DRAG_DROP_TARGET = "CONTENT_BROWSER_ITEM_TARGET";
-  static constexpr auto DRAG_DROP_SOURCE = "CONTENT_BROWSER_ITEM_SOURCE";
 
   ~ContentPanel() override = default;
 
@@ -39,26 +31,22 @@ public:
 
   void init();
   void on_update() override;
-  void on_render(vuk::Extent3D extent,
-                 vuk::Format format) override;
+  void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
   void invalidate();
 
 private:
-  std::pair<bool,
-            uint32_t>
-  directory_tree_view_recursive(const std::filesystem::path& path,
-                                uint32_t* count,
-                                int* selectionMask,
-                                ImGuiTreeNodeFlags flags);
+  std::pair<bool, uint32_t> directory_tree_view_recursive(const std::filesystem::path& path,
+                                                          uint32_t* count,
+                                                          int* selectionMask,
+                                                          ImGuiTreeNodeFlags flags);
   void render_header();
   void render_side_view();
   void render_body(bool grid);
   void update_directory_entries(const std::filesystem::path& directory);
   void refresh() { update_directory_entries(_current_directory); }
 
-  void draw_context_menu_items(const std::filesystem::path& context,
-                               bool isDir);
+  void draw_context_menu_items(const std::filesystem::path& context, bool isDir);
 
   struct File {
     std::string name;
@@ -78,13 +66,14 @@ private:
   std::stack<std::filesystem::path> _back_stack;
   std::vector<File> _directory_entries;
   std::mutex _directory_mutex;
-  uint32_t _currently_visible_items_tree_view = 0;
-  float thumbnail_max_limit = 256.0f;
-  float thumbnail_size_grid_limit = 96.0f; // lower values than this will switch to grid view
+  u32 _currently_visible_items_tree_view = 0;
+  f32 thumbnail_max_limit = 256.0f;
+  f32 thumbnail_size_grid_limit = 96.0f; // lower values than this will switch to grid view
   ImGuiTextFilter m_filter;
-  float _elapsed_time = 0.0f;
+  f32 _elapsed_time = 0.0f;
 
-  ankerl::unordered_dense::map<std::string, Shared<Texture>> thumbnail_cache;
+  ankerl::unordered_dense::map<std::string, Shared<Texture>> thumbnail_cache_textures;
+  ankerl::unordered_dense::map<std::string, Unique<Texture>> thumbnail_cache_meshes;
 
   Shared<Texture> _white_texture;
   std::filesystem::path _directory_to_delete;

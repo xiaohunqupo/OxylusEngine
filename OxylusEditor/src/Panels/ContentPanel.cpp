@@ -4,6 +4,7 @@
 #include <filesystem>
 #include <icons/IconsMaterialDesignIcons.h>
 #include <imgui.h>
+#include <vuk/runtime/vk/AllocatorHelpers.hpp>
 
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
@@ -15,6 +16,7 @@
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/FileWatch.hpp"
+#include "Utils/PayloadData.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/StringUtils.hpp"
 #include "Utils/Timestep.hpp"
@@ -76,20 +78,22 @@ static const ankerl::unordered_dense::map<FileType, const char8_t*> FILE_TYPES_T
     {FileType::Mesh, ICON_MDI_VECTOR_POLYGON},
     {FileType::Audio, ICON_MDI_MICROPHONE},
     {FileType::Script, ICON_MDI_LANGUAGE_LUA},
+    {FileType::Material, ICON_MDI_PALETTE_SWATCH},
 };
 
 static bool drag_drop_target(const std::filesystem::path& drop_path) {
   if (ImGui::BeginDragDropTarget()) {
-    const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(ContentPanel::DRAG_DROP_TARGET);
+    const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(PayloadData::DRAG_DROP_TARGET);
     if (payload) {
-      auto* asset = static_cast<ContentPanel::PayloadData*>(payload->Data);
+      auto* asset = static_cast<PayloadData*>(payload->Data);
 
       auto* asset_man = App::get_asset_manager();
 
       std::string file_path = {};
       u32 counter = 0;
       do {
-        file_path = drop_path / std::format("{}{}", asset->str, (counter > 0 ? "_" + std::to_string(counter) : ""));
+        file_path = drop_path /
+                    std::format("{}{}", asset->get_str(), (counter > 0 ? "_" + std::to_string(counter) : ""));
         counter++;
       } while (fs::exists(file_path + ".oxasset"));
 
@@ -107,7 +111,8 @@ static bool drag_drop_target(const std::filesystem::path& drop_path) {
 static void drag_drop_from(const std::filesystem::path& filepath) {
   if (ImGui::BeginDragDropSource()) {
     const std::string path_str = filepath.string();
-    ImGui::SetDragDropPayload(ContentPanel::DRAG_DROP_SOURCE, path_str.c_str(), path_str.length() + 1);
+    const auto payload_data = PayloadData(path_str, UUID(nullptr));
+    ImGui::SetDragDropPayload(PayloadData::DRAG_DROP_SOURCE, &payload_data, payload_data.size());
     ImGui::TextUnformatted(filepath.filename().string().c_str());
     ImGui::EndDragDropSource();
   }
@@ -133,24 +138,24 @@ static void open_file(const std::filesystem::path& path) {
         fs::open_file_externally(filepath);
         break;
       }
+      case ox::FileType::Material: break;
+      default:
     }
   } else {
     fs::open_file_externally(filepath);
   }
 }
 
-std::pair<bool,
-          uint32_t>
-ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
-                                            uint32_t* count,
-                                            int* selectionMask,
-                                            ImGuiTreeNodeFlags flags) {
+std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
+                                                                      uint32_t* count,
+                                                                      int* selectionMask,
+                                                                      ImGuiTreeNodeFlags flags) {
   OX_SCOPED_ZONE;
 
   auto& editor_theme = EditorLayer::get()->editor_theme;
 
-  bool anyNodeClicked = false;
-  uint32_t nodeClicked = 0;
+  bool any_node_clicked = false;
+  uint32_t node_clicked = 0;
 
   if (path.empty())
     return {};
@@ -184,8 +189,8 @@ ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
       if (!entryIsFile)
         update_directory_entries(entryPath);
 
-      nodeClicked = *count;
-      anyNodeClicked = true;
+      node_clicked = *count;
+      any_node_clicked = true;
     }
 
     const std::string filepath = entryPath.string();
@@ -224,9 +229,9 @@ ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
       if (open) {
         const auto [isClicked, clickedNode] = directory_tree_view_recursive(entryPath, count, selectionMask, flags);
 
-        if (!anyNodeClicked) {
-          anyNodeClicked = isClicked;
-          nodeClicked = clickedNode;
+        if (!any_node_clicked) {
+          any_node_clicked = isClicked;
+          node_clicked = clickedNode;
         }
 
         ImGui::TreePop();
@@ -237,13 +242,10 @@ ContentPanel::directory_tree_view_recursive(const std::filesystem::path& path,
     }
   }
 
-  return {anyNodeClicked, nodeClicked};
+  return {any_node_clicked, node_clicked};
 }
 
-ContentPanel::ContentPanel() :
-    EditorPanel("Contents",
-                ICON_MDI_FOLDER_STAR,
-                true) {
+ContentPanel::ContentPanel() : EditorPanel("Contents", ICON_MDI_FOLDER_STAR, true) {
   const auto& window = App::get()->get_window();
   const f32 scale = window.get_content_scale();
   thumbnail_max_limit *= scale;
@@ -257,7 +259,7 @@ ContentPanel::ContentPanel() :
                           .format = vuk::Format::eR8G8B8A8Unorm,
                           .mime = {},
                           .data = white_texture_data,
-                          .extent = {.width = 16u, .height = 16u, .depth = 1u}});
+                          .extent = vuk::Extent3D{.width = 16u, .height = 16u, .depth = 1u}});
 }
 
 void ContentPanel::init() {
@@ -269,16 +271,16 @@ void ContentPanel::init() {
   _current_directory = _assets_directory;
   refresh();
 
-  [[maybe_unused]] static filewatch::FileWatch<std::string> watch(_assets_directory.string(),
-                                                                  [this](const auto&, const filewatch::Event) {
-    ThreadManager::get()->asset_thread.queue_job([this] { refresh(); });
-  });
+  [[maybe_unused]]
+  static filewatch::FileWatch<std::string> watch(_assets_directory.string(),
+                                                 [this](const auto&, const filewatch::Event) {
+                                                   ThreadManager::get()->asset_thread.queue_job([this] { refresh(); });
+                                                 });
 }
 
 void ContentPanel::on_update() { _elapsed_time += static_cast<float>(App::get_timestep()); }
 
-void ContentPanel::on_render(vuk::Extent3D extent,
-                             vuk::Format format) {
+void ContentPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   constexpr ImGuiWindowFlags windowFlags = ImGuiWindowFlags_NoScrollWithMouse | ImGuiWindowFlags_NoScrollbar;
 
   constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_Resizable | ImGuiTableFlags_ContextMenuInBody;
@@ -428,8 +430,8 @@ void ContentPanel::render_side_view() {
                                          ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_ContextMenuInBody |
                                          ImGuiTableFlags_ScrollY;
 
-  constexpr ImGuiTreeNodeFlags treeNodeFlags =
-      ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_SpanFullWidth;
+  constexpr ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_FramePadding |
+                                               ImGuiTreeNodeFlags_SpanFullWidth;
 
   ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {0, 0});
   if (ImGui::BeginTable("SideViewTable", 1, tableFlags)) {
@@ -471,8 +473,8 @@ void ContentPanel::render_side_view() {
       // for ([[maybe_unused]] const auto& entry : std::filesystem::recursive_directory_iterator(m_AssetsDirectory))
       //   count++;
 
-      const auto [isClicked, clickedNode] =
-          directory_tree_view_recursive(_assets_directory, &count, &selectionMask, treeNodeFlags);
+      const auto [isClicked, clickedNode] = directory_tree_view_recursive(
+          _assets_directory, &count, &selectionMask, treeNodeFlags);
 
       if (isClicked) {
         // (process outside of tree loop to avoid visual inconsistencies during the clicking frame)
@@ -486,7 +488,7 @@ void ContentPanel::render_side_view() {
     }
     ImGui::EndTable();
     if (ImGui::IsItemClicked())
-      EditorLayer::get()->reset_context();
+      EditorLayer::get()->get_context().reset();
   }
 
   ImGui::PopStyleVar();
@@ -494,6 +496,8 @@ void ContentPanel::render_side_view() {
 
 void ContentPanel::render_body(bool grid) {
   const auto& editor_theme = EditorLayer::get()->editor_theme;
+  auto& editor_context = EditorLayer::get()->get_context();
+  auto& vk_context = App::get_vkcontext();
 
   std::filesystem::path directory_to_open;
 
@@ -548,9 +552,9 @@ void ContentPanel::render_body(bool grid) {
       const char* filename = file.name.c_str();
 
       std::string texture_name = {};
-      if (!is_dir) {
-        if ((file.type == FileType::Texture) && EditorCVar::cvar_file_thumbnails.get()) {
-          if (thumbnail_cache.contains(file.file_path)) {
+      if (!is_dir && EditorCVar::cvar_file_thumbnails.get()) {
+        if (file.type == FileType::Texture) {
+          if (thumbnail_cache_textures.contains(file.file_path)) {
             texture_name = file.file_path;
           } else {
             // make sure this runs only if it's not already queued
@@ -558,9 +562,31 @@ void ContentPanel::render_body(bool grid) {
               ThreadManager::get()->asset_thread.queue_job([this, file_path = file.file_path] {
                 auto thumbnail_texture = create_shared<Texture>();
                 thumbnail_texture->create(file_path, {.preset = Preset::eRTT2DUnmipped});
-                thumbnail_cache.emplace(file_path, thumbnail_texture);
+                thumbnail_cache_textures.emplace(file_path, thumbnail_texture);
               });
             }
+            texture_name = file.file_path;
+          }
+        } else if (file.type == FileType::Mesh) {
+          if (thumbnail_cache_meshes.contains(file.file_path)) {
+            texture_name = file.file_path;
+          } else {
+            const auto name = fs::get_file_name(file.file_path);
+            ThumbnailRenderPipeline thumbnail_render_pipeline = {};
+            thumbnail_render_pipeline.set_name(name);
+            auto thumb = thumbnail_render_pipeline
+                             .on_render(
+                                 vk_context,
+                                 RenderPipeline::RenderInfo{.extent = {(u32)thumb_image_size, (u32)thumb_image_size, 1},
+                                                            .format = vuk::Format::eR8G8B8A8Srgb})
+                             .as_released(vuk::eFragmentSampled, vuk::DomainFlagBits::eGraphicsQueue);
+
+            auto ia = vk_context.wait_on_rg(std::move(thumb), false);
+            auto texture = Texture::from_attachment(*vk_context.superframe_allocator, ia);
+            texture->reset_view(*vk_context.superframe_allocator);
+            texture->set_name(name);
+
+            thumbnail_cache_meshes.emplace(file.file_path, std::move(texture));
             texture_name = file.file_path;
           }
         }
@@ -575,9 +601,8 @@ void ContentPanel::render_body(bool grid) {
         cursor_pos = ImGui::GetCursorPos();
 
         bool highlight = false;
-        const EditorContext& context = EditorLayer::get()->get_context();
-        if (context.is_valid(EditorContextType::File)) {
-          highlight = file.file_path == context.as<char>();
+        if (editor_context.type == EditorContext::Type::File) {
+          highlight = file.file_path == editor_context.str.value_or(std::string{});
         }
 
         // Background button
@@ -585,7 +610,9 @@ void ContentPanel::render_body(bool grid) {
         id[2] = static_cast<char>(i);
         const bool clicked = ui::toggle_button(id.c_str(), highlight, background_thumbnail_size, 0.1f);
         if (_elapsed_time > 0.25f && clicked) {
-          EditorLayer::get()->set_context_as_file_with_path(strPath);
+          editor_context.reset();
+          editor_context.type = EditorContext::Type::File;
+          editor_context.str.emplace(strPath);
         }
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, editor_theme.popup_item_spacing);
         if (ImGui::BeginPopupContextItem()) {
@@ -616,9 +643,10 @@ void ContentPanel::render_body(bool grid) {
           if (is_dir) {
             directory_to_open = path;
             m_filter.Clear();
-          } else
+          } else {
             open_file(path);
-          EditorLayer::get()->reset_context();
+            editor_context.reset();
+          }
         }
 
         // Foreground Image
@@ -633,9 +661,10 @@ void ContentPanel::render_body(bool grid) {
         // Thumbnail Image
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
         ImGui::SetItemAllowOverlap();
-        if (thumbnail_cache.contains(texture_name)) {
-
-          ui::image(*thumbnail_cache[texture_name], {thumb_image_size, thumb_image_size});
+        if (thumbnail_cache_textures.contains(texture_name)) {
+          ui::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
+        } else if (thumbnail_cache_meshes.contains(texture_name)) {
+          ui::image(*thumbnail_cache_meshes[texture_name], {thumb_image_size, thumb_image_size});
         } else {
           ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
           ImGui::TextUnformatted(StringUtils::from_char8_t(
@@ -654,18 +683,12 @@ void ContentPanel::render_body(bool grid) {
 
         const ImVec2 rect_min = ImGui::GetItemRectMin();
         const ImVec2 rect_size = ImGui::GetItemRectSize();
-        const ImRect clip_rect =
-            ImRect({rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
-                   {rect_min.x + rect_size.x,
-                    rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font->FontSize * 2.0f});
-        ui::clipped_text(clip_rect.Min,
-                         clip_rect.Max,
-                         filename,
-                         nullptr,
-                         nullptr,
-                         {0, 0},
-                         nullptr,
-                         clip_rect.GetSize().x);
+        const ImRect clip_rect = ImRect(
+            {rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
+            {rect_min.x + rect_size.x,
+             rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font->FontSize * 2.0f});
+        ui::clipped_text(
+            clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
 
         if (!is_dir) {
           constexpr auto y_pos_pad = 10.f;
@@ -679,8 +702,8 @@ void ContentPanel::render_body(bool grid) {
           ImGui::EndDisabled();
         }
       } else {
-        constexpr ImGuiTreeNodeFlags tree_node_flags =
-            ImGuiTreeNodeFlags_FramePadding | ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_Leaf;
+        constexpr ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_FramePadding |
+                                                       ImGuiTreeNodeFlags_SpanFullWidth | ImGuiTreeNodeFlags_Leaf;
 
         const bool opened = ImGui::TreeNodeEx(file.name.c_str(), tree_node_flags, "");
 
@@ -696,8 +719,8 @@ void ContentPanel::render_body(bool grid) {
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - line_height);
-        if (thumbnail_cache.contains(texture_name)) {
-          ui::image(*thumbnail_cache[texture_name], {thumb_image_size, thumb_image_size});
+        if (thumbnail_cache_textures.contains(texture_name)) {
+          ui::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
         } else {
           ImGui::TextUnformatted(StringUtils::from_char8_t(
               FILE_TYPES_TO_ICON.at(FILE_TYPES.at(file.extension.empty() ? "" : file.extension))));
@@ -716,7 +739,7 @@ void ContentPanel::render_body(bool grid) {
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, editor_theme.popup_item_spacing);
     if (ImGui::BeginPopupContextWindow("AssetPanelHierarchyContextWindow",
                                        ImGuiPopupFlags_MouseButtonRight | ImGuiPopupFlags_NoOpenOverItems)) {
-      EditorLayer::get()->reset_context();
+      editor_context.reset();
       draw_context_menu_items(_current_directory, true);
       ImGui::EndPopup();
     }
@@ -725,7 +748,7 @@ void ContentPanel::render_body(bool grid) {
     ImGui::EndTable();
 
     if (!any_item_hovered && ImGui::IsItemClicked())
-      EditorLayer::get()->reset_context();
+      editor_context.reset();
   }
 
   ImGui::PopStyleVar();
@@ -751,7 +774,7 @@ void ContentPanel::render_body(bool grid) {
       ImGui::CloseCurrentPopup();
       _directory_to_delete.clear();
     }
-    EditorLayer::get()->reset_context();
+    editor_context.reset();
     ImGui::EndPopup();
   }
 
@@ -806,8 +829,7 @@ void ContentPanel::update_directory_entries(const std::filesystem::path& directo
   _elapsed_time = 0.0f;
 }
 
-void ContentPanel::draw_context_menu_items(const std::filesystem::path& context,
-                                           bool isDir) {
+void ContentPanel::draw_context_menu_items(const std::filesystem::path& context, bool isDir) {
   if (isDir) {
     if (ImGui::BeginMenu("Create")) {
       if (ImGui::MenuItem("Folder")) {
@@ -820,7 +842,10 @@ void ContentPanel::draw_context_menu_items(const std::filesystem::path& context,
           created = std::filesystem::create_directory(newFolderPath);
           ++i;
         }
-        EditorLayer::get()->set_context_as_file_with_path(newFolderPath);
+        auto& editor_context = EditorLayer::get()->get_context();
+        editor_context.reset();
+        editor_context.str = newFolderPath;
+        editor_context.type = EditorContext::Type::File;
         ImGui::CloseCurrentPopup();
       }
       ImGui::EndMenu();

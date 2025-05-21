@@ -3,7 +3,6 @@
 #include <sol/state.hpp>
 
 #include "LuaHelpers.hpp"
-
 #include "Render/Window.hpp"
 
 namespace ox::LuaBindings {
@@ -12,4 +11,4 @@ void bind_renderer(const Shared<sol::state>& state) {
   SET_TYPE_FUNCTION(window_table, Window, get_width);
   SET_TYPE_FUNCTION(window_table, Window, get_height);
 }
-}
+} // namespace ox::LuaBindings

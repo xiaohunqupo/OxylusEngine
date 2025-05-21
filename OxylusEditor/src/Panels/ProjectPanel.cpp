@@ -14,10 +14,7 @@
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
-ProjectPanel::ProjectPanel() :
-    EditorPanel("Projects",
-                ICON_MDI_ACCOUNT_BADGE,
-                true) {}
+ProjectPanel::ProjectPanel() : EditorPanel("Projects", ICON_MDI_ACCOUNT_BADGE, true) {}
 
 void ProjectPanel::on_update() {}
 
@@ -41,8 +38,7 @@ void ProjectPanel::new_project(const std::string& project_dir,
     EditorConfig::get()->add_recent_project(active_project.get());
 }
 
-void ProjectPanel::on_render(vuk::Extent3D extent,
-                             vuk::Format format) {
+void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (visible && !ImGui::IsPopupOpen("ProjectSelector"))
     ImGui::OpenPopup("ProjectSelector");
   constexpr auto flags = ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |

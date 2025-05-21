@@ -8,7 +8,8 @@ void TracyProfiler::init_tracy_for_vulkan(VkContext* context) {
   return;
 #endif
 #ifdef TRACY_ENABLE
-  VkCommandPoolCreateInfo cpci{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO, .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT};
+  VkCommandPoolCreateInfo cpci{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
+                               .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT};
   cpci.queueFamilyIndex = context->graphics_queue_family_index;
   context->superframe_allocator->allocate_command_pools(std::span{&*tracy_cpool, 1}, std::span{&cpci, 1});
   vuk::CommandBufferAllocationCreateInfo ci{.command_pool = *tracy_cpool};

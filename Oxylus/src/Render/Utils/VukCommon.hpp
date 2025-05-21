@@ -127,34 +127,6 @@ inline vuk::Extent3D operator/(const vuk::Extent3D& ext,
   return {unsigned((float)ext.width / rhs), unsigned((float)ext.height / rhs), 1u};
 }
 
-template <class T>
-std::pair<Unique<Buffer>,
-          Value<Buffer>>
-create_cpu_buffer(Allocator& allocator,
-                  std::span<T> data) {
-  return create_buffer(allocator, MemoryUsage::eCPUtoGPU, DomainFlagBits::eTransferOnGraphics, data);
-}
-
-template <class T>
-std::pair<Unique<Buffer>,
-          Value<Buffer>>
-create_gpu_buffer(Allocator& allocator,
-                  std::span<T> data) {
-  return create_buffer(allocator, MemoryUsage::eGPUonly, DomainFlagBits::eTransferOnGraphics, data);
-}
-
-inline vuk::Unique<Buffer> allocate_cpu_buffer(Allocator& allocator,
-                                               uint64_t size,
-                                               uint64_t alignment = 1) {
-  return *vuk::allocate_buffer(allocator, {.mem_usage = MemoryUsage::eCPUtoGPU, .size = size, .alignment = alignment});
-}
-
-inline vuk::Unique<Buffer> allocate_gpu_buffer(Allocator& allocator,
-                                               uint64_t size,
-                                               uint64_t alignment = 1) {
-  return *vuk::allocate_buffer(allocator, {.mem_usage = MemoryUsage::eGPUonly, .size = size, .alignment = alignment});
-}
-
 vuk::Value<vuk::ImageAttachment> generate_mips(vuk::Value<vuk::ImageAttachment> image,
                                                uint32_t mip_count);
 
@@ -180,5 +152,4 @@ descriptor_set_layout_create_info(const std::vector<VkDescriptorSetLayoutBinding
     ci.flags.emplace_back(VK_DESCRIPTOR_BINDING_PARTIALLY_BOUND_BIT);
   return ci;
 }
-
 } // namespace vuk

@@ -1,8 +1,8 @@
 #pragma once
 
-#include "Utils/Timestep.hpp"
-
 #include <vuk/Types.hpp>
+
+#include "Utils/Timestep.hpp"
 
 namespace ox {
 class Layer {

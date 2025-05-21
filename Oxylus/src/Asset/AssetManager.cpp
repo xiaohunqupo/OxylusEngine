@@ -1,15 +1,20 @@
 #include "AssetManager.hpp"
 
+#include <meshoptimizer.h>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <rapidjson/prettywriter.h>
 #include <rapidjson/stringbuffer.h>
+#include <vuk/Types.hpp>
 
 #include "Asset/AssetFile.hpp"
 #include "Asset/Material.hpp"
+#include "Asset/ParserGLTF.hpp"
 #include "Core/FileSystem.hpp"
 #include "Memory/Hasher.hpp"
 #include "Memory/Stack.hpp"
+#include "Render/Vulkan/VkContext.hpp"
+#include "Scene/SceneGPU.hpp"
 #include "Scripting/LuaSystem.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Utils/JsonHelpers.hpp"
@@ -17,22 +22,8 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-
-auto AssetManager::init() -> std::expected<void,
-                                           std::string> {
-  return {};
-}
-
-auto AssetManager::deinit() -> std::expected<void,
-                                             std::string> {
-  return {};
-}
-
-auto AssetManager::registry() const -> const AssetRegistry& { return asset_registry; }
-
-auto begin_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                      const UUID& uuid,
-                      AssetType type) -> void {
+auto begin_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, const UUID& uuid, AssetType type)
+    -> void {
   OX_SCOPED_ZONE;
 
   writer.StartObject();
@@ -44,8 +35,7 @@ auto begin_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
   writer.Uint(std::to_underlying(type));
 }
 
-auto write_texture_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                              Texture*) -> bool {
+auto write_texture_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, Texture*) -> bool {
   OX_SCOPED_ZONE;
 
   return true;
@@ -56,7 +46,6 @@ auto write_material_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>&
                                const Material& material) -> bool {
   OX_SCOPED_ZONE;
 
-  writer.String("material");
   writer.StartObject();
 
   writer.String("uuid");
@@ -100,15 +89,8 @@ auto write_material_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>&
   return true;
 }
 
-auto read_material_asset_meta(const rapidjson::Document& doc,
-                              Material* mat) -> bool {
-  OX_SCOPED_ZONE;
-
-  if (!mat)
-    return false;
-
-  const auto& material_obj = doc["material"].GetObject();
-
+auto read_material_data(Material* mat, const rapidjson::GenericValue<rapidjson::UTF8<>>::ConstObject& material_obj)
+    -> void {
   deserialize_vec4(material_obj["albedo_color"].GetArray(), &mat->albedo_color);
   deserialize_vec3(material_obj["emissive_color"].GetArray(), &mat->emissive_color);
   mat->roughness_factor = material_obj["roughness_factor"].GetDouble();
@@ -118,9 +100,20 @@ auto read_material_asset_meta(const rapidjson::Document& doc,
   mat->albedo_texture = UUID::from_string(material_obj["albedo_texture"].GetString()).value_or(UUID(nullptr));
   mat->normal_texture = UUID::from_string(material_obj["normal_texture"].GetString()).value_or(UUID(nullptr));
   mat->emissive_texture = UUID::from_string(material_obj["emissive_texture"].GetString()).value_or(UUID(nullptr));
-  mat->metallic_roughness_texture =
-      UUID::from_string(material_obj["metallic_roughness_texture"].GetString()).value_or(UUID(nullptr));
+  mat->metallic_roughness_texture = UUID::from_string(material_obj["metallic_roughness_texture"].GetString())
+                                        .value_or(UUID(nullptr));
   mat->occlusion_texture = UUID::from_string(material_obj["occlusion_texture"].GetString()).value_or(UUID(nullptr));
+}
+
+auto read_material_asset_meta(const rapidjson::Document& doc, Material* mat) -> bool {
+  OX_SCOPED_ZONE;
+
+  if (!mat)
+    return false;
+
+  const auto& material_obj = doc["material"].GetObject();
+
+  read_material_data(mat, material_obj);
 
   return true;
 }
@@ -148,8 +141,7 @@ auto write_mesh_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& wri
   return true;
 }
 
-auto write_scene_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                            Scene* scene) -> bool {
+auto write_scene_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, Scene* scene) -> bool {
   OX_SCOPED_ZONE;
 
   writer.String("name");
@@ -158,8 +150,7 @@ auto write_scene_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& wr
   return true;
 }
 
-auto write_script_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>&,
-                             LuaSystem*) -> bool {
+auto write_script_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>&, LuaSystem*) -> bool {
   OX_SCOPED_ZONE;
 
   return true;
@@ -178,6 +169,32 @@ auto end_asset_meta(rapidjson::StringBuffer& sb,
   filestream << sb.GetString();
 
   return true;
+}
+
+auto AssetManager::init() -> std::expected<void, std::string> { return {}; }
+
+auto AssetManager::deinit() -> std::expected<void, std::string> { return {}; }
+
+auto AssetManager::registry() const -> const AssetRegistry& { return asset_registry; }
+
+auto AssetManager::read_meta_file(const std::string& path) -> option<AssetMetaFile> {
+  const auto content = ox::fs::read_file(path);
+  if (content.empty()) {
+    OX_LOG_ERROR("Failed to open file {}!", path);
+    return nullopt;
+  }
+
+  rapidjson::Document doc;
+  doc.Parse(content.data());
+
+  const rapidjson::ParseResult parse_result = doc.Parse(content.c_str());
+
+  if (doc.HasParseError()) {
+    OX_LOG_ERROR("Json parser error for: {0} {1}", path, rapidjson::GetParseError_En(parse_result.Code()));
+    return nullopt;
+  }
+
+  return AssetMetaFile{.contents = content, .doc = std::move(doc)};
 }
 
 auto AssetManager::load_deferred_assets() -> void {
@@ -228,8 +245,7 @@ auto AssetManager::to_asset_type_sv(AssetType type) -> std::string_view {
   }
 }
 
-auto AssetManager::create_asset(const AssetType type,
-                                const std::string& path) -> UUID {
+auto AssetManager::create_asset(const AssetType type, const std::string& path) -> UUID {
   const auto uuid = UUID::generate_random();
   auto [asset_it, inserted] = asset_registry.try_emplace(uuid);
   if (!inserted) {
@@ -297,7 +313,6 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
 
   switch (asset_type) {
     case AssetType::Mesh: {
-#if 0 // TODO:
       auto gltf_model = GLTFMeshInfo::parse_info(path);
       auto textures = std::vector<UUID>();
       auto embedded_textures = std::vector<UUID>();
@@ -305,13 +320,13 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
         auto& image = gltf_model->images[v.image_index.value()];
         auto& texture_uuid = textures.emplace_back();
         auto match = ox::match{
-            [&](const std::vector<u8>&) {
-          texture_uuid = this->create_asset(AssetType::Texture, path);
-          embedded_textures.push_back(texture_uuid);
-        },
+            [&](const std::vector<u8>& data) {
+              texture_uuid = this->create_asset(AssetType::Texture, {});
+              embedded_textures.push_back(texture_uuid);
+            },
             [&](const std::string& image_path) { //
-          texture_uuid = this->import_asset(image_path);
-        },
+              texture_uuid = this->import_asset(image_path);
+            },
         };
         std::visit(match, image.image_data);
       }
@@ -350,7 +365,6 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
       }
 
       write_mesh_asset_meta(writer, embedded_textures, material_uuids, materials);
-#endif
     } break;
     case AssetType::Texture: {
       Texture texture = {};
@@ -382,7 +396,11 @@ auto AssetManager::delete_asset(const UUID& uuid) -> void {
   if (asset->is_loaded()) {
     asset->ref_count = ox::min(asset->ref_count, 1_u64);
     this->unload_asset(uuid);
-    asset_registry.erase(uuid);
+
+    {
+      auto write_lock = std::unique_lock(registry_mutex);
+      asset_registry.erase(uuid);
+    }
   }
 
   OX_LOG_TRACE("Deleted asset {}.", uuid.str());
@@ -392,21 +410,12 @@ auto AssetManager::register_asset(const std::string& path) -> UUID {
   OX_SCOPED_ZONE;
   memory::ScopedStack stack;
 
-  const auto content = ox::fs::read_file(path);
-  if (content.empty()) {
-    OX_LOG_ERROR("Failed to open file {}!", path);
+  auto meta_json = read_meta_file(path);
+  if (!meta_json.has_value()) {
     return UUID(nullptr);
   }
 
-  rapidjson::Document doc;
-  doc.Parse(content.data());
-
-  const rapidjson::ParseResult parse_result = doc.Parse(content.c_str());
-
-  if (doc.HasParseError()) {
-    OX_LOG_ERROR("Json parser error for: {0} {1}", path, rapidjson::GetParseError_En(parse_result.Code()));
-    return UUID(nullptr);
-  }
+  auto& doc = meta_json->doc;
 
   auto uuid_json = doc["uuid"].GetString();
 
@@ -432,14 +441,14 @@ auto AssetManager::register_asset(const std::string& path) -> UUID {
         OX_LOG_ERROR("Couldn't parse material meta data!");
       }
     } break;
+    default:
   }
 
   return uuid;
 }
 
-auto AssetManager::register_asset(const UUID& uuid,
-                                  AssetType type,
-                                  const std::string& path) -> bool {
+auto AssetManager::register_asset(const UUID& uuid, AssetType type, const std::string& path) -> bool {
+  auto write_lock = std::unique_lock(registry_mutex);
   auto [asset_it, inserted] = asset_registry.try_emplace(uuid);
   if (!inserted) {
     if (asset_it != asset_registry.end()) {
@@ -460,8 +469,7 @@ auto AssetManager::register_asset(const UUID& uuid,
   return true;
 }
 
-auto AssetManager::export_asset(const UUID& uuid,
-                                const std::string& path) -> bool {
+auto AssetManager::export_asset(const UUID& uuid, const std::string& path) -> bool {
   auto* asset = this->get_asset(uuid);
 
   rapidjson::StringBuffer sb;
@@ -517,17 +525,15 @@ auto AssetManager::export_mesh(const UUID& uuid,
                                const std::string& path) -> bool {
   OX_SCOPED_ZONE;
 
-  OX_UNIMPLEMENTED(AssetManager::export_mesh);
+  auto* mesh = this->get_mesh(uuid);
+  OX_CHECK_NULL(mesh);
 
-  return false;
-#if 0
   auto materials = std::vector<Material>(mesh->materials.size());
-  for (const auto& [material_uuid, material] : std::views::zip(model->materials, materials)) {
+  for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
     material = *this->get_material(material_uuid);
   }
 
-  return write_mesh_asset_meta(json, model->embedded_textures, model->materials, materials);
-#endif
+  return write_mesh_asset_meta(writer, mesh->embedded_textures, mesh->materials, materials);
 }
 
 auto AssetManager::export_scene(const UUID& uuid,
@@ -549,6 +555,7 @@ auto AssetManager::export_material(const UUID& uuid,
 
   auto* material = this->get_material(uuid);
   OX_CHECK_NULL(material);
+  writer.String("material");
   return write_material_asset_meta(writer, uuid, *material);
 }
 
@@ -581,43 +588,323 @@ auto AssetManager::load_asset(const UUID& uuid) -> bool {
   return false;
 }
 
-auto AssetManager::unload_asset(const UUID& uuid) -> void {
+auto AssetManager::unload_asset(const UUID& uuid) -> bool {
   const auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
   switch (asset->type) {
     case AssetType::Mesh: {
-      this->unload_mesh(uuid);
+      return this->unload_mesh(uuid);
     } break;
     case AssetType::Texture: {
-      this->unload_texture(uuid);
+      return this->unload_texture(uuid);
     } break;
     case AssetType::Scene: {
-      this->unload_scene(uuid);
+      return this->unload_scene(uuid);
     } break;
     case AssetType::Audio: {
-      this->unload_audio(uuid);
+      return this->unload_audio(uuid);
       break;
     }
     default:;
   }
+
+  return false;
 }
 
 auto AssetManager::load_mesh(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
 
-  OX_UNIMPLEMENTED(AssetManager::load_mesh);
+  memory::ScopedStack stack;
 
-  return false;
+  auto* asset = this->get_asset(uuid);
+  if (asset->is_loaded()) {
+    // Model is collection of multiple assets and all child
+    // assets must be alive to safely process meshes.
+    // Don't acquire child refs.
+    asset->acquire_ref();
+
+    return true;
+  }
+
+  asset->mesh_id = mesh_map.create_slot();
+  auto* mesh = mesh_map.slot(asset->mesh_id);
+
+  std::string meta_path = asset->path + ".oxasset";
+  auto meta_json = read_meta_file(meta_path);
+  if (meta_json.has_value()) {
+    return false;
+  }
+
+  auto asset_path = asset->path;
+  asset->acquire_ref();
+
+  // Below we register new assets, which causes asset pointer to be invalidated.
+  // set this to nullptr so it's obvious when debugging.
+  asset = nullptr;
+
+  auto embedded_textures = std::vector<UUID>();
+  const auto& embedded_texture_uuids_json = meta_json->doc["embedded_textures"].GetArray();
+  for (const auto& embedded_texture_uuid_json : embedded_texture_uuids_json) {
+    auto embedded_texture_uuid_str = embedded_texture_uuid_json.GetString();
+
+    auto embedded_texture_uuid = UUID::from_string(embedded_texture_uuid_str);
+    if (!embedded_texture_uuid.has_value()) {
+      OX_LOG_ERROR("Failed to import model {}! An embedded texture with corrupt UUID.", asset_path);
+      return false;
+    }
+
+    embedded_textures.push_back(embedded_texture_uuid.value());
+    this->register_asset(embedded_texture_uuid.value(), AssetType::Texture, asset_path);
+  }
+
+  // Load registered UUIDs.
+  const auto& materials_json = meta_json->doc["embedded_materials"].GetArray();
+
+  auto materials = std::vector<Material>();
+  for (const auto& material_json : materials_json) {
+    auto material_uuid_json = material_json["uuid"].GetString();
+    auto material_uuid = UUID::from_string(material_uuid_json);
+    if (!material_uuid.has_value()) {
+      OX_LOG_ERROR("Failed to import model {}! A material with corrupt UUID.", asset_path);
+      return false;
+    }
+
+    this->register_asset(material_uuid.value(), AssetType::Material, asset_path);
+    mesh->materials.emplace_back(material_uuid.value());
+
+    auto& material = materials.emplace_back();
+    read_material_data(&material, material_json.GetObject());
+  }
+
+  for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
+    this->load_material(material_uuid, material);
+  }
+
+  struct GLTFCallbacks {
+    Mesh* model = nullptr;
+
+    std::vector<glm::vec3> vertex_positions = {};
+    std::vector<glm::vec3> vertex_normals = {};
+    std::vector<glm::vec2> vertex_texcoords = {};
+    std::vector<Mesh::Index> indices = {};
+  };
+  auto on_new_primitive = [](void* user_data,
+                             u32 mesh_index,
+                             u32 material_index,
+                             u32 vertex_offset,
+                             u32 vertex_count,
+                             u32 index_offset,
+                             u32 index_count) {
+    auto* asset_man = App::get_asset_manager();
+    auto* info = static_cast<GLTFCallbacks*>(user_data);
+    if (info->model->meshes.size() <= mesh_index) {
+      info->model->meshes.resize(mesh_index + 1);
+    }
+
+    auto& gltf_mesh = info->model->meshes[mesh_index];
+    auto primitive_index = info->model->primitives.size();
+    auto& primitive = info->model->primitives.emplace_back();
+    auto* material_asset = asset_man->get_asset(info->model->materials[material_index]);
+    auto global_material_index = SlotMap_decode_id(material_asset->material_id).index;
+
+    info->vertex_positions.resize(info->vertex_positions.size() + vertex_count);
+    info->vertex_normals.resize(info->vertex_normals.size() + vertex_count);
+    info->vertex_texcoords.resize(info->vertex_texcoords.size() + vertex_count);
+    info->indices.resize(info->indices.size() + index_count);
+
+    gltf_mesh.primitive_indices.push_back(primitive_index);
+    primitive.material_index = global_material_index;
+    primitive.vertex_offset = vertex_offset;
+    primitive.vertex_count = vertex_count;
+    primitive.index_offset = index_offset;
+    primitive.index_count = index_count;
+  };
+  auto on_access_index = [](void* user_data, u32, u64 offset, u32 index) {
+    auto* info = static_cast<GLTFCallbacks*>(user_data);
+    info->indices[offset] = index;
+  };
+  auto on_access_position = [](void* user_data, u32, u64 offset, glm::vec3 position) {
+    auto* info = static_cast<GLTFCallbacks*>(user_data);
+    info->vertex_positions[offset] = position;
+  };
+  auto on_access_normal = [](void* user_data, u32, u64 offset, glm::vec3 normal) {
+    auto* info = static_cast<GLTFCallbacks*>(user_data);
+    info->vertex_normals[offset] = normal;
+  };
+  auto on_access_texcoord = [](void* user_data, u32, u64 offset, glm::vec2 texcoord) {
+    auto* info = static_cast<GLTFCallbacks*>(user_data);
+    info->vertex_texcoords[offset] = texcoord;
+  };
+
+  GLTFCallbacks gltf_callbacks = {.model = mesh};
+  auto gltf_model = GLTFMeshInfo::parse(asset_path,
+                                        {.user_data = &gltf_callbacks,
+                                         .on_new_primitive = on_new_primitive,
+                                         .on_access_index = on_access_index,
+                                         .on_access_position = on_access_position,
+                                         .on_access_normal = on_access_normal,
+                                         .on_access_texcoord = on_access_texcoord});
+  if (!gltf_model.has_value()) {
+    OX_LOG_ERROR("Failed to parse Model '{}'!", asset_path);
+    return false;
+  }
+
+  //  ── SCENE HIERARCHY ─────────────────────────────────────────────────
+  for (const auto& node : gltf_model->nodes) {
+    mesh->nodes.push_back({.name = node.name,
+                           .child_indices = node.children,
+                           .mesh_index = node.mesh_index,
+                           .translation = node.translation,
+                           .rotation = node.rotation,
+                           .scale = node.scale});
+  }
+
+  mesh->default_scene_index = gltf_model->defualt_scene_index.value_or(0_sz);
+  for (const auto& scene : gltf_model->scenes) {
+    mesh->scenes.push_back({.name = scene.name, .node_indices = scene.node_indices});
+  }
+
+  //  ── MESH PROCESSING ─────────────────────────────────────────────────
+  std::vector<glm::vec3> model_vertex_positions = {};
+  std::vector<u32> model_indices = {};
+
+  std::vector<GPU::Meshlet> model_meshlets = {};
+  std::vector<GPU::MeshletBounds> model_meshlet_bounds = {};
+  std::vector<u8> model_local_triangle_indices = {};
+
+  for (const auto& gltf_mesh : mesh->meshes) {
+    for (auto primitive_index : gltf_mesh.primitive_indices) {
+      ZoneScopedN("GPU Meshlet Generation");
+
+      auto& primitive = mesh->primitives[primitive_index];
+      auto vertex_offset = model_vertex_positions.size();
+      auto index_offset = model_indices.size();
+      auto triangle_offset = model_local_triangle_indices.size();
+      auto meshlet_offset = model_meshlets.size();
+
+      auto raw_indices = std::span(gltf_callbacks.indices.data() + primitive.index_offset, primitive.index_count);
+      auto raw_vertex_positions = std::span(gltf_callbacks.vertex_positions.data() + primitive.vertex_offset,
+                                            primitive.vertex_count);
+      auto raw_vertex_normals = std::span(gltf_callbacks.vertex_normals.data() + primitive.vertex_offset,
+                                          primitive.vertex_count);
+
+      auto meshlets = std::vector<GPU::Meshlet>();
+      auto meshlet_bounds = std::vector<GPU::MeshletBounds>();
+      auto meshlet_indices = std::vector<u32>();
+      auto local_triangle_indices = std::vector<u8>();
+      {
+        ZoneScopedN("Build Meshlets");
+        // Worst case count
+        auto max_meshlets = meshopt_buildMeshletsBound(
+            raw_indices.size(), Mesh::MAX_MESHLET_INDICES, Mesh::MAX_MESHLET_PRIMITIVES);
+        auto raw_meshlets = std::vector<meshopt_Meshlet>(max_meshlets);
+        meshlet_indices.resize(max_meshlets * Mesh::MAX_MESHLET_INDICES);
+        local_triangle_indices.resize(max_meshlets * Mesh::MAX_MESHLET_PRIMITIVES * 3);
+        auto meshlet_count = meshopt_buildMeshlets( //
+            raw_meshlets.data(),
+            meshlet_indices.data(),
+            local_triangle_indices.data(),
+            raw_indices.data(),
+            raw_indices.size(),
+            reinterpret_cast<f32*>(raw_vertex_positions.data()),
+            raw_vertex_positions.size(),
+            sizeof(glm::vec3),
+            Mesh::MAX_MESHLET_INDICES,
+            Mesh::MAX_MESHLET_PRIMITIVES,
+            0.0);
+
+        // Trim meshlets from worst case to current case
+        raw_meshlets.resize(meshlet_count);
+        meshlets.resize(meshlet_count);
+        meshlet_bounds.resize(meshlet_count);
+        const auto& last_meshlet = raw_meshlets[meshlet_count - 1];
+        meshlet_indices.resize(last_meshlet.vertex_offset + last_meshlet.vertex_count);
+        local_triangle_indices.resize(last_meshlet.triangle_offset + ((last_meshlet.triangle_count * 3 + 3) & ~3_u32));
+
+        for (const auto& [raw_meshlet, meshlet, meshlet_aabb] :
+             std::views::zip(raw_meshlets, meshlets, meshlet_bounds)) {
+          auto meshlet_bb_min = glm::vec3(std::numeric_limits<f32>::max());
+          auto meshlet_bb_max = glm::vec3(std::numeric_limits<f32>::lowest());
+          for (u32 i = 0; i < raw_meshlet.triangle_count * 3; i++) {
+            const auto& tri_pos = raw_vertex_positions
+                [meshlet_indices[raw_meshlet.vertex_offset + local_triangle_indices[raw_meshlet.triangle_offset + i]]];
+            meshlet_bb_min = glm::min(meshlet_bb_min, tri_pos);
+            meshlet_bb_max = glm::max(meshlet_bb_max, tri_pos);
+          }
+
+          meshlet.vertex_offset = vertex_offset;
+          meshlet.index_offset = index_offset + raw_meshlet.vertex_offset;
+          meshlet.triangle_offset = triangle_offset + raw_meshlet.triangle_offset;
+          meshlet.triangle_count = raw_meshlet.triangle_count;
+          meshlet_aabb.aabb_min = meshlet_bb_min;
+          meshlet_aabb.aabb_max = meshlet_bb_max;
+        }
+
+        primitive.meshlet_count = meshlet_count;
+        primitive.meshlet_offset = meshlet_offset;
+        primitive.local_triangle_indices_offset = triangle_offset;
+      }
+
+      std::ranges::move(raw_vertex_positions, std::back_inserter(model_vertex_positions));
+      std::ranges::move(meshlet_indices, std::back_inserter(model_indices));
+      std::ranges::move(meshlets, std::back_inserter(model_meshlets));
+      std::ranges::move(meshlet_bounds, std::back_inserter(model_meshlet_bounds));
+      std::ranges::move(local_triangle_indices, std::back_inserter(model_local_triangle_indices));
+    }
+  }
+
+  auto& context = App::get()->get_vkcontext();
+
+  mesh->indices = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_indices));
+  context.wait_on(context.upload_staging(std::span(model_indices), *mesh->indices));
+
+  mesh->vertex_positions = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_vertex_positions));
+  context.wait_on(context.upload_staging(std::span(model_vertex_positions), *mesh->vertex_positions));
+
+  mesh->vertex_normals = context.allocate_buffer(vuk::MemoryUsage::eGPUonly,
+                                                 ox::size_bytes(gltf_callbacks.vertex_normals));
+  context.wait_on(context.upload_staging(std::span(gltf_callbacks.vertex_normals), *mesh->vertex_normals));
+
+  if (!gltf_callbacks.vertex_texcoords.empty()) {
+    mesh->texture_coords = context.allocate_buffer(vuk::MemoryUsage::eGPUonly,
+                                                   ox::size_bytes(gltf_callbacks.vertex_texcoords));
+    context.wait_on(context.upload_staging(std::span(gltf_callbacks.vertex_texcoords), *mesh->texture_coords));
+  }
+
+  mesh->meshlets = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_meshlets));
+  context.wait_on(context.upload_staging(std::span(model_meshlets), *mesh->meshlets));
+
+  mesh->meshlet_bounds = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_meshlet_bounds));
+  context.wait_on(context.upload_staging(std::span(model_meshlet_bounds), *mesh->meshlet_bounds));
+
+  mesh->local_triangle_indices = context.allocate_buffer(vuk::MemoryUsage::eGPUonly,
+                                                         ox::size_bytes(model_local_triangle_indices));
+  context.wait_on(context.upload_staging(std::span(model_local_triangle_indices), *mesh->local_triangle_indices));
+
+  return true;
 }
 
-auto AssetManager::unload_mesh(const UUID& uuid) -> void {
+auto AssetManager::unload_mesh(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
 
-  OX_UNIMPLEMENTED(AssetManager::unload_mesh);
+  auto* asset = this->get_asset(uuid);
+  OX_CHECK_NULL(asset);
+  if (!(asset->is_loaded() && asset->release_ref())) {
+    return false;
+  }
+
+  auto* model = this->get_mesh(asset->mesh_id);
+  for (auto& v : model->materials) {
+    this->unload_material(v);
+  }
+
+  mesh_map.destroy_slot(asset->mesh_id);
+  asset->mesh_id = MeshID::Invalid;
+
+  return true;
 }
 
-auto AssetManager::load_texture(const UUID& uuid,
-                                const TextureLoadInfo& info) -> bool {
+auto AssetManager::load_texture(const UUID& uuid, const TextureLoadInfo& info) -> bool {
   OX_SCOPED_ZONE;
 
   auto* asset = this->get_asset(uuid);
@@ -641,22 +928,23 @@ auto AssetManager::load_texture(const UUID& uuid,
   return true;
 }
 
-auto AssetManager::unload_texture(const UUID& uuid) -> void {
+auto AssetManager::unload_texture(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
 
   auto* asset = this->get_asset(uuid);
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
-    return;
+    return false;
   }
 
   OX_LOG_TRACE("Unloaded texture {}.", uuid.str());
 
   texture_map.destroy_slot(asset->texture_id);
   asset->texture_id = TextureID::Invalid;
+
+  return true;
 }
 
-auto AssetManager::load_material(const UUID& uuid,
-                                 const Material& material_info) -> bool {
+auto AssetManager::load_material(const UUID& uuid, const Material& material_info) -> bool {
   OX_SCOPED_ZONE;
 
   auto* asset = this->get_asset(uuid);
@@ -675,15 +963,14 @@ auto AssetManager::load_material(const UUID& uuid,
 
     TextureLoadTask(const std::vector<UUID>& uuid,
                     const std::vector<TextureLoadInfo>& load_info,
-                    AssetManager& asset_man) :
-        uuids(uuid),
-        load_infos(load_info),
-        asset_manager(asset_man) {
+                    AssetManager& asset_man)
+        : uuids(uuid),
+          load_infos(load_info),
+          asset_manager(asset_man) {
       this->m_SetSize = static_cast<uint32_t>(uuids.size()); // One task per texture
     }
 
-    void ExecuteRange(const enki::TaskSetPartition range,
-                      uint32_t threadNum) override {
+    void ExecuteRange(const enki::TaskSetPartition range, uint32_t threadNum) override {
       for (uint32_t i = range.start; i < range.end; ++i) {
         asset_manager.load_texture(uuids[i], load_infos[i]);
       }
@@ -730,13 +1017,13 @@ auto AssetManager::load_material(const UUID& uuid,
   return true;
 }
 
-auto AssetManager::unload_material(const UUID& uuid) -> void {
+auto AssetManager::unload_material(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
   if (!(asset->is_loaded() && asset->release_ref())) {
-    return;
+    return false;
   }
 
   const auto* material = this->get_material(asset->material_id);
@@ -762,6 +1049,8 @@ auto AssetManager::unload_material(const UUID& uuid) -> void {
 
   material_map.destroy_slot(asset->material_id);
   asset->material_id = MaterialID::Invalid;
+
+  return true;
 }
 
 auto AssetManager::load_scene(const UUID& uuid) -> bool {
@@ -781,17 +1070,19 @@ auto AssetManager::load_scene(const UUID& uuid) -> bool {
   return true;
 }
 
-auto AssetManager::unload_scene(const UUID& uuid) -> void {
+auto AssetManager::unload_scene(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
   if (!(asset->is_loaded() && asset->release_ref())) {
-    return;
+    return false;
   }
 
   scene_map.destroy_slot(asset->scene_id);
   asset->scene_id = SceneID::Invalid;
+
+  return true;
 }
 
 auto AssetManager::load_audio(const UUID& uuid) -> bool {
@@ -814,12 +1105,12 @@ auto AssetManager::load_audio(const UUID& uuid) -> bool {
   return true;
 }
 
-auto AssetManager::unload_audio(const UUID& uuid) -> void {
+auto AssetManager::unload_audio(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
 
   auto* asset = this->get_asset(uuid);
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
-    return;
+    return false;
   }
 
   auto* audio = this->get_audio(asset->audio_id);
@@ -830,6 +1121,8 @@ auto AssetManager::unload_audio(const UUID& uuid) -> void {
 
   audio_map.destroy_slot(asset->audio_id);
   asset->audio_id = AudioID::Invalid;
+
+  return true;
 }
 
 auto AssetManager::load_script(const UUID& uuid) -> bool {
@@ -851,21 +1144,26 @@ auto AssetManager::load_script(const UUID& uuid) -> bool {
   return true;
 }
 
-auto AssetManager::unload_script(const UUID& uuid) -> void {
+auto AssetManager::unload_script(const UUID& uuid) -> bool {
   OX_SCOPED_ZONE;
 
   auto* asset = this->get_asset(uuid);
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
-    return;
+    return false;
   }
 
   script_map.destroy_slot(asset->script_id);
   asset->script_id = ScriptID::Invalid;
 
   OX_LOG_INFO("Unloaded script {}.", uuid.str());
+
+  return true;
 }
 
 auto AssetManager::get_asset(const UUID& uuid) -> Asset* {
+  OX_SCOPED_ZONE;
+
+  auto read_lock = std::shared_lock(registry_mutex);
   const auto it = asset_registry.find(uuid);
   if (it == asset_registry.end()) {
     return nullptr;

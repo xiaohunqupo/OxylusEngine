@@ -13,6 +13,8 @@
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/TaperedCapsuleShape.h>
+#include <flecs/addons/cpp/entity.hpp>
+#include <glm/gtx/matrix_decompose.hpp>
 #include <rapidjson/document.h>
 #include <rapidjson/error/en.h>
 #include <rapidjson/prettywriter.h>
@@ -34,16 +36,14 @@
 #include "Utils/Timestep.hpp"
 
 namespace ox {
-auto ComponentDB::import_module(this ComponentDB& self,
-                                flecs::entity module) -> void {
+auto ComponentDB::import_module(this ComponentDB& self, flecs::entity module) -> void {
   OX_SCOPED_ZONE;
 
   self.imported_modules.emplace_back(module);
   module.children([&](flecs::id id) { self.components.push_back(id); });
 }
 
-auto ComponentDB::is_component_known(this ComponentDB& self,
-                                     flecs::id component_id) -> bool {
+auto ComponentDB::is_component_known(this ComponentDB& self, flecs::id component_id) -> bool {
   OX_SCOPED_ZONE;
 
   return std::ranges::any_of(self.components, [&](const auto& id) { return id == component_id; });
@@ -63,8 +63,7 @@ Scene::~Scene() {
     on_runtime_stop();
 }
 
-auto Scene::init(this Scene& self,
-                 const std::string& name) -> void {
+auto Scene::init(this Scene& self, const std::string& name) -> void {
   OX_SCOPED_ZONE;
 
   self.scene_name = name;
@@ -103,6 +102,58 @@ auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   }
 
   return e.add<TransformComponent>().add<LayerComponent>();
+}
+
+auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
+  auto* asset_man = App::get_asset_manager();
+
+  // sanity check
+  if (!asset_man->get_asset(asset_uuid)) {
+    OX_LOG_ERROR("Cannot import an invalid model '{}' into the scene!", asset_uuid.str());
+    return {};
+  }
+
+  // acquire model
+  if (!asset_man->load_mesh(asset_uuid)) {
+    return {};
+  }
+
+  auto* imported_model = asset_man->get_mesh(asset_uuid);
+  auto& default_scene = imported_model->scenes[imported_model->default_scene_index];
+  auto root_entity = create_entity(world.lookup(default_scene.name.c_str()) ? std::string{} : default_scene.name);
+
+  auto visit_nodes = [&](this auto& visitor, flecs::entity& root, std::vector<usize>& node_indices) -> void {
+    for (const auto node_index : node_indices) {
+      auto& cur_node = imported_model->nodes[node_index];
+      auto node_entity = create_entity(world.lookup(cur_node.name.c_str()) ? std::string{} : cur_node.name);
+
+      const auto T = glm::translate(glm::mat4(1.0f), cur_node.translation);
+      const auto R = glm::mat4_cast(cur_node.rotation);
+      const auto S = glm::scale(glm::mat4(1.0f), cur_node.scale);
+      auto TRS = T * R * S;
+      auto* transform_comp = node_entity.get_mut<TransformComponent>();
+      {
+        glm::quat rotation = {};
+        glm::vec3 skew = {};
+        glm::vec4 perspective = {};
+        glm::decompose(TRS, transform_comp->scale, rotation, transform_comp->position, skew, perspective);
+        transform_comp->rotation = glm::eulerAngles(glm::quat(rotation[3], rotation[0], rotation[1], rotation[2]));
+      }
+
+      if (cur_node.mesh_index.has_value()) {
+        node_entity.set<MeshComponent>(
+            {.mesh_uuid = asset_uuid, .mesh_index = static_cast<u32>(cur_node.mesh_index.value())});
+      }
+
+      node_entity.child_of(root);
+
+      visitor(node_entity, cur_node.child_indices);
+    }
+  };
+
+  visit_nodes(root_entity, default_scene.node_indices);
+
+  return root_entity;
 }
 
 auto Scene::on_runtime_start() -> void {
@@ -292,9 +343,8 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
   }
 }
 
-auto Scene::create_rigidbody(flecs::entity entity,
-                             const TransformComponent& transform,
-                             RigidbodyComponent& component) -> void {
+auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component)
+    -> void {
   OX_SCOPED_ZONE;
   if (!running)
     return;
@@ -321,9 +371,8 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::BoxShapeSettings shape_settings({glm::abs(scale.x), glm::abs(scale.y), glm::abs(scale.z)}, 0.05f, mat);
     shape_settings.SetDensity(glm::max(0.001f, bc->density));
 
-    compound_shape_settings.AddShape({bc->offset.x, bc->offset.y, bc->offset.z},
-                                     JPH::Quat::sIdentity(),
-                                     shape_settings.Create().Get());
+    compound_shape_settings.AddShape(
+        {bc->offset.x, bc->offset.y, bc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
   if (const auto* sc = entity.get<SphereColliderComponent>()) {
@@ -333,9 +382,8 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::SphereShapeSettings shape_settings(glm::max(0.01f, radius), mat);
     shape_settings.SetDensity(glm::max(0.001f, sc->density));
 
-    compound_shape_settings.AddShape({sc->offset.x, sc->offset.y, sc->offset.z},
-                                     JPH::Quat::sIdentity(),
-                                     shape_settings.Create().Get());
+    compound_shape_settings.AddShape(
+        {sc->offset.x, sc->offset.y, sc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
   if (const auto* cc = entity.get<CapsuleColliderComponent>()) {
@@ -345,9 +393,8 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::CapsuleShapeSettings shape_settings(glm::max(0.01f, cc->height) * 0.5f, glm::max(0.01f, radius), mat);
     shape_settings.SetDensity(glm::max(0.001f, cc->density));
 
-    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z},
-                                     JPH::Quat::sIdentity(),
-                                     shape_settings.Create().Get());
+    compound_shape_settings.AddShape(
+        {cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
   if (const auto* tcc = entity.get<TaperedCapsuleColliderComponent>()) {
@@ -355,15 +402,12 @@ auto Scene::create_rigidbody(flecs::entity entity,
 
     float top_radius = 2.0f * tcc->top_radius * max_scale_component;
     float bottom_radius = 2.0f * tcc->bottom_radius * max_scale_component;
-    JPH::TaperedCapsuleShapeSettings shape_settings(glm::max(0.01f, tcc->height) * 0.5f,
-                                                    glm::max(0.01f, top_radius),
-                                                    glm::max(0.01f, bottom_radius),
-                                                    mat);
+    JPH::TaperedCapsuleShapeSettings shape_settings(
+        glm::max(0.01f, tcc->height) * 0.5f, glm::max(0.01f, top_radius), glm::max(0.01f, bottom_radius), mat);
     shape_settings.SetDensity(glm::max(0.001f, tcc->density));
 
-    compound_shape_settings.AddShape({tcc->offset.x, tcc->offset.y, tcc->offset.z},
-                                     JPH::Quat::sIdentity(),
-                                     shape_settings.Create().Get());
+    compound_shape_settings.AddShape(
+        {tcc->offset.x, tcc->offset.y, tcc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
   if (const auto* cc = entity.get<CylinderColliderComponent>()) {
@@ -373,9 +417,8 @@ auto Scene::create_rigidbody(flecs::entity entity,
     JPH::CylinderShapeSettings shape_settings(glm::max(0.01f, cc->height) * 0.5f, glm::max(0.01f, radius), 0.05f, mat);
     shape_settings.SetDensity(glm::max(0.001f, cc->density));
 
-    compound_shape_settings.AddShape({cc->offset.x, cc->offset.y, cc->offset.z},
-                                     JPH::Quat::sIdentity(),
-                                     shape_settings.Create().Get());
+    compound_shape_settings.AddShape(
+        {cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
   if (const auto* mc = entity.get<MeshColliderComponent>()) {
@@ -457,8 +500,8 @@ auto Scene::create_rigidbody(flecs::entity entity,
   JPH::Body* body = body_interface.CreateBody(body_settings);
 
   JPH::EActivation activation = component.awake && component.type != RigidbodyComponent::BodyType::Static
-                                  ? JPH::EActivation::Activate
-                                  : JPH::EActivation::DontActivate;
+                                    ? JPH::EActivation::Activate
+                                    : JPH::EActivation::DontActivate;
   body_interface.AddBody(body->GetID(), activation);
 
   body->SetUserData((u64)entity);
@@ -475,26 +518,29 @@ void Scene::create_character_controller(const TransformComponent& transform,
   const auto physics = App::get_system<Physics>(EngineSystems::Physics);
 
   const auto position = JPH::Vec3(transform.position.x, transform.position.y, transform.position.z);
-  const auto capsule_shape =
-      JPH::RotatedTranslatedShapeSettings(
-          JPH::Vec3(0, 0.5f * component.character_height_standing + component.character_radius_standing, 0),
-          JPH::Quat::sIdentity(),
-          new JPH::CapsuleShape(0.5f * component.character_height_standing, component.character_radius_standing))
-          .Create()
-          .Get();
+  const auto capsule_shape = JPH::RotatedTranslatedShapeSettings(
+                                 JPH::Vec3(0,
+                                           0.5f * component.character_height_standing +
+                                               component.character_radius_standing,
+                                           0),
+                                 JPH::Quat::sIdentity(),
+                                 new JPH::CapsuleShape(0.5f * component.character_height_standing,
+                                                       component.character_radius_standing))
+                                 .Create()
+                                 .Get();
 
   // Create character
   const Shared<JPH::CharacterSettings> settings = create_shared<JPH::CharacterSettings>();
   settings->mMaxSlopeAngle = JPH::DegreesToRadians(45.0f);
   settings->mLayer = PhysicsLayers::MOVING;
   settings->mShape = capsule_shape;
-  settings->mFriction = 0.0f;                           // For now this is not set.
-  settings->mSupportingVolume =
-      JPH::Plane(JPH::Vec3::sAxisY(),
-                 -component.character_radius_standing); // Accept contacts that touch the lower sphere of the capsule
+  settings->mFriction = 0.0f;                                                     // For now this is not set.
+  settings->mSupportingVolume = JPH::Plane(JPH::Vec3::sAxisY(),
+                                           -component.character_radius_standing); // Accept contacts that touch the
+                                                                                  // lower sphere of the capsule
   // TODO: Cleanup
-  component.character =
-      new JPH::Character(settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
+  component.character = new JPH::Character(
+      settings.get(), position, JPH::Quat::sIdentity(), 0, physics->get_physics_system());
   reinterpret_cast<JPH::Character*>(component.character)->AddToPhysicsSystem(JPH::EActivation::Activate);
 }
 
@@ -515,7 +561,7 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
     }
 
     ECS::ComponentWrapper component(e, component_id);
-    if (!component.has_component()) {
+    if (!component.is_component()) {
       writer.String(component.path.c_str());
     } else {
       components.emplace_back(e, component_id);
@@ -564,8 +610,7 @@ auto entity_to_json(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
   writer.EndObject();
 }
 
-auto Scene::save_to_file(this const Scene& self,
-                         std::string path) -> bool {
+auto Scene::save_to_file(this const Scene& self, std::string path) -> bool {
   OX_SCOPED_ZONE;
   rapidjson::StringBuffer sb;
 
@@ -684,8 +729,7 @@ auto json_to_entity(Scene& self,
   return true;
 }
 
-auto Scene::load_from_file(this Scene& self,
-                           const std::string& path) -> bool {
+auto Scene::load_from_file(this Scene& self, const std::string& path) -> bool {
   OX_SCOPED_ZONE;
   const auto content = fs::read_file(path);
   if (content.empty()) {
@@ -782,10 +826,8 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
         const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
         audio_engine->set_listener_position(ac.listener_index, tc.position);
         audio_engine->set_listener_direction(ac.listener_index, -forward);
-        audio_engine->set_listener_cone(ac.listener_index,
-                                        ac.cone_inner_angle,
-                                        ac.cone_outer_angle,
-                                        ac.cone_outer_gain);
+        audio_engine->set_listener_cone(
+            ac.listener_index, ac.cone_inner_angle, ac.cone_outer_angle, ac.cone_outer_gain);
       }
     });
 
@@ -806,18 +848,15 @@ void Scene::on_runtime_update(const Timestep& delta_time) {
         audio_engine->set_source_max_gain(audio->get_source(), ac.max_gain);
         audio_engine->set_source_min_distance(audio->get_source(), ac.min_distance);
         audio_engine->set_source_max_distance(audio->get_source(), ac.max_distance);
-        audio_engine->set_source_cone(audio->get_source(),
-                                      ac.cone_inner_angle,
-                                      ac.cone_outer_angle,
-                                      ac.cone_outer_gain);
+        audio_engine->set_source_cone(
+            audio->get_source(), ac.cone_inner_angle, ac.cone_outer_angle, ac.cone_outer_gain);
         audio_engine->set_source_doppler_factor(audio->get_source(), ac.doppler_factor);
       }
     });
   }
 }
 
-void Scene::on_render(const vuk::Extent3D extent,
-                      const vuk::Format format) {
+void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   OX_SCOPED_ZONE;
 
   {

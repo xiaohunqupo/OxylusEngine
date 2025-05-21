@@ -90,7 +90,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   Input::set_instance();
   Physics::set_instance();
 
-  vk_context = create_shared<VkContext>();
+  vk_context = create_unique<VkContext>();
 
   const bool enable_validation = app_spec.command_line_args.contains("vulkan-validation");
   vk_context->create_context(window, enable_validation);
@@ -140,7 +140,10 @@ void App::run() {
     const auto app = static_cast<App*>(user_data);
     app->is_running = false;
   };
-  window_callbacks.on_mouse_pos = [](void* user_data, const glm::vec2 position, [[maybe_unused]] glm::vec2 relative) {
+  window_callbacks.on_mouse_pos = [](void* user_data,
+                                     const glm::vec2 position,
+                                     [[maybe_unused]]
+                                     glm::vec2 relative) {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_mouse_pos(position);
 
@@ -221,11 +224,9 @@ void App::run() {
       system->on_render(extent, swapchain_attachment->format);
     }
 
-    auto& frame_allocator = vk_context->get_frame_allocator();
+    swapchain_attachment = imgui_layer->end_frame(*vk_context, std::move(swapchain_attachment));
 
-    swapchain_attachment = imgui_layer->end_frame(frame_allocator.value(), std::move(swapchain_attachment));
-
-    vk_context->end_frame(frame_allocator.value(), swapchain_attachment);
+    vk_context->end_frame(swapchain_attachment);
 
     input_sys->reset_pressed();
 

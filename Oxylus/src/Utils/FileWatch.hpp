@@ -83,10 +83,7 @@
 #include <vector>
 
 #ifdef FILEWATCH_PLATFORM_MAC
-extern "C" int __getdirentries64(int,
-                                 char*,
-                                 int,
-                                 long*);
+extern "C" int __getdirentries64(int, char*, int, long*);
 #endif // FILEWATCH_PLATFORM_MAC
 
 namespace filewatch {
@@ -121,7 +118,8 @@ struct Invokable {
 #define _FILEWATCH_TO_STRING(x) #x
 #define FILEWATCH_TO_STRING(x) _FILEWATCH_TO_STRING(x)
 
-[[maybe_unused]] static const char* event_to_string(Event event) {
+[[maybe_unused]]
+static const char* event_to_string(Event event) {
   switch (event) {
     case Event::added      : return FILEWATCH_TO_STRING(Event::added);
     case Event::removed    : return FILEWATCH_TO_STRING(Event::removed);
@@ -133,17 +131,13 @@ struct Invokable {
 }
 
 template <typename StringType>
-static typename std::enable_if<std::is_same<typename StringType::value_type,
-                                            wchar_t>::value,
-                               bool>::type
+static typename std::enable_if<std::is_same<typename StringType::value_type, wchar_t>::value, bool>::type
 isParentOrSelfDirectory(const StringType& path) {
   return path == L"." || path == L"..";
 }
 
 template <typename StringType>
-static typename std::enable_if<std::is_same<typename StringType::value_type,
-                                            char>::value,
-                               bool>::type
+static typename std::enable_if<std::is_same<typename StringType::value_type, char>::value, bool>::type
 isParentOrSelfDirectory(const StringType& path) {
   return path == "." || path == "..";
 }
@@ -165,27 +159,20 @@ class FileWatch {
 public:
   FileWatch(StringType path,
             UnderpinningRegex pattern,
-            std::function<void(const StringType& file,
-                               const Event event_type)> callback) :
-      _path(absolute_path_of(path)),
-      _pattern(pattern),
-      _callback(callback),
-      _directory(get_directory(path)) {
+            std::function<void(const StringType& file, const Event event_type)> callback)
+      : _path(absolute_path_of(path)),
+        _pattern(pattern),
+        _callback(callback),
+        _directory(get_directory(path)) {
     init();
   }
 
-  FileWatch(StringType path,
-            std::function<void(const StringType& file,
-                               const Event event_type)> callback) :
-      FileWatch<StringType>(path,
-                            UnderpinningRegex(_regex_all),
-                            callback) {}
+  FileWatch(StringType path, std::function<void(const StringType& file, const Event event_type)> callback)
+      : FileWatch<StringType>(path, UnderpinningRegex(_regex_all), callback) {}
 
   ~FileWatch() { destroy(); }
 
-  FileWatch(const FileWatch<StringType>& other) :
-      FileWatch<StringType>(other._path,
-                            other._callback) {}
+  FileWatch(const FileWatch<StringType>& other) : FileWatch<StringType>(other._path, other._callback) {}
 
   FileWatch<StringType>& operator=(const FileWatch<StringType>& other) {
     if (this == &other) {
@@ -200,7 +187,8 @@ public:
     return *this;
   }
 
-  // Const memeber varibles don't let me implent moves nicely, if moves are really wanted std::unique_ptr should be used and move that.
+  // Const memeber varibles don't let me implent moves nicely, if moves are really wanted std::unique_ptr should be used
+  // and move that.
   FileWatch<StringType>(FileWatch<StringType>&&) = delete;
   FileWatch<StringType>& operator=(FileWatch<StringType>&&) & = delete;
 
@@ -209,10 +197,7 @@ private:
   static constexpr C _this_directory[] = {'.', '/', '\0'};
 
   struct PathParts {
-    PathParts(StringType directory_,
-              StringType filename_) :
-        directory(directory_),
-        filename(filename_) {}
+    PathParts(StringType directory_, StringType filename_) : directory(directory_), filename(filename_) {}
     StringType directory;
     StringType filename;
   };
@@ -243,9 +228,10 @@ private:
   HANDLE _directory = {nullptr};
   HANDLE _close_event = {nullptr};
 
-  const DWORD _listen_filters = FILE_NOTIFY_CHANGE_SECURITY | FILE_NOTIFY_CHANGE_CREATION | FILE_NOTIFY_CHANGE_LAST_ACCESS |
-                                FILE_NOTIFY_CHANGE_LAST_WRITE | FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_ATTRIBUTES |
-                                FILE_NOTIFY_CHANGE_DIR_NAME | FILE_NOTIFY_CHANGE_FILE_NAME;
+  const DWORD _listen_filters = FILE_NOTIFY_CHANGE_SECURITY | FILE_NOTIFY_CHANGE_CREATION |
+                                FILE_NOTIFY_CHANGE_LAST_ACCESS | FILE_NOTIFY_CHANGE_LAST_WRITE |
+                                FILE_NOTIFY_CHANGE_SIZE | FILE_NOTIFY_CHANGE_ATTRIBUTES | FILE_NOTIFY_CHANGE_DIR_NAME |
+                                FILE_NOTIFY_CHANGE_FILE_NAME;
 
   const std::unordered_map<DWORD, Event> _event_type_mapping = {{FILE_ACTION_ADDED, Event::added},
                                                                 {FILE_ACTION_REMOVED, Event::removed},
@@ -273,18 +259,10 @@ private:
     uint32_t nlink;
     time_t last_modification;
 
-    FileState(int fd,
-              uint32_t nlink,
-              time_t lt) :
-        fd(fd),
-        nlink(nlink),
-        last_modification(lt) {}
+    FileState(int fd, uint32_t nlink, time_t lt) : fd(fd), nlink(nlink), last_modification(lt) {}
     FileState(const FileState&) = delete;
     FileState& operator=(const FileState&) = delete;
-    FileState(FileState&& other) :
-        fd(other.fd),
-        nlink(other.nlink),
-        last_modification(other.last_modification) {
+    FileState(FileState&& other) : fd(other.fd), nlink(other.nlink), last_modification(other.last_modification) {
       other.fd = -1;
     }
 
@@ -385,7 +363,8 @@ private:
 
     UnderpinningString path_string = path;
     const auto pivot = std::find_if(path_string.rbegin(), path_string.rend(), predict).base();
-    // if the path is something like "test.txt" there will be no directory part, however we still need one, so insert './'
+    // if the path is something like "test.txt" there will be no directory part, however we still need one, so insert
+    // './'
     const StringType directory = [&]() {
       const auto extracted_directory = UnderpinningString(path_string.begin(), pivot);
       return (extracted_directory.size() > 0) ? extracted_directory : UnderpinningString(_this_directory);
@@ -405,26 +384,22 @@ private:
 
 #ifdef _WIN32
   template <typename... Args>
-  DWORD GetFileAttributesX(const char* lpFileName,
-                           Args... args) {
+  DWORD GetFileAttributesX(const char* lpFileName, Args... args) {
     return GetFileAttributesA(lpFileName, args...);
   }
 
   template <typename... Args>
-  DWORD GetFileAttributesX(const wchar_t* lpFileName,
-                           Args... args) {
+  DWORD GetFileAttributesX(const wchar_t* lpFileName, Args... args) {
     return GetFileAttributesW(lpFileName, args...);
   }
 
   template <typename... Args>
-  HANDLE CreateFileX(const char* lpFileName,
-                     Args... args) {
+  HANDLE CreateFileX(const char* lpFileName, Args... args) {
     return CreateFileA(lpFileName, args...);
   }
 
   template <typename... Args>
-  HANDLE CreateFileX(const wchar_t* lpFileName,
-                     Args... args) {
+  HANDLE CreateFileX(const wchar_t* lpFileName, Args... args) {
     return CreateFileW(lpFileName, args...);
   }
 
@@ -452,7 +427,7 @@ private:
                                    nullptr,                                                // security descriptor
                                    OPEN_EXISTING,                                          // how to create
                                    FILE_FLAG_BACKUP_SEMANTICS | FILE_FLAG_OVERLAPPED,      // file attributes
-                                   HANDLE(0));                                             // file with attributes to copy
+                                   HANDLE(0)); // file with attributes to copy
 
     if (directory == INVALID_HANDLE_VALUE) {
       throw std::system_error(GetLastError(), std::system_category());
@@ -460,17 +435,13 @@ private:
     return directory;
   }
 
-  void convert_wstring(const std::wstring& wstr,
-                       std::string& out) {
+  void convert_wstring(const std::wstring& wstr, std::string& out) {
     int size_needed = WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), NULL, 0, NULL, NULL);
     out.resize(size_needed, '\0');
     WideCharToMultiByte(CP_UTF8, 0, &wstr[0], (int)wstr.size(), &out[0], size_needed, NULL, NULL);
   }
 
-  void convert_wstring(const std::wstring& wstr,
-                       std::wstring& out) {
-    out = wstr;
-  }
+  void convert_wstring(const std::wstring& wstr, std::wstring& out) { out = wstr; }
 
   void monitor_directory() {
     std::vector<BYTE> buffer(_buffer_size);
@@ -512,19 +483,21 @@ private:
 
           FILE_NOTIFY_INFORMATION* file_information = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(&buffer[0]);
           do {
-            std::wstring changed_file_w{file_information->FileName, file_information->FileNameLength / sizeof(file_information->FileName[0])};
+            std::wstring changed_file_w{file_information->FileName,
+                                        file_information->FileNameLength / sizeof(file_information->FileName[0])};
             UnderpinningString changed_file;
             convert_wstring(changed_file_w, changed_file);
             if (pass_filter(changed_file)) {
-              parsed_information.emplace_back(StringType{changed_file}, _event_type_mapping.at(file_information->Action));
+              parsed_information.emplace_back(StringType{changed_file},
+                                              _event_type_mapping.at(file_information->Action));
             }
 
             if (file_information->NextEntryOffset == 0) {
               break;
             }
 
-            file_information =
-                reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(file_information) + file_information->NextEntryOffset);
+            file_information = reinterpret_cast<FILE_NOTIFY_INFORMATION*>(reinterpret_cast<BYTE*>(file_information) +
+                                                                          file_information->NextEntryOffset);
           } while (true);
           break;
         }
@@ -612,7 +585,8 @@ private:
         // dispatch callbacks
         {
           std::lock_guard<std::mutex> lock(_callback_mutex);
-          _callback_information.insert(_callback_information.end(), parsed_information.begin(), parsed_information.end());
+          _callback_information.insert(
+              _callback_information.end(), parsed_information.begin(), parsed_information.end());
         }
         _cv.notify_all();
       }
@@ -690,8 +664,9 @@ private:
     constexpr size_t size = IsWChar<C>::value ? MAX_PATH : 32767 * sizeof(wchar_t);
     char buf[size];
 
-    DWORD length = IsWChar<C>::value ? GetFullPathNameW((LPCWSTR)path.c_str(), size / sizeof(TCHAR), (LPWSTR)buf, nullptr)
-                                     : GetFullPathNameA((LPCSTR)path.c_str(), size / sizeof(TCHAR), buf, nullptr);
+    DWORD length = IsWChar<C>::value
+                       ? GetFullPathNameW((LPCWSTR)path.c_str(), size / sizeof(TCHAR), (LPWSTR)buf, nullptr)
+                       : GetFullPathNameA((LPCSTR)path.c_str(), size / sizeof(TCHAR), buf, nullptr);
     return StringType{(C*)buf, length};
   }
 #endif
@@ -707,11 +682,8 @@ private:
     return s;
   }
 
-  template <typename Fn,
-            class = std::enable_if<Invokable<Fn,
-                                             StringType>::value>>
-  static void walkDirectory(const StringType& path,
-                            Fn callback) {
+  template <typename Fn, class = std::enable_if<Invokable<Fn, StringType>::value>>
+  static void walkDirectory(const StringType& path, Fn callback) {
     int fd = open(path.c_str(), O_RDONLY);
     char buf[1024];
     long basep = 0;
@@ -814,8 +786,7 @@ private:
     return file;
   }
 
-  static bool isInDirectory(const StringType& file,
-                            const StringType& path) {
+  static bool isInDirectory(const StringType& file, const StringType& path) {
     if (file.size() < path.size()) {
       return false;
     }
@@ -967,8 +938,7 @@ private:
     _cv.notify_all();
   }
 
-  void notify(CFStringRef path,
-              const FSEventStreamEventFlags flags) {
+  void notify(CFStringRef path, const FSEventStreamEventFlags flags) {
     CFIndex pathLength = CFStringGetLength(path);
     CFIndex written = 0;
     char buffer[PATH_MAX + 1];
@@ -1054,17 +1024,18 @@ private:
 
   FSEventStreamRef openStream(const StringType& directory) {
     CFStringEncoding encoding = IsWChar<C>::value ? kCFStringEncodingUTF32 : kCFStringEncodingASCII;
-    CFStringRef path = CFStringCreateWithBytes(kCFAllocatorDefault, (const u8*)directory.data(), directory.size(), encoding, false);
+    CFStringRef path = CFStringCreateWithBytes(
+        kCFAllocatorDefault, (const u8*)directory.data(), directory.size(), encoding, false);
     CFArrayRef paths = CFArrayCreate(kCFAllocatorDefault, (const void**)&path, 1, nullptr);
     FSEventStreamContext context{.info = (void*)this};
-    FSEventStreamRef event =
-        FSEventStreamCreate(kCFAllocatorDefault,
-                            (FSEventStreamCallback)handleFsEvent,
-                            &context,
-                            paths,
-                            kFSEventStreamEventIdSinceNow,
-                            0,
-                            kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents | kFSEventStreamCreateFlagUseCFTypes);
+    FSEventStreamRef event = FSEventStreamCreate(kCFAllocatorDefault,
+                                                 (FSEventStreamCallback)handleFsEvent,
+                                                 &context,
+                                                 paths,
+                                                 kFSEventStreamEventIdSinceNow,
+                                                 0,
+                                                 kFSEventStreamCreateFlagNoDefer | kFSEventStreamCreateFlagFileEvents |
+                                                     kFSEventStreamCreateFlagUseCFTypes);
 
     CFRelease(path);
     CFRelease(paths);

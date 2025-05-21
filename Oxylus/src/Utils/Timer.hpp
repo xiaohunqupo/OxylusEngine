@@ -6,10 +6,7 @@ typedef std::chrono::time_point<std::chrono::high_resolution_clock> TimeStamp;
 namespace ox {
 class Timer {
 public:
-  Timer()
-    : m_start(now()), m_frequency() {
-    m_last_time = m_start;
-  }
+  Timer() : m_start(now()), m_frequency() { m_last_time = m_start; }
 
   ~Timer() = default;
 
@@ -34,4 +31,4 @@ protected:
   TimeStamp m_frequency; // Ticks Per Second
   TimeStamp m_last_time; // Last time GetTimedMS was called
 };
-}
+} // namespace ox

@@ -1,5 +1,7 @@
 #pragma once
 
+// clang-format off
+
 #include <cstdlib>
 #include <cstdint>
 #include <cstddef>
@@ -27,6 +29,7 @@
 #include <condition_variable>
 #include <functional>
 #include <span>
+#include <expected>
 
 namespace fs = std::filesystem;
 
@@ -56,3 +59,8 @@ namespace fs = std::filesystem;
 
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
+
+#define OX_CALLSTACK std::source_location LOC
+#define OX_THISCALL OX_CALLSTACK = std::source_location::current()
+
+// clang-format on

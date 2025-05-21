@@ -22,8 +22,7 @@
 namespace ox {
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 
-ImFont* ImGuiLayer::load_font(const std::string& path,
-                              ImFontConfig font_config) {
+ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config) {
   OX_SCOPED_ZONE_N("Font Loading");
 
   ImGuiIO& io = ImGui::GetIO();
@@ -46,7 +45,7 @@ void ImGuiLayer::build_fonts() {
                            .format = vuk::Format::eR8G8B8A8Srgb,
                            .mime = {},
                            .data = pixels,
-                           .extent = {static_cast<u32>(width), static_cast<u32>(height), 1u},
+                           .extent = vuk::Extent3D{static_cast<u32>(width), static_cast<u32>(height), 1u},
                        });
 }
 
@@ -72,14 +71,11 @@ void ImGuiLayer::on_attach() {
   Slang slang = {};
   slang.create_session({.root_directory = shaders_dir, .definitions = {}});
 
-  slang.create_pipeline(ctx,
-                        "imgui",
-                        {},
-                        {.path = shaders_dir + "/passes/imgui.slang", .entry_points = {"vs_main", "fs_main"}});
+  slang.create_pipeline(
+      ctx, "imgui", {}, {.path = shaders_dir + "/passes/imgui.slang", .entry_points = {"vs_main", "fs_main"}});
 }
 
-ImFont* ImGuiLayer::add_icon_font(float font_size,
-                                  bool merge) {
+ImFont* ImGuiLayer::add_icon_font(float font_size, bool merge) {
   OX_SCOPED_ZONE;
   const ImGuiIO& io = ImGui::GetIO();
   static constexpr ImWchar ICONS_RANGES[] = {ICON_MIN_MDI, ICON_MAX_MDI, 0};
@@ -91,17 +87,13 @@ ImFont* ImGuiLayer::add_icon_font(float font_size,
   icons_config.GlyphMinAdvanceX = 0.0f;
   icons_config.SizePixels = font_size;
 
-  return io.Fonts->AddFontFromMemoryCompressedTTF(MaterialDesign_compressed_data,
-                                                  MaterialDesign_compressed_size,
-                                                  font_size,
-                                                  &icons_config,
-                                                  ICONS_RANGES);
+  return io.Fonts->AddFontFromMemoryCompressedTTF(
+      MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &icons_config, ICONS_RANGES);
 }
 
 void ImGuiLayer::on_detach() { ImGui::DestroyContext(); }
 
-void ImGuiLayer::begin_frame(const f64 delta_time,
-                             const vuk::Extent3D extent) {
+void ImGuiLayer::begin_frame(const f64 delta_time, const vuk::Extent3D extent) {
   OX_SCOPED_ZONE;
 
   const App* app = App::get();
@@ -148,8 +140,7 @@ void ImGuiLayer::begin_frame(const f64 delta_time,
   }
 }
 
-vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator,
-                                                       vuk::Value<vuk::ImageAttachment> target) {
+vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::Value<vuk::ImageAttachment> target) {
   OX_SCOPED_ZONE;
 
   ImGui::Render();
@@ -158,42 +149,42 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 
   auto reset_render_state =
       [this, draw_data](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
-    command_buffer //
-        .bind_sampler(0, 0, vuk::LinearSamplerRepeated)
-        .bind_image(0, 1, *font_texture->get_view());
-    if (index.size > 0) {
-      command_buffer.bind_index_buffer(index,
-                                       sizeof(ImDrawIdx) == 2 ? vuk::IndexType::eUint16 : vuk::IndexType::eUint32);
-    }
-    command_buffer
-        .bind_vertex_buffer(
-            0,
-            vertex,
-            0,
-            vuk::Packed{vuk::Format::eR32G32Sfloat, vuk::Format::eR32G32Sfloat, vuk::Format::eR8G8B8A8Unorm})
-        .bind_graphics_pipeline("imgui")
-        .set_viewport(0, vuk::Rect2D::framebuffer());
-    struct PC {
-      float translate[2];
-      float scale[2];
-    } pc;
-    pc.scale[0] = 2.0f / draw_data->DisplaySize.x;
-    pc.scale[1] = 2.0f / draw_data->DisplaySize.y;
-    pc.translate[0] = -1.0f - draw_data->DisplayPos.x * pc.scale[0];
-    pc.translate[1] = -1.0f - draw_data->DisplayPos.y * pc.scale[1];
-    command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
-  };
+        command_buffer //
+            .bind_sampler(0, 0, vuk::LinearSamplerRepeated)
+            .bind_image(0, 1, *font_texture->get_view());
+        if (index.size > 0) {
+          command_buffer.bind_index_buffer(index,
+                                           sizeof(ImDrawIdx) == 2 ? vuk::IndexType::eUint16 : vuk::IndexType::eUint32);
+        }
+        command_buffer
+            .bind_vertex_buffer(
+                0,
+                vertex,
+                0,
+                vuk::Packed{vuk::Format::eR32G32Sfloat, vuk::Format::eR32G32Sfloat, vuk::Format::eR8G8B8A8Unorm})
+            .bind_graphics_pipeline("imgui")
+            .set_viewport(0, vuk::Rect2D::framebuffer());
+        struct PC {
+          float translate[2];
+          float scale[2];
+        } pc;
+        pc.scale[0] = 2.0f / draw_data->DisplaySize.x;
+        pc.scale[1] = 2.0f / draw_data->DisplaySize.y;
+        pc.translate[0] = -1.0f - draw_data->DisplayPos.x * pc.scale[0];
+        pc.translate[1] = -1.0f - draw_data->DisplayPos.y * pc.scale[1];
+        command_buffer.push_constants(vuk::ShaderStageFlagBits::eVertex, 0, pc);
+      };
 
   size_t vertex_size = draw_data->TotalVtxCount * sizeof(ImDrawVert);
   size_t index_size = draw_data->TotalIdxCount * sizeof(ImDrawIdx);
-  auto imvert = *allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, vertex_size, 1});
-  auto imind = *allocate_buffer(allocator, {vuk::MemoryUsage::eCPUtoGPU, index_size, 1});
+  auto imvert = *context.allocate_buffer(vuk::MemoryUsage::eCPUtoGPU, vertex_size, 1);
+  auto imind = *context.allocate_buffer(vuk::MemoryUsage::eCPUtoGPU, index_size, 1);
 
   size_t vtx_dst = 0, idx_dst = 0;
   for (int n = 0; n < draw_data->CmdListsCount; n++) {
     const ImDrawList* cmd_list = draw_data->CmdLists[n];
-    auto imverto = imvert->add_offset(vtx_dst * sizeof(ImDrawVert));
-    auto imindo = imind->add_offset(idx_dst * sizeof(ImDrawIdx));
+    auto imverto = imvert.add_offset(vtx_dst * sizeof(ImDrawVert));
+    auto imindo = imind.add_offset(idx_dst * sizeof(ImDrawIdx));
 
     memcpy(imverto.mapped_ptr, cmd_list->VtxBuffer.Data, cmd_list->VtxBuffer.Size * sizeof(ImDrawVert));
     memcpy(imindo.mapped_ptr, cmd_list->IdxBuffer.Data, cmd_list->IdxBuffer.Size * sizeof(ImDrawIdx));
@@ -204,82 +195,85 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(vuk::Allocator& allocator
 
   auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(rendering_images));
 
-  return vuk::make_pass("imgui",
-                        [verts = imvert.get(), inds = imind.get(), reset_render_state, draw_data](
-                            vuk::CommandBuffer& command_buffer,
-                            VUK_IA(vuk::eColorWrite) color_rt,
-                            VUK_ARG(vuk::ImageAttachment[], vuk::Access::eFragmentSampled) sis) {
-    command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
-        .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
-        .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
+  return vuk::make_pass(
+      "imgui",
+      [verts = imvert, inds = imind, reset_render_state, draw_data](
+          vuk::CommandBuffer& command_buffer,
+          VUK_IA(vuk::eColorWrite) color_rt,
+          VUK_ARG(vuk::ImageAttachment[], vuk::Access::eFragmentSampled) sis) {
+        command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+            .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
+            .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
 
-    reset_render_state(command_buffer, verts, inds);
-    // Will project scissor/clipping rectangles into framebuffer space
-    const ImVec2 clip_off = draw_data->DisplayPos;         // (0,0) unless using multi-viewports
-    const ImVec2 clip_scale = draw_data->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
+        reset_render_state(command_buffer, verts, inds);
+        // Will project scissor/clipping rectangles into framebuffer space
+        const ImVec2 clip_off = draw_data->DisplayPos;    // (0,0) unless using multi-viewports
+        const ImVec2 clip_scale = draw_data
+                                      ->FramebufferScale; // (1,1) unless using retina display which are often (2,2)
 
-    // Render command lists
-    // (Because we merged all buffers into a single one, we maintain our own offset into them)
-    int global_vtx_offset = 0;
-    int global_idx_offset = 0;
-    for (int n = 0; n < draw_data->CmdListsCount; n++) {
-      const ImDrawList* cmd_list = draw_data->CmdLists[n];
-      for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
-        const ImDrawCmd* im_cmd = &cmd_list->CmdBuffer[cmd_i];
-        if (im_cmd->UserCallback != nullptr) {
-          // User callback, registered via ImDrawList::AddCallback()
-          // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer to
-          // reset render state.)
-          if (im_cmd->UserCallback == ImDrawCallback_ResetRenderState)
-            reset_render_state(command_buffer, verts, inds);
-          else
-            im_cmd->UserCallback(cmd_list, im_cmd);
-        } else {
-          // Project scissor/clipping rectangles into framebuffer space
-          ImVec4 clip_rect;
-          clip_rect.x = (im_cmd->ClipRect.x - clip_off.x) * clip_scale.x;
-          clip_rect.y = (im_cmd->ClipRect.y - clip_off.y) * clip_scale.y;
-          clip_rect.z = (im_cmd->ClipRect.z - clip_off.x) * clip_scale.x;
-          clip_rect.w = (im_cmd->ClipRect.w - clip_off.y) * clip_scale.y;
-
-          const auto fb_width = command_buffer.get_ongoing_render_pass().extent.width;
-          const auto fb_height = command_buffer.get_ongoing_render_pass().extent.height;
-          if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0f && clip_rect.w >= 0.0f) {
-            // Negative offsets are illegal for vkCmdSetScissor
-            clip_rect.x = std::max(clip_rect.x, 0.0f);
-            clip_rect.y = std::max(clip_rect.y, 0.0f);
-
-            // Apply scissor/clipping rectangle
-            vuk::Rect2D scissor;
-            scissor.offset.x = static_cast<int32_t>(clip_rect.x);
-            scissor.offset.y = static_cast<int32_t>(clip_rect.y);
-            scissor.extent.width = static_cast<uint32_t>(clip_rect.z - clip_rect.x);
-            scissor.extent.height = static_cast<uint32_t>(clip_rect.w - clip_rect.y);
-            command_buffer.set_scissor(0, scissor);
-
-            command_buffer.bind_sampler(0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear});
-            if (im_cmd->TextureId != 0) {
-              const auto index = im_cmd->TextureId - 1;
-              const auto& image = sis[index];
-              command_buffer.bind_image(0, 1, image);
+        // Render command lists
+        // (Because we merged all buffers into a single one, we maintain our own offset into them)
+        int global_vtx_offset = 0;
+        int global_idx_offset = 0;
+        for (int n = 0; n < draw_data->CmdListsCount; n++) {
+          const ImDrawList* cmd_list = draw_data->CmdLists[n];
+          for (int cmd_i = 0; cmd_i < cmd_list->CmdBuffer.Size; cmd_i++) {
+            const ImDrawCmd* im_cmd = &cmd_list->CmdBuffer[cmd_i];
+            if (im_cmd->UserCallback != nullptr) {
+              // User callback, registered via ImDrawList::AddCallback()
+              // (ImDrawCallback_ResetRenderState is a special callback value used by the user to request the renderer
+              // to reset render state.)
+              if (im_cmd->UserCallback == ImDrawCallback_ResetRenderState)
+                reset_render_state(command_buffer, verts, inds);
+              else
+                im_cmd->UserCallback(cmd_list, im_cmd);
             } else {
-              command_buffer.bind_image(0, 1, sis[0]);
+              // Project scissor/clipping rectangles into framebuffer space
+              ImVec4 clip_rect;
+              clip_rect.x = (im_cmd->ClipRect.x - clip_off.x) * clip_scale.x;
+              clip_rect.y = (im_cmd->ClipRect.y - clip_off.y) * clip_scale.y;
+              clip_rect.z = (im_cmd->ClipRect.z - clip_off.x) * clip_scale.x;
+              clip_rect.w = (im_cmd->ClipRect.w - clip_off.y) * clip_scale.y;
+
+              const auto fb_width = command_buffer.get_ongoing_render_pass().extent.width;
+              const auto fb_height = command_buffer.get_ongoing_render_pass().extent.height;
+              if (clip_rect.x < fb_width && clip_rect.y < fb_height && clip_rect.z >= 0.0f && clip_rect.w >= 0.0f) {
+                // Negative offsets are illegal for vkCmdSetScissor
+                clip_rect.x = std::max(clip_rect.x, 0.0f);
+                clip_rect.y = std::max(clip_rect.y, 0.0f);
+
+                // Apply scissor/clipping rectangle
+                vuk::Rect2D scissor;
+                scissor.offset.x = static_cast<int32_t>(clip_rect.x);
+                scissor.offset.y = static_cast<int32_t>(clip_rect.y);
+                scissor.extent.width = static_cast<uint32_t>(clip_rect.z - clip_rect.x);
+                scissor.extent.height = static_cast<uint32_t>(clip_rect.w - clip_rect.y);
+                command_buffer.set_scissor(0, scissor);
+
+                command_buffer.bind_sampler(
+                    0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear});
+                if (im_cmd->TextureId != 0) {
+                  const auto index = im_cmd->TextureId - 1;
+                  const auto& image = sis[index];
+                  command_buffer.bind_image(0, 1, image);
+                } else {
+                  command_buffer.bind_image(0, 1, sis[0]);
+                }
+
+                command_buffer.draw_indexed(im_cmd->ElemCount,
+                                            1,
+                                            im_cmd->IdxOffset + global_idx_offset,
+                                            im_cmd->VtxOffset + global_vtx_offset,
+                                            0);
+              }
             }
-
-            command_buffer.draw_indexed(im_cmd->ElemCount,
-                                        1,
-                                        im_cmd->IdxOffset + global_idx_offset,
-                                        im_cmd->VtxOffset + global_vtx_offset,
-                                        0);
           }
+          global_idx_offset += cmd_list->IdxBuffer.Size;
+          global_vtx_offset += cmd_list->VtxBuffer.Size;
         }
-      }
-      global_idx_offset += cmd_list->IdxBuffer.Size;
-      global_vtx_offset += cmd_list->VtxBuffer.Size;
-    }
 
-    return color_rt;
-  })(std::move(target), std::move(sampled_images_array));
+        return color_rt;
+      })(std::move(target), std::move(sampled_images_array));
 }
 
 ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment> attachment) {
@@ -306,8 +300,7 @@ void ImGuiLayer::on_mouse_pos(glm::vec2 pos) {
   imgui.AddMousePosEvent(pos.x, pos.y);
 }
 
-void ImGuiLayer::on_mouse_button(u8 button,
-                                 bool down) {
+void ImGuiLayer::on_mouse_button(u8 button, bool down) {
   ZoneScoped;
 
   i32 imgui_button = 0;
@@ -332,12 +325,8 @@ void ImGuiLayer::on_mouse_scroll(glm::vec2 offset) {
   imgui.AddMouseWheelEvent(offset.x, offset.y);
 }
 
-ImGuiKey to_imgui_key(SDL_Keycode keycode,
-                      SDL_Scancode scancode);
-void ImGuiLayer::on_key(u32 key_code,
-                        u32 scan_code,
-                        u16 mods,
-                        bool down) {
+ImGuiKey to_imgui_key(SDL_Keycode keycode, SDL_Scancode scancode);
+void ImGuiLayer::on_key(u32 key_code, u32 scan_code, u16 mods, bool down) {
   ZoneScoped;
 
   auto& imgui = ImGui::GetIO();
@@ -348,10 +337,8 @@ void ImGuiLayer::on_key(u32 key_code,
 
   const auto key = to_imgui_key(static_cast<SDL_Keycode>(key_code), static_cast<SDL_Scancode>(scan_code));
   imgui.AddKeyEvent(key, down);
-  imgui.SetKeyEventNativeData(key,
-                              static_cast<i32>(key_code),
-                              static_cast<i32>(scan_code),
-                              static_cast<i32>(scan_code));
+  imgui.SetKeyEventNativeData(
+      key, static_cast<i32>(key_code), static_cast<i32>(scan_code), static_cast<i32>(scan_code));
 }
 
 void ImGuiLayer::on_text_input(const c8* text) {
@@ -361,8 +348,7 @@ void ImGuiLayer::on_text_input(const c8* text) {
   imgui.AddInputCharactersUTF8(text);
 }
 
-ImGuiKey to_imgui_key(SDL_Keycode keycode,
-                      SDL_Scancode scancode) {
+ImGuiKey to_imgui_key(SDL_Keycode keycode, SDL_Scancode scancode) {
   ZoneScoped;
 
   switch (scancode) {

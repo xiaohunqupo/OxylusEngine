@@ -9,10 +9,8 @@ class state;
 namespace ox {
 class LuaManager : public ESystem {
 public:
-  auto init() -> std::expected<void,
-                               std::string> override;
-  auto deinit() -> std::expected<void,
-                                 std::string> override;
+  auto init() -> std::expected<void, std::string> override;
+  auto deinit() -> std::expected<void, std::string> override;
 
   sol::state* get_state() const { return m_state.get(); }
 

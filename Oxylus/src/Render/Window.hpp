@@ -44,24 +44,13 @@ struct SystemDisplay {
 
 struct WindowCallbacks {
   void* user_data = nullptr;
-  void (*on_resize)(void* user_data,
-                    glm::uvec2 size) = nullptr;
-  void (*on_mouse_pos)(void* user_data,
-                       glm::vec2 position,
-                       glm::vec2 relative) = nullptr;
-  void (*on_mouse_button)(void* user_data,
-                          u8 button,
-                          bool down) = nullptr;
-  void (*on_mouse_scroll)(void* user_data,
-                          glm::vec2 offset) = nullptr;
-  void (*on_text_input)(void* user_data,
-                        const c8* text) = nullptr;
-  void (*on_key)(void* user_data,
-                 SDL_Keycode key_code,
-                 SDL_Scancode scan_code,
-                 u16 mods,
-                 bool down,
-                 bool repeat) = nullptr;
+  void (*on_resize)(void* user_data, glm::uvec2 size) = nullptr;
+  void (*on_mouse_pos)(void* user_data, glm::vec2 position, glm::vec2 relative) = nullptr;
+  void (*on_mouse_button)(void* user_data, u8 button, bool down) = nullptr;
+  void (*on_mouse_scroll)(void* user_data, glm::vec2 offset) = nullptr;
+  void (*on_text_input)(void* user_data, const c8* text) = nullptr;
+  void (*on_key)(void* user_data, SDL_Keycode key_code, SDL_Scancode scan_code, u16 mods, bool down, bool repeat) =
+      nullptr;
   void (*on_close)(void* user_data) = nullptr;
 };
 
@@ -79,9 +68,7 @@ struct FileDialogFilter {
 struct ShowDialogInfo {
   DialogKind kind = DialogKind::OpenFile;
   void* user_data = nullptr;
-  void (*callback)(void* user_data,
-                   const c8* const* files,
-                   i32 filter) = nullptr;
+  void (*callback)(void* user_data, const c8* const* files, i32 filter) = nullptr;
   std::string_view title = {};
   std::string default_path = {};
   std::span<FileDialogFilter> filters = {};

@@ -16,14 +16,11 @@
 namespace ox {
 struct AssetDirectoryCallbacks {
   void* user_data = nullptr;
-  void (*on_new_directory)(void* user_data,
-                           AssetDirectory* directory) = nullptr;
-  void (*on_new_asset)(void* user_data,
-                       UUID& asset_uuid) = nullptr;
+  void (*on_new_directory)(void* user_data, AssetDirectory* directory) = nullptr;
+  void (*on_new_asset)(void* user_data, UUID& asset_uuid) = nullptr;
 };
 
-auto populate_directory(AssetDirectory* dir,
-                        const AssetDirectoryCallbacks& callbacks) -> void {
+auto populate_directory(AssetDirectory* dir, const AssetDirectoryCallbacks& callbacks) -> void {
   for (const auto& entry : ::fs::directory_iterator(dir->path)) {
     const auto& path = entry.path();
     if (entry.is_directory()) {
@@ -50,10 +47,7 @@ auto populate_directory(AssetDirectory* dir,
   }
 }
 
-AssetDirectory::AssetDirectory(::fs::path path_,
-                               AssetDirectory* parent_) :
-    path(std::move(path_)),
-    parent(parent_) {}
+AssetDirectory::AssetDirectory(::fs::path path_, AssetDirectory* parent_) : path(std::move(path_)), parent(parent_) {}
 
 AssetDirectory::~AssetDirectory() {
   auto* asset_man = App::get_asset_manager();
@@ -64,23 +58,21 @@ AssetDirectory::~AssetDirectory() {
   }
 }
 
-auto AssetDirectory::add_subdir(this AssetDirectory& self,
-                                const ::fs::path& path) -> AssetDirectory* {
+auto AssetDirectory::add_subdir(this AssetDirectory& self, const ::fs::path& path) -> AssetDirectory* {
   auto dir = std::make_unique<AssetDirectory>(path, &self);
 
   return self.add_subdir(std::move(dir));
 }
 
-auto AssetDirectory::add_subdir(this AssetDirectory& self,
-                                std::unique_ptr<AssetDirectory>&& directory) -> AssetDirectory* {
+auto AssetDirectory::add_subdir(this AssetDirectory& self, std::unique_ptr<AssetDirectory>&& directory)
+    -> AssetDirectory* {
   auto* ptr = directory.get();
   self.subdirs.push_back(std::move(directory));
 
   return ptr;
 }
 
-auto AssetDirectory::add_asset(this AssetDirectory& self,
-                               const ::fs::path& path) -> UUID {
+auto AssetDirectory::add_asset(this AssetDirectory& self, const ::fs::path& path) -> UUID {
   auto* asset_man = App::get_asset_manager();
   auto asset_uuid = asset_man->import_asset(path);
   if (!asset_uuid) {
@@ -154,8 +146,8 @@ auto Project::new_project(this Project& self,
   const ProjectSerializer serializer(&self);
   serializer.serialize(fs::append_paths(project_dir, project_name + ".oxproj"));
 
-  const auto asset_dir_path =
-      fs::append_paths(fs::get_directory(self.project_file_path), self.project_config.asset_directory);
+  const auto asset_dir_path = fs::append_paths(fs::get_directory(self.project_file_path),
+                                               self.project_config.asset_directory);
   App::get_vfs()->mount_dir(VFS::PROJECT_DIR, asset_dir_path);
 
   self.register_assets(asset_dir_path);
@@ -163,15 +155,14 @@ auto Project::new_project(this Project& self,
   return true;
 }
 
-auto Project::load(this Project& self,
-                   const std::string& path) -> bool {
+auto Project::load(this Project& self, const std::string& path) -> bool {
   const ProjectSerializer serializer(&self);
   if (serializer.deserialize(path)) {
     self.set_project_dir(std::filesystem::path(path).parent_path().string());
     self.project_file_path = std::filesystem::absolute(path).string();
 
-    const auto asset_dir_path =
-        fs::append_paths(fs::get_directory(self.project_file_path), self.project_config.asset_directory);
+    const auto asset_dir_path = fs::append_paths(fs::get_directory(self.project_file_path),
+                                                 self.project_config.asset_directory);
     App::get_system<VFS>(EngineSystems::VFS)->mount_dir(VFS::PROJECT_DIR, asset_dir_path);
 
     self.register_assets(asset_dir_path);
@@ -185,8 +176,7 @@ auto Project::load(this Project& self,
   return false;
 }
 
-auto Project::save(this Project& self,
-                   const std::string& path) -> bool {
+auto Project::save(this Project& self, const std::string& path) -> bool {
   const ProjectSerializer serializer(&self);
   if (serializer.serialize(path)) {
     self.set_project_dir(std::filesystem::path(path).parent_path().string());

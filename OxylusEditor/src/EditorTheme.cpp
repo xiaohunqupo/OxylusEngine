@@ -9,12 +9,10 @@
 #include "UI/ImGuiLayer.hpp"
 
 namespace ox {
-static ImVec4 darken(ImVec4 c,
-                     float p) {
+static ImVec4 darken(ImVec4 c, float p) {
   return {glm::max(0.f, c.x - 1.0f * p), glm::max(0.f, c.y - 1.0f * p), glm::max(0.f, c.z - 1.0f * p), c.w};
 }
-static ImVec4 lighten(ImVec4 c,
-                      float p) {
+static ImVec4 lighten(ImVec4 c, float p) {
   return {glm::max(0.f, c.x + 1.0f * p), glm::max(0.f, c.y + 1.0f * p), glm::max(0.f, c.z + 1.0f * p), c.w};
 }
 
@@ -201,9 +199,10 @@ void EditorTheme::set_style() {
     ui_frame_padding = ImVec2(4.0f, 2.0f);
     popup_item_spacing = ImVec2(6.0f, 8.0f);
 
-    constexpr ImGuiColorEditFlags color_edit_flags =
-        ImGuiColorEditFlags_AlphaBar | ImGuiColorEditFlags_AlphaPreviewHalf | ImGuiColorEditFlags_DisplayRGB |
-        ImGuiColorEditFlags_InputRGB | ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_Uint8;
+    constexpr ImGuiColorEditFlags color_edit_flags = ImGuiColorEditFlags_AlphaBar |
+                                                     ImGuiColorEditFlags_AlphaPreviewHalf |
+                                                     ImGuiColorEditFlags_DisplayRGB | ImGuiColorEditFlags_InputRGB |
+                                                     ImGuiColorEditFlags_PickerHueBar | ImGuiColorEditFlags_Uint8;
     ImGui::SetColorEditOptions(color_edit_flags);
 
     style->ScaleAllSizes(1.0f);

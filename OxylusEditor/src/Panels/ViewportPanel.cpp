@@ -4,6 +4,7 @@
 #include <icons/IconsMaterialDesignIcons.h>
 #include <imgui.h>
 
+#include "Asset/AssetManager.hpp"
 #include "Core/Input.hpp"
 #include "EditorLayer.hpp"
 #include "Render/Camera.hpp"
@@ -16,13 +17,13 @@
 #include "UI/OxUI.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/OxMath.hpp"
+#include "Utils/PayloadData.hpp"
 #include "Utils/StringUtils.hpp"
 #include "Utils/Timestep.hpp"
 
 namespace ox {
 template <typename T>
 void show_component_gizmo(const char8_t* icon,
-                          SceneHierarchyPanel* scene_hierarchy_panel,
                           const std::string& name,
                           const float width,
                           const float height,
@@ -32,39 +33,35 @@ void show_component_gizmo(const char8_t* icon,
                           const Frustum& frustum,
                           Scene* scene) {
   scene->world.query_builder<T>().build().each(
-      [view_proj, width, height, xpos, ypos, scene, frustum, icon, scene_hierarchy_panel, name](flecs::entity entity,
-                                                                                                const T&) {
-    const glm::vec3 pos = scene->get_world_transform(entity)[3];
+      [view_proj, width, height, xpos, ypos, scene, frustum, icon, name](flecs::entity entity, const T&) {
+        const glm::vec3 pos = scene->get_world_transform(entity)[3];
 
-    if (frustum.is_inside(pos) == (uint32_t)Intersection::Outside)
-      return;
+        if (frustum.is_inside(pos) == (uint32_t)Intersection::Outside)
+          return;
 
-    const glm::vec2 screen_pos = math::world_to_screen(pos, view_proj, width, height, xpos, ypos);
-    ImGui::SetCursorPos({screen_pos.x - ImGui::GetFontSize() * 0.5f, screen_pos.y - ImGui::GetFontSize() * 0.5f});
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
+        const glm::vec2 screen_pos = math::world_to_screen(pos, view_proj, width, height, xpos, ypos);
+        ImGui::SetCursorPos({screen_pos.x - ImGui::GetFontSize() * 0.5f, screen_pos.y - ImGui::GetFontSize() * 0.5f});
+        ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
+        ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
-    ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
-    if (ImGui::Button(StringUtils::from_char8_t(icon), {50.f, 50.f})) {
-      scene_hierarchy_panel->set_selected_entity(entity);
-    }
-    ImGui::PopFont();
+        ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
+        if (ImGui::Button(StringUtils::from_char8_t(icon), {50.f, 50.f})) {
+          auto& editor_context = EditorLayer::get()->get_context();
+          editor_context.reset();
+          editor_context.entity = entity;
+          editor_context.type = EditorContext::Type::Entity;
+        }
+        ImGui::PopFont();
 
-    ImGui::PopStyleColor(2);
+        ImGui::PopStyleColor(2);
 
-    ui::tooltip_hover(name.data());
-  });
+        ui::tooltip_hover(name.data());
+      });
 }
 
-ViewportPanel::ViewportPanel() :
-    EditorPanel("Viewport",
-                ICON_MDI_TERRAIN,
-                true) {
-  OX_SCOPED_ZONE;
-}
+ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true) { OX_SCOPED_ZONE; }
 
-void ViewportPanel::on_render(const vuk::Extent3D extent,
-                              vuk::Format format) {
+void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
   draw_performance_overlay();
 
   constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar;
@@ -125,21 +122,19 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
     const auto fixed_width = _viewport_size.y * sixteen_nine_ar;
     ImGui::SetCursorPosX((_viewport_panel_size.x - fixed_width) * 0.5f);
 
-    const auto off =
-        (_viewport_panel_size.x - fixed_width) * 0.5f; // add offset since we render image with fixed aspect ratio
+    const auto off = (_viewport_panel_size.x - fixed_width) *
+                     0.5f; // add offset since we render image with fixed aspect ratio
     _viewport_offset = {_viewport_bounds[0].x + off * 0.5f, _viewport_bounds[0].y};
 
     const auto* app = App::get();
     const auto& scene_renderer = _scene->get_renderer();
-    auto& frame_allocator = app->get_vkcontext().get_frame_allocator();
-    if (scene_renderer != nullptr && frame_allocator != nullopt) {
+    if (scene_renderer != nullptr) {
       const RenderPipeline::RenderInfo render_info = {
           .extent = extent,
           .format = format,
           .picking_texel = {},
       };
-      const auto scene_view_image =
-          scene_renderer->get_render_pipeline()->on_render(frame_allocator.value(), render_info);
+      const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(app->get_vkcontext(), render_info);
       ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)),
                    ImVec2{fixed_width, _viewport_panel_size.y});
     } else {
@@ -150,8 +145,22 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
       ImGui::Text(warning_text);
     }
 
-    if (_scene_hierarchy_panel)
-      _scene_hierarchy_panel->drag_drop_target();
+    if (ImGui::BeginDragDropTarget()) {
+      if (const ImGuiPayload* imgui_payload = ImGui::AcceptDragDropPayload(PayloadData::DRAG_DROP_SOURCE)) {
+        const auto* payload = PayloadData::from_payload(imgui_payload);
+        const auto path = ::fs::path(payload->get_str());
+        if (path.extension() == ".oxscene") {
+          EditorLayer::get()->open_scene(path);
+        }
+        if (path.extension() == ".gltf" || path.extension() == ".glb") {
+          auto* asset_man = App::get_asset_manager();
+          if (auto asset = asset_man->import_asset(path.string()))
+            _scene->create_mesh_entity(asset);
+        }
+      }
+
+      ImGui::EndDragDropTarget();
+    }
 
     if (editor_camera.has<CameraComponent>() && !_scene->is_running()) {
       const auto& cam = *editor_camera.get<CameraComponent>();
@@ -161,7 +170,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
       const Frustum& frustum = Camera::get_frustum(cam, cam.position);
 
       show_component_gizmo<LightComponent>(editor_theme.component_icon_map.at(typeid(LightComponent).hash_code()),
-                                           _scene_hierarchy_panel,
                                            "LightComponent",
                                            fixed_width,
                                            _viewport_panel_size.y,
@@ -172,7 +180,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
                                            _scene.get());
       show_component_gizmo<AudioSourceComponent>(
           editor_theme.component_icon_map.at(typeid(AudioSourceComponent).hash_code()),
-          _scene_hierarchy_panel,
           "AudioSourceComponent",
           fixed_width,
           _viewport_panel_size.y,
@@ -183,7 +190,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
           _scene.get());
       show_component_gizmo<AudioListenerComponent>(
           editor_theme.component_icon_map.at(typeid(AudioListenerComponent).hash_code()),
-          _scene_hierarchy_panel,
           "AudioListenerComponent",
           fixed_width,
           _viewport_panel_size.y,
@@ -193,7 +199,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
           frustum,
           _scene.get());
       show_component_gizmo<CameraComponent>(editor_theme.component_icon_map.at(typeid(CameraComponent).hash_code()),
-                                            _scene_hierarchy_panel,
                                             "CameraComponent",
                                             fixed_width,
                                             _viewport_panel_size.y,
@@ -297,8 +302,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
                                 alpha,
                                 alpha))
             cam->projection = cam->projection == CameraComponent::Projection::Orthographic
-                                ? CameraComponent::Projection::Perspective
-                                : CameraComponent::Projection::Orthographic;
+                                  ? CameraComponent::Projection::Perspective
+                                  : CameraComponent::Projection::Orthographic;
         }
 
         ImGui::PopStyleVar(2);
@@ -320,8 +325,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
 
         const bool highlight = EditorLayer::get()->scene_state == EditorLayer::SceneState::Play;
-        const char8_t* icon =
-            EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY : ICON_MDI_STOP;
+        const char8_t* icon = EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
+                                                                                               : ICON_MDI_STOP;
         if (ui::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
           if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit)
             EditorLayer::get()->on_scene_play();
@@ -350,8 +355,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent,
   }
 }
 
-void ViewportPanel::set_context(const Shared<Scene>& scene,
-                                SceneHierarchyPanel& scene_hierarchy_panel) {
+void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel) {
   _scene_hierarchy_panel = &scene_hierarchy_panel;
 
   if (!scene)
@@ -384,13 +388,14 @@ void ViewportPanel::on_update() {
   const auto& window = App::get()->get_window();
 
   if (Input::get_key_pressed(KeyCode::F)) {
-    const auto entity = _scene_hierarchy_panel->get_selected_entity();
-    if (entity != flecs::entity::null()) {
-      const auto tc = entity.get<TransformComponent>();
-      auto final_pos = tc->position + cam->forward;
+    auto& editor_context = EditorLayer::get()->get_context();
+    editor_context.entity.and_then([&cam](flecs::entity& e) {
+      const auto entity_tc = e.get<TransformComponent>();
+      auto final_pos = entity_tc->position + cam->forward;
       final_pos += -5.0f * cam->forward * glm::vec3(1.0f);
       cam->position = final_pos;
-    }
+      return std::optional<std::monostate>{};
+    });
   }
 
   if (Input::get_mouse_held(MouseCode::ButtonRight) && !is_ortho) {
@@ -403,8 +408,8 @@ void ViewportPanel::on_update() {
       final_yaw_pitch.y = glm::clamp(final_yaw_pitch.y - change.y, glm::radians(-89.9f), glm::radians(89.9f));
     }
 
-    const float max_move_speed =
-        EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
+    const float max_move_speed = EditorCVar::cvar_camera_speed.get() *
+                                 (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
     if (Input::get_key_held(KeyCode::W))
       final_position += cam->forward * max_move_speed;
     else if (Input::get_key_held(KeyCode::S))
@@ -428,8 +433,8 @@ void ViewportPanel::on_update() {
     const glm::vec2 change = (new_mouse_position - _locked_mouse_position) * EditorCVar::cvar_camera_sens.get();
 
     if (Input::get_mouse_moved()) {
-      const float max_move_speed =
-          EditorCVar::cvar_camera_speed.get() * (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
+      const float max_move_speed = EditorCVar::cvar_camera_speed.get() *
+                                   (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
       final_position += cam->forward * change.y * max_move_speed;
       final_position += cam->right * change.x * max_move_speed;
     }
@@ -467,7 +472,8 @@ void ViewportPanel::draw_performance_overlay() {
 }
 
 void ViewportPanel::draw_gizmos() {
-  const flecs::entity selected_entity = _scene_hierarchy_panel->get_selected_entity();
+  auto& editor_context = EditorLayer::get()->get_context();
+  const flecs::entity selected_entity = editor_context.entity.value_or(flecs::entity::null());
   if (selected_entity == flecs::entity::null() || _gizmo_type == -1)
     return;
 
@@ -515,8 +521,8 @@ void ViewportPanel::draw_gizmos() {
 
     if (ImGuizmo::IsUsing()) {
       const flecs::entity parent = selected_entity.parent();
-      const glm::mat4& parent_world_transform =
-          parent != flecs::entity::null() ? _scene->get_world_transform(parent) : glm::mat4(1.0f);
+      const glm::mat4& parent_world_transform = parent != flecs::entity::null() ? _scene->get_world_transform(parent)
+                                                                                : glm::mat4(1.0f);
       glm::vec3 translation, rotation, scale;
       if (math::decompose_transform(inverse(parent_world_transform) * transform, translation, rotation, scale)) {
         tc->position = translation;

@@ -2,15 +2,15 @@
 
 namespace ox {
 enum class CVarFlags : uint32_t {
-  None         = 0,
-  Noedit       = 1 << 1,
+  None = 0,
+  Noedit = 1 << 1,
   EditReadOnly = 1 << 2,
-  Advanced     = 1 << 3,
-  Dropdown     = 1 << 4,
+  Advanced = 1 << 3,
+  Dropdown = 1 << 4,
 
-  EditCheckbox  = 1 << 8,
+  EditCheckbox = 1 << 8,
   EditFloatDrag = 1 << 9,
-  EditIntDrag   = 1 << 10,
+  EditIntDrag = 1 << 10,
 };
 
 enum class CVarType : char {
@@ -52,8 +52,10 @@ public:
   CVarParameter* get_cvar(usize hash);
 
   CVarParameter* create_float_cvar(const char* name, const char* description, float default_value, float current_value);
-  CVarParameter* create_int_cvar(const char* name, const char* description, int32_t default_value, int32_t current_value);
-  CVarParameter* create_string_cvar(const char* name, const char* description, const char* default_value, const char* current_value);
+  CVarParameter*
+  create_int_cvar(const char* name, const char* description, int32_t default_value, int32_t current_value);
+  CVarParameter*
+  create_string_cvar(const char* name, const char* description, const char* default_value, const char* current_value);
 
   float* get_float_cvar(usize hash);
   int32_t* get_int_cvar(usize hash);
@@ -96,9 +98,12 @@ struct AutoCVar_Int : AutoCVar<int32_t> {
 };
 
 struct AutoCVar_String : AutoCVar<std::string> {
-  AutoCVar_String(const char* name, const char* description, const char* default_value, CVarFlags flags = CVarFlags::None);
+  AutoCVar_String(const char* name,
+                  const char* description,
+                  const char* default_value,
+                  CVarFlags flags = CVarFlags::None);
 
   std::string get() const;
   void set(std::string&& val) const;
 };
-}
+} // namespace ox

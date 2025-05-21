@@ -3,12 +3,12 @@
 #include <flecs.h>
 
 #include "ESystem.hpp"
+#include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
 #include "Utils/Timestep.hpp"
 #include "VFS.hpp"
 
-int main(int argc,
-         char** argv);
+int main(int argc, char** argv);
 
 namespace ox {
 class AssetManager;
@@ -27,8 +27,7 @@ struct AppCommandLineArgs {
   std::vector<Arg> args = {};
 
   AppCommandLineArgs() = default;
-  AppCommandLineArgs(const int argc,
-                     char** argv) {
+  AppCommandLineArgs(const int argc, char** argv) {
     for (int i = 0; i < argc; i++)
       args.emplace_back(Arg{.arg_str = argv[i], .arg_index = (u32)i});
   }
@@ -45,7 +44,8 @@ struct AppCommandLineArgs {
   std::optional<Arg> get(const u32 index) const {
     try {
       return args.at(index);
-    } catch ([[maybe_unused]] std::exception& exception) {
+    } catch ([[maybe_unused]]
+             std::exception& exception) {
       return std::nullopt;
     }
   }
@@ -130,10 +130,8 @@ public:
   static AssetManager* get_asset_manager();
   static VFS* get_vfs();
 
-  template <typename T,
-            typename... Args>
-  static void register_system(const EngineSystems type,
-                              Args&&... args) {
+  template <typename T, typename... Args>
+  static void register_system(const EngineSystems type, Args&&... args) {
     if (_instance->system_registry.contains(type)) {
       OX_LOG_ERROR("Registering system more than once.");
       return;
@@ -165,7 +163,7 @@ private:
   AppSpec app_spec = {};
   ImGuiLayer* imgui_layer = nullptr;
   Shared<LayerStack> layer_stack = nullptr;
-  Shared<VkContext> vk_context = nullptr;
+  Unique<VkContext> vk_context = nullptr;
   Window window = {};
   glm::vec2 swapchain_extent = {};
 
@@ -179,8 +177,7 @@ private:
 
   void run();
 
-  friend int ::main(int argc,
-                    char** argv);
+  friend int ::main(int argc, char** argv);
 };
 
 App* create_application(const AppCommandLineArgs& args);

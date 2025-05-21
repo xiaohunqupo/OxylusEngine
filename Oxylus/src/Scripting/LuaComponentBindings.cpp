@@ -15,13 +15,15 @@ void LuaBindings::bind_components(const Shared<sol::state>& state) {
 }
 
 void LuaBindings::bind_light_component(const Shared<sol::state>& state) {
-  // REGISTER_COMPONENT(state, LightComponent, FIELD(LightComponent, color), FIELD(LightComponent, intensity)); // TODO: Rest
+  // REGISTER_COMPONENT(state, LightComponent, FIELD(LightComponent, color), FIELD(LightComponent, intensity)); // TODO:
+  // Rest
 }
 
 void LuaBindings::bind_mesh_component(const Shared<sol::state>& state) {
 
-// #define MC MeshComponent
-  // REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, stationary), FIELD(MC, cast_shadows), FIELD(MC, materials), FIELD(MC, aabb));
+  // #define MC MeshComponent
+  // REGISTER_COMPONENT(state, MC, FIELD(MC, mesh_base), FIELD(MC, stationary), FIELD(MC, cast_shadows), FIELD(MC,
+  // materials), FIELD(MC, aabb));
 }
 
 void LuaBindings::bind_camera_component(const Shared<sol::state>& state) {

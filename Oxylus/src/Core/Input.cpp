@@ -5,15 +5,9 @@
 namespace ox {
 Input* Input::_instance = nullptr;
 
-auto Input::init() -> std::expected<void,
-                                    std::string> {
-  return {};
-}
+auto Input::init() -> std::expected<void, std::string> { return {}; }
 
-auto Input::deinit() -> std::expected<void,
-                                      std::string> {
-  return {};
-}
+auto Input::deinit() -> std::expected<void, std::string> { return {}; }
 
 void Input::set_instance() {
   if (_instance == nullptr)
@@ -49,13 +43,9 @@ float Input::get_mouse_scroll_offset_y() { return _instance->input_data.scroll_o
 
 bool Input::get_mouse_moved() { return _instance->input_data.mouse_moved; }
 
-void Input::set_mouse_position(const float x,
-                               const float y) {
-  SDL_WarpMouseGlobal(x, y);
-}
+void Input::set_mouse_position(const float x, const float y) { SDL_WarpMouseGlobal(x, y); }
 
-KeyCode Input::to_keycode(SDL_Keycode keycode,
-                          SDL_Scancode scancode) {
+KeyCode Input::to_keycode(SDL_Keycode keycode, SDL_Scancode scancode) {
   switch (scancode) {
     case SDL_SCANCODE_KP_0       : return KeyCode::KP0;
     case SDL_SCANCODE_KP_1       : return KeyCode::KP1;

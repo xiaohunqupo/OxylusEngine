@@ -11,15 +11,14 @@ struct SlotMapIDUnpacked {
 };
 
 template <typename T>
-concept SlotMapID = std::is_enum_v<T> &&                               // ID must be an enum to preserve strong typing.
+concept SlotMapID = std::is_enum_v<T> &&                            // ID must be an enum to preserve strong typing.
                     std::is_same_v<u64, std::underlying_type_t<T>>; // ID enum must have underlying type of u64.
 
 constexpr static u64 SLOT_MAP_VERSION_BITS = 32_u64;
 constexpr static u64 SLOT_MAP_INDEX_MASK = (1_u64 << SLOT_MAP_VERSION_BITS) - 1_u64;
 
 template <SlotMapID ID>
-constexpr auto SlotMap_encode_id(u32 version,
-                                 u32 index) -> ID {
+constexpr auto SlotMap_encode_id(u32 version, u32 index) -> ID {
   OX_SCOPED_ZONE;
 
   u64 raw = (static_cast<u64>(version) << SLOT_MAP_VERSION_BITS) | static_cast<u64>(index);
@@ -53,8 +52,7 @@ private:
   mutable std::shared_mutex mutex = {};
 
 public:
-  auto create_slot(this Self& self,
-                   T&& v = {}) -> ID {
+  auto create_slot(this Self& self, T&& v = {}) -> ID {
     OX_SCOPED_ZONE;
 
     std::unique_lock _(self.mutex);
@@ -72,8 +70,7 @@ public:
     return SlotMap_encode_id<ID>(1_u32, index);
   }
 
-  auto destroy_slot(this Self& self,
-                    ID id) -> bool {
+  auto destroy_slot(this Self& self, ID id) -> bool {
     OX_SCOPED_ZONE;
 
     if (self.is_valid(id)) {
@@ -101,8 +98,7 @@ public:
     self.free_indices.clear();
   }
 
-  auto is_valid(this const Self& self,
-                ID id) -> bool {
+  auto is_valid(this const Self& self, ID id) -> bool {
     OX_SCOPED_ZONE;
 
     std::shared_lock _(self.mutex);
@@ -110,8 +106,7 @@ public:
     return index < self.slots.size() && self.versions[index] == version;
   }
 
-  auto slot(this Self& self,
-            ID id) -> T* {
+  auto slot(this Self& self, ID id) -> T* {
     OX_SCOPED_ZONE;
 
     if (self.is_valid(id)) {
@@ -123,8 +118,7 @@ public:
     return nullptr;
   }
 
-  auto slot_from_index(this Self& self,
-                       usize index) -> T* {
+  auto slot_from_index(this Self& self, usize index) -> T* {
     OX_SCOPED_ZONE;
 
     std::shared_lock _(self.mutex);

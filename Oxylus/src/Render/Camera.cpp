@@ -3,8 +3,7 @@
 #include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
-void Camera::update(CameraComponent& component,
-                    const glm::vec2& screen_size) {
+void Camera::update(CameraComponent& component, const glm::vec2& screen_size) {
   OX_SCOPED_ZONE;
 
   component.jitter_prev = component.jitter;
@@ -24,8 +23,8 @@ void Camera::update(CameraComponent& component,
   component.right = glm::normalize(glm::cross(component.forward, {component.tilt, 1, component.tilt}));
   component.up = glm::normalize(glm::cross(component.right, component.forward));
 
-  component.matrices.view_matrix =
-      glm::lookAt(component.position, component.position + component.forward, component.up);
+  component.matrices.view_matrix = glm::lookAt(
+      component.position, component.position + component.forward, component.up);
 
   const auto extent = screen_size;
   if (extent.x != 0)
@@ -50,8 +49,7 @@ void Camera::update(CameraComponent& component,
   component.matrices.projection_matrix[1][1] *= -1.0f;
 }
 
-Frustum Camera::get_frustum(const CameraComponent& component,
-                            const glm::vec3& position) {
+Frustum Camera::get_frustum(const CameraComponent& component, const glm::vec3& position) {
   const float half_v_side = component.far_clip * tanf(glm::radians(component.fov) * .5f);
   const float half_h_side = half_v_side * component.aspect;
   const glm::vec3 forward_far = component.far_clip * component.forward;
@@ -70,9 +68,8 @@ Frustum Camera::get_frustum(const CameraComponent& component,
   return frustum;
 }
 
-RayCast Camera::get_screen_ray(const CameraComponent& component,
-                               const glm::vec2& screen_pos,
-                               const glm::vec2& screen_size) {
+RayCast
+Camera::get_screen_ray(const CameraComponent& component, const glm::vec2& screen_pos, const glm::vec2& screen_size) {
   const glm::mat4 view_proj_inverse = inverse(component.matrices.projection_matrix * component.matrices.view_matrix);
 
   float screen_x = screen_pos.x / screen_size.x;
