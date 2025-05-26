@@ -57,7 +57,7 @@ auto write_texture_asset_meta(JsonWriter& writer, Texture*) -> bool {
 auto write_material_asset_meta(JsonWriter& writer, const UUID& uuid, const Material& material) -> bool {
   OX_SCOPED_ZONE;
 
-  writer["material"].begin_obj();
+  writer.begin_obj();
 
   writer["uuid"] = uuid.str();
   writer["albedo_color"] = material.albedo_color;
@@ -642,6 +642,29 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     texture_uuids.emplace_back(embedded_texture_uuid.value());
   }
 
+  // Load registered UUIDs.
+  auto materials_json = meta_json->doc["embedded_materials"].get_array();
+
+  auto materials = std::vector<Material>();
+  for (auto material_json : materials_json) {
+    auto material_uuid_json = material_json["uuid"].get_string().value_unsafe();
+    auto material_uuid = UUID::from_string(material_uuid_json);
+    if (!material_uuid.has_value()) {
+      OX_LOG_ERROR("Failed to import model {}! A material with corrupt UUID.", asset_path);
+      return false;
+    }
+
+    this->register_asset(material_uuid.value(), AssetType::Material, asset_path);
+    mesh->materials.emplace_back(material_uuid.value());
+
+    auto& material = materials.emplace_back();
+    read_material_data(&material, material_json.value_unsafe());
+  }
+
+  for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
+    this->load_material(material_uuid, material);
+  }
+
   struct GLTFCallbacks {
     Mesh* model = nullptr;
 
@@ -700,9 +723,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
 
   auto on_materials_load = [&load_infos, //
                             texture_uuids,
-                            &meta_json,
-                            asset_path,
-                            mesh](std::vector<GLTFImageInfo>& images) {
+                            asset_path](std::vector<GLTFImageInfo>& images) {
     for (auto& t : images) {
       std::visit(ox::match{
                      [&](const ::fs::path& p) {}, // noop
@@ -727,30 +748,6 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     const auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
     task_scheduler->schedule_task(&load_task);
     task_scheduler->wait_task(&load_task);
-
-    // Load registered UUIDs.
-    auto materials_json = meta_json->doc["embedded_materials"].get_array();
-
-    auto materials = std::vector<Material>();
-    for (auto material_json : materials_json) {
-      auto material_uuid_json = material_json["uuid"].get_string().value_unsafe();
-      auto material_uuid = UUID::from_string(material_uuid_json);
-      if (!material_uuid.has_value()) {
-        OX_LOG_ERROR("Failed to import model {}! A material with corrupt UUID.", asset_path);
-        return;
-      }
-
-      asset_man->register_asset(material_uuid.value(), AssetType::Material, asset_path);
-      mesh->materials.emplace_back(material_uuid.value());
-
-      auto& material = materials.emplace_back();
-      auto material_obj = material_json["material"].value_unsafe();
-      read_material_data(&material, material_obj);
-    }
-
-    for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
-      asset_man->load_material(material_uuid, material);
-    }
   };
 
   GLTFCallbacks gltf_callbacks = {.model = mesh};
