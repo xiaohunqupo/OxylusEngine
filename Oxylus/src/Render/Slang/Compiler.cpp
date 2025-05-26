@@ -12,8 +12,7 @@ struct SlangBlob : ISlangBlob {
   std::atomic_uint32_t m_refCount = 1;
 
   ISlangUnknown* getInterface(const SlangUUID&) { return nullptr; }
-  SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(const SlangUUID& uuid,
-                                                        void** outObject) SLANG_OVERRIDE {
+  SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(const SlangUUID& uuid, void** outObject) SLANG_OVERRIDE {
     ISlangUnknown* intf = getInterface(uuid);
     if (intf) {
       addRef();
@@ -49,8 +48,7 @@ struct SlangVirtualFS : ISlangFileSystem {
   std::string _root_dir;
   std::atomic_uint32_t m_refCount;
 
-  SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(const SlangUUID& uuid,
-                                                        void** outObject) SLANG_OVERRIDE {
+  SLANG_NO_THROW SlangResult SLANG_MCALL queryInterface(const SlangUUID& uuid, void** outObject) SLANG_OVERRIDE {
     ISlangUnknown* intf = getInterface(uuid);
     if (intf) {
       addRef();
@@ -71,16 +69,13 @@ struct SlangVirtualFS : ISlangFileSystem {
     return m_refCount;
   }
 
-  SlangVirtualFS(std::string root_dir) :
-      _root_dir(std::move(root_dir)),
-      m_refCount(1) {}
+  SlangVirtualFS(std::string root_dir) : _root_dir(std::move(root_dir)), m_refCount(1) {}
   virtual ~SlangVirtualFS() = default;
 
   ISlangUnknown* getInterface(const SlangUUID&) { return nullptr; }
   SLANG_NO_THROW void* SLANG_MCALL castAs(const SlangUUID&) final { return nullptr; }
 
-  SLANG_NO_THROW SlangResult SLANG_MCALL loadFile(const char* path_cstr,
-                                                  ISlangBlob** outBlob) final {
+  SLANG_NO_THROW SlangResult SLANG_MCALL loadFile(const char* path_cstr, ISlangBlob** outBlob) final {
     const auto path = std::string(path_cstr);
 
     const auto root_path = std::filesystem::relative(_root_dir);
@@ -138,10 +133,8 @@ auto SlangModule::get_entry_point(std::string_view name) -> option<SlangEntryPoi
   Slang::ComPtr<slang::IComponentType> composed_program;
   {
     Slang::ComPtr<slang::IBlob> diagnostics_blob;
-    const auto result = impl->session->session->createCompositeComponentType(component_types.data(),
-                                                                             u32(component_types.size()),
-                                                                             composed_program.writeRef(),
-                                                                             diagnostics_blob.writeRef());
+    const auto result = impl->session->session->createCompositeComponentType(
+        component_types.data(), u32(component_types.size()), composed_program.writeRef(), diagnostics_blob.writeRef());
     if (diagnostics_blob) {
       OX_LOG_INFO("{}", (const char*)diagnostics_blob->getBufferPointer());
     }
@@ -249,10 +242,8 @@ auto SlangSession::load_module(const SlangModuleInfo& info) -> option<SlangModul
   }
 
   Slang::ComPtr<slang::IBlob> diagnostics_blob;
-  slang_module = impl->session->loadModuleFromSourceString(info.module_name.c_str(),
-                                                           path_str.c_str(),
-                                                           source_data.c_str(),
-                                                           diagnostics_blob.writeRef());
+  slang_module = impl->session->loadModuleFromSourceString(
+      info.module_name.c_str(), path_str.c_str(), source_data.c_str(), diagnostics_blob.writeRef());
 
   if (diagnostics_blob) {
     OX_LOG_INFO("{}", (const char*)diagnostics_blob->getBufferPointer());
@@ -300,6 +291,8 @@ auto SlangCompiler::new_session(const SlangSessionInfo& info) -> option<SlangSes
        .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
       {.name = slang::CompilerOptionName::DisableWarnings,
        .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "39001,41012"}},
+      {.name = slang::CompilerOptionName::Capability,
+       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "vk_mem_model"}},
   };
   std::vector<slang::PreprocessorMacroDesc> macros;
   macros.reserve(info.definitions.size());
