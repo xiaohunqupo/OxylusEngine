@@ -29,6 +29,7 @@ public enum MemoryScope : u32 {
     Workgroup = 2,
     Subgroup = 3,
     Invocation = 4,
+    QueueFamily = 5,
 };
 
 func spirv_type_checks<T>() -> void {
