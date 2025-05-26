@@ -678,8 +678,12 @@ void ContentPanel::render_body(bool grid) {
           ui::image(*texture, {thumb_image_size, thumb_image_size});
         } else {
           ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
-          ImGui::TextUnformatted(StringUtils::from_char8_t(
-              FILE_TYPES_TO_ICON.at(FILE_TYPES.at(file.extension.empty() ? "" : file.extension))));
+          auto file_type = FileType::Unknown;
+          const auto& file_type_it = FILE_TYPES.find(file.extension.empty() ? "" : file.extension);
+          if (file_type_it != FILE_TYPES.end()) {
+            file_type = file_type_it->second;
+          }
+          ImGui::TextUnformatted(StringUtils::from_char8_t(FILE_TYPES_TO_ICON.at(file_type)));
           ImGui::PopFont();
         }
 
@@ -733,8 +737,12 @@ void ContentPanel::render_body(bool grid) {
         if (thumbnail_cache_textures.contains(texture_name)) {
           ui::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
         } else {
-          ImGui::TextUnformatted(StringUtils::from_char8_t(
-              FILE_TYPES_TO_ICON.at(FILE_TYPES.at(file.extension.empty() ? "" : file.extension))));
+          auto file_type = FileType::Unknown;
+          const auto& file_type_it = FILE_TYPES.find(file.extension.empty() ? "" : file.extension);
+          if (file_type_it != FILE_TYPES.end()) {
+            file_type = file_type_it->second;
+          }
+          ImGui::TextUnformatted(StringUtils::from_char8_t(FILE_TYPES_TO_ICON.at(file_type)));
         }
         ImGui::SameLine();
         ImGui::TextUnformatted(filename);
