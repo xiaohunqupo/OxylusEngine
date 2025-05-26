@@ -8,7 +8,6 @@
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
-#include "Core/SystemManager.hpp"
 #include "EditorLayer.hpp"
 #include "EditorTheme.hpp"
 #include "Render/ParticleSystem.hpp"
@@ -43,18 +42,21 @@ void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
 
           auto* asset_man = App::get_asset_manager();
 
-          return asset_man //
-              ->read_meta_file(path)
-              .and_then([this, asset_man](const auto& meta) {
-                const auto uuid_str = meta.doc["uuid"].GetString();
+          auto meta_file = asset_man->read_meta_file(path);
 
-                return UUID::from_string(uuid_str) //
-                    .and_then([this, asset_man](UUID&& uuid) {
-                      if (auto* asset = asset_man->get_asset(uuid))
-                        this->draw_asset_info(asset);
-                      return option<std::monostate>{};
-                    });
-              });
+          auto meta = asset_man->read_meta_file(path);
+          if (!meta)
+            return option<std::monostate>{};
+
+          auto uuid_str_json = meta->doc["uuid"].get_string();
+          if (uuid_str_json.error())
+            return option<std::monostate>{};
+
+          return UUID::from_string(uuid_str_json.value_unsafe()).and_then([this, asset_man](UUID&& uuid) {
+            if (auto* asset = asset_man->get_asset(uuid))
+              this->draw_asset_info(asset);
+            return option<std::monostate>{};
+          });
         });
       });
 
@@ -370,7 +372,6 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     draw_add_component<MeshColliderComponent>(entity, "Mesh Collider");
     draw_add_component<CharacterControllerComponent>(entity, "Character Controller");
     draw_add_component<LuaScriptComponent>(entity, "Lua Script Component");
-    draw_add_component<CPPScriptComponent>(entity, "CPP Script Component");
     draw_add_component<SpriteComponent>(entity, "Sprite Component");
     draw_add_component<SpriteAnimationComponent>(entity, "Sprite Animation Component");
     draw_add_component<AtmosphereComponent>(entity, "Atmosphere Component");
@@ -937,75 +938,9 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
         }
       });
 
-  draw_component<CPPScriptComponent>(
-      " CPP Script Component", entity, [](CPPScriptComponent& component, flecs::entity e) {
-        const auto lbl = fmt::format("{} Add system", StringUtils::from_char8_t(ICON_MDI_PLUS_OUTLINE));
-        ankerl::unordered_dense::map<size_t, std::string> system_names_strs = {};
-        std::vector<const char*> system_names = {};
-        system_names.emplace_back(lbl.c_str());
-
-        std::vector<size_t> system_hashes = {};
-        system_hashes.emplace_back(0);
-
-        int current_system_selection = 0;
-
-        auto* system_manager = App::get_system<SystemManager>(EngineSystems::SystemManager);
-        for (auto& [hash, pair] : system_manager->system_registry) {
-          auto& [name, system] = pair;
-          std::string system_name = name;
-          system_name = system_name.erase(0, system_name.find(' ') + 1);
-          system_names.emplace_back(system_names_strs.emplace(hash, system_name).first->second.c_str());
-          system_hashes.emplace_back(hash);
-        }
-
-        constexpr ImGuiTableFlags flags = ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_BordersInnerH |
-                                          ImGuiTableFlags_SizingStretchProp;
-        if (ImGui::BeginTable("table", 1, flags)) {
-          ImGui::TableSetupColumn("  Systems", ImGuiTableColumnFlags_NoHide);
-          ImGui::TableHeadersRow();
-
-          i32 delete_index = -1;
-
-          for (u32 index = 0; auto& sys : component.systems) {
-            ImGui::TableNextRow();
-            ImGui::TableNextColumn();
-            ImGui::PushID(index);
-            if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_TRASH_CAN)))
-              delete_index = index;
-            ImGui::PopID();
-            ImGui::SameLine();
-            bool open = ImGui::TreeNodeEx(system_names_strs[sys->hash_code].c_str(), ImGuiTreeNodeFlags_SpanAllColumns);
-            if (open) {
-              ImGui::Indent();
-              ImGui::Text("system_hash: %s", std::to_string(sys->hash_code).c_str());
-              ImGui::Unindent();
-              ImGui::TreePop();
-            }
-
-            index += 1;
-          }
-
-          if (delete_index > -1)
-            component.systems.erase(component.systems.begin() + delete_index);
-
-          ImGui::EndTable();
-        }
-
-        const float x = ImGui::GetContentRegionAvail().x;
-        ImGui::PushItemWidth(x);
-        if (ui::combo(lbl.c_str(),
-                      &current_system_selection,
-                      system_names.data(),
-                      static_cast<i32>(system_names.size()),
-                      std::to_string(system_hashes[current_system_selection]).c_str())) {
-          if (auto system = system_manager->get_system(system_hashes[current_system_selection]))
-            component.systems.emplace_back(system);
-        }
-      });
-
+#if 0
   draw_component<ParticleSystemComponent>(
       "Particle System Component", entity, [](const ParticleSystemComponent& component, flecs::entity e) {
-#if 0
     auto& props = component.system->get_properties();
 
     ImGui::Text("Active Particles Count: %u", component.system->get_active_particle_count());
@@ -1057,8 +992,8 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     draw_particle_by_speed_module("Size By Speed", props.size_by_speed);
     draw_particle_over_lifetime_module("Rotation Over Lifetime", props.rotation_over_lifetime, false, true);
     draw_particle_by_speed_module("Rotation By Speed", props.rotation_by_speed, false, true);
+});
 #endif
-      });
 }
 
 void InspectorPanel::draw_asset_info(Asset* asset) {

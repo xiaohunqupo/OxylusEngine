@@ -40,7 +40,6 @@ static auto get_default_extensions() -> fastgltf::Extensions {
 static auto get_default_options() -> fastgltf::Options {
   auto options = fastgltf::Options::None;
   options |= fastgltf::Options::LoadExternalBuffers;
-  // options |= fastgltf::Options::DontRequireValidAssetMember;
 
   return options;
 }
@@ -73,24 +72,28 @@ auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> o
   ZoneScoped;
 
   auto gltf_buffer = fastgltf::GltfDataBuffer::FromPath(path);
-  if (gltf_buffer.error() != fastgltf::Error::None) {
+  if (!gltf_buffer) {
     OX_LOG_ERROR("Couldn't read gltf data {}", fastgltf::getErrorMessage(gltf_buffer.error()));
-    return ox::nullopt;
-  }
-  auto gltf_type = fastgltf::determineGltfFileType(gltf_buffer.get());
-  if (gltf_type == fastgltf::GltfType::Invalid) {
-    OX_LOG_ERROR("GLTF model type is invalid!");
     return ox::nullopt;
   }
 
   fastgltf::Parser parser(get_default_extensions());
-  auto result = parser.loadGltf(gltf_buffer.get(), path.parent_path(), get_default_options());
+  auto result = parser.loadGltf(gltf_buffer.get(), path.parent_path(), get_default_options(), fastgltf::Category::All);
   if (!result) {
     OX_LOG_ERROR("Failed to load GLTF! {}", fastgltf::getErrorMessage(result.error()));
     return ox::nullopt;
   }
 
   fastgltf::Asset asset = std::move(result.get());
+
+#ifdef OX_DEBUG
+  auto asset_result = fastgltf::validate(asset);
+  if (asset_result != fastgltf::Error::None) {
+    OX_LOG_ERROR("Validation failed for GTLF asset! {}", fastgltf::getErrorMessage(asset_result));
+    return ox::nullopt;
+  }
+#endif
+
   GLTFMeshInfo model = {};
 
   ///////////////////////////////////////////////
@@ -104,13 +107,13 @@ auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> o
     auto visitor = fastgltf::visitor{
         [](const auto&) {},
         [&](const fastgltf::sources::ByteView& view) {
-      // Embedded byte
-      buffers.emplace_back(std::bit_cast<u8*>(view.bytes.data()), view.bytes.size_bytes());
-    },
+          // Embedded byte
+          buffers.emplace_back(std::bit_cast<u8*>(view.bytes.data()), view.bytes.size_bytes());
+        },
         [&](const fastgltf::sources::Array& arr) {
-      // Embedded array
-      buffers.emplace_back(std::bit_cast<u8*>(arr.bytes.data()), arr.bytes.size_bytes());
-    },
+          // Embedded array
+          buffers.emplace_back(std::bit_cast<u8*>(arr.bytes.data()), arr.bytes.size_bytes());
+        },
     };
     std::visit(visitor, v.data);
   }
@@ -135,43 +138,43 @@ auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> o
     auto visitor = fastgltf::visitor{
         [](const auto&) {},
         [&](const fastgltf::sources::ByteView& view) {
-      // Embedded buffer
-      std::vector<u8> pixels(view.bytes.size_bytes());
-      std::memcpy(pixels.data(), view.bytes.data(), view.bytes.size_bytes());
+          // Embedded buffer
+          std::vector<u8> pixels(view.bytes.size_bytes());
+          std::memcpy(pixels.data(), view.bytes.data(), view.bytes.size_bytes());
 
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<std::vector<u8>>(std::move(pixels));
-      image_info.file_type = to_asset_file_type(view.mimeType);
-    },
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<std::vector<u8>>(std::move(pixels));
+          image_info.file_type = to_asset_file_type(view.mimeType);
+        },
         [&](const fastgltf::sources::BufferView& view) {
-      // Embedded buffer
-      auto& buffer_view = asset.bufferViews[view.bufferViewIndex];
-      auto& buffer = buffers[buffer_view.bufferIndex];
+          // Embedded buffer
+          auto& buffer_view = asset.bufferViews[view.bufferViewIndex];
+          auto& buffer = buffers[buffer_view.bufferIndex];
 
-      std::vector<u8> pixels(buffer_view.byteLength);
-      std::memcpy(pixels.data(), buffer.data() + buffer_view.byteOffset, buffer_view.byteLength);
+          std::vector<u8> pixels(buffer_view.byteLength);
+          std::memcpy(pixels.data(), buffer.data() + buffer_view.byteOffset, buffer_view.byteLength);
 
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<std::vector<u8>>(std::move(pixels));
-      image_info.file_type = to_asset_file_type(view.mimeType);
-    },
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<std::vector<u8>>(std::move(pixels));
+          image_info.file_type = to_asset_file_type(view.mimeType);
+        },
         [&](const fastgltf::sources::Array& arr) {
-      // Embedded array
-      std::vector<u8> pixels(arr.bytes.size_bytes());
-      std::memcpy(pixels.data(), arr.bytes.data(), arr.bytes.size_bytes());
+          // Embedded array
+          std::vector<u8> pixels(arr.bytes.size_bytes());
+          std::memcpy(pixels.data(), arr.bytes.data(), arr.bytes.size_bytes());
 
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<std::vector<u8>>(std::move(pixels));
-      image_info.file_type = to_asset_file_type(arr.mimeType);
-    },
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<std::vector<u8>>(std::move(pixels));
+          image_info.file_type = to_asset_file_type(arr.mimeType);
+        },
         [&](const fastgltf::sources::URI& uri) {
-      // External file
-      const auto& image_file_path = path.parent_path() / uri.uri.fspath();
+          // External file
+          const auto& image_file_path = path.parent_path() / uri.uri.fspath();
 
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<fs::path>(image_file_path);
-      image_info.file_type = to_asset_file_type(uri.mimeType);
-    },
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<fs::path>(image_file_path);
+          image_info.file_type = to_asset_file_type(uri.mimeType);
+        },
     };
     std::visit(visitor, v.data);
   }
@@ -237,6 +240,10 @@ auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> o
     if (auto& tex = v.occlusionTexture; tex.has_value()) {
       material.occlusion_texture_index = tex->textureIndex;
     }
+  }
+
+  if (callbacks.on_materials_load) {
+    callbacks.on_materials_load(model.images);
   }
 
   ///////////////////////////////////////////////
@@ -370,11 +377,6 @@ auto GLTFMeshInfo::parse_info(const fs::path& path) -> ox::option<GLTFMeshInfo> 
     OX_LOG_ERROR("Couldn't read gltf data {}", fastgltf::getErrorMessage(gltf_buffer.error()));
     return ox::nullopt;
   }
-  auto gltf_type = fastgltf::determineGltfFileType(gltf_buffer.get());
-  if (gltf_type == fastgltf::GltfType::Invalid) {
-    OX_LOG_ERROR("GLTF model type is invalid!");
-    return ox::nullopt;
-  }
 
   fastgltf::Parser parser(get_default_extensions());
   auto result = parser.loadGltf(gltf_buffer.get(), path.parent_path(), get_default_options());
@@ -394,31 +396,31 @@ auto GLTFMeshInfo::parse_info(const fs::path& path) -> ox::option<GLTFMeshInfo> 
     auto visitor = fastgltf::visitor{
         [](const auto&) {},
         [&](const fastgltf::sources::ByteView& view) {
-      // Embedded buffer
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<std::vector<u8>>();
-      image_info.file_type = to_asset_file_type(view.mimeType);
-    },
+          // Embedded buffer
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<std::vector<u8>>();
+          image_info.file_type = to_asset_file_type(view.mimeType);
+        },
         [&](const fastgltf::sources::BufferView& view) {
-      // Embedded buffer
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<std::vector<u8>>();
-      image_info.file_type = to_asset_file_type(view.mimeType);
-    },
+          // Embedded buffer
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<std::vector<u8>>();
+          image_info.file_type = to_asset_file_type(view.mimeType);
+        },
         [&](const fastgltf::sources::Array& arr) {
-      // Embedded array
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<std::vector<u8>>();
-      image_info.file_type = to_asset_file_type(arr.mimeType);
-    },
+          // Embedded array
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<std::vector<u8>>();
+          image_info.file_type = to_asset_file_type(arr.mimeType);
+        },
         [&](const fastgltf::sources::URI& uri) {
-      // External file
-      const auto& image_file_path = path.parent_path() / uri.uri.fspath();
+          // External file
+          const auto& image_file_path = path.parent_path() / uri.uri.fspath();
 
-      auto& image_info = model.images.emplace_back();
-      image_info.image_data.emplace<fs::path>(image_file_path);
-      image_info.file_type = to_asset_file_type(uri.mimeType);
-    },
+          auto& image_info = model.images.emplace_back();
+          image_info.image_data.emplace<fs::path>(image_file_path);
+          image_info.file_type = to_asset_file_type(uri.mimeType);
+        },
     };
     std::visit(visitor, v.data);
   }
@@ -491,5 +493,4 @@ auto GLTFMeshInfo::parse_info(const fs::path& path) -> ox::option<GLTFMeshInfo> 
 
   return model;
 }
-
 } // namespace ox

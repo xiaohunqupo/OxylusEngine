@@ -13,7 +13,8 @@ struct TextureLoadInfo {
   Preset preset = Preset::eMap2D;
   vuk::Format format = vuk::Format::eR8G8B8A8Srgb;
   enum class MimeType { Generic, KTX } mime = MimeType::Generic;
-  option<void*> data = ox::nullopt;
+  option<std::vector<u8>> bytes = ox::nullopt;
+  option<void*> loaded_data = ox::nullopt;
   option<vuk::Extent3D> extent = ox::nullopt;
 };
 
@@ -54,6 +55,7 @@ public:
 
   auto reset_view(vuk::Allocator& allocator) -> void;
 
+  auto get_name() -> const std::string& { return _name; }
   auto set_name(std::string_view name, const std::source_location& loc = std::source_location::current()) -> void;
 
   auto get_view_id() const -> u64 { return _view->id; }

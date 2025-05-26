@@ -30,6 +30,7 @@
 #include <functional>
 #include <span>
 #include <expected>
+#include <chrono>
 
 namespace fs = std::filesystem;
 

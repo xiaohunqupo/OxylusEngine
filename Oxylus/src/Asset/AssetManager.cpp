@@ -1,10 +1,6 @@
 #include "AssetManager.hpp"
 
 #include <meshoptimizer.h>
-#include <rapidjson/document.h>
-#include <rapidjson/error/en.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/stringbuffer.h>
 #include <vuk/Types.hpp>
 
 #include "Asset/AssetFile.hpp"
@@ -22,151 +18,144 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
-auto begin_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, const UUID& uuid, AssetType type)
-    -> void {
+
+struct TextureLoadTask : ITaskSet {
+  const std::vector<UUID>& uuids;
+  const std::vector<TextureLoadInfo>& load_infos;
+  AssetManager& asset_manager;
+
+  TextureLoadTask(const std::vector<UUID>& uuid, const std::vector<TextureLoadInfo>& load_info, AssetManager& asset_man)
+      : uuids(uuid),
+        load_infos(load_info),
+        asset_manager(asset_man) {
+    this->m_SetSize = static_cast<u32>(uuids.size()); // One task per texture
+  }
+
+  void ExecuteRange(const enki::TaskSetPartition range, u32 threadNum) override {
+    for (u32 i = range.start; i < range.end; ++i) {
+      asset_manager.load_texture(uuids[i], load_infos[i]);
+    }
+  }
+};
+
+auto begin_asset_meta(JsonWriter& writer, const UUID& uuid, AssetType type) -> void {
   OX_SCOPED_ZONE;
 
-  writer.StartObject();
+  writer.begin_obj();
 
-  writer.String("uuid");
-  writer.String(uuid.str().c_str());
+  writer["uuid"] = uuid.str();
 
-  writer.String("type");
-  writer.Uint(std::to_underlying(type));
+  writer["type"] = std::to_underlying(type);
 }
 
-auto write_texture_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, Texture*) -> bool {
+auto write_texture_asset_meta(JsonWriter& writer, Texture*) -> bool {
   OX_SCOPED_ZONE;
 
   return true;
 }
 
-auto write_material_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                               const UUID& uuid,
-                               const Material& material) -> bool {
+auto write_material_asset_meta(JsonWriter& writer, const UUID& uuid, const Material& material) -> bool {
   OX_SCOPED_ZONE;
 
-  writer.StartObject();
+  writer["material"].begin_obj();
 
-  writer.String("uuid");
-  writer.String(uuid.str().c_str());
+  writer["uuid"] = uuid.str();
+  writer["albedo_color"] = material.albedo_color;
+  writer["emissive_color"] = material.emissive_color;
+  writer["roughness_factor"] = material.roughness_factor;
+  writer["metallic_factor"] = material.metallic_factor;
+  writer["alpha_mode"] = std::to_underlying(material.alpha_mode);
+  writer["alpha_cutoff"] = material.alpha_cutoff;
+  writer["albedo_texture"] = material.albedo_texture.str().c_str();
+  writer["normal_texture"] = material.normal_texture.str().c_str();
+  writer["emissive_texture"] = material.emissive_texture.str().c_str();
+  writer["metallic_roughness_texture"] = material.metallic_roughness_texture.str().c_str();
+  writer["occlusion_texture"] = material.occlusion_texture.str().c_str();
 
-  writer.String("albedo_color");
-  serialize_vec4(writer, material.albedo_color);
-
-  writer.String("emissive_color");
-  serialize_vec3(writer, material.emissive_color);
-
-  writer.String("roughness_factor");
-  writer.Double(material.roughness_factor);
-
-  writer.String("metallic_factor");
-  writer.Double(material.metallic_factor);
-
-  writer.String("alpha_mode");
-  writer.Uint(std::to_underlying(material.alpha_mode));
-
-  writer.String("alpha_cutoff");
-  writer.Double(material.alpha_cutoff);
-
-  writer.String("albedo_texture");
-  writer.String(material.albedo_texture.str().c_str());
-
-  writer.String("normal_texture");
-  writer.String(material.normal_texture.str().c_str());
-
-  writer.String("emissive_texture");
-  writer.String(material.emissive_texture.str().c_str());
-
-  writer.String("metallic_roughness_texture");
-  writer.String(material.metallic_roughness_texture.str().c_str());
-
-  writer.String("occlusion_texture");
-  writer.String(material.occlusion_texture.str().c_str());
-
-  writer.EndObject();
+  writer.end_obj();
 
   return true;
 }
 
-auto read_material_data(Material* mat, const rapidjson::GenericValue<rapidjson::UTF8<>>::ConstObject& material_obj)
-    -> void {
-  deserialize_vec4(material_obj["albedo_color"].GetArray(), &mat->albedo_color);
-  deserialize_vec3(material_obj["emissive_color"].GetArray(), &mat->emissive_color);
-  mat->roughness_factor = material_obj["roughness_factor"].GetDouble();
-  mat->metallic_factor = material_obj["metallic_factor"].GetFloat();
-  mat->alpha_mode = static_cast<AlphaMode>(material_obj["alpha_mode"].GetUint());
-  mat->alpha_cutoff = material_obj["alpha_cutoff"].GetFloat();
-  mat->albedo_texture = UUID::from_string(material_obj["albedo_texture"].GetString()).value_or(UUID(nullptr));
-  mat->normal_texture = UUID::from_string(material_obj["normal_texture"].GetString()).value_or(UUID(nullptr));
-  mat->emissive_texture = UUID::from_string(material_obj["emissive_texture"].GetString()).value_or(UUID(nullptr));
-  mat->metallic_roughness_texture = UUID::from_string(material_obj["metallic_roughness_texture"].GetString())
+auto read_material_data(Material* mat, simdjson::ondemand::value& material_obj) -> void {
+  auto albedo_color = material_obj["albedo_color"];
+  json_to_vec(albedo_color.value_unsafe(), mat->albedo_color);
+  auto emissive_color = material_obj["emissive_color"];
+  json_to_vec(emissive_color.value_unsafe(), mat->emissive_color);
+  mat->roughness_factor = material_obj["roughness_factor"].get_double().value_unsafe();
+  mat->metallic_factor = material_obj["metallic_factor"].get_double().value_unsafe();
+  mat->alpha_mode = static_cast<AlphaMode>(material_obj["alpha_mode"].get_uint64().value_unsafe());
+  mat->alpha_cutoff = material_obj["alpha_cutoff"].get_double().value_unsafe();
+  mat->albedo_texture = UUID::from_string(material_obj["albedo_texture"].get_string().value_unsafe())
+                            .value_or(UUID(nullptr));
+  mat->normal_texture = UUID::from_string(material_obj["normal_texture"].get_string().value_unsafe())
+                            .value_or(UUID(nullptr));
+  mat->emissive_texture = UUID::from_string(material_obj["emissive_texture"].get_string().value_unsafe())
+                              .value_or(UUID(nullptr));
+  mat->metallic_roughness_texture = UUID::from_string(
+                                        material_obj["metallic_roughness_texture"].get_string().value_unsafe())
                                         .value_or(UUID(nullptr));
-  mat->occlusion_texture = UUID::from_string(material_obj["occlusion_texture"].GetString()).value_or(UUID(nullptr));
+  mat->occlusion_texture = UUID::from_string(material_obj["occlusion_texture"].get_string().value_unsafe())
+                               .value_or(UUID(nullptr));
 }
 
-auto read_material_asset_meta(const rapidjson::Document& doc, Material* mat) -> bool {
+auto read_material_asset_meta(simdjson::ondemand::value& doc, Material* mat) -> bool {
   OX_SCOPED_ZONE;
 
   if (!mat)
     return false;
 
-  const auto& material_obj = doc["material"].GetObject();
+  auto material_obj = doc["material"].value_unsafe();
 
   read_material_data(mat, material_obj);
 
   return true;
 }
 
-auto write_mesh_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
+auto write_mesh_asset_meta(JsonWriter& writer,
                            std::span<UUID> embedded_texture_uuids,
                            std::span<UUID> material_uuids,
                            std::span<Material> materials) -> bool {
   OX_SCOPED_ZONE;
 
-  writer.String("embedded_textures");
-  writer.StartArray();
+  writer["embedded_textures"].begin_array();
   for (const auto& uuid : embedded_texture_uuids) {
-    writer.String(uuid.str().c_str());
+    writer << uuid.str();
   }
-  writer.EndArray();
+  writer.end_array();
 
-  writer.String("embedded_materials");
-  writer.StartArray();
+  writer["embedded_materials"].begin_array();
   for (const auto& [material_uuid, material] : std::views::zip(material_uuids, materials)) {
     write_material_asset_meta(writer, material_uuid, material);
   }
-  writer.EndArray();
+  writer.end_array();
 
   return true;
 }
 
-auto write_scene_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, Scene* scene) -> bool {
+auto write_scene_asset_meta(JsonWriter& writer, Scene* scene) -> bool {
   OX_SCOPED_ZONE;
 
-  writer.String("name");
-  writer.String(scene->scene_name.c_str());
+  writer["name"] = scene->scene_name;
 
   return true;
 }
 
-auto write_script_asset_meta(rapidjson::PrettyWriter<rapidjson::StringBuffer>&, LuaSystem*) -> bool {
+auto write_script_asset_meta(JsonWriter&, LuaSystem*) -> bool {
   OX_SCOPED_ZONE;
 
   return true;
 }
 
-auto end_asset_meta(rapidjson::StringBuffer& sb,
-                    rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                    const std::string& path) -> bool {
+auto end_asset_meta(JsonWriter& writer, const std::string& path) -> bool {
   ZoneScoped;
 
-  writer.EndObject();
+  writer.end_obj();
 
   auto meta_path = path + ".oxasset";
 
   std::ofstream filestream(meta_path);
-  filestream << sb.GetString();
+  filestream << writer.stream.rdbuf();
 
   return true;
 }
@@ -177,24 +166,23 @@ auto AssetManager::deinit() -> std::expected<void, std::string> { return {}; }
 
 auto AssetManager::registry() const -> const AssetRegistry& { return asset_registry; }
 
-auto AssetManager::read_meta_file(const std::string& path) -> option<AssetMetaFile> {
-  const auto content = ox::fs::read_file(path);
+auto AssetManager::read_meta_file(const std::string& path) -> std::unique_ptr<AssetMetaFile> {
+  auto content = fs::read_file(path);
   if (content.empty()) {
-    OX_LOG_ERROR("Failed to open file {}!", path);
-    return nullopt;
+    OX_LOG_ERROR("Failed to read/open file {}!", path);
+    return nullptr;
   }
 
-  rapidjson::Document doc;
-  doc.Parse(content.data());
+  auto meta_file = std::make_unique<AssetMetaFile>();
 
-  const rapidjson::ParseResult parse_result = doc.Parse(content.c_str());
-
-  if (doc.HasParseError()) {
-    OX_LOG_ERROR("Json parser error for: {0} {1}", path, rapidjson::GetParseError_En(parse_result.Code()));
-    return nullopt;
+  meta_file->contents = simdjson::padded_string(content);
+  meta_file->doc = meta_file->parser.iterate(meta_file->contents);
+  if (meta_file->doc.error()) {
+    OX_LOG_ERROR("Failed to parse meta file! {}", simdjson::error_message(meta_file->doc.error()));
+    return nullptr;
   }
 
-  return AssetMetaFile{.contents = content, .doc = std::move(doc)};
+  return meta_file;
 }
 
 auto AssetManager::load_deferred_assets() -> void {
@@ -306,9 +294,7 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
     return UUID(nullptr);
   }
 
-  rapidjson::StringBuffer sb;
-
-  rapidjson::PrettyWriter writer(sb);
+  JsonWriter writer{};
   begin_asset_meta(writer, uuid, asset_type);
 
   switch (asset_type) {
@@ -378,7 +364,7 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
     default:;
   }
 
-  if (!end_asset_meta(sb, writer, path)) {
+  if (!end_asset_meta(writer, path)) {
     return UUID(nullptr);
   }
 
@@ -411,20 +397,26 @@ auto AssetManager::register_asset(const std::string& path) -> UUID {
   memory::ScopedStack stack;
 
   auto meta_json = read_meta_file(path);
-  if (!meta_json.has_value()) {
+  if (!meta_json) {
     return UUID(nullptr);
   }
 
-  auto& doc = meta_json->doc;
+  auto uuid_json = meta_json->doc["uuid"].get_string();
+  if (uuid_json.error()) {
+    OX_LOG_ERROR("Failed to read asset meta file. `uuid` is missing.");
+    return UUID(nullptr);
+  }
 
-  auto uuid_json = doc["uuid"].GetString();
-
-  auto type_json = doc["type"].GetUint();
+  auto type_json = meta_json->doc["type"].get_number();
+  if (type_json.error()) {
+    OX_LOG_ERROR("Failed to read asset meta file. `type` is missing.");
+    return UUID(nullptr);
+  }
 
   auto asset_path = ::fs::path(path);
   asset_path.replace_extension("");
-  auto uuid = UUID::from_string(uuid_json).value();
-  auto type = static_cast<AssetType>(type_json);
+  auto uuid = UUID::from_string(uuid_json.value_unsafe()).value();
+  auto type = static_cast<AssetType>(type_json.value_unsafe().get_uint64());
 
   if (!this->register_asset(uuid, type, asset_path)) {
     return UUID(nullptr);
@@ -433,7 +425,8 @@ auto AssetManager::register_asset(const std::string& path) -> UUID {
   switch (type) {
     case AssetType::Material: {
       Material mat = {};
-      if (read_material_asset_meta(doc, &mat)) {
+      auto obj = meta_json->doc["material"].value_unsafe();
+      if (read_material_asset_meta(obj, &mat)) {
         /* Since materials could contain textures that may be not yet registered
            we defer them to be loaded at the end of frame */
         deferred_load_queue.emplace_back([this, uuid, mat]() { load_material(uuid, mat); });
@@ -464,7 +457,7 @@ auto AssetManager::register_asset(const UUID& uuid, AssetType type, const std::s
   asset.path = path;
   asset.type = type;
 
-  OX_LOG_INFO("Registered new asset: {}", uuid.str());
+  OX_LOG_INFO("Registered new asset: {}:{}", to_asset_type_sv(asset.type), uuid.str());
 
   return true;
 }
@@ -472,10 +465,7 @@ auto AssetManager::register_asset(const UUID& uuid, AssetType type, const std::s
 auto AssetManager::export_asset(const UUID& uuid, const std::string& path) -> bool {
   auto* asset = this->get_asset(uuid);
 
-  rapidjson::StringBuffer sb;
-
-  rapidjson::PrettyWriter writer(sb);
-
+  JsonWriter writer{};
   begin_asset_meta(writer, uuid, asset->type);
 
   switch (asset->type) {
@@ -507,12 +497,10 @@ auto AssetManager::export_asset(const UUID& uuid, const std::string& path) -> bo
     default: return false;
   }
 
-  return end_asset_meta(sb, writer, path);
+  return end_asset_meta(writer, path);
 }
 
-auto AssetManager::export_texture(const UUID& uuid,
-                                  rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                                  const std::string& path) -> bool {
+auto AssetManager::export_texture(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
   OX_SCOPED_ZONE;
 
   auto* texture = this->get_texture(uuid);
@@ -520,9 +508,7 @@ auto AssetManager::export_texture(const UUID& uuid,
   return write_texture_asset_meta(writer, texture);
 }
 
-auto AssetManager::export_mesh(const UUID& uuid,
-                               rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                               const std::string& path) -> bool {
+auto AssetManager::export_mesh(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
   OX_SCOPED_ZONE;
 
   auto* mesh = this->get_mesh(uuid);
@@ -536,9 +522,7 @@ auto AssetManager::export_mesh(const UUID& uuid,
   return write_mesh_asset_meta(writer, mesh->embedded_textures, mesh->materials, materials);
 }
 
-auto AssetManager::export_scene(const UUID& uuid,
-                                rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                                const std::string& path) -> bool {
+auto AssetManager::export_scene(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
   OX_SCOPED_ZONE;
 
   auto* scene = this->get_scene(uuid);
@@ -548,20 +532,15 @@ auto AssetManager::export_scene(const UUID& uuid,
   return scene->save_to_file(path);
 }
 
-auto AssetManager::export_material(const UUID& uuid,
-                                   rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                                   const std::string& path) -> bool {
+auto AssetManager::export_material(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
   OX_SCOPED_ZONE;
 
   auto* material = this->get_material(uuid);
   OX_CHECK_NULL(material);
-  writer.String("material");
   return write_material_asset_meta(writer, uuid, *material);
 }
 
-auto AssetManager::export_script(const UUID& uuid,
-                                 rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                                 const std::string& path) -> bool {
+auto AssetManager::export_script(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
   OX_SCOPED_ZONE;
 
   return write_texture_asset_meta(writer, nullptr);
@@ -631,7 +610,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
 
   std::string meta_path = asset->path + ".oxasset";
   auto meta_json = read_meta_file(meta_path);
-  if (meta_json.has_value()) {
+  if (!meta_json) {
     return false;
   }
 
@@ -642,10 +621,14 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
   // set this to nullptr so it's obvious when debugging.
   asset = nullptr;
 
+  // Load embedded textures
+  std::vector<UUID> texture_uuids = {};
+  std::vector<TextureLoadInfo> load_infos = {};
+
   auto embedded_textures = std::vector<UUID>();
-  const auto& embedded_texture_uuids_json = meta_json->doc["embedded_textures"].GetArray();
-  for (const auto& embedded_texture_uuid_json : embedded_texture_uuids_json) {
-    auto embedded_texture_uuid_str = embedded_texture_uuid_json.GetString();
+  auto embedded_texture_uuids_json = meta_json->doc["embedded_textures"].get_array();
+  for (auto embedded_texture_uuid_json : embedded_texture_uuids_json) {
+    auto embedded_texture_uuid_str = embedded_texture_uuid_json.get_string().value_unsafe();
 
     auto embedded_texture_uuid = UUID::from_string(embedded_texture_uuid_str);
     if (!embedded_texture_uuid.has_value()) {
@@ -654,30 +637,9 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     }
 
     embedded_textures.push_back(embedded_texture_uuid.value());
-    this->register_asset(embedded_texture_uuid.value(), AssetType::Texture, asset_path);
-  }
+    this->register_asset(embedded_texture_uuid.value(), AssetType::Texture, {});
 
-  // Load registered UUIDs.
-  const auto& materials_json = meta_json->doc["embedded_materials"].GetArray();
-
-  auto materials = std::vector<Material>();
-  for (const auto& material_json : materials_json) {
-    auto material_uuid_json = material_json["uuid"].GetString();
-    auto material_uuid = UUID::from_string(material_uuid_json);
-    if (!material_uuid.has_value()) {
-      OX_LOG_ERROR("Failed to import model {}! A material with corrupt UUID.", asset_path);
-      return false;
-    }
-
-    this->register_asset(material_uuid.value(), AssetType::Material, asset_path);
-    mesh->materials.emplace_back(material_uuid.value());
-
-    auto& material = materials.emplace_back();
-    read_material_data(&material, material_json.GetObject());
-  }
-
-  for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
-    this->load_material(material_uuid, material);
+    texture_uuids.emplace_back(embedded_texture_uuid.value());
   }
 
   struct GLTFCallbacks {
@@ -736,6 +698,61 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     info->vertex_texcoords[offset] = texcoord;
   };
 
+  auto on_materials_load = [&load_infos, //
+                            texture_uuids,
+                            &meta_json,
+                            asset_path,
+                            mesh](std::vector<GLTFImageInfo>& images) {
+    for (auto& t : images) {
+      std::visit(ox::match{
+                     [&](const ::fs::path& p) {}, // noop
+                     [&](const std::vector<u8>& data) {
+                       TextureLoadInfo inf = {};
+                       inf.bytes = data;
+
+                       switch (t.file_type) {
+                         case AssetFileType::KTX2: inf.mime = TextureLoadInfo::MimeType::KTX;
+                         default                 : inf.mime = TextureLoadInfo::MimeType::Generic;
+                       }
+
+                       load_infos.emplace_back(inf);
+                     },
+                 },
+                 t.image_data);
+    }
+
+    auto* asset_man = App::get_asset_manager();
+    auto load_task = TextureLoadTask(texture_uuids, load_infos, *asset_man);
+
+    const auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
+    task_scheduler->schedule_task(&load_task);
+    task_scheduler->wait_task(&load_task);
+
+    // Load registered UUIDs.
+    auto materials_json = meta_json->doc["embedded_materials"].get_array();
+
+    auto materials = std::vector<Material>();
+    for (auto material_json : materials_json) {
+      auto material_uuid_json = material_json["uuid"].get_string().value_unsafe();
+      auto material_uuid = UUID::from_string(material_uuid_json);
+      if (!material_uuid.has_value()) {
+        OX_LOG_ERROR("Failed to import model {}! A material with corrupt UUID.", asset_path);
+        return;
+      }
+
+      asset_man->register_asset(material_uuid.value(), AssetType::Material, asset_path);
+      mesh->materials.emplace_back(material_uuid.value());
+
+      auto& material = materials.emplace_back();
+      auto material_obj = material_json["material"].value_unsafe();
+      read_material_data(&material, material_obj);
+    }
+
+    for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
+      asset_man->load_material(material_uuid, material);
+    }
+  };
+
   GLTFCallbacks gltf_callbacks = {.model = mesh};
   auto gltf_model = GLTFMeshInfo::parse(asset_path,
                                         {.user_data = &gltf_callbacks,
@@ -743,7 +760,8 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
                                          .on_access_index = on_access_index,
                                          .on_access_position = on_access_position,
                                          .on_access_normal = on_access_normal,
-                                         .on_access_texcoord = on_access_texcoord});
+                                         .on_access_texcoord = on_access_texcoord,
+                                         .on_materials_load = on_materials_load});
   if (!gltf_model.has_value()) {
     OX_LOG_ERROR("Failed to parse Model '{}'!", asset_path);
     return false;
@@ -853,7 +871,9 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     }
   }
 
-  auto& context = App::get()->get_vkcontext();
+  auto& context = app->get_vkcontext();
+
+  mesh->indices_count = model_indices.size();
 
   mesh->indices = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_indices));
   context.wait_on(context.upload_staging(std::span(model_indices), *mesh->indices));
@@ -956,27 +976,6 @@ auto AssetManager::load_material(const UUID& uuid, const Material& material_info
     asset->material_id = material_map.create_slot(const_cast<Material&&>(material_info));
   }
 
-  struct TextureLoadTask : ITaskSet {
-    const std::vector<UUID>& uuids;
-    const std::vector<TextureLoadInfo>& load_infos;
-    AssetManager& asset_manager;
-
-    TextureLoadTask(const std::vector<UUID>& uuid,
-                    const std::vector<TextureLoadInfo>& load_info,
-                    AssetManager& asset_man)
-        : uuids(uuid),
-          load_infos(load_info),
-          asset_manager(asset_man) {
-      this->m_SetSize = static_cast<uint32_t>(uuids.size()); // One task per texture
-    }
-
-    void ExecuteRange(const enki::TaskSetPartition range, uint32_t threadNum) override {
-      for (uint32_t i = range.start; i < range.end; ++i) {
-        asset_manager.load_texture(uuids[i], load_infos[i]);
-      }
-    }
-  };
-
   std::vector<UUID> texture_uuids = {};
   std::vector<TextureLoadInfo> load_infos = {};
 
@@ -1009,7 +1008,7 @@ auto AssetManager::load_material(const UUID& uuid, const Material& material_info
 
   auto load_task = TextureLoadTask(texture_uuids, load_infos, *this);
 
-  const auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
+  const auto* task_scheduler = app->get_system<TaskScheduler>(EngineSystems::TaskScheduler);
   task_scheduler->schedule_task(&load_task);
   task_scheduler->wait_task(&load_task);
 

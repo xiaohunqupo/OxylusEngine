@@ -73,7 +73,6 @@ target("Oxylus")
         "imgui",
         "imguizmo",
         "glm",
-        "entt",
         "flecs",
         "fastgltf",
         "meshoptimizer",

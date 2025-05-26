@@ -2,12 +2,12 @@
 
 #include "Render/Camera.hpp"
 #include "Render/Slang/Slang.hpp"
+#include "Render/Utils/VukCommon.hpp"
 #include "Scene/SceneGPU.hpp"
 
 namespace ox {
 auto ThumbnailRenderPipeline::init(VkContext& vk_context) -> void {
   auto& runtime = *vk_context.runtime;
-  auto& allocator = *vk_context.superframe_allocator;
 
   // --- Shaders ---
   auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
@@ -19,25 +19,26 @@ auto ThumbnailRenderPipeline::init(VkContext& vk_context) -> void {
   slang.create_pipeline(runtime,
                         "simple_forward_pipeline",
                         {},
-                        {.path = shaders_dir + "editor/3d_forward.slang", .entry_points = {"vs_main", "ps_main"}});
+                        {.path = shaders_dir + "/editor/simple_forward.slang", .entry_points = {"vs_main", "fs_main"}});
 }
 
 auto ThumbnailRenderPipeline::shutdown() -> void {}
 
+auto ThumbnailRenderPipeline::reset() -> void {}
+
 auto ThumbnailRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& render_info)
     -> vuk::Value<vuk::ImageAttachment> {
 
-  const auto final_attachment_ia = vuk::ImageAttachment{
-      .usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
-      .extent = render_info.extent,
-      .format = vuk::Format::eB10G11R11UfloatPack32,
-      .sample_count = vuk::Samples::e1,
-      .level_count = 1,
-      .layer_count = 1,
-  };
+  if (_final_image == nullptr) {
+    _final_image = create_unique<Texture>();
+    _final_image->create({}, {.preset = Preset::eRTT2DUnmipped, .extent = render_info.extent});
+    _final_image->set_name(thumbnail_name);
+  }
 
-  auto final_attachment = vuk::clear_image(vuk::declare_ia(thumbnail_name.c_str(), final_attachment_ia),
-                                           vuk::Black<float>);
+  auto final_attachment = vuk::acquire_ia(
+      _final_image->get_name().c_str(), _final_image->attachment(), vuk::Access::eNone);
+
+  final_attachment = vuk::clear_image(final_attachment, vuk::White<f32>);
 
   if (mesh == nullptr)
     return final_attachment;
@@ -67,20 +68,31 @@ auto ThumbnailRenderPipeline::on_render(VkContext& vk_context, const RenderInfo&
       .output_index = 0,
   };
 
-  auto camera_buffer = vk_context.scratch_buffer(std::span(&camera_data, 1));
+  auto camera_buffer = vk_context.scratch_buffer(camera_data);
+  auto vertex_positions = *mesh->vertex_positions;
+  auto indices = *mesh->indices;
+  auto indices_count = mesh->indices_count;
 
   auto thumbnail_pass = vuk::make_pass( //
       "thumbnail_pass",
-      [](vuk::CommandBuffer& command_buffer,
-         VUK_IA(vuk::eFragmentWrite) output,
-         VUK_BA(vuk::eVertexRead) camera_buffer_) {
+      [indices_count, indices, vertex_positions](vuk::CommandBuffer& command_buffer,
+                                                 VUK_IA(vuk::eColorWrite) output,
+                                                 VUK_BA(vuk::eVertexRead) camera_buffer_) {
+        const auto vertex_pack = vuk::Packed{
+            vuk::Format::eR32G32B32Sfloat, // vec3
+        };
+
         command_buffer.bind_graphics_pipeline("simple_forward_pipeline")
             .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
             .set_viewport(0, vuk::Rect2D::framebuffer())
             .set_scissor(0, vuk::Rect2D::framebuffer())
             .set_rasterization({})
             .broadcast_color_blend({})
-            .bind_buffer(0, 0, camera_buffer_);
+            .push_constants(vuk::ShaderStageFlagBits::eVertex, 0, PushConstants(camera_buffer_->device_address))
+            .bind_index_buffer(indices, vuk::IndexType::eUint32)
+            .bind_vertex_buffer(0, vertex_positions, 0, vertex_pack)
+            .draw_indexed(indices_count, 1, 0, 0, 0);
+
         return output;
       });
 

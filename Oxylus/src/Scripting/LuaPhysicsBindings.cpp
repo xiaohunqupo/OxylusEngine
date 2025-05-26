@@ -28,8 +28,8 @@ void LuaBindings::bind_physics(const Shared<sol::state>& state) {
   auto physics_table = state->create_table("Physics");
   physics_table.set_function("cast_ray",
                              [](const RayCast& ray) -> JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> {
-    return Physics::cast_ray(ray);
-  });
+                               return App::get_system<Physics>(EngineSystems::Physics)->cast_ray(ray);
+                             });
   physics_table.set_function(
       "get_hits",
       [](const JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector>& collector)

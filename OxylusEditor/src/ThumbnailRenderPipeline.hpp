@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Asset/Mesh.hpp"
+#include "Asset/Texture.hpp"
 #include "Render/RenderPipeline.hpp"
 namespace ox {
 class ThumbnailRenderPipeline : public RenderPipeline {
@@ -15,10 +16,15 @@ public:
 
   auto on_update(Scene* scene) -> void override;
 
+  auto reset() -> void;
   auto set_mesh(this ThumbnailRenderPipeline& self, Mesh* mesh) -> void;
   auto set_name(this ThumbnailRenderPipeline& self, const std::string& name) -> void;
 
+  auto get_final_image() -> Unique<Texture>& { return _final_image; }
+
 private:
+  Unique<Texture> _final_image = nullptr;
+
   std::string thumbnail_name = "thumb";
   Mesh* mesh = nullptr;
 };

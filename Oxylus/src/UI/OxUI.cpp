@@ -220,21 +220,21 @@ bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset
         .user_data = &asset,
         .callback =
             [](void* user_data, const c8* const* files, i32) {
-      auto* usr_d = static_cast<UUID*>(user_data);
-      if (!files || !*files) {
-        return;
-      }
+              auto* usr_d = static_cast<UUID*>(user_data);
+              if (!files || !*files) {
+                return;
+              }
 
-      const auto first_path_cstr = *files;
-      const auto first_path_len = std::strlen(first_path_cstr);
-      const auto path = std::string(first_path_cstr, first_path_len);
+              const auto first_path_cstr = *files;
+              const auto first_path_len = std::strlen(first_path_cstr);
+              const auto path = std::string(first_path_cstr, first_path_len);
 
-      if (!path.empty()) {
-        auto* asset_man = App::get_asset_manager();
-        *usr_d = asset_man->create_asset(AssetType::Texture, path);
-        asset_man->load_texture(*usr_d);
-      }
-    },
+              if (!path.empty()) {
+                auto* asset_man = App::get_asset_manager();
+                *usr_d = asset_man->create_asset(AssetType::Texture, path);
+                asset_man->load_texture(*usr_d);
+              }
+            },
         .title = "Texture file",
         .default_path = fs::current_path(),
         .filters = dialog_filters,
@@ -305,13 +305,13 @@ void ui::image(const Texture& texture,
   ImGui::Image(App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, tint_col, border_col);
 }
 
-void ui::image(const vuk::Value<vuk::ImageAttachment>& attch,
+void ui::image(vuk::Value<vuk::ImageAttachment>&& attch,
                ImVec2 size,
                const ImVec2& uv0,
                const ImVec2& uv1,
                const ImVec4& tint_col,
                const ImVec4& border_col) {
-  ImGui::Image(App::get()->get_imgui_layer()->add_image(attch), size, uv0, uv1, tint_col, border_col);
+  ImGui::Image(App::get()->get_imgui_layer()->add_image(std::move(attch)), size, uv0, uv1, tint_col, border_col);
 }
 
 bool ui::image_button(const char* id,

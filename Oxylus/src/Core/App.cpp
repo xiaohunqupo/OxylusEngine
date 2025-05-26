@@ -12,17 +12,16 @@
 #include "LayerStack.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "Physics/Physics.hpp"
-#include "Project.hpp"
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
 #include "Scripting/LuaManager.hpp"
-#include "SystemManager.hpp"
 #include "Thread/TaskScheduler.hpp"
 #include "Thread/ThreadManager.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/Random.hpp"
+#include "Utils/Timer.hpp"
 #include "VFS.hpp"
 
 namespace ox {
@@ -36,7 +35,6 @@ auto engine_system_to_sv(EngineSystems type) -> std::string_view {
     case EngineSystems::LuaManager    : return "LuaManager";
     case EngineSystems::ModuleRegistry: return "ModuleRegistry";
     case EngineSystems::RendererConfig: return "RendererConfig";
-    case EngineSystems::SystemManager : return "SystemManager";
     case EngineSystems::Physics       : return "Physics";
     case EngineSystems::Input         : return "Input";
     case EngineSystems::Count         : return "";
@@ -70,7 +68,6 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   register_system<LuaManager>(EngineSystems::LuaManager);
   register_system<ModuleRegistry>(EngineSystems::ModuleRegistry);
   register_system<RendererConfig>(EngineSystems::RendererConfig);
-  register_system<SystemManager>(EngineSystems::SystemManager);
   register_system<Physics>(EngineSystems::Physics);
 
   window = Window::create(app_spec.window_info);
@@ -78,17 +75,17 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   register_system<Input>(EngineSystems::Input);
 
   for (const auto& [type, system] : system_registry) {
+    Timer timer{};
     auto result = system->init();
     if (!result) {
       OX_LOG_ERROR("{} System failed to initialize: {}", engine_system_to_sv(type), result.error());
     } else {
-      OX_LOG_INFO("{} System initialized.", engine_system_to_sv(type));
+      OX_LOG_INFO("{} System initialized. {}", engine_system_to_sv(type), timer.get_elapsed_ms());
     }
   }
 
   // Shortcut for commonly used Systems
   Input::set_instance();
-  Physics::set_instance();
 
   vk_context = create_unique<VkContext>();
 
@@ -109,7 +106,6 @@ App::~App() { close(); }
 void App::set_instance(App* instance) {
   _instance = instance;
   get_system<Input>(EngineSystems::Input)->set_instance();
-  get_system<Physics>(EngineSystems::Physics)->set_instance();
 }
 
 App& App::push_layer(Layer* layer) {

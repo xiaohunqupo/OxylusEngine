@@ -134,7 +134,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
           .format = format,
           .picking_texel = {},
       };
-      const auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(app->get_vkcontext(), render_info);
+      auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(app->get_vkcontext(), render_info);
       ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)),
                    ImVec2{fixed_width, _viewport_panel_size.y});
     } else {
@@ -474,10 +474,27 @@ void ViewportPanel::draw_performance_overlay() {
 void ViewportPanel::draw_gizmos() {
   auto& editor_context = EditorLayer::get()->get_context();
   const flecs::entity selected_entity = editor_context.entity.value_or(flecs::entity::null());
-  if (selected_entity == flecs::entity::null() || _gizmo_type == -1)
-    return;
 
-  if (!editor_camera.has<CameraComponent>())
+  if (Input::get_key_held(KeyCode::LeftControl)) {
+    if (Input::get_key_pressed(KeyCode::Q)) {
+      if (!ImGuizmo::IsUsing())
+        _gizmo_type = -1;
+    }
+    if (Input::get_key_pressed(KeyCode::W)) {
+      if (!ImGuizmo::IsUsing())
+        _gizmo_type = ImGuizmo::OPERATION::TRANSLATE;
+    }
+    if (Input::get_key_pressed(KeyCode::E)) {
+      if (!ImGuizmo::IsUsing())
+        _gizmo_type = ImGuizmo::OPERATION::ROTATE;
+    }
+    if (Input::get_key_pressed(KeyCode::R)) {
+      if (!ImGuizmo::IsUsing())
+        _gizmo_type = ImGuizmo::OPERATION::SCALE;
+    }
+  }
+
+  if (selected_entity == flecs::entity::null() || !editor_camera.has<CameraComponent>() || _gizmo_type == -1)
     return;
 
   if (auto* tc = selected_entity.get_mut<TransformComponent>()) {
@@ -530,24 +547,6 @@ void ViewportPanel::draw_gizmos() {
         tc->rotation += delta_rotation;
         tc->scale = scale;
       }
-    }
-  }
-  if (Input::get_key_held(KeyCode::LeftControl)) {
-    if (Input::get_key_pressed(KeyCode::Q)) {
-      if (!ImGuizmo::IsUsing())
-        _gizmo_type = -1;
-    }
-    if (Input::get_key_pressed(KeyCode::W)) {
-      if (!ImGuizmo::IsUsing())
-        _gizmo_type = ImGuizmo::OPERATION::TRANSLATE;
-    }
-    if (Input::get_key_pressed(KeyCode::E)) {
-      if (!ImGuizmo::IsUsing())
-        _gizmo_type = ImGuizmo::OPERATION::ROTATE;
-    }
-    if (Input::get_key_pressed(KeyCode::R)) {
-      if (!ImGuizmo::IsUsing())
-        _gizmo_type = ImGuizmo::OPERATION::SCALE;
     }
   }
 }

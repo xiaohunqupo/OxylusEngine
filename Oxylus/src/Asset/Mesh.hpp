@@ -53,6 +53,8 @@ public:
 
   usize default_scene_index = 0;
 
+  usize indices_count = 0;
+
   vuk::Unique<vuk::Buffer> indices = vuk::Unique<vuk::Buffer>();
   vuk::Unique<vuk::Buffer> vertex_positions = vuk::Unique<vuk::Buffer>();
   vuk::Unique<vuk::Buffer> vertex_normals = vuk::Unique<vuk::Buffer>();

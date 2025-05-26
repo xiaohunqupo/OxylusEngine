@@ -1,9 +1,5 @@
 #include "Project.hpp"
 
-#include <entt/locator/locator.hpp>
-#include <entt/meta/context.hpp>
-#include <entt/meta/node.hpp>
-
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"

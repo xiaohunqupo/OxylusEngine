@@ -3,9 +3,13 @@
 #include <vuk/Types.hpp>
 
 namespace ox {
+class App;
+
 /// Engine systems interface
 class ESystem {
 public:
+  App* app = nullptr;
+
   ESystem() = default;
   virtual ~ESystem() = default;
   DELETE_DEFAULT_CONSTRUCTORS(ESystem)

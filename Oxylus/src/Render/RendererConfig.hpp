@@ -61,8 +61,6 @@ public:
     TONEMAP_REINHARD = 4,
   };
 
-  RendererConfig() = default;
-
   auto init() -> std::expected<void, std::string> override;
   auto deinit() -> std::expected<void, std::string> override;
 

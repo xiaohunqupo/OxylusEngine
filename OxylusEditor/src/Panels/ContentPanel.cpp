@@ -93,7 +93,7 @@ static bool drag_drop_target(const std::filesystem::path& drop_path) {
       u32 counter = 0;
       do {
         file_path = drop_path /
-                    std::format("{}{}", asset->get_str(), (counter > 0 ? "_" + std::to_string(counter) : ""));
+                    fmt::format("{}{}", asset->get_str(), (counter > 0 ? "_" + std::to_string(counter) : ""));
         counter++;
       } while (fs::exists(file_path + ".oxasset"));
 
@@ -258,8 +258,11 @@ ContentPanel::ContentPanel() : EditorPanel("Contents", ICON_MDI_FOLDER_STAR, tru
                          {.preset = Preset::eRTT2DUnmipped,
                           .format = vuk::Format::eR8G8B8A8Unorm,
                           .mime = {},
-                          .data = white_texture_data,
+                          .loaded_data = white_texture_data,
                           .extent = vuk::Extent3D{.width = 16u, .height = 16u, .depth = 1u}});
+
+  ThumbnailRenderPipeline rp;
+  rp.init(App::get_vkcontext());
 }
 
 void ContentPanel::init() {
@@ -572,21 +575,27 @@ void ContentPanel::render_body(bool grid) {
             texture_name = file.file_path;
           } else {
             const auto name = fs::get_file_name(file.file_path);
-            ThumbnailRenderPipeline thumbnail_render_pipeline = {};
-            thumbnail_render_pipeline.set_name(name);
-            auto thumb = thumbnail_render_pipeline
-                             .on_render(
-                                 vk_context,
-                                 RenderPipeline::RenderInfo{.extent = {(u32)thumb_image_size, (u32)thumb_image_size, 1},
-                                                            .format = vuk::Format::eR8G8B8A8Srgb})
+            auto rp = create_unique<ThumbnailRenderPipeline>();
+            rp->set_name(name);
+
+            auto* asset_man = App::get_asset_manager();
+            if (auto asset_uuid = asset_man->import_asset(file.file_path); asset_uuid) {
+              if (asset_man->load_mesh(asset_uuid)) {
+                auto* mesh_asset = asset_man->get_mesh(asset_uuid);
+                rp->set_mesh(mesh_asset);
+              }
+            }
+
+            auto thumb = rp->on_render(
+                               vk_context,
+                               RenderPipeline::RenderInfo{.extent = {(u32)thumb_image_size, (u32)thumb_image_size, 1},
+                                                          .format = vuk::Format::eR8G8B8A8Srgb})
                              .as_released(vuk::eFragmentSampled, vuk::DomainFlagBits::eGraphicsQueue);
 
             auto ia = vk_context.wait_on_rg(std::move(thumb), false);
-            auto texture = Texture::from_attachment(*vk_context.superframe_allocator, ia);
-            texture->reset_view(*vk_context.superframe_allocator);
-            texture->set_name(name);
 
-            thumbnail_cache_meshes.emplace(file.file_path, std::move(texture));
+            thumbnail_render_pipeline_cache.emplace(file.file_path, std::move(rp));
+            thumbnail_cache_meshes.emplace(file.file_path, std::move(ia));
             texture_name = file.file_path;
           }
         }
@@ -664,7 +673,9 @@ void ContentPanel::render_body(bool grid) {
         if (thumbnail_cache_textures.contains(texture_name)) {
           ui::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
         } else if (thumbnail_cache_meshes.contains(texture_name)) {
-          ui::image(*thumbnail_cache_meshes[texture_name], {thumb_image_size, thumb_image_size});
+          auto texture = Texture::from_attachment(*vk_context.frame_allocator, thumbnail_cache_meshes[texture_name]);
+          texture->set_name(fs::get_file_name(texture_name));
+          ui::image(*texture, {thumb_image_size, thumb_image_size});
         } else {
           ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
           ImGui::TextUnformatted(StringUtils::from_char8_t(

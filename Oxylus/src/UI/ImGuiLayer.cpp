@@ -44,7 +44,7 @@ void ImGuiLayer::build_fonts() {
                            .preset = Preset::eRTT2DUnmipped,
                            .format = vuk::Format::eR8G8B8A8Srgb,
                            .mime = {},
-                           .data = pixels,
+                           .loaded_data = pixels,
                            .extent = vuk::Extent3D{static_cast<u32>(width), static_cast<u32>(height), 1u},
                        });
 }
@@ -276,7 +276,7 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::
       })(std::move(target), std::move(sampled_images_array));
 }
 
-ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment> attachment) {
+ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment>&& attachment) {
   rendering_images.emplace_back(std::move(attachment));
   return rendering_images.size();
 }
@@ -286,8 +286,8 @@ ImTextureID ImGuiLayer::add_image(const Texture& texture) {
     return this->acquired_images[texture.get_view_id()];
   }
 
-  const auto attachment = texture.acquire();
-  const auto texture_id = this->add_image(attachment);
+  auto attachment = texture.acquire();
+  const auto texture_id = this->add_image(std::move(attachment));
   this->acquired_images.emplace(texture.get_view_id(), texture_id);
 
   return texture_id;

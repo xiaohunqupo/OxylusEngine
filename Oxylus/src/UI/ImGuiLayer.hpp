@@ -23,7 +23,7 @@ public:
   [[nodiscard]]
   vuk::Value<vuk::ImageAttachment> end_frame(VkContext& context, vuk::Value<vuk::ImageAttachment> target);
 
-  ImTextureID add_image(vuk::Value<vuk::ImageAttachment> attachment);
+  ImTextureID add_image(vuk::Value<vuk::ImageAttachment>&& attachment);
   ImTextureID add_image(const Texture& texture);
 
   ImFont* load_font(const std::string& path, ImFontConfig font_config);

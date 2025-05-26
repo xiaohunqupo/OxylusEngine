@@ -2,7 +2,6 @@
 #ifndef ECS_REFLECT_TYPES
 #include "Audio/AudioEngine.hpp"
 #include "Core/App.hpp"
-#include "Core/SystemManager.hpp"
 #include "Core/UUID.hpp"
 #include "Render/Utils/RectPacker.hpp"
 #include "Scripting/LuaSystem.hpp"
@@ -417,18 +416,6 @@ ECS_COMPONENT_BEGIN(LuaScriptComponent)
   ECS_COMPONENT_MEMBER(script_uuid, UUID, {})
 #ifndef ECS_REFLECT_TYPES
   ECS_COMPONENT_MEMBER(lua_systems, std::vector<Shared<LuaSystem>>, {})
-#endif
-ECS_COMPONENT_END();
-
-ECS_COMPONENT_BEGIN(CPPScriptComponent)
-#ifndef ECS_REFLECT_TYPES
-  ECS_COMPONENT_MEMBER(systems, std::vector<Shared<System>>, {})
-
-  template <typename T>
-  void add_system() {
-    auto system = App::get_system<SystemManager>(EngineSystems::SystemManager)->register_system<T>();
-    systems.emplace(system);
-  }
 #endif
 ECS_COMPONENT_END();
 

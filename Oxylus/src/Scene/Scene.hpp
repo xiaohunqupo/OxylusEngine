@@ -1,6 +1,5 @@
 #pragma once
 
-#include "Core/System.hpp"
 #include "Core/UUID.hpp"
 #include "Scene/ECSModule/Core.hpp"
 

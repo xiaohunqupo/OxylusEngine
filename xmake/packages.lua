@@ -13,11 +13,9 @@ add_requires("glm 1.0.1", { configs = {
     cxx_standard = "20",
 }, system = false })
 
-add_requires("entt v3.15.0")
-
 add_requires("flecs v4.0.4")
 
-add_requires("fastgltf v0.8.0", { system = false })
+add_requires("fastgltf v0.8.0", { system = false, debug = is_mode("debug") })
 
 add_requires("meshoptimizer v0.22")
 
@@ -35,16 +33,16 @@ add_requires("vuk 2025.05.06", { configs = {
     debug_allocations = false,
 }, debug = is_mode("debug") })
 
-add_requires("shader-slang v2025.6.3", { system = false })
+add_requires("shader-slang v2025.9.2", { system = false })
 
-add_requires("libsdl3 3.2.10", { configs = {
-    wayland = true,
+add_requires("libsdl3", { configs = {
+    wayland = false,
     x11 = true,
 } })
 
 add_requires("toml++ v3.4.0")
 
-add_requires("rapidjson 2025.02.05")
+add_requires("simdjson v3.12.2")
 
 add_requires("joltphysics v5.3.0", { configs = {
     debug_renderer = true,

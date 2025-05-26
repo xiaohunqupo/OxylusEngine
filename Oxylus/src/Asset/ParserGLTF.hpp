@@ -1,5 +1,6 @@
 #pragma once
 
+#include <fastgltf/core.hpp>
 #include <vuk/runtime/vk/Image.hpp>
 
 #include "Asset/AssetFile.hpp"
@@ -78,6 +79,8 @@ struct GLTFMeshCallbacks {
   void (*on_access_normal)(void* user_data, u32 mesh_index, u64 offset, glm::vec3 normal) = nullptr;
   void (*on_access_texcoord)(void* user_data, u32 mesh_index, u64 offset, glm::vec2 texcoord) = nullptr;
   void (*on_access_color)(void* user_data, u32 mesh_index, u64 offset, glm::vec4 color) = nullptr;
+
+  std::function<void(std::vector<GLTFImageInfo>& images)> on_materials_load = nullptr;
 };
 
 struct GLTFMeshInfo {

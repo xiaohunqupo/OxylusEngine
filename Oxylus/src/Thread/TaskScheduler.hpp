@@ -14,8 +14,6 @@ using TaskFunction = enki::TaskSetFunction;
 
 class TaskScheduler : public ESystem {
 public:
-  TaskScheduler() = default;
-
   auto init() -> std::expected<void, std::string> override;
   auto deinit() -> std::expected<void, std::string> override;
 

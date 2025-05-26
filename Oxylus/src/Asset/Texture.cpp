@@ -27,45 +27,62 @@ void Texture::create(const std::string& path, const TextureLoadInfo& load_info, 
   u32 chans = {};
   vuk::Format format = load_info.format;
 
-  if (is_generic && !path.empty()) {
-    stb_data = load_stb_image(path, &extent.width, &extent.height, &chans);
-  } else if (!is_generic && !path.empty()) {
-    const auto file_data = fs::read_file_binary(path);
-    ktxTexture2* ktx{};
-    if (const auto result = ktxTexture2_CreateFromMemory(
-            file_data.data(), file_data.size(), KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT, &ktx);
-        result != KTX_SUCCESS) {
-      OX_LOG_ERROR("Couldn't load KTX2 file {}", ktxErrorString(result));
+  if (is_generic) {
+    if (!path.empty()) {
+      stb_data = load_stb_image(path, &extent.width, &extent.height, &chans);
+    } else if (load_info.bytes.has_value()) {
+      stb_data = load_stb_image_from_memory((void*)load_info.bytes->data(), //
+                                            load_info.bytes->size(),
+                                            &extent.width,
+                                            &extent.height,
+                                            &chans);
     }
-
-    auto format_ktx = vuk::Format::eBc7UnormBlock;
-    constexpr ktx_transcode_fmt_e ktxTranscodeFormat = KTX_TTF_BC7_RGBA;
-
-    // If the image needs is in a supercompressed encoding, transcode it to a desired format
-    if (ktxTexture2_NeedsTranscoding(ktx)) {
-      OX_SCOPED_ZONE_N("Transcode KTX 2 Texture");
-      if (const auto result = ktxTexture2_TranscodeBasis(ktx, ktxTranscodeFormat, KTX_TF_HIGH_QUALITY);
+  } else if (!is_generic) {
+    if (!path.empty()) {
+      ktxTexture2* ktx{};
+      const auto file_data = path.empty() ? *load_info.bytes                 // TODO: dropping errors for `bytes`
+                                          : fs::read_file_binary(path);
+      if (const auto result = ktxTexture2_CreateFromMemory(file_data.data(), //
+                                                           file_data.size(),
+                                                           KTX_TEXTURE_CREATE_LOAD_IMAGE_DATA_BIT,
+                                                           &ktx);
           result != KTX_SUCCESS) {
-        OX_LOG_ERROR("Couldn't transcode KTX2 file {}", ktxErrorString(result));
+        OX_LOG_ERROR("Couldn't load KTX2 file {}", ktxErrorString(result));
       }
-    } else {
-      // Use the format that the image is already in
-      format_ktx = static_cast<vuk::Format>(static_cast<VkFormat>(ktx->vkFormat));
+
+      auto format_ktx = vuk::Format::eBc7UnormBlock;
+      constexpr ktx_transcode_fmt_e ktxTranscodeFormat = KTX_TTF_BC7_RGBA;
+
+      // If the image needs is in a supercompressed encoding, transcode it to a desired format
+      if (ktxTexture2_NeedsTranscoding(ktx)) {
+        OX_SCOPED_ZONE_N("Transcode KTX 2 Texture");
+        if (const auto result = ktxTexture2_TranscodeBasis(ktx, ktxTranscodeFormat, KTX_TF_HIGH_QUALITY);
+            result != KTX_SUCCESS) {
+          OX_LOG_ERROR("Couldn't transcode KTX2 file {}", ktxErrorString(result));
+        }
+      } else {
+        // Use the format that the image is already in
+        format_ktx = static_cast<vuk::Format>(static_cast<VkFormat>(ktx->vkFormat));
+      }
+
+      extent.width = ktx->baseWidth;
+      extent.height = ktx->baseHeight;
+      format = format_ktx;
+
+      ktx_data.reset(ktx);
     }
-
-    extent.width = ktx->baseWidth;
-    extent.height = ktx->baseHeight;
-    format = format_ktx;
-
-    ktx_data.reset(ktx);
   }
 
-  const void* final_data = load_info.data
+  const void* final_data = load_info.loaded_data
                                .or_else([is_generic, &stb_data, &ktx_data] {
                                  return is_generic ? option<void*>{stb_data.get()}
                                                    : option<void*>{ktx_data.get()->kvData};
                                })
                                .value();
+
+  OX_CHECK_NE(extent.height, 0u, "Height can't be 0!");
+  OX_CHECK_NE(extent.width, 0u, "Width can't be 0!");
+  OX_CHECK_NE(extent.depth, 0u, "Depth can't be 0!");
 
   auto ia = vuk::ImageAttachment::from_preset(
       load_info.preset, format, {extent.width, extent.height, extent.depth}, vuk::Samples::e1);

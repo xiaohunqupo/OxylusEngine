@@ -147,7 +147,7 @@ public:
   // Texture
   static bool texture_property(const char* label, UUID& texture_uuid, UUID* new_asset, const char* tooltip = nullptr);
 
-  static void image(const vuk::Value<vuk::ImageAttachment>& attch,
+  static void image(vuk::Value<vuk::ImageAttachment>&& attch,
                     ImVec2 size,
                     const ImVec2& uv0 = ImVec2(0, 0),
                     const ImVec2& uv1 = ImVec2(1, 1),

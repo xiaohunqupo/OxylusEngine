@@ -1,8 +1,6 @@
 #pragma once
 
-#include <rapidjson/document.h>
-#include <rapidjson/prettywriter.h>
-#include <rapidjson/stringbuffer.h>
+#include <simdjson.h>
 
 #include "Asset/AssetFile.hpp"
 #include "Asset/AudioSource.hpp"
@@ -13,6 +11,7 @@
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
 #include "Scene/Scene.hpp"
+#include "Utils/JsonWriter.hpp"
 
 namespace ox {
 struct Asset {
@@ -43,8 +42,9 @@ using AssetRegistry = ankerl::unordered_dense::map<UUID, Asset>;
 class AssetManager : public ESystem {
 public:
   struct AssetMetaFile {
-    std::string contents;
-    rapidjson::Document doc;
+    simdjson::padded_string contents;
+    simdjson::ondemand::parser parser;
+    simdjson::simdjson_result<simdjson::ondemand::document> doc;
   };
 
   auto init() -> std::expected<void, std::string> override;
@@ -52,7 +52,7 @@ public:
 
   auto registry() const -> const AssetRegistry&;
 
-  auto read_meta_file(const std::string& path) -> option<AssetMetaFile>;
+  auto read_meta_file(const std::string& path) -> std::unique_ptr<AssetMetaFile>;
 
   auto load_deferred_assets() -> void;
 
@@ -75,19 +75,11 @@ public:
   auto register_asset(const UUID& uuid, AssetType type, const std::string& path) -> bool;
 
   auto export_asset(const UUID& uuid, const std::string& path) -> bool;
-  auto export_texture(const UUID& uuid,
-                      rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                      const std::string& path) -> bool;
-  auto export_mesh(const UUID& uuid, rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, const std::string& path)
-      -> bool;
-  auto export_scene(const UUID& uuid, rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer, const std::string& path)
-      -> bool;
-  auto export_material(const UUID& uuid,
-                       rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                       const std::string& path) -> bool;
-  auto export_script(const UUID& uuid,
-                     rapidjson::PrettyWriter<rapidjson::StringBuffer>& writer,
-                     const std::string& path) -> bool;
+  auto export_texture(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool;
+  auto export_mesh(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool;
+  auto export_scene(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool;
+  auto export_material(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool;
+  auto export_script(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool;
 
   auto load_asset(const UUID& uuid) -> bool;
   auto unload_asset(const UUID& uuid) -> bool;

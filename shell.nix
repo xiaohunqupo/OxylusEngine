@@ -1,19 +1,23 @@
 let
-  pkgs = import <nixpkgs> {};
-  pkgs-unstable = import <nixpkgs-unstable> {};
-in 
-pkgs.mkShell.override { stdenv = pkgs-unstable.llvmPackages_20.libcxxStdenv; } {
+  pkgs = import <nixpkgs> { };
+  pkgs-unstable = import <nixpkgs-unstable> { };
+in pkgs.mkShell.override {
+  stdenv = pkgs-unstable.llvmPackages_20.libcxxStdenv;
+} {
   nativeBuildInputs = [
     pkgs.cmake
     pkgs.ninja
     pkgs.gnumake
     pkgs.xmake
 
+    pkgs-unstable.llvmPackages_20.bintools-unwrapped
     pkgs-unstable.llvmPackages_20.libcxx
     pkgs-unstable.llvmPackages_20.libcxx.dev
     pkgs-unstable.llvmPackages_20.compiler-rt
-    (pkgs-unstable.llvmPackages_20.clang-tools.override { enableLibcxx = true; })
-    pkgs.mold
+    (pkgs-unstable.llvmPackages_20.clang-tools.override {
+      enableLibcxx = true;
+    })
+    pkgs-unstable.mold
 
     pkgs.pkg-config
     pkgs-unstable.python313
@@ -27,7 +31,11 @@ pkgs.mkShell.override { stdenv = pkgs-unstable.llvmPackages_20.libcxxStdenv; } {
     pkgs-unstable.meshoptimizer
 
     # for SDL3
-    (pkgs-unstable.sdl3.override { waylandSupport = false; openglSupport = false; testSupport = false; })
+    (pkgs-unstable.sdl3.override {
+      waylandSupport = false;
+      openglSupport = false;
+      testSupport = false;
+    })
   ];
 
   shellHook = ''

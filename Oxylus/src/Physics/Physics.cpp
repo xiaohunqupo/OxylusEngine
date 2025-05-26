@@ -2,7 +2,6 @@
 
 #include <cstdarg>
 
-#include "Core/App.hpp"
 #include "Jolt/Physics/Body/BodyManager.h"
 #include "Jolt/Physics/Collision/CastResult.h"
 #include "Jolt/Physics/Collision/RayCast.h"
@@ -11,8 +10,6 @@
 #include "Utils/OxMath.hpp"
 
 namespace ox {
-Physics* Physics::_instance = nullptr;
-
 static void TraceImpl(const char* inFMT, ...) {
   va_list list;
   va_start(list, inFMT);
@@ -73,13 +70,6 @@ auto Physics::deinit() -> std::expected<void, std::string> {
   return {};
 }
 
-void Physics::set_instance() {
-  if (_instance == nullptr)
-    _instance = App::get_system<Physics>(EngineSystems::Physics);
-  JPH::Factory::sInstance = new JPH::Factory();
-  JPH::RegisterTypes();
-}
-
 void Physics::step(float physicsTs) {
   OX_SCOPED_ZONE;
 
@@ -96,18 +86,10 @@ void Physics::debug_draw() {
   physics_system->DrawBodies(settings, debug_renderer);
 }
 
-JPH::PhysicsSystem* Physics::get_physics_system() {
-  OX_SCOPED_ZONE;
-
-  OX_CHECK_NULL(_instance->physics_system, "Physics system not initialized");
-
-  return _instance->physics_system;
-}
-
 JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> Physics::cast_ray(const RayCast& ray_cast) {
   JPH::AllHitCollisionCollector<JPH::RayCastBodyCollector> collector;
   const JPH::RayCast ray{math::to_jolt(ray_cast.get_origin()), math::to_jolt(ray_cast.get_direction())};
-  _instance->get_broad_phase_query().CastRay(ray, collector);
+  get_broad_phase_query().CastRay(ray, collector);
 
   return collector;
 }

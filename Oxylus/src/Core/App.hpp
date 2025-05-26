@@ -78,7 +78,6 @@ enum class EngineSystems {
   LuaManager,
   ModuleRegistry,
   RendererConfig,
-  SystemManager,
   Physics,
   Input,
 
@@ -131,19 +130,20 @@ public:
   static VFS* get_vfs();
 
   template <typename T, typename... Args>
-  static void register_system(const EngineSystems type, Args&&... args) {
-    if (_instance->system_registry.contains(type)) {
+  void register_system(const EngineSystems type, Args&&... args) {
+    if (system_registry.contains(type)) {
       OX_LOG_ERROR("Registering system more than once.");
       return;
     }
 
     Shared<T> system = create_shared<T>(std::forward<Args>(args)...);
-    _instance->system_registry.emplace(type, std::move(system));
+    system->app = this;
+    system_registry.emplace(type, std::move(system));
   }
 
-  static void unregister_system(const EngineSystems type) {
-    if (_instance->system_registry.contains(type)) {
-      _instance->system_registry.erase(type);
+  void unregister_system(const EngineSystems type) {
+    if (system_registry.contains(type)) {
+      system_registry.erase(type);
     }
   }
 

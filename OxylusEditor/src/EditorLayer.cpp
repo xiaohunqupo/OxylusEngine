@@ -50,7 +50,7 @@ void EditorLayer::on_attach() {
       {.preset = Preset::eRTT2DUnmipped,
        .format = vuk::Format::eR8G8B8A8Srgb,
        .mime = {},
-       .data = EngineBanner,
+       .loaded_data = EngineBanner,
        .extent = vuk::Extent3D{.width = EngineBannerWidth, .height = EngineBannerHeight, .depth = 1u}});
 
   add_panel<SceneHierarchyPanel>();
@@ -302,17 +302,17 @@ void EditorLayer::open_scene_file_dialog() {
       .user_data = this,
       .callback =
           [](void* user_data, const c8* const* files, i32) {
-    auto* layer = static_cast<EditorLayer*>(user_data);
-    if (!files || !*files) {
-      return;
-    }
+            auto* layer = static_cast<EditorLayer*>(user_data);
+            if (!files || !*files) {
+              return;
+            }
 
-    const auto first_path_cstr = *files;
-    const auto first_path_len = std::strlen(first_path_cstr);
-    const auto path = std::string(first_path_cstr, first_path_len);
-    if (!path.empty())
-      layer->open_scene(path);
-  },
+            const auto first_path_cstr = *files;
+            const auto first_path_len = std::strlen(first_path_cstr);
+            const auto path = std::string(first_path_cstr, first_path_len);
+            if (!path.empty())
+              layer->open_scene(path);
+          },
       .title = "Oxylus scene file...",
       .default_path = fs::current_path(),
       .filters = dialog_filters,
@@ -362,20 +362,20 @@ void EditorLayer::save_scene_as() {
       .user_data = this,
       .callback =
           [](void* user_data, const c8* const* files, i32) {
-    const auto layer = static_cast<EditorLayer*>(user_data);
-    if (!files || !*files) {
-      return;
-    }
+            const auto layer = static_cast<EditorLayer*>(user_data);
+            if (!files || !*files) {
+              return;
+            }
 
-    const auto first_path_cstr = *files;
-    const auto first_path_len = std::strlen(first_path_cstr);
-    const auto path = std::string(first_path_cstr, first_path_len);
+            const auto first_path_cstr = *files;
+            const auto first_path_len = std::strlen(first_path_cstr);
+            const auto path = std::string(first_path_cstr, first_path_len);
 
-    if (!path.empty()) {
-      layer->editor_scene->save_to_file(path);
-      layer->last_save_scene_path = path;
-    }
-  },
+            if (!path.empty()) {
+              layer->editor_scene->save_to_file(path);
+              layer->last_save_scene_path = path;
+            }
+          },
       .title = "New Scene...",
       .default_path = "NewScene.oxscene",
       .filters = dialog_filters,
