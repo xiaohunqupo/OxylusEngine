@@ -12,7 +12,6 @@
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Scene/ECSModule/Core.hpp"
-#include "Scene/SceneRenderer.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/EditorConfig.hpp"
@@ -59,7 +58,7 @@ void show_component_gizmo(const char8_t* icon,
       });
 }
 
-ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true) { OX_SCOPED_ZONE; }
+ViewportPanel::ViewportPanel() : EditorPanel("Viewport", ICON_MDI_TERRAIN, true) { ZoneScoped; }
 
 void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
   draw_performance_overlay();
@@ -127,14 +126,14 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     _viewport_offset = {_viewport_bounds[0].x + off * 0.5f, _viewport_bounds[0].y};
 
     const auto* app = App::get();
-    const auto& scene_renderer = _scene->get_renderer();
-    if (scene_renderer != nullptr) {
+    auto* render_pipeline = _scene->get_render_pipeline();
+    if (render_pipeline != nullptr) {
       const RenderPipeline::RenderInfo render_info = {
           .extent = extent,
           .format = format,
           .picking_texel = {},
       };
-      auto scene_view_image = scene_renderer->get_render_pipeline()->on_render(app->get_vkcontext(), render_info);
+      auto scene_view_image = render_pipeline->on_render(app->get_vkcontext(), render_info);
       ImGui::Image(app->get_imgui_layer()->add_image(std::move(scene_view_image)),
                    ImVec2{fixed_width, _viewport_panel_size.y});
     } else {

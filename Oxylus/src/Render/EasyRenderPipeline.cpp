@@ -195,7 +195,7 @@ auto EasyRenderPipeline::shutdown() -> void {}
 
 auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& render_info)
     -> vuk::Value<vuk::ImageAttachment> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const bool freeze_culling = static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get());
   CameraComponent cam = freeze_culling ? frozen_camera : current_camera;
@@ -436,7 +436,7 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
                                   vuk::Value<vuk::Buffer>& camera_buffer,
                                   vuk::Value<vuk::ImageAttachment>& final_attachment,
                                   vuk::Value<vuk::ImageAttachment>& depth_attachment) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const vuk::Extent3D sky_view_lut_extent = {.width = 312, .height = 192, .depth = 1};
   auto sky_view_lut_attachment = vuk::declare_ia(
@@ -590,7 +590,7 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
 }
 
 auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   scene->world
       .query_builder<const TransformComponent, const CameraComponent>() //

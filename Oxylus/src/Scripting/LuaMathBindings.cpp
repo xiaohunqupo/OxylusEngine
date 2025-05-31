@@ -23,7 +23,7 @@ namespace ox::LuaBindings {
   }, [](const type& a, const number b) { return a + b; }, [](const number a, const type& b) { return a + b; }));
 
 void bind_math(const Shared<sol::state>& state) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   auto vec2 = state->new_usertype<glm::vec2>("Vec2", sol::constructors<glm::vec2(float, float), glm::vec2(float)>());
   SET_TYPE_FIELD(vec2, glm::vec2, x);
   SET_TYPE_FIELD(vec2, glm::vec2, y);

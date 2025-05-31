@@ -18,7 +18,6 @@ public:
   VkPhysicalDevice physical_device = nullptr;
   vkb::PhysicalDevice vkbphysical_device;
   VkQueue graphics_queue = nullptr;
-  uint32_t graphics_queue_family_index = 0;
   VkQueue transfer_queue = nullptr;
   std::optional<vuk::Runtime> runtime;
 
@@ -32,11 +31,9 @@ public:
   VkSurfaceKHR surface;
   vkb::Instance vkb_instance;
   vkb::Device vkb_device;
-  uint32_t num_inflight_frames = 3;
-  uint64_t num_frames = 0;
-  uint32_t current_frame = 0;
-  vuk::Unique<std::array<VkSemaphore, 3>> present_ready;
-  vuk::Unique<std::array<VkSemaphore, 3>> render_complete;
+  u32 num_inflight_frames = 3;
+  u64 num_frames = 0;
+  u32 current_frame = 0;
   Shared<TracyProfiler> tracy_profiler = {};
   vuk::Compiler compiler = {};
   SlangCompiler shader_compiler = {};

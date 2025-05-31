@@ -19,7 +19,7 @@ constexpr static u64 SLOT_MAP_INDEX_MASK = (1_u64 << SLOT_MAP_VERSION_BITS) - 1_
 
 template <SlotMapID ID>
 constexpr auto SlotMap_encode_id(u32 version, u32 index) -> ID {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   u64 raw = (static_cast<u64>(version) << SLOT_MAP_VERSION_BITS) | static_cast<u64>(index);
   return static_cast<ID>(raw);
@@ -27,7 +27,7 @@ constexpr auto SlotMap_encode_id(u32 version, u32 index) -> ID {
 
 template <SlotMapID ID>
 constexpr auto SlotMap_decode_id(ID id) -> SlotMapIDUnpacked {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto raw = static_cast<u64>(id);
   auto version = static_cast<u32>(raw >> SLOT_MAP_VERSION_BITS);
@@ -53,7 +53,7 @@ private:
 
 public:
   auto create_slot(this Self& self, T&& v = {}) -> ID {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     std::unique_lock _(self.mutex);
     if (not self.free_indices.empty()) {
@@ -71,7 +71,7 @@ public:
   }
 
   auto destroy_slot(this Self& self, ID id) -> bool {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     if (self.is_valid(id)) {
       std::unique_lock lock(self.mutex);
@@ -89,7 +89,7 @@ public:
   }
 
   auto reset(this Self& self) -> void {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     std::unique_lock _(self.mutex);
     self.slots.clear();
@@ -99,7 +99,7 @@ public:
   }
 
   auto is_valid(this const Self& self, ID id) -> bool {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     std::shared_lock _(self.mutex);
     auto [version, index] = SlotMap_decode_id(id);
@@ -107,7 +107,7 @@ public:
   }
 
   auto slot(this Self& self, ID id) -> T* {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     if (self.is_valid(id)) {
       std::shared_lock _(self.mutex);
@@ -119,7 +119,7 @@ public:
   }
 
   auto slot_from_index(this Self& self, usize index) -> T* {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     std::shared_lock _(self.mutex);
     if (index < self.slots.size() && self.states[index]) {
@@ -130,28 +130,28 @@ public:
   }
 
   auto size(this const Self& self) -> usize {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     std::shared_lock _(self.mutex);
     return self.slots.size() - self.free_indices.size();
   }
 
   auto capacity(this const Self& self) -> usize {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     std::shared_lock _(self.mutex);
     return self.slots.size();
   }
 
   auto slots_unsafe(this Self& self) -> std::span<T> {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     std::shared_lock _(self.mutex);
     return self.slots;
   }
 
   auto get_mutex(this Self& self) -> std::shared_mutex& {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
 
     return self.mutex;
   }

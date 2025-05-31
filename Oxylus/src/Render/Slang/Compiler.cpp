@@ -117,7 +117,7 @@ auto SlangModule::destroy() -> void {
 }
 
 auto SlangModule::get_entry_point(std::string_view name) -> option<SlangEntryPoint> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   memory::ScopedStack stack;
 
   Slang::ComPtr<slang::IEntryPoint> entry_point;
@@ -177,7 +177,7 @@ auto SlangModule::get_entry_point(std::string_view name) -> option<SlangEntryPoi
 }
 
 ShaderReflection SlangModule::get_reflection() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   ShaderReflection result = {};
   slang::ShaderReflection* program_layout = impl->slang_module->getLayout();
@@ -230,7 +230,7 @@ auto SlangSession::destroy() -> void {
 }
 
 auto SlangSession::load_module(const SlangModuleInfo& info) -> option<SlangModule> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   memory::ScopedStack stack;
 
   slang::IModule* slang_module = {};
@@ -257,7 +257,7 @@ auto SlangSession::load_module(const SlangModuleInfo& info) -> option<SlangModul
 }
 
 auto SlangCompiler::create() -> option<SlangCompiler> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const auto impl = new Impl;
   slang::createGlobalSession(impl->global_session.writeRef());
@@ -270,7 +270,7 @@ auto SlangCompiler::destroy() -> void {
 }
 
 auto SlangCompiler::new_session(const SlangSessionInfo& info) -> option<SlangSession> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto slang_fs = std::make_unique<SlangVirtualFS>(info.root_directory);
 

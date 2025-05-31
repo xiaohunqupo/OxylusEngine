@@ -3,6 +3,7 @@
 #include <filesystem>
 #include <imgui_internal.h>
 // #include <imspinner.h>
+#include <flecs.h>
 #include <ranges>
 
 #include "Asset/AssetManager.hpp"
@@ -19,7 +20,6 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
-#include "Scene/SceneRenderer.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "UI/OxUI.hpp"
 #include "Utils/CVars.hpp"
@@ -36,7 +36,7 @@ static ViewportPanel* fullscreen_viewport_panel = nullptr;
 EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
 void EditorLayer::on_attach() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   editor_theme.init();
 
@@ -106,15 +106,17 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 
   switch (scene_state) {
     case SceneState::Edit: {
-      editor_scene->get_renderer()->update(delta_time);
+      editor_scene->disable_phases({flecs::PreUpdate, flecs::OnUpdate});
+      editor_scene->runtime_update(delta_time);
       break;
     }
     case SceneState::Play: {
-      active_scene->on_runtime_update(delta_time);
+      editor_scene->enable_all_phases();
+      active_scene->runtime_update(delta_time);
       break;
     }
     case SceneState::Simulate: {
-      editor_scene->get_renderer()->update(delta_time);
+      // TODO:
       break;
     }
   }
@@ -340,7 +342,7 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
 }
 
 void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const auto sun = scene->create_entity("Sun");
   sun.get_mut<TransformComponent>()->rotation.x = glm::radians(25.f);
   sun.set<LightComponent>({.type = LightComponent::LightType::Directional, .intensity = 10.f});
@@ -388,13 +390,13 @@ void EditorLayer::on_scene_play() {
   set_scene_state(SceneState::Play);
   active_scene = Scene::copy(editor_scene);
   set_editor_context(active_scene);
-  active_scene->on_runtime_start();
+  active_scene->runtime_start();
 }
 
 void EditorLayer::on_scene_stop() {
   editor_context.reset();
   set_scene_state(SceneState::Edit);
-  active_scene->on_runtime_stop();
+  active_scene->runtime_stop();
   active_scene = nullptr;
   set_editor_context(editor_scene);
 }

@@ -8,7 +8,7 @@ namespace ox {
 AudioSource::~AudioSource() { ma_sound_uninit(&_sound); }
 
 auto AudioSource::load(const std::string& path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   auto* engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine)->get_engine();
   const ma_result result = ma_sound_init_from_file(
       engine, path.c_str(), MA_SOUND_FLAG_NO_SPATIALIZATION, nullptr, nullptr, &_sound);
@@ -21,7 +21,7 @@ auto AudioSource::load(const std::string& path) -> bool {
 }
 
 auto AudioSource::unload() -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   ma_sound_uninit(&_sound);
 }
 

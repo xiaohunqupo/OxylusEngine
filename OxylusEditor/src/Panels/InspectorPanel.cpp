@@ -997,7 +997,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 }
 
 void InspectorPanel::draw_asset_info(Asset* asset) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   auto* asset_man = App::get_asset_manager();
   auto type_str = asset_man->to_asset_type_sv(asset->type);
   ImGui::TextUnformatted(fmt::format("Asset Type: {}", type_str).c_str());

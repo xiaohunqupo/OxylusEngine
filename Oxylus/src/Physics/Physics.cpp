@@ -71,7 +71,7 @@ auto Physics::deinit() -> std::expected<void, std::string> {
 }
 
 void Physics::step(float physicsTs) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   OX_CHECK_NULL(physics_system, "Physics system not initialized");
 

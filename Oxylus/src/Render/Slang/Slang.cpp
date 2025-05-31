@@ -9,7 +9,7 @@
 namespace ox {
 void Slang::create_session(this Slang& self,
                            const SessionInfo& session_info) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   auto& ctx = App::get_vkcontext();
 
   self.slang_session = ctx.shader_compiler.new_session(
@@ -19,7 +19,7 @@ void Slang::create_session(this Slang& self,
 void Slang::add_shader(this Slang& self,
                        vuk::PipelineBaseCreateInfo& pipeline_ci,
                        const CompileInfo& compile_info) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (!self.slang_session.has_value()) {
     OX_LOG_ERROR("A valid Slang session is needed!");

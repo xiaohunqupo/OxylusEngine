@@ -4,7 +4,7 @@
 
 namespace ox::memory {
 ThreadStack::ThreadStack() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   constexpr static usize stack_size = ox::mib_to_bytes(32);
   ptr = static_cast<u8*>(os::mem_reserve(stack_size));
@@ -12,20 +12,20 @@ ThreadStack::ThreadStack() {
 }
 
 ThreadStack::~ThreadStack() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   os::mem_release(ptr);
 }
 
 ScopedStack::ScopedStack() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto& stack = get_thread_stack();
   ptr = stack.ptr;
 }
 
 ScopedStack::~ScopedStack() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto& stack = get_thread_stack();
   stack.ptr = ptr;

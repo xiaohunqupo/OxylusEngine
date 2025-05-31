@@ -10,7 +10,7 @@ namespace ox {
 DebugRenderer* DebugRenderer::instance = nullptr;
 
 void DebugRenderer::init() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (instance)
     return;
 
@@ -40,7 +40,7 @@ void DebugRenderer::release() {
 }
 
 void DebugRenderer::reset(bool clear_depth_tested) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   instance->draw_list.debug_lines.clear();
   instance->draw_list.debug_points.clear();
 
@@ -51,7 +51,7 @@ void DebugRenderer::reset(bool clear_depth_tested) {
 }
 
 void DebugRenderer::draw_point(const glm::vec3& pos, float point_radius, const glm::vec4& color, bool depth_tested) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_points.emplace_back(Point{pos, color, point_radius});
   else
@@ -60,7 +60,7 @@ void DebugRenderer::draw_point(const glm::vec3& pos, float point_radius, const g
 
 void DebugRenderer::draw_line(
     const glm::vec3& start, const glm::vec3& end, float line_width, const glm::vec4& color, bool depth_tested) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_lines.emplace_back(Line{start, end, color});
   else
@@ -69,7 +69,7 @@ void DebugRenderer::draw_line(
 
 void DebugRenderer::draw_triangle(
     const glm::vec3& v0, const glm::vec3& v1, const glm::vec3& v2, const glm::vec4& color, bool depth_tested) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (depth_tested)
     instance->draw_list_depth_tested.debug_triangles.emplace_back(Triangle{v0, v1, v2, color});
   else

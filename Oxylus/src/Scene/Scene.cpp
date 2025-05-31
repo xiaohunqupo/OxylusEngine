@@ -24,33 +24,180 @@
 #include "Physics/Physics.hpp"
 #include "Physics/PhysicsInterfaces.hpp"
 #include "Physics/PhysicsMaterial.hpp"
+#include "Render/Camera.hpp"
+#include "Render/EasyRenderPipeline.hpp"
 #include "Render/RenderPipeline.hpp"
+#include "Render/RendererConfig.hpp"
 #include "Scene/ECSModule/ComponentWrapper.hpp"
 #include "Scene/ECSModule/Core.hpp"
-#include "SceneRenderer.hpp"
 #include "Scripting/LuaManager.hpp"
 #include "Utils/JsonHelpers.hpp"
 #include "Utils/JsonWriter.hpp"
-#include "Utils/Profiler.hpp"
 #include "Utils/Timestep.hpp"
 
 namespace ox {
+auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
+  ZoneScoped;
+
+  writer.begin_obj();
+  writer["name"] = e.name();
+
+  std::vector<ECS::ComponentWrapper> components = {};
+  writer["tags"].begin_array();
+  e.each([&](flecs::id component_id) {
+    if (!component_id.is_entity()) {
+      return;
+    }
+
+    ECS::ComponentWrapper component(e, component_id);
+    if (!component.is_component()) {
+      writer << component.path;
+    } else {
+      components.emplace_back(e, component_id);
+    }
+  });
+  writer.end_array();
+
+  writer["components"].begin_array();
+  for (auto& component : components) {
+    writer.begin_obj();
+    writer["name"] = component.path;
+    component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+      auto& member_json = writer[member_name];
+      std::visit(ox::match{
+                     [](const auto&) {},
+                     [&](bool* v) { member_json = *v; },
+                     [&](f32* v) { member_json = *v; },
+                     [&](i32* v) { member_json = *v; },
+                     [&](u32* v) { member_json = *v; },
+                     [&](i64* v) { member_json = *v; },
+                     [&](u64* v) { member_json = *v; },
+                     [&](glm::vec2* v) { member_json = *v; },
+                     [&](glm::vec3* v) { member_json = *v; },
+                     [&](glm::vec4* v) { member_json = *v; },
+                     [&](glm::quat* v) { member_json = *v; },
+                     [&](glm::mat4* v) { member_json = std::span(glm::value_ptr(*v), 16); },
+                     [&](std::string* v) { member_json = *v; },
+                     [&](UUID* v) { member_json = v->str().c_str(); },
+                 },
+                 member);
+    });
+    writer.end_obj();
+  }
+  writer.end_array();
+
+  writer["children"].begin_array();
+  e.children([&writer](flecs::entity c) { entity_to_json(writer, c); });
+  writer.end_array();
+
+  writer.end_obj();
+}
+
+auto json_to_entity(Scene& self, //
+                    flecs::entity root,
+                    simdjson::ondemand::value& json,
+                    std::vector<UUID>& requested_assets) -> bool {
+  ZoneScoped;
+  memory::ScopedStack stack;
+
+  const auto& world = self.world;
+
+  auto entity_name_json = json["name"];
+  if (entity_name_json.error()) {
+    OX_LOG_ERROR("Entities must have names!");
+    return false;
+  }
+
+  auto e = self.create_entity(std::string(entity_name_json.get_string().value_unsafe()));
+  if (root != flecs::entity::null())
+    e.child_of(root);
+
+  auto entity_tags_json = json["tags"];
+  for (auto entity_tag : entity_tags_json.get_array()) {
+    auto tag = world.component(stack.null_terminate(entity_tag.get_string().value_unsafe()).data());
+    e.add(tag);
+  }
+
+  auto components_json = json["components"];
+  for (auto component_json : components_json.get_array()) {
+    auto component_name_json = component_json["name"];
+    if (component_name_json.error()) {
+      OX_LOG_ERROR("Entity '{}' has corrupt components JSON array.", e.name().c_str());
+      return false;
+    }
+
+    const auto* component_name = stack.null_terminate_cstr(component_name_json.get_string().value_unsafe());
+    auto component_id = world.lookup(component_name);
+    if (!component_id) {
+      OX_LOG_ERROR("Entity '{}' has invalid component named '{}'!", e.name().c_str(), component_name);
+      return false;
+    }
+
+    OX_CHECK_EQ(self.component_db.is_component_known(component_id), true);
+    e.add(component_id);
+    ECS::ComponentWrapper component(e, component_id);
+    component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+      auto member_json = component_json[member_name];
+      if (member_json.error()) {
+        // Default construct
+        return;
+      }
+
+      std::visit(ox::match{
+                     [](const auto&) {},
+                     [&](bool* v) { *v = static_cast<bool>(member_json.get_bool().value_unsafe()); },
+                     [&](f32* v) { *v = static_cast<f32>(member_json.get_double().value_unsafe()); },
+                     [&](i32* v) { *v = static_cast<i32>(member_json.get_int64().value_unsafe()); },
+                     [&](u32* v) { *v = member_json.get_uint64().value_unsafe(); },
+                     [&](i64* v) { *v = member_json.get_int64().value_unsafe(); },
+                     [&](u64* v) { *v = member_json.get_uint64().value_unsafe(); },
+                     [&](glm::vec2* v) { json_to_vec(member_json.value_unsafe(), *v); },
+                     [&](glm::vec3* v) { json_to_vec(member_json.value_unsafe(), *v); },
+                     [&](glm::vec4* v) { json_to_vec(member_json.value_unsafe(), *v); },
+                     [&](glm::quat* v) { json_to_quat(member_json.value_unsafe(), *v); },
+                     // [&](glm::mat4 *v) {json_to_mat(member_json.value(), *v); },
+                     [&](std::string* v) { *v = member_json.get_string().value_unsafe(); },
+                     [&](UUID* v) {
+                       *v = UUID::from_string(member_json.get_string().value_unsafe()).value();
+                       requested_assets.push_back(*v);
+                     },
+                 },
+                 member);
+    });
+
+    e.modified(component_id);
+  }
+
+  auto children_json = json["children"];
+  for (auto children : children_json.get_array()) {
+    if (children.error()) {
+      continue;
+    }
+
+    if (!json_to_entity(self, e, children.value_unsafe(), requested_assets)) {
+      return false;
+    }
+  }
+
+  return true;
+}
+
 auto ComponentDB::import_module(this ComponentDB& self, flecs::entity module) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   self.imported_modules.emplace_back(module);
   module.children([&](flecs::id id) { self.components.push_back(id); });
 }
 
 auto ComponentDB::is_component_known(this ComponentDB& self, flecs::id component_id) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   return std::ranges::any_of(self.components, [&](const auto& id) { return id == component_id; });
 }
 
 auto ComponentDB::get_components(this ComponentDB& self) -> std::span<flecs::id> { return self.components; }
 
-Scene::Scene() { init("Untitled"); }
+Scene::Scene(const Shared<RenderPipeline>& render_pipeline) { this->init("Untitled", render_pipeline); }
 
 Scene::Scene(const std::string& name) { init(name); }
 
@@ -59,38 +206,352 @@ Scene::~Scene() {
   lua_manager->get_state()->collect_gc();
 
   if (running)
-    on_runtime_stop();
+    runtime_stop();
 }
 
-auto Scene::init(this Scene& self, const std::string& name) -> void {
-  OX_SCOPED_ZONE;
+auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderPipeline>& render_pipeline) -> void {
+  ZoneScoped;
 
   self.scene_name = name;
 
   self.component_db.import_module(self.world.import <Core>());
-  self.world
-      .observer<TransformComponent>() //
-      .event(flecs::OnSet)
-      .event(flecs::OnAdd)
-      .event(flecs::OnRemove)
-      .each([](flecs::iter& it, usize i, TransformComponent&) {
-        auto entity = it.entity(i);
-        if (it.event() == flecs::OnSet) {
-          // self.set_dirty(entity);
-        } else if (it.event() == flecs::OnAdd) {
-          // entity.add<TransformComponent>().add<LayerComponent>();
-        } else if (it.event() == flecs::OnRemove) {
-          // entity.remove<TransformComponent>().remove<LayerComponent>();
+
+  // Renderer
+  self._render_pipeline = render_pipeline;
+
+  if (!self._render_pipeline) {
+    self._render_pipeline = create_shared<EasyRenderPipeline>();
+    self._render_pipeline->init(App::get_vkcontext());
+  }
+
+  // Systems run order:
+  // -- PreUpdate  -> Main Systems
+  // -- OnUpdate   -> Physics Systems
+  // -- PostUpdate -> Renderer Systems
+
+  // --- Main Systems ---
+
+  self.world.system<const LuaScriptComponent>("LuaScriptsUpdate")
+      .kind(flecs::PreUpdate)
+      .each([&self](flecs::iter& it, size_t, const LuaScriptComponent& c) {
+        for (const auto& script : c.lua_systems) {
+          script->bind_globals(&self, it.entity(0), it.delta_time());
+          script->on_update(it.delta_time());
         }
       });
 
-  // Renderer
-  self.scene_renderer = create_unique<SceneRenderer>();
-  self.scene_renderer->init(&self, nullptr);
+  self.world.system<const TransformComponent, AudioListenerComponent>("AudioListenerUpdate")
+      .kind(flecs::PreUpdate)
+      .each([&self](const flecs::entity& e, const TransformComponent& tc, AudioListenerComponent& ac) {
+        if (ac.active) {
+          auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
+          const glm::mat4 inverted = glm::inverse(self.get_world_transform(e));
+          const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
+          audio_engine->set_listener_position(ac.listener_index, tc.position);
+          audio_engine->set_listener_direction(ac.listener_index, -forward);
+          audio_engine->set_listener_cone(
+              ac.listener_index, ac.cone_inner_angle, ac.cone_outer_angle, ac.cone_outer_gain);
+        }
+      });
+
+  self.world.system<const TransformComponent, AudioSourceComponent>("AudioSourceUpdate")
+      .kind(flecs::PreUpdate)
+      .each([&self](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
+        auto* asset_man = App::get_asset_manager();
+        if (auto* audio = asset_man->get_audio(ac.audio_source)) {
+          auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
+          const glm::mat4 inverted = glm::inverse(self.get_world_transform(e));
+          const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
+          audio_engine->set_source_attenuation_model(audio->get_source(), ac.attenuation_model);
+          audio_engine->set_source_volume(audio->get_source(), ac.volume);
+          audio_engine->set_source_pitch(audio->get_source(), ac.pitch);
+          audio_engine->set_source_looping(audio->get_source(), ac.looping);
+          audio_engine->set_source_spatialization(audio->get_source(), ac.looping);
+          audio_engine->set_source_roll_off(audio->get_source(), ac.roll_off);
+          audio_engine->set_source_min_gain(audio->get_source(), ac.min_gain);
+          audio_engine->set_source_max_gain(audio->get_source(), ac.max_gain);
+          audio_engine->set_source_min_distance(audio->get_source(), ac.min_distance);
+          audio_engine->set_source_max_distance(audio->get_source(), ac.max_distance);
+          audio_engine->set_source_cone(
+              audio->get_source(), ac.cone_inner_angle, ac.cone_outer_angle, ac.cone_outer_gain);
+          audio_engine->set_source_doppler_factor(audio->get_source(), ac.doppler_factor);
+        }
+      });
+
+  // --- Physics Systems ---
+
+  // TODO: Interpolation for rigibodies.
+
+  self.world.system<const LuaScriptComponent>()
+      .kind(flecs::OnUpdate)
+      .each([](flecs::iter& it, size_t, const LuaScriptComponent& c) {
+        OX_LOG_INFO("lua");
+        for (const auto& system : c.lua_systems) {
+          system->on_fixed_update(it.delta_time());
+        }
+      });
+
+  self.world.system<TransformComponent, RigidbodyComponent>()
+      .kind(flecs::OnUpdate)
+      .each([](TransformComponent& tc, RigidbodyComponent& rb) {
+        if (!rb.runtime_body)
+          return;
+
+        auto* physics = App::get_system<Physics>(EngineSystems::Physics);
+        const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
+        const auto& body_interface = physics->get_physics_system()->GetBodyInterface();
+
+        if (!body_interface.IsActive(body->GetID()))
+          return;
+
+        const JPH::Vec3 position = body->GetPosition();
+        const JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
+
+        rb.previous_translation = rb.translation;
+        rb.previous_rotation = rb.rotation;
+        rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
+        rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+        tc.position = rb.translation;
+        tc.rotation = glm::eulerAngles(rb.rotation);
+      });
+
+  self.world.system<TransformComponent, CharacterControllerComponent>()
+      .kind(flecs::OnUpdate)
+      .each([](TransformComponent& tc, CharacterControllerComponent& ch) {
+        auto* character = reinterpret_cast<JPH::Character*>(ch.character);
+        character->PostSimulation(ch.collision_tolerance);
+        const JPH::Vec3 position = character->GetPosition();
+        const JPH::Vec3 rotation = character->GetRotation().GetEulerAngles();
+
+        ch.previous_translation = ch.translation;
+        ch.previous_rotation = ch.rotation;
+        ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
+        ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
+        tc.position = ch.translation;
+        tc.rotation = glm::eulerAngles(ch.rotation);
+      });
+
+  // -- Renderer Systems ---
+
+  self.world.system<const TransformComponent, CameraComponent>("CameraUpdate")
+      .kind(flecs::PostUpdate)
+      .each([](const TransformComponent& tc, CameraComponent& cc) {
+        const auto screen_extent = App::get()->get_swapchain_extent();
+        cc.position = tc.position;
+        cc.pitch = tc.rotation.x;
+        cc.yaw = tc.rotation.y;
+        Camera::update(cc, screen_extent);
+      });
+
+  self.world.system<const TransformComponent, MeshComponent>("MeshesUpdate")
+      .kind(flecs::PostUpdate)
+      .each([](const TransformComponent& tc, MeshComponent& mc) {});
+
+  self.world.system<SpriteComponent, SpriteAnimationComponent>("SpriteAnimationsUpdate")
+      .kind(flecs::PostUpdate)
+      .each([](flecs::iter& it, size_t, SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
+        const auto asset_manager = App::get_system<AssetManager>(EngineSystems::AssetManager);
+        auto* material = asset_manager->get_material(sprite.material);
+
+        if (sprite_animation.num_frames < 1 || sprite_animation.fps < 1 || sprite_animation.columns < 1 || !material ||
+            !material->albedo_texture)
+          return;
+
+        const auto dt = glm::clamp(static_cast<float>(it.delta_time()), 0.0f, 0.25f);
+        const auto time = sprite_animation.current_time + dt;
+
+        sprite_animation.current_time = time;
+
+        const float duration = static_cast<float>(sprite_animation.num_frames) / sprite_animation.fps;
+        u32 frame = math::flooru32(sprite_animation.num_frames * (time / duration));
+
+        if (time > duration) {
+          if (sprite_animation.inverted) {
+            // Remove/add a frame depending on the direction
+            const float frame_length = 1.0f / sprite_animation.fps;
+            sprite_animation.current_time -= duration - frame_length;
+          } else {
+            sprite_animation.current_time -= duration;
+          }
+        }
+
+        if (sprite_animation.loop)
+          frame %= sprite_animation.num_frames;
+        else
+          frame = glm::min(frame, sprite_animation.num_frames - 1);
+
+        frame = sprite_animation.inverted ? sprite_animation.num_frames - 1 - frame : frame;
+
+        const u32 frame_x = frame % sprite_animation.columns;
+        const u32 frame_y = frame / sprite_animation.columns;
+
+        const auto* albedo_texture = asset_manager->get_texture(material->albedo_texture);
+        auto& uv_size = material->uv_size;
+
+        auto texture_size = glm::vec2(albedo_texture->get_extent().width, albedo_texture->get_extent().height);
+        uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0],
+                   sprite_animation.frame_size[1] * 1.f / texture_size[1]};
+        sprite.current_uv_offset = material->uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
+      });
+
+  self.world.system<SpriteComponent>("SpritesUpdate")
+      .kind(flecs::PostUpdate)
+      .each([&self](const flecs::entity entity, SpriteComponent& sprite) {
+        const auto world_transform = self.get_world_transform(entity);
+        sprite.transform = world_transform;
+        sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
+        sprite.rect = sprite.rect.get_transformed(world_transform);
+
+        if (RendererCVar::cvar_draw_bounding_boxes.get()) {
+          DebugRenderer::draw_aabb(sprite.rect, glm::vec4(1, 1, 1, 1.0f));
+        }
+      });
+
+  self.world.system<const TransformComponent, LightComponent>("LightsUpdate")
+      .kind(flecs::PostUpdate)
+      .each([](const TransformComponent& tc, LightComponent& lc) {
+        lc.position = tc.position;
+        lc.rotation = tc.rotation;
+        lc.direction = glm::normalize(math::transform_normal(glm::vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
+      });
+}
+
+auto Scene::runtime_start() -> void {
+  ZoneScoped;
+
+  running = true;
+
+  // Physics
+  {
+    ZoneScopedN("Physics Start");
+    body_activation_listener_3d = new Physics3DBodyActivationListener();
+    contact_listener_3d = new Physics3DContactListener(this);
+    const auto physics_system = App::get_system<Physics>(EngineSystems::Physics)->get_physics_system();
+    physics_system->SetBodyActivationListener(body_activation_listener_3d);
+    physics_system->SetContactListener(contact_listener_3d);
+
+    // Rigidbodies
+    world.query_builder<const TransformComponent, RigidbodyComponent>().build().each(
+        [this](flecs::entity e, const TransformComponent& tc, RigidbodyComponent& rb) {
+          rb.previous_translation = rb.translation = tc.position;
+          rb.previous_rotation = rb.rotation = tc.rotation;
+          create_rigidbody(e, tc, rb);
+        });
+
+    // Characters
+    world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
+        [this](const TransformComponent& tc, CharacterControllerComponent& ch) {
+          create_character_controller(tc, ch);
+        });
+
+    physics_system->OptimizeBroadPhase();
+  }
+
+  // Scripting
+  {
+    ZoneScopedN("LuaScripting/on_init");
+    world.query_builder<const LuaScriptComponent>().build().each(
+        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
+          for (const auto& script : lsc.lua_systems) {
+            script->reload();
+            script->on_init(this, e);
+          }
+        });
+  }
+}
+
+auto Scene::runtime_stop() -> void {
+  ZoneScoped;
+
+  running = false;
+
+  // Physics
+  {
+    const auto physics = App::get_system<Physics>(EngineSystems::Physics);
+    world.query_builder<RigidbodyComponent>().build().each(
+        [physics](const flecs::entity& e, const RigidbodyComponent& rb) {
+          if (rb.runtime_body) {
+            JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
+            const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
+            body_interface.RemoveBody(body->GetID());
+            body_interface.DestroyBody(body->GetID());
+          }
+        });
+    world.query_builder<CharacterControllerComponent>().build().each(
+        [physics](const flecs::entity& e, CharacterControllerComponent& ch) {
+          if (ch.character) {
+            JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
+            auto* character = reinterpret_cast<JPH::Character*>(ch.character);
+            body_interface.RemoveBody(character->GetBodyID());
+            ch.character = nullptr;
+          }
+        });
+
+    delete body_activation_listener_3d;
+    delete contact_listener_3d;
+    body_activation_listener_3d = nullptr;
+    contact_listener_3d = nullptr;
+  }
+
+  // Scripting
+  {
+    ZoneScopedN("LuaScripting/on_release");
+    world.query_builder<const LuaScriptComponent>().build().each(
+        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
+          for (const auto& script : lsc.lua_systems) {
+            script->on_release(this, e);
+          }
+        });
+  }
+}
+
+auto Scene::runtime_update(const Timestep& delta_time) -> void {
+  ZoneScoped;
+
+  // TODO: Pass our delta_time?
+  world.progress();
+
+  _render_pipeline->on_update(this);
+
+  if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
+    auto physics = App::get_system<Physics>(EngineSystems::Physics);
+    physics->debug_draw();
+  }
+}
+
+auto Scene::disable_phases(const std::vector<flecs::entity_t>& phases) -> void {
+  ZoneScoped;
+  for (auto& phase : phases) {
+    if (!world.entity(phase).has(flecs::Disabled))
+      world.entity(phase).disable();
+  }
+}
+
+auto Scene::enable_all_phases() -> void {
+  ZoneScoped;
+  world.entity(flecs::PreUpdate).enable();
+  world.entity(flecs::OnUpdate).enable();
+  world.entity(flecs::PostUpdate).enable();
+}
+
+void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
+  ZoneScoped;
+
+  {
+    ZoneScopedN("LuaScripting/on_render");
+    world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
+      for (const auto& script : c.lua_systems) {
+        script->on_render(extent, format);
+      }
+    });
+  }
 }
 
 auto Scene::create_entity(const std::string& name) const -> flecs::entity {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
+
+  if (auto found_entity = world.lookup(name.c_str()))
+    return found_entity;
 
   flecs::entity e = world.entity();
   if (name.empty()) {
@@ -155,103 +616,45 @@ auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
   return root_entity;
 }
 
-auto Scene::on_runtime_start() -> void {
-  OX_SCOPED_ZONE;
-
-  running = true;
-
-  physics_frame_accumulator = 0.0f;
-
-  // Physics
-  {
-    OX_SCOPED_ZONE_N("Physics Start");
-    body_activation_listener_3d = new Physics3DBodyActivationListener();
-    contact_listener_3d = new Physics3DContactListener(this);
-    const auto physics_system = App::get_system<Physics>(EngineSystems::Physics)->get_physics_system();
-    physics_system->SetBodyActivationListener(body_activation_listener_3d);
-    physics_system->SetContactListener(contact_listener_3d);
-
-    // Rigidbodies
-    world.query_builder<const TransformComponent, RigidbodyComponent>().build().each(
-        [this](flecs::entity e, const TransformComponent& tc, RigidbodyComponent& rb) {
-          rb.previous_translation = rb.translation = tc.position;
-          rb.previous_rotation = rb.rotation = tc.rotation;
-          create_rigidbody(e, tc, rb);
-        });
-
-    // Characters
-    world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
-        [this](const TransformComponent& tc, CharacterControllerComponent& ch) {
-          create_character_controller(tc, ch);
-        });
-
-    physics_system->OptimizeBroadPhase();
-  }
-
-  // Scripting
-  {
-    OX_SCOPED_ZONE_N("LuaScripting/on_init");
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
-          for (const auto& script : lsc.lua_systems) {
-            script->reload();
-            script->on_init(this, e);
-          }
-        });
-  }
-}
-
-auto Scene::on_runtime_stop() -> void {
-  OX_SCOPED_ZONE;
-
-  running = false;
-
-  // Physics
-  {
-    const auto physics = App::get_system<Physics>(EngineSystems::Physics);
-    world.query_builder<RigidbodyComponent>().build().each(
-        [physics](const flecs::entity& e, const RigidbodyComponent& rb) {
-          if (rb.runtime_body) {
-            JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
-            const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
-            body_interface.RemoveBody(body->GetID());
-            body_interface.DestroyBody(body->GetID());
-          }
-        });
-    world.query_builder<CharacterControllerComponent>().build().each(
-        [physics](const flecs::entity& e, CharacterControllerComponent& ch) {
-          if (ch.character) {
-            JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
-            auto* character = reinterpret_cast<JPH::Character*>(ch.character);
-            body_interface.RemoveBody(character->GetBodyID());
-            ch.character = nullptr;
-          }
-        });
-
-    delete body_activation_listener_3d;
-    delete contact_listener_3d;
-    body_activation_listener_3d = nullptr;
-    contact_listener_3d = nullptr;
-  }
-
-  // Scripting
-  {
-    OX_SCOPED_ZONE_N("LuaScripting/on_release");
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
-          for (const auto& script : lsc.lua_systems) {
-            script->on_release(this, e);
-          }
-        });
-  }
-}
-
 auto Scene::copy(const Shared<Scene>& src_scene) -> Shared<Scene> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
-  OX_LOG_ERROR("TODO: Scene::copy");
+  // Copies the world but not the renderer. Imports component db from start.
 
-  return nullptr;
+  Shared<Scene> new_scene = create_shared<Scene>(src_scene->_render_pipeline);
+
+  new_scene->component_db.import_module(new_scene->world.import <Core>());
+
+  JsonWriter writer{};
+  writer.begin_obj();
+  writer["entities"].begin_array();
+  src_scene->world.query_builder().with<TransformComponent>().build().each([&writer](flecs::entity e) {
+    if (e.parent() == flecs::entity::null() && !e.has<Hidden>()) {
+      entity_to_json(writer, e);
+    }
+  });
+  writer.end_array();
+  writer.end_obj();
+
+  OX_LOG_INFO("{}", writer.stream.str().c_str());
+
+  auto content = simdjson::padded_string(writer.stream.str());
+  simdjson::ondemand::parser parser;
+  auto doc = parser.iterate(content);
+  if (doc.error()) {
+    OX_LOG_ERROR("Failed to parse scene file! {}", simdjson::error_message(doc.error()));
+    return nullptr;
+  }
+  auto entities_array = doc["entities"];
+
+  std::vector<UUID> requested_assets = {};
+  for (auto entity_json : entities_array.get_array()) {
+    if (!json_to_entity(*new_scene, flecs::entity::null(), entity_json.value_unsafe(), requested_assets)) {
+      return nullptr;
+    }
+  }
+
+  return new_scene;
 }
 
 auto Scene::get_world_transform(const flecs::entity entity) const -> glm::mat4 {
@@ -272,10 +675,10 @@ auto Scene::on_contact_added(const JPH::Body& body1,
                              const JPH::Body& body2,
                              const JPH::ContactManifold& manifold,
                              const JPH::ContactSettings& settings) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   {
-    OX_SCOPED_ZONE_N("LuaScripting/on_contact_added");
+    ZoneScopedN("LuaScripting/on_contact_added");
     world.query_builder<const LuaScriptComponent>().build().each(
         [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
           for (const auto& script : lsc.lua_systems) {
@@ -289,10 +692,10 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
                                  const JPH::Body& body2,
                                  const JPH::ContactManifold& manifold,
                                  const JPH::ContactSettings& settings) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   {
-    OX_SCOPED_ZONE_N("LuaScripting/on_contact_persisted");
+    ZoneScopedN("LuaScripting/on_contact_persisted");
     world.query_builder<const LuaScriptComponent>().build().each(
         [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
           for (const auto& script : lsc.lua_systems) {
@@ -304,7 +707,7 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
 
 auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component)
     -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (!running)
     return;
 
@@ -470,7 +873,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
 
 void Scene::create_character_controller(const TransformComponent& transform,
                                         CharacterControllerComponent& component) const {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (!running)
     return;
 
@@ -503,64 +906,8 @@ void Scene::create_character_controller(const TransformComponent& transform,
   reinterpret_cast<JPH::Character*>(component.character)->AddToPhysicsSystem(JPH::EActivation::Activate);
 }
 
-auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
-  OX_SCOPED_ZONE;
-
-  writer.begin_obj();
-  writer["name"] = e.name();
-
-  std::vector<ECS::ComponentWrapper> components = {};
-  writer["tags"].begin_array();
-  e.each([&](flecs::id component_id) {
-    if (!component_id.is_entity()) {
-      return;
-    }
-
-    ECS::ComponentWrapper component(e, component_id);
-    if (!component.is_component()) {
-      writer << component.path;
-    } else {
-      components.emplace_back(e, component_id);
-    }
-  });
-  writer.end_array();
-
-  writer["components"].begin_array();
-  for (auto& component : components) {
-    writer.begin_obj();
-    writer["name"] = component.path;
-    component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
-      auto& member_json = writer[member_name];
-      auto match_result = ox::match{
-          [](const auto&) {},
-          [&](f32* v) { member_json = *v; },
-          [&](i32* v) { member_json = *v; },
-          [&](u32* v) { member_json = *v; },
-          [&](i64* v) { member_json = *v; },
-          [&](u64* v) { member_json = *v; },
-          [&](glm::vec2* v) { member_json = *v; },
-          [&](glm::vec3* v) { member_json = *v; },
-          [&](glm::vec4* v) { member_json = *v; },
-          [&](glm::quat* v) { member_json = *v; },
-          [&](glm::mat4* v) { member_json = std::span(glm::value_ptr(*v), 16); },
-          [&](std::string* v) { member_json = *v; },
-          [&](UUID* v) { member_json = v->str().c_str(); },
-      };
-      std::visit(match_result, member);
-    });
-    writer.end_obj();
-  }
-  writer.end_array();
-
-  writer["children"].begin_array();
-  e.children([&writer](flecs::entity c) { entity_to_json(writer, c); });
-  writer.end_array();
-
-  writer.end_obj();
-}
-
 auto Scene::save_to_file(this const Scene& self, std::string path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   JsonWriter writer{};
 
@@ -571,7 +918,7 @@ auto Scene::save_to_file(this const Scene& self, std::string path) -> bool {
   writer["entities"].begin_array();
   const auto q = self.world.query_builder().with<TransformComponent>().build();
   q.each([&writer](flecs::entity e) {
-    if (e.parent() == flecs::entity::null()) {
+    if (e.parent() == flecs::entity::null() && !e.has<Hidden>()) {
       entity_to_json(writer, e);
     }
   });
@@ -587,97 +934,8 @@ auto Scene::save_to_file(this const Scene& self, std::string path) -> bool {
   return true;
 }
 
-auto json_to_entity(Scene& self, //
-                    flecs::entity root,
-                    simdjson::ondemand::value& json,
-                    std::vector<UUID>& requested_assets) -> bool {
-  OX_SCOPED_ZONE;
-  memory::ScopedStack stack;
-
-  const auto& world = self.world;
-
-  auto entity_name_json = json["name"];
-  if (entity_name_json.error()) {
-    OX_LOG_ERROR("Entities must have names!");
-    return false;
-  }
-
-  auto e = self.create_entity(std::string(entity_name_json.get_string().value_unsafe()));
-  if (root != flecs::entity::null())
-    e.child_of(root);
-
-  auto entity_tags_json = json["tags"];
-  for (auto entity_tag : entity_tags_json.get_array()) {
-    auto tag = world.component(stack.null_terminate(entity_tag.get_string().value_unsafe()).data());
-    e.add(tag);
-  }
-
-  auto components_json = json["components"];
-  for (auto component_json : components_json.get_array()) {
-    auto component_name_json = component_json["name"];
-    if (component_name_json.error()) {
-      OX_LOG_ERROR("Entity '{}' has corrupt components JSON array.", e.name().c_str());
-      return false;
-    }
-
-    const auto* component_name = stack.null_terminate_cstr(component_name_json.get_string().value_unsafe());
-    auto component_id = world.lookup(component_name);
-    if (!component_id) {
-      OX_LOG_ERROR("Entity '{}' has invalid component named '{}'!", e.name().c_str(), component_name);
-      return false;
-    }
-
-    OX_CHECK_EQ(self.component_db.is_component_known(component_id), true);
-    e.add(component_id);
-    ECS::ComponentWrapper component(e, component_id);
-    component.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
-      auto member_json = component_json[member_name];
-      if (member_json.error()) {
-        // Default construct
-        return;
-      }
-
-      auto match_result = ox::match{
-          [](const auto&) {},
-          [&](f32* v) { *v = static_cast<f32>(member_json.get_double().value_unsafe()); },
-          [&](i32* v) { *v = static_cast<i32>(member_json.get_int64().value_unsafe()); },
-          [&](u32* v) { *v = member_json.get_uint64().value_unsafe(); },
-          [&](i64* v) { *v = member_json.get_int64().value_unsafe(); },
-          [&](u64* v) { *v = member_json.get_uint64().value_unsafe(); },
-          [&](glm::vec2* v) { json_to_vec(member_json.value_unsafe(), *v); },
-          [&](glm::vec3* v) { json_to_vec(member_json.value_unsafe(), *v); },
-          [&](glm::vec4* v) { json_to_vec(member_json.value_unsafe(), *v); },
-          [&](glm::quat* v) { json_to_quat(member_json.value_unsafe(), *v); },
-          // [&](glm::mat4 *v) {json_to_mat(member_json.value(), *v); },
-          [&](std::string* v) { *v = member_json.get_string().value_unsafe(); },
-          [&](UUID* v) {
-            *v = UUID::from_string(member_json.get_string().value_unsafe()).value();
-            requested_assets.push_back(*v);
-          },
-      };
-
-      std::visit(match_result, member);
-    });
-
-    e.modified(component_id);
-  }
-
-  auto children_json = json["children"];
-  for (auto children : children_json.get_array()) {
-    if (children.error()) {
-      continue;
-    }
-
-    if (!json_to_entity(self, e, children.value_unsafe(), requested_assets)) {
-      return false;
-    }
-  }
-
-  return true;
-}
-
 auto Scene::load_from_file(this Scene& self, const std::string& path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   namespace sj = simdjson;
 
   std::string content = fs::read_file(path);
@@ -720,185 +978,5 @@ auto Scene::load_from_file(this Scene& self, const std::string& path) -> bool {
   }
 
   return true;
-}
-
-void Scene::on_runtime_update(const Timestep& delta_time) {
-  OX_SCOPED_ZONE;
-
-  const auto lua_scripts_query = world.query_builder<const LuaScriptComponent>().build();
-  {
-    OX_SCOPED_ZONE_N("LuaScripting/binding");
-    lua_scripts_query.each([this, delta_time](const flecs::entity& e, const LuaScriptComponent& c) {
-      for (const auto& script : c.lua_systems) {
-        script->bind_globals(this, e, delta_time);
-      }
-    });
-  }
-
-  scene_renderer->update(delta_time);
-
-  update_physics(delta_time);
-
-  {
-    OX_SCOPED_ZONE_N("LuaScripting/on_update");
-    lua_scripts_query.each([delta_time](const flecs::entity&, const LuaScriptComponent& c) {
-      for (const auto& script : c.lua_systems) {
-        script->on_update(delta_time);
-      }
-    });
-  }
-
-  // Audio
-  {
-    OX_SCOPED_ZONE_N("Audio Systems");
-    world.query_builder<const TransformComponent, AudioListenerComponent>().build().each(
-        [this](const flecs::entity& e, const TransformComponent& tc, AudioListenerComponent& ac) {
-          if (ac.active) {
-            auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
-            const glm::mat4 inverted = glm::inverse(get_world_transform(e));
-            const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
-            audio_engine->set_listener_position(ac.listener_index, tc.position);
-            audio_engine->set_listener_direction(ac.listener_index, -forward);
-            audio_engine->set_listener_cone(
-                ac.listener_index, ac.cone_inner_angle, ac.cone_outer_angle, ac.cone_outer_gain);
-          }
-        });
-
-    world.query_builder<const TransformComponent, AudioSourceComponent>().build().each(
-        [this](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
-          auto* asset_man = App::get_asset_manager();
-          if (auto* audio = asset_man->get_audio(ac.audio_source)) {
-            auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
-            const glm::mat4 inverted = glm::inverse(get_world_transform(e));
-            const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
-            audio_engine->set_source_attenuation_model(audio->get_source(), ac.attenuation_model);
-            audio_engine->set_source_volume(audio->get_source(), ac.volume);
-            audio_engine->set_source_pitch(audio->get_source(), ac.pitch);
-            audio_engine->set_source_looping(audio->get_source(), ac.looping);
-            audio_engine->set_source_spatialization(audio->get_source(), ac.looping);
-            audio_engine->set_source_roll_off(audio->get_source(), ac.roll_off);
-            audio_engine->set_source_min_gain(audio->get_source(), ac.min_gain);
-            audio_engine->set_source_max_gain(audio->get_source(), ac.max_gain);
-            audio_engine->set_source_min_distance(audio->get_source(), ac.min_distance);
-            audio_engine->set_source_max_distance(audio->get_source(), ac.max_distance);
-            audio_engine->set_source_cone(
-                audio->get_source(), ac.cone_inner_angle, ac.cone_outer_angle, ac.cone_outer_gain);
-            audio_engine->set_source_doppler_factor(audio->get_source(), ac.doppler_factor);
-          }
-        });
-  }
-}
-
-void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
-  OX_SCOPED_ZONE;
-
-  {
-    OX_SCOPED_ZONE_N("LuaScripting/on_render");
-    world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
-      for (const auto& script : c.lua_systems) {
-        script->on_render(extent, format);
-      }
-    });
-  }
-}
-
-auto Scene::update_physics(const Timestep& delta_time) -> void {
-  OX_SCOPED_ZONE;
-  // Minimum stable value is 16.0
-  constexpr float physics_step_rate = 50.0f;
-  constexpr float physics_ts = 1.0f / physics_step_rate;
-
-  bool stepped = false;
-  physics_frame_accumulator += static_cast<float>(delta_time.get_seconds());
-
-  auto* physics = App::get_system<Physics>(EngineSystems::Physics);
-
-  while (physics_frame_accumulator >= physics_ts) {
-    physics->step(physics_ts);
-
-    {
-      OX_SCOPED_ZONE_N("LuaScripting/on_fixed_update");
-      world.query_builder<const LuaScriptComponent>().build().each([](const LuaScriptComponent& c) {
-        for (const auto& system : c.lua_systems) {
-          system->on_fixed_update(physics_ts);
-        }
-      });
-    }
-
-    physics_frame_accumulator -= physics_ts;
-    stepped = true;
-  }
-
-  const float interpolation_factor = physics_frame_accumulator / physics_ts;
-
-  world.query_builder<TransformComponent, RigidbodyComponent>().build().each(
-      [physics, stepped, interpolation_factor](TransformComponent& tc, RigidbodyComponent& rb) {
-        if (!rb.runtime_body)
-          return;
-
-        const auto* body = static_cast<const JPH::Body*>(rb.runtime_body);
-        const auto& body_interface = physics->get_physics_system()->GetBodyInterface();
-
-        if (!body_interface.IsActive(body->GetID()))
-          return;
-
-        if (rb.interpolation) {
-          if (stepped) {
-            const JPH::Vec3 position = body->GetPosition();
-            const JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
-
-            rb.previous_translation = rb.translation;
-            rb.previous_rotation = rb.rotation;
-            rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
-            rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-          }
-
-          tc.position = glm::lerp(rb.previous_translation, rb.translation, interpolation_factor);
-          tc.rotation = glm::eulerAngles(glm::slerp(rb.previous_rotation, rb.rotation, interpolation_factor));
-        } else {
-          const JPH::Vec3 position = body->GetPosition();
-          const JPH::Vec3 rotation = body->GetRotation().GetEulerAngles();
-
-          rb.previous_translation = rb.translation;
-          rb.previous_rotation = rb.rotation;
-          rb.translation = {position.GetX(), position.GetY(), position.GetZ()};
-          rb.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-          tc.position = rb.translation;
-          tc.rotation = glm::eulerAngles(rb.rotation);
-        }
-      });
-
-  // Character
-  {
-    world.query_builder<TransformComponent, CharacterControllerComponent>().build().each(
-        [stepped, interpolation_factor](TransformComponent& tc, CharacterControllerComponent& ch) {
-          auto* character = reinterpret_cast<JPH::Character*>(ch.character);
-          character->PostSimulation(ch.collision_tolerance);
-          if (ch.interpolation) {
-            if (stepped) {
-              const JPH::Vec3 position = character->GetPosition();
-              const JPH::Vec3 rotation = character->GetRotation().GetEulerAngles();
-
-              ch.previous_translation = ch.translation;
-              ch.previous_rotation = ch.rotation;
-              ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
-              ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-            }
-
-            tc.position = glm::lerp(ch.previous_translation, ch.translation, interpolation_factor);
-            tc.rotation = glm::eulerAngles(glm::slerp(ch.previous_rotation, ch.rotation, interpolation_factor));
-          } else {
-            const JPH::Vec3 position = character->GetPosition();
-            const JPH::Vec3 rotation = character->GetRotation().GetEulerAngles();
-
-            ch.previous_translation = ch.translation;
-            ch.previous_rotation = ch.rotation;
-            ch.translation = {position.GetX(), position.GetY(), position.GetZ()};
-            ch.rotation = glm::vec3(rotation.GetX(), rotation.GetY(), rotation.GetZ());
-            tc.position = ch.translation;
-            tc.rotation = glm::eulerAngles(ch.rotation);
-          }
-        });
-  }
 }
 } // namespace ox

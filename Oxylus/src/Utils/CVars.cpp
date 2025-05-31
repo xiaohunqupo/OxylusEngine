@@ -2,7 +2,7 @@
 
 namespace ox {
 float* CVarSystem::get_float_cvar(const usize hash) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const CVarParameter* par = get_cvar(hash);
   if (!par) {
     return nullptr;
@@ -11,7 +11,7 @@ float* CVarSystem::get_float_cvar(const usize hash) {
 }
 
 int32_t* CVarSystem::get_int_cvar(const usize hash) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const CVarParameter* par = get_cvar(hash);
   if (!par) {
     return nullptr;
@@ -20,7 +20,7 @@ int32_t* CVarSystem::get_int_cvar(const usize hash) {
 }
 
 std::string* CVarSystem::get_string_cvar(const usize hash) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const CVarParameter* par = get_cvar(hash);
   if (!par) {
     return nullptr;

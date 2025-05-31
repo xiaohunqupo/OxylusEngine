@@ -4,7 +4,7 @@
 
 namespace ox {
 void Camera::update(CameraComponent& component, const glm::vec2& screen_size) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   component.jitter_prev = component.jitter;
   component.matrices_prev.projection_matrix = component.matrices.projection_matrix;

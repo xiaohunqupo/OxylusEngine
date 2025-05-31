@@ -56,7 +56,7 @@ add_requires("joltphysics v5.3.0", { configs = {
 } })
 
 add_requires("tracy v0.11.1", { configs = {
-    tracy_enable = false,
+    tracy_enable = has_config("profile"),
     on_demand = true,
     callstack = true,
     callstack_inlines = false,

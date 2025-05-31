@@ -476,7 +476,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
 }
 
 auto SceneHierarchyPanel::SelectedEntity::set(this SelectedEntity& self, flecs::entity e) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   auto& context = EditorLayer::get()->get_context();
 
   context.reset();
@@ -487,7 +487,7 @@ auto SceneHierarchyPanel::SelectedEntity::set(this SelectedEntity& self, flecs::
 }
 
 auto SceneHierarchyPanel::SelectedEntity::reset(this SelectedEntity& self) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto& context = EditorLayer::get()->get_context();
   context.reset();

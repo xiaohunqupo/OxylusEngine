@@ -1,9 +1,8 @@
 ﻿#pragma once
 #include <vuk/Value.hpp>
 
-#include "Scene/Scene.hpp"
-
 namespace ox {
+class Scene;
 class RenderPipeline {
 public:
   struct RenderInfo {

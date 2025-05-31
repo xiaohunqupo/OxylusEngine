@@ -13,7 +13,7 @@ void Timestep::on_update() {
   double dt = currentTime - m_last_time;
 
   {
-    OX_SCOPED_ZONE_N("Sleep TimeStep to target fps");
+    ZoneScopedN("Sleep TimeStep to target fps");
     while (dt < maxFrameTime) {
       currentTime = m_Timer->get_elapsed_msd();
       dt = currentTime - m_last_time;

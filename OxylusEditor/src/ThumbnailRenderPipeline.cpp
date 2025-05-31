@@ -1,8 +1,10 @@
 #include "ThumbnailRenderPipeline.hpp"
 
+#include "Core/App.hpp"
 #include "Render/Camera.hpp"
 #include "Render/Slang/Slang.hpp"
 #include "Render/Utils/VukCommon.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "Scene/SceneGPU.hpp"
 
 namespace ox {
@@ -102,13 +104,13 @@ auto ThumbnailRenderPipeline::on_render(VkContext& vk_context, const RenderInfo&
 auto ThumbnailRenderPipeline::on_update(Scene* scene) -> void {}
 
 auto ThumbnailRenderPipeline::set_mesh(this ThumbnailRenderPipeline& self, Mesh* mesh) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   self.mesh = mesh;
 }
 
 auto ThumbnailRenderPipeline::set_name(this ThumbnailRenderPipeline& self, const std::string& name) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   self.thumbnail_name = name;
 }

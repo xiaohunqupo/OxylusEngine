@@ -3,7 +3,7 @@
 namespace ox {
 
 auto TaskScheduler::init() -> std::expected<void, std::string> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   task_scheduler = create_unique<enki::TaskScheduler>();
   task_scheduler->Initialize();
   task_sets.reserve(100);

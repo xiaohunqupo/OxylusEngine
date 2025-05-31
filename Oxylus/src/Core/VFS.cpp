@@ -8,22 +8,22 @@ auto VFS::init() -> std::expected<void, std::string> { return {}; }
 auto VFS::deinit() -> std::expected<void, std::string> { return {}; }
 
 auto VFS::is_mounted_dir(const std::string& virtual_dir) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   return mapped_dirs.contains(virtual_dir);
 }
 
 auto VFS::mount_dir(const std::string& virtual_dir, const std::string& physical_dir) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   mapped_dirs.emplace(virtual_dir, physical_dir);
 }
 
 auto VFS::unmount_dir(const std::string& virtual_dir) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   mapped_dirs.erase(virtual_dir);
 }
 
 auto VFS::resolve_physical_dir(const std::string& virtual_dir, const std::string& file_path) -> std::string {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (!mapped_dirs.contains(virtual_dir)) {
     OX_LOG_ERROR("Not a mounted virtual dir: {}", virtual_dir);
     return {};
@@ -35,7 +35,7 @@ auto VFS::resolve_physical_dir(const std::string& virtual_dir, const std::string
 }
 
 auto VFS::resolve_virtual_dir(const std::string& file_path) -> std::string {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   for (const auto& [virtual_dir, physical_dir] : mapped_dirs) {
     if (file_path.starts_with(physical_dir)) {

@@ -20,7 +20,7 @@ void LuaSystem::check_result(const sol::protected_function_result& result, const
 }
 
 void LuaSystem::init_script(const std::string& path) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (!std::filesystem::exists(path)) {
     OX_LOG_ERROR("Couldn't find the script file! {}", path);
     return;
@@ -83,24 +83,24 @@ void LuaSystem::init_script(const std::string& path) {
 }
 
 void LuaSystem::on_init(Scene* scene, flecs::entity entity) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (on_init_func) {
-    bind_globals(scene, entity, App::get_timestep());
+    bind_globals(scene, entity, App::get_timestep().get_millis());
     const auto result = on_init_func->call();
     check_result(result, "on_init");
   }
 }
 
-void LuaSystem::on_update(const Timestep& delta_time) {
-  OX_SCOPED_ZONE;
+void LuaSystem::on_update(f32 delta_time) {
+  ZoneScoped;
   if (on_update_func) {
-    const auto result = on_update_func->call(delta_time.get_millis());
+    const auto result = on_update_func->call(delta_time);
     check_result(result, "on_update");
   }
 }
 
 void LuaSystem::on_fixed_update(float delta_time) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (on_fixed_update_func) {
     const auto result = on_fixed_update_func->call(delta_time);
     check_result(result, "on_fixed_update");
@@ -108,10 +108,9 @@ void LuaSystem::on_fixed_update(float delta_time) {
 }
 
 void LuaSystem::on_release(Scene* scene, flecs::entity entity) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (on_release_func) {
     const auto result = on_release_func->call();
-    bind_globals(scene, entity, App::get_timestep());
     check_result(result, "on_release");
   }
 
@@ -119,7 +118,7 @@ void LuaSystem::on_release(Scene* scene, flecs::entity entity) {
 }
 
 void LuaSystem::on_render(vuk::Extent3D extent, vuk::Format format) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (on_render_func) {
     const auto result = on_render_func->call(extent, format);
     check_result(result, "on_render");
@@ -132,7 +131,7 @@ auto LuaSystem::on_contact_added(Scene* scene,
                                  const JPH::Body& body2,
                                  const JPH::ContactManifold& manifold,
                                  const JPH::ContactSettings& settings) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (on_contact_added_func) {
     const auto result = on_contact_added_func->call(scene, e, std::ref(body1), std::ref(body2), manifold, settings);
     check_result(result, "on_contact_added");
@@ -145,7 +144,7 @@ auto LuaSystem::on_contact_persisted(Scene* scene,
                                      const JPH::Body& body2,
                                      const JPH::ContactManifold& manifold,
                                      const JPH::ContactSettings& settings) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (on_contact_persisted_func) {
     const auto result = on_contact_persisted_func->call(scene, e, std::ref(body1), std::ref(body2), manifold, settings);
     check_result(result, "on_contact_persisted");
@@ -153,12 +152,12 @@ auto LuaSystem::on_contact_persisted(Scene* scene,
 }
 
 void LuaSystem::load(const std::string& path) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   init_script(path);
 }
 
 void LuaSystem::reload() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (environment) {
     const sol::protected_function releaseFunc = (*environment)["on_release"];
     if (releaseFunc.valid()) {
@@ -170,10 +169,10 @@ void LuaSystem::reload() {
   init_script(file_path);
 }
 
-void LuaSystem::bind_globals(Scene* scene, flecs::entity entity, const Timestep& timestep) const {
+void LuaSystem::bind_globals(Scene* scene, flecs::entity entity, f32 delta_time) const {
   (*environment)["scene"] = scene;
   (*environment)["world"] = std::ref(scene->world);
   (*environment)["this"] = entity;
-  (*environment)["current_time"] = timestep.get_elapsed_seconds();
+  (*environment)["delta_time"] = delta_time;
 }
 } // namespace ox

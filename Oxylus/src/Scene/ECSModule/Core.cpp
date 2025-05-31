@@ -4,7 +4,7 @@
 
 namespace ox {
 Core::Core(flecs::world& world) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   world
       .component<glm::vec2>("glm::vec2") //

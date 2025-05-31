@@ -9,7 +9,7 @@
 
 namespace ox::LuaBindings {
 void bind_input(const Shared<sol::state>& state) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   auto input = state->create_table("Input");
 
   SET_TYPE_FUNCTION(input, Input, get_key_pressed);

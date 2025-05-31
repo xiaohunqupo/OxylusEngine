@@ -23,7 +23,7 @@ auto RendererConfig::deinit() -> std::expected<void, std::string> {
 }
 
 bool RendererConfig::save_config(const char* path) const {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const auto root = toml::table{
       {
@@ -81,7 +81,7 @@ bool RendererConfig::save_config(const char* path) const {
 }
 
 bool RendererConfig::load_config(const char* path) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const auto& content = fs::read_file(path);
   if (content.empty())
     return false;

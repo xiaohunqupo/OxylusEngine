@@ -20,7 +20,7 @@ constexpr u8 hex_to_u8(char c) {
 }
 
 UUID UUID::generate_random() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   UUID uuid;
   std::ranges::generate(uuid.m_data.arr, std::ref(uuid_random_device));
@@ -33,7 +33,7 @@ UUID UUID::generate_random() {
 }
 
 option<UUID> UUID::from_string(std::string_view str) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (str.size() != UUID::LENGTH || str[8] != '-' || str[13] != '-' || str[18] != '-' || str[23] != '-') {
     return nullopt;
@@ -68,7 +68,7 @@ option<UUID> UUID::from_string(std::string_view str) {
 }
 
 std::string UUID::str() const {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   return fmt::format("{:08x}-{:04x}-{:04x}-{:04x}-{:012x}",
                      static_cast<u32>(this->m_data.u64x2[0] >> 32_u64),

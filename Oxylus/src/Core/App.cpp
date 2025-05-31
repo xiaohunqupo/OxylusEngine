@@ -44,7 +44,7 @@ auto engine_system_to_sv(EngineSystems type) -> std::string_view {
 App* App::_instance = nullptr;
 
 App::App(const AppSpec& spec) : app_spec(spec) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (_instance) {
     OX_LOG_ERROR("Application already exists!");
     return;
@@ -80,7 +80,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
     if (!result) {
       OX_LOG_ERROR("{} System failed to initialize: {}", engine_system_to_sv(type), result.error());
     } else {
-      OX_LOG_INFO("{} System initialized. {}", engine_system_to_sv(type), timer.get_elapsed_ms());
+      OX_LOG_INFO("{} System initialized. {}ms", engine_system_to_sv(type), timer.get_elapsed_ms());
     }
   }
 
@@ -227,6 +227,8 @@ void App::run() {
     input_sys->reset_pressed();
 
     asset_man->load_deferred_assets();
+
+    FrameMark;
   }
 
   layer_stack.reset();

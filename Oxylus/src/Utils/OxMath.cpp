@@ -8,7 +8,7 @@
 
 namespace ox::math {
 bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   using namespace glm;
   using T = float;
 
@@ -61,7 +61,7 @@ bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm
 float lerp(float a, float b, float t) { return a + t * (b - a); }
 
 float inverse_lerp(float a, float b, float value) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const float den = b - a;
   if (den == 0.0f)
     return 0.0f;
@@ -69,7 +69,7 @@ float inverse_lerp(float a, float b, float value) {
 }
 
 float inverse_lerp_clamped(float a, float b, float value) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const float den = b - a;
   if (den == 0.0f)
     return 0.0f;

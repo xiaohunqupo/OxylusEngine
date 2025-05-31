@@ -9,7 +9,6 @@
 #include "Core/Handle.hpp"
 #include "Memory/Stack.hpp"
 #include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 namespace ox {
 template <>
@@ -28,7 +27,7 @@ struct Handle<Window>::Impl {
 };
 
 Window Window::create(const WindowInfo& info) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (!SDL_Init(SDL_INIT_EVENTS | SDL_INIT_VIDEO)) {
     OX_LOG_ERROR("Failed to initialize SDL! {}", SDL_GetError());
@@ -130,14 +129,14 @@ Window Window::create(const WindowInfo& info) {
 }
 
 void Window::destroy() const {
-  OX_SCOPED_ZONE
+  ZoneScoped;
 
   SDL_StopTextInput(impl->handle);
   SDL_DestroyWindow(impl->handle);
 }
 
 void Window::poll(const WindowCallbacks& callbacks) const {
-  OX_SCOPED_ZONE
+  ZoneScoped;
 
   SDL_Event e = {};
   while (SDL_PollEvent(&e) != 0) {
@@ -260,19 +259,16 @@ void Window::show_dialog(const ShowDialogInfo& info) const {
 }
 
 void Window::set_cursor(WindowCursor cursor) const {
-  OX_SCOPED_ZONE
+  ZoneScoped;
 
   impl->current_cursor = cursor;
   SDL_SetCursor(impl->cursors[static_cast<usize>(cursor)]);
 }
 
-WindowCursor Window::get_cursor() const {
-  OX_SCOPED_ZONE
-  return impl->current_cursor;
-}
+WindowCursor Window::get_cursor() const { return impl->current_cursor; }
 
 void Window::show_cursor(bool show) const {
-  OX_SCOPED_ZONE
+  ZoneScoped;
   show ? SDL_ShowCursor() : SDL_HideCursor();
 }
 
@@ -285,32 +281,18 @@ VkSurfaceKHR Window::get_surface(VkInstance instance) const {
   return surface;
 }
 
-u32 Window::get_width() const {
-  OX_SCOPED_ZONE
-  return impl->width;
-}
+u32 Window::get_width() const { return impl->width; }
 
-u32 Window::get_height() const {
-  OX_SCOPED_ZONE
-  return impl->height;
-}
+u32 Window::get_height() const { return impl->height; }
 
-void* Window::get_handle() const {
-  OX_SCOPED_ZONE
-  return impl->handle;
-}
+void* Window::get_handle() const { return impl->handle; }
 
-float Window::get_content_scale() const {
-  OX_SCOPED_ZONE
-  return impl->content_scale;
-}
+float Window::get_content_scale() const { return impl->content_scale; }
 
-float Window::get_refresh_rate() const {
-  OX_SCOPED_ZONE
-  return impl->refresh_rate;
-}
+float Window::get_refresh_rate() const { return impl->refresh_rate; }
 
 void Window::set_mouse_position(const glm::vec2 position) const {
+  ZoneScoped;
   SDL_WarpMouseInWindow(impl->handle, position.x, position.y);
 }
 } // namespace ox

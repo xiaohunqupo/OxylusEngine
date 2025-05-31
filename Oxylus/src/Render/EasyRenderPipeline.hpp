@@ -7,6 +7,7 @@
 
 #include "Asset/Texture.hpp"
 #include "RenderPipeline.hpp"
+#include "Scene/ECSModule/Core.hpp"
 #include "Scene/SceneGPU.hpp"
 
 namespace ox {

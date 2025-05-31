@@ -43,12 +43,12 @@ ECS_COMPONENT_BEGIN(TransformComponent)
   TransformComponent(const glm::vec3& translation) : position(translation) {}
 
   TransformComponent(const glm::mat4& transform_matrix) {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
     math::decompose_transform(transform_matrix, position, rotation, scale);
   }
 
   void set_from_matrix(const glm::mat4& transform_matrix) {
-    OX_SCOPED_ZONE;
+    ZoneScoped;
     math::decompose_transform(transform_matrix, position, rotation, scale);
   }
 

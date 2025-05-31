@@ -19,7 +19,7 @@
 namespace ox {
 
 auto LuaManager::init() -> std::expected<void, std::string> {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   m_state = create_shared<sol::state>();
   m_state->open_libraries(
       sol::lib::base, sol::lib::package, sol::lib::math, sol::lib::table, sol::lib::os, sol::lib::string);
@@ -58,7 +58,7 @@ auto LuaManager::deinit() -> std::expected<void, std::string> {
   }, [](const glm::uvec2& vec2) { log_func("x: {} y: {}", vec2.x, vec2.y); }));
 
 void LuaManager::bind_log() const {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   auto log = m_state->create_table("Log");
 
   SET_LOG_FUNCTIONS(log, "info", OX_LOG_INFO)

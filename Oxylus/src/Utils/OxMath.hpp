@@ -55,7 +55,7 @@ static T smooth_damp(const T& current,
                      float smooth_time,
                      const float max_speed,
                      float delta_time) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   // Based on Game Programming Gems 4 Chapter 1.10
   smooth_time = glm::max(0.0001F, smooth_time);
   const float omega = 2.0f / smooth_time;

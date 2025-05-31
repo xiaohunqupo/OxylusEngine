@@ -24,7 +24,7 @@ void ParticleSystem::stop(bool force) {
 }
 
 void ParticleSystem::on_update(float ts, const glm::vec3& position) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const float simTs = ts * properties.simulation_speed;
 
   if (playing && !properties.looping)

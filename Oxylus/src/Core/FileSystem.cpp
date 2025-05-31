@@ -105,7 +105,7 @@ std::string fs::get_last_component(const std::string_view path) {
 }
 
 std::string fs::read_file(const std::string_view file_path) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   std::ostringstream buf;
   const std::ifstream input(file_path.data());
   buf << input.rdbuf();

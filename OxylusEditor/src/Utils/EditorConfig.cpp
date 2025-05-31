@@ -20,7 +20,7 @@ EditorConfig::EditorConfig() {
 }
 
 void EditorConfig::load_config() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const auto& content = fs::read_file(EDITOR_CONFIG_FILE_NAME);
   if (content.empty())
     return;

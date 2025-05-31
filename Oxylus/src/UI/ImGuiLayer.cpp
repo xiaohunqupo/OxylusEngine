@@ -23,7 +23,7 @@ namespace ox {
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 
 ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config) {
-  OX_SCOPED_ZONE_N("Font Loading");
+  ZoneScopedN("Font Loading");
 
   ImGuiIO& io = ImGui::GetIO();
   io.Fonts->TexGlyphPadding = 1;
@@ -31,7 +31,7 @@ ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config)
 }
 
 void ImGuiLayer::build_fonts() {
-  OX_SCOPED_ZONE_N("Font Building");
+  ZoneScopedN("Font Building");
 
   ImGuiIO& io = ImGui::GetIO();
   unsigned char* pixels;
@@ -50,7 +50,7 @@ void ImGuiLayer::build_fonts() {
 }
 
 void ImGuiLayer::on_attach() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   IMGUI_CHECKVERSION();
   ImGui::CreateContext();
   ImGuiIO& io = ImGui::GetIO();
@@ -76,7 +76,7 @@ void ImGuiLayer::on_attach() {
 }
 
 ImFont* ImGuiLayer::add_icon_font(float font_size, bool merge) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const ImGuiIO& io = ImGui::GetIO();
   static constexpr ImWchar ICONS_RANGES[] = {ICON_MIN_MDI, ICON_MAX_MDI, 0};
   ImFontConfig icons_config;
@@ -94,7 +94,7 @@ ImFont* ImGuiLayer::add_icon_font(float font_size, bool merge) {
 void ImGuiLayer::on_detach() { ImGui::DestroyContext(); }
 
 void ImGuiLayer::begin_frame(const f64 delta_time, const vuk::Extent3D extent) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const App* app = App::get();
   auto& imgui = ImGui::GetIO();
@@ -141,7 +141,7 @@ void ImGuiLayer::begin_frame(const f64 delta_time, const vuk::Extent3D extent) {
 }
 
 vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::Value<vuk::ImageAttachment> target) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   ImGui::Render();
 

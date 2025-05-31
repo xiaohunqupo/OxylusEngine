@@ -55,7 +55,7 @@ void Texture::create(const std::string& path, const TextureLoadInfo& load_info, 
 
       // If the image needs is in a supercompressed encoding, transcode it to a desired format
       if (ktxTexture2_NeedsTranscoding(ktx)) {
-        OX_SCOPED_ZONE_N("Transcode KTX 2 Texture");
+        ZoneScopedN("Transcode KTX 2 Texture");
         if (const auto result = ktxTexture2_TranscodeBasis(ktx, ktxTranscodeFormat, KTX_TF_HIGH_QUALITY);
             result != KTX_SUCCESS) {
           OX_LOG_ERROR("Couldn't transcode KTX2 file {}", ktxErrorString(result));
@@ -117,7 +117,7 @@ void Texture::create(const std::string& path, const TextureLoadInfo& load_info, 
 }
 
 auto Texture::reset_view(vuk::Allocator& allocator) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto new_view = *vuk::allocate_image_view(allocator, attachment());
   _view = std::move(new_view);

@@ -1,10 +1,10 @@
 #pragma once
 
 #include "Core/UUID.hpp"
+#include "Render/RenderPipeline.hpp"
 #include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
-class SceneRenderer;
 class Physics3DContactListener;
 class Physics3DBodyActivationListener;
 
@@ -25,21 +25,24 @@ public:
   flecs::world world;
   ComponentDB component_db = {};
 
-  Scene();
+  explicit Scene(const Shared<RenderPipeline>& render_pipeline = nullptr);
   explicit Scene(const std::string& name);
 
   ~Scene();
 
-  auto init(this Scene& self, const std::string& name) -> void;
+  auto init(this Scene& self, const std::string& name, const Shared<RenderPipeline>& render_pipeline = nullptr) -> void;
+
+  auto runtime_start() -> void;
+  auto runtime_stop() -> void;
+  auto runtime_update(const Timestep& delta_time) -> void;
+
+  auto disable_phases(const std::vector<flecs::entity_t>& phases) -> void;
+  auto enable_all_phases() -> void;
 
   auto is_running() const -> bool { return running; }
 
   auto create_entity(const std::string& name = "") const -> flecs::entity;
   auto create_mesh_entity(const UUID& asset_uuid) -> flecs::entity;
-
-  auto on_runtime_start() -> void;
-  auto on_runtime_stop() -> void;
-  auto on_runtime_update(const Timestep& delta_time) -> void;
 
   auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
 
@@ -64,8 +67,7 @@ public:
   auto create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const
       -> void;
 
-  // Renderer
-  auto get_renderer() -> const Unique<SceneRenderer>& { return scene_renderer; }
+  auto get_render_pipeline() -> RenderPipeline* { return _render_pipeline.get(); }
 
   auto save_to_file(this const Scene& self, std::string path) -> bool;
   auto load_from_file(this Scene& self, const std::string& path) -> bool;
@@ -74,14 +76,10 @@ private:
   bool running = false;
 
   // Renderer
-  Unique<SceneRenderer> scene_renderer;
+  Shared<RenderPipeline> _render_pipeline = nullptr;
 
   // Physics
   Physics3DContactListener* contact_listener_3d;
   Physics3DBodyActivationListener* body_activation_listener_3d;
-  float physics_frame_accumulator = 0.0f;
-
-  // Physics
-  void update_physics(const Timestep& delta_time);
 };
 } // namespace ox

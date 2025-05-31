@@ -125,7 +125,7 @@ void VkContext::set_vsync(bool enable) {
 bool VkContext::is_vsync() const { return present_mode == vuk::PresentModeKHR::eFifo; }
 
 void VkContext::create_context(const Window& window, bool vulkan_validation_layers) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   vkb::InstanceBuilder builder;
   builder //
       .set_app_name("Oxylus App")
@@ -219,6 +219,7 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   vk12_features.storageBuffer8BitAccess = true;
   vk12_features.scalarBlockLayout = true;
   vk12_features.shaderInt8 = true;
+  vk12_features.vulkanMemoryModelDeviceScope = true;
   vk12_features.shaderSubgroupExtendedTypes = true;
 
   VkPhysicalDeviceVulkan13Features vk13_features = {};
@@ -248,7 +249,7 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
 
   vkb_device = dev_ret.value();
   graphics_queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
-  graphics_queue_family_index = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+  u32 graphics_queue_family_index = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
   transfer_queue = vkb_device.get_queue(vkb::QueueType::transfer).value();
   auto transfer_queue_family_index = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
   device = vkb_device.device;
@@ -270,9 +271,6 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
 
   superframe_resource.emplace(*runtime, num_inflight_frames);
   superframe_allocator.emplace(*superframe_resource);
-  swapchain = make_swapchain(*superframe_allocator, vkb_device, surface, {}, present_mode, num_inflight_frames);
-  present_ready = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
-  render_complete = vuk::Unique<std::array<VkSemaphore, 3>>(*superframe_allocator);
 
   auto& frame_resource = superframe_resource->get_next_frame();
   frame_allocator.emplace(frame_resource);
@@ -281,17 +279,14 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
 
   shader_compiler = SlangCompiler::create().value();
 
-  superframe_allocator->allocate_semaphores(*present_ready);
-  superframe_allocator->allocate_semaphores(*render_complete);
-
   tracy_profiler = create_shared<TracyProfiler>();
-  tracy_profiler->init_tracy_for_vulkan(this);
+  tracy_profiler->init_for_vulkan(this);
 
   OX_LOG_INFO("Vulkan context initialized using device: {}", device_name);
 }
 
 vuk::Value<vuk::ImageAttachment> VkContext::new_frame(this VkContext& self) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (self.frame_allocator) {
     self.frame_allocator.reset();
@@ -301,6 +296,10 @@ vuk::Value<vuk::ImageAttachment> VkContext::new_frame(this VkContext& self) {
   self.frame_allocator.emplace(frame_resource);
   self.runtime->next_frame();
 
+  if (!self.swapchain.has_value()) {
+    self.swapchain = make_swapchain(
+        *self.superframe_allocator, self.vkb_device, self.surface, {}, self.present_mode, self.num_inflight_frames);
+  }
   auto acquired_swapchain = vuk::acquire_swapchain(*self.swapchain);
   auto acquired_image = vuk::acquire_next_image("present_image", std::move(acquired_swapchain));
 
@@ -429,7 +428,7 @@ auto VkContext::wait_on(vuk::UntypedValue&& fut) -> void {
 }
 
 auto VkContext::wait_on_rg(vuk::Value<vuk::ImageAttachment>&& fut, bool frame) -> vuk::ImageAttachment {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto& allocator = superframe_allocator.value();
   if (frame && frame_allocator.has_value())

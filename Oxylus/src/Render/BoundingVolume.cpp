@@ -5,19 +5,19 @@
 
 namespace ox {
 void AABB::translate(const glm::vec3& translation) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   min += translation;
   max += translation;
 }
 
 void AABB::scale(const glm::vec3& scale) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   min *= scale;
   max *= scale;
 }
 
 void AABB::rotate(const glm::mat3& rotation) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const auto center = get_center();
   const auto extents = get_extents();
 
@@ -28,7 +28,7 @@ void AABB::rotate(const glm::mat3& rotation) {
 }
 
 void AABB::transform(const glm::mat4& transform) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   const glm::vec3 new_center = transform * glm::vec4(get_center(), 1.0f);
   const glm::vec3 old_edge = get_size() * 0.5f;
   const glm::vec3 new_edge = glm::vec3(glm::abs(transform[0][0]) * old_edge.x + glm::abs(transform[1][0]) * old_edge.y +
@@ -49,7 +49,7 @@ AABB AABB::get_transformed(const glm::mat4& transform) const {
 }
 
 void AABB::merge(const AABB& other) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   if (other.min.x < min.x)
     min.x = other.min.x;
   if (other.min.y < min.y)
@@ -66,7 +66,7 @@ void AABB::merge(const AABB& other) {
 
 // https://gdbooks.gitbooks.io/3dcollisions/content/Chapter2/static_aabb_plane.html
 bool AABB::is_on_or_forward_plane(const Plane& plane) const {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   // projection interval radius of b onto L(t) = b.c + t * p.n
   const auto extent = get_extents();
   const auto center = get_center();
@@ -77,7 +77,7 @@ bool AABB::is_on_or_forward_plane(const Plane& plane) const {
 }
 
 bool AABB::is_on_frustum(const Frustum& frustum) const {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   return is_on_or_forward_plane(frustum.left_face) && is_on_or_forward_plane(frustum.right_face) &&
          is_on_or_forward_plane(frustum.top_face) && is_on_or_forward_plane(frustum.bottom_face) &&
          is_on_or_forward_plane(frustum.near_face) && is_on_or_forward_plane(frustum.far_face);

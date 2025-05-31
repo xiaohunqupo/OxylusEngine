@@ -39,7 +39,7 @@ struct TextureLoadTask : ITaskSet {
 };
 
 auto begin_asset_meta(JsonWriter& writer, const UUID& uuid, AssetType type) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   writer.begin_obj();
 
@@ -49,13 +49,13 @@ auto begin_asset_meta(JsonWriter& writer, const UUID& uuid, AssetType type) -> v
 }
 
 auto write_texture_asset_meta(JsonWriter& writer, Texture*) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   return true;
 }
 
 auto write_material_asset_meta(JsonWriter& writer, const UUID& uuid, const Material& material) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   writer.begin_obj();
 
@@ -100,7 +100,7 @@ auto read_material_data(Material* mat, simdjson::ondemand::value& material_obj) 
 }
 
 auto read_material_asset_meta(simdjson::ondemand::value& doc, Material* mat) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (!mat)
     return false;
@@ -116,7 +116,7 @@ auto write_mesh_asset_meta(JsonWriter& writer,
                            std::span<UUID> embedded_texture_uuids,
                            std::span<UUID> material_uuids,
                            std::span<Material> materials) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   writer["embedded_textures"].begin_array();
   for (const auto& uuid : embedded_texture_uuids) {
@@ -134,7 +134,7 @@ auto write_mesh_asset_meta(JsonWriter& writer,
 }
 
 auto write_scene_asset_meta(JsonWriter& writer, Scene* scene) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   writer["name"] = scene->scene_name;
 
@@ -142,7 +142,7 @@ auto write_scene_asset_meta(JsonWriter& writer, Scene* scene) -> bool {
 }
 
 auto write_script_asset_meta(JsonWriter&, LuaSystem*) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   return true;
 }
@@ -250,7 +250,7 @@ auto AssetManager::create_asset(const AssetType type, const std::string& path) -
 }
 
 auto AssetManager::import_asset(const std::string& path) -> UUID {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   memory::ScopedStack stack;
 
   if (!fs::exists(path)) {
@@ -372,7 +372,7 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
 }
 
 auto AssetManager::delete_asset(const UUID& uuid) -> void {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   if (asset->ref_count > 0) {
@@ -393,7 +393,7 @@ auto AssetManager::delete_asset(const UUID& uuid) -> void {
 }
 
 auto AssetManager::register_asset(const std::string& path) -> UUID {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   memory::ScopedStack stack;
 
   auto meta_json = read_meta_file(path);
@@ -501,7 +501,7 @@ auto AssetManager::export_asset(const UUID& uuid, const std::string& path) -> bo
 }
 
 auto AssetManager::export_texture(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* texture = this->get_texture(uuid);
   OX_CHECK_NULL(texture);
@@ -509,7 +509,7 @@ auto AssetManager::export_texture(const UUID& uuid, JsonWriter& writer, const st
 }
 
 auto AssetManager::export_mesh(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* mesh = this->get_mesh(uuid);
   OX_CHECK_NULL(mesh);
@@ -523,7 +523,7 @@ auto AssetManager::export_mesh(const UUID& uuid, JsonWriter& writer, const std::
 }
 
 auto AssetManager::export_scene(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* scene = this->get_scene(uuid);
   OX_CHECK_NULL(scene);
@@ -533,7 +533,7 @@ auto AssetManager::export_scene(const UUID& uuid, JsonWriter& writer, const std:
 }
 
 auto AssetManager::export_material(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* material = this->get_material(uuid);
   OX_CHECK_NULL(material);
@@ -541,7 +541,7 @@ auto AssetManager::export_material(const UUID& uuid, JsonWriter& writer, const s
 }
 
 auto AssetManager::export_script(const UUID& uuid, JsonWriter& writer, const std::string& path) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   return write_texture_asset_meta(writer, nullptr);
 }
@@ -591,7 +591,7 @@ auto AssetManager::unload_asset(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::load_mesh(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   memory::ScopedStack stack;
 
@@ -902,7 +902,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::unload_mesh(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
@@ -922,7 +922,7 @@ auto AssetManager::unload_mesh(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::load_texture(const UUID& uuid, const TextureLoadInfo& info) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
@@ -946,7 +946,7 @@ auto AssetManager::load_texture(const UUID& uuid, const TextureLoadInfo& info) -
 }
 
 auto AssetManager::unload_texture(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
@@ -962,7 +962,7 @@ auto AssetManager::unload_texture(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::load_material(const UUID& uuid, const Material& material_info) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
@@ -1014,7 +1014,7 @@ auto AssetManager::load_material(const UUID& uuid, const Material& material_info
 }
 
 auto AssetManager::unload_material(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
@@ -1050,7 +1050,7 @@ auto AssetManager::unload_material(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::load_scene(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   asset->scene_id = this->scene_map.create_slot(std::make_unique<Scene>());
@@ -1067,7 +1067,7 @@ auto AssetManager::load_scene(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::unload_scene(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
@@ -1082,7 +1082,7 @@ auto AssetManager::unload_scene(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::load_audio(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
@@ -1102,7 +1102,7 @@ auto AssetManager::load_audio(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::unload_audio(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
@@ -1122,7 +1122,7 @@ auto AssetManager::unload_audio(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::load_script(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   OX_CHECK_NULL(asset);
@@ -1141,7 +1141,7 @@ auto AssetManager::load_script(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::unload_script(const UUID& uuid) -> bool {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto* asset = this->get_asset(uuid);
   if (!asset || !(asset->is_loaded() && asset->release_ref())) {
@@ -1157,7 +1157,7 @@ auto AssetManager::unload_script(const UUID& uuid) -> bool {
 }
 
 auto AssetManager::get_asset(const UUID& uuid) -> Asset* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto read_lock = std::shared_lock(registry_mutex);
   const auto it = asset_registry.find(uuid);
@@ -1169,7 +1169,7 @@ auto AssetManager::get_asset(const UUID& uuid) -> Asset* {
 }
 
 auto AssetManager::get_mesh(const UUID& uuid) -> Mesh* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const auto* asset = this->get_asset(uuid);
   if (asset == nullptr) {
@@ -1185,7 +1185,7 @@ auto AssetManager::get_mesh(const UUID& uuid) -> Mesh* {
 }
 
 auto AssetManager::get_mesh(const MeshID mesh_id) -> Mesh* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (mesh_id == MeshID::Invalid) {
     return nullptr;
@@ -1195,7 +1195,7 @@ auto AssetManager::get_mesh(const MeshID mesh_id) -> Mesh* {
 }
 
 auto AssetManager::get_texture(const UUID& uuid) -> Texture* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const auto* asset = this->get_asset(uuid);
   if (asset == nullptr) {
@@ -1211,7 +1211,7 @@ auto AssetManager::get_texture(const UUID& uuid) -> Texture* {
 }
 
 auto AssetManager::get_texture(const TextureID texture_id) -> Texture* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (texture_id == TextureID::Invalid) {
     return nullptr;
@@ -1221,7 +1221,7 @@ auto AssetManager::get_texture(const TextureID texture_id) -> Texture* {
 }
 
 auto AssetManager::get_material(const UUID& uuid) -> Material* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const auto* asset = this->get_asset(uuid);
   if (asset == nullptr) {
@@ -1237,7 +1237,7 @@ auto AssetManager::get_material(const UUID& uuid) -> Material* {
 }
 
 auto AssetManager::get_material(const MaterialID material_id) -> Material* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (material_id == MaterialID::Invalid) {
     return nullptr;
@@ -1247,7 +1247,7 @@ auto AssetManager::get_material(const MaterialID material_id) -> Material* {
 }
 
 auto AssetManager::get_scene(const UUID& uuid) -> Scene* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   const auto* asset = this->get_asset(uuid);
   if (asset == nullptr) {
@@ -1263,7 +1263,7 @@ auto AssetManager::get_scene(const UUID& uuid) -> Scene* {
 }
 
 auto AssetManager::get_scene(const SceneID scene_id) -> Scene* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (scene_id == SceneID::Invalid) {
     return nullptr;
@@ -1287,7 +1287,7 @@ auto AssetManager::get_audio(const UUID& uuid) -> AudioSource* {
 }
 
 auto AssetManager::get_audio(const AudioID audio_id) -> AudioSource* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (audio_id == AudioID::Invalid) {
     return nullptr;
@@ -1311,7 +1311,7 @@ auto AssetManager::get_script(const UUID& uuid) -> LuaSystem* {
 }
 
 auto AssetManager::get_script(ScriptID script_id) -> LuaSystem* {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   if (script_id == ScriptID::Invalid) {
     return nullptr;

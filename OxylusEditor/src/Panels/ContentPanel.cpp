@@ -150,7 +150,7 @@ std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std:
                                                                       uint32_t* count,
                                                                       int* selectionMask,
                                                                       ImGuiTreeNodeFlags flags) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
 
   auto& editor_theme = EditorLayer::get()->editor_theme;
 
@@ -426,7 +426,7 @@ void ContentPanel::render_header() {
 }
 
 void ContentPanel::render_side_view() {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   static int selectionMask = 0;
 
   constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoPadInnerX |
@@ -802,7 +802,7 @@ void ContentPanel::render_body(bool grid) {
 }
 
 void ContentPanel::update_directory_entries(const std::filesystem::path& directory) {
-  OX_SCOPED_ZONE;
+  ZoneScoped;
   std::lock_guard lock(_directory_mutex);
   _current_directory = directory;
   _directory_entries.clear();
