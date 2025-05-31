@@ -661,10 +661,6 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     read_material_data(&material, material_json.value_unsafe());
   }
 
-  for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
-    this->load_material(material_uuid, material);
-  }
-
   struct GLTFCallbacks {
     Mesh* model = nullptr;
 
@@ -764,6 +760,9 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     return false;
   }
 
+  for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
+    this->load_material(material_uuid, material);
+  }
   //  ── SCENE HIERARCHY ─────────────────────────────────────────────────
   for (const auto& node : gltf_model->nodes) {
     mesh->nodes.push_back({.name = node.name,
