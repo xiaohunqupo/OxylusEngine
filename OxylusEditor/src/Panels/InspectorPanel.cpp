@@ -382,11 +382,17 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   draw_component<TransformComponent>(
       " Transform Component", entity, [](TransformComponent& component, flecs::entity e) {
         ui::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV);
-        ui::draw_vec3_control("Translation", component.position);
+        if (ui::draw_vec3_control("Translation", component.position)) {
+          e.modified<TransformComponent>();
+        }
         glm::vec3 rotation = glm::degrees(component.rotation);
-        ui::draw_vec3_control("Rotation", rotation);
-        component.rotation = glm::radians(rotation);
-        ui::draw_vec3_control("Scale", component.scale, nullptr, 1.0f);
+        if (ui::draw_vec3_control("Rotation", rotation)) {
+          component.rotation = glm::radians(rotation);
+          e.modified<TransformComponent>();
+        }
+        if (ui::draw_vec3_control("Scale", component.scale, nullptr, 1.0f)) {
+          e.modified<TransformComponent>();
+        }
         ui::end_properties();
       });
 

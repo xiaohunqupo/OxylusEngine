@@ -56,8 +56,17 @@ public:
 
   uint32_t get_max_viewport_count() const { return vkbphysical_device.properties.limits.maxViewports; }
 
+  auto wait(this VkContext& self) -> void;
+
+  auto wait_on(vuk::UntypedValue&& fut) -> void;
+
+  auto wait_on_rg(vuk::Value<vuk::ImageAttachment>&& fut, bool frame) -> vuk::ImageAttachment;
+
   [[nodiscard]]
-  auto allocate_buffer(vuk::MemoryUsage usage, u64 size, u64 alignment = 1) -> vuk::Unique<vuk::Buffer>;
+  auto allocate_buffer(vuk::MemoryUsage usage, u64 size, u64 alignment = 8) -> vuk::Unique<vuk::Buffer>;
+
+  [[nodiscard]]
+  auto allocate_buffer_super(vuk::MemoryUsage usage, u64 size, u64 alignment = 8) -> vuk::Unique<vuk::Buffer>;
 
   [[nodiscard]]
   auto alloc_transient_buffer_raw(vuk::MemoryUsage usage, usize size, usize alignment = 8, OX_THISCALL) -> vuk::Buffer;
@@ -116,10 +125,6 @@ public:
 
     return scratch_buffer(val.data(), sizeof(T) * val.size(), alignment, LOC);
   }
-
-  auto wait_on(vuk::UntypedValue&& fut) -> void;
-
-  auto wait_on_rg(vuk::Value<vuk::ImageAttachment>&& fut, bool frame) -> vuk::ImageAttachment;
 
 private:
   [[nodiscard]]

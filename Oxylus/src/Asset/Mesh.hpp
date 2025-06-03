@@ -7,8 +7,7 @@ namespace ox {
 
 enum class MeshID : u64 { Invalid = std::numeric_limits<u64>::max() };
 
-class Mesh {
-public:
+struct Mesh {
   constexpr static auto MAX_MESHLET_INDICES = 64_sz;
   constexpr static auto MAX_MESHLET_PRIMITIVES = 64_sz;
 

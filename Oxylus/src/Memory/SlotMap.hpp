@@ -118,6 +118,18 @@ public:
     return nullptr;
   }
 
+  auto slotc(this const Self& self, ID id) -> const T* {
+    ZoneScoped;
+
+    if (self.is_valid(id)) {
+      std::shared_lock _(self.mutex);
+      auto index = SlotMap_decode_id(id).index;
+      return &self.slots[index];
+    }
+
+    return nullptr;
+  }
+
   auto slot_from_index(this Self& self, usize index) -> T* {
     ZoneScoped;
 

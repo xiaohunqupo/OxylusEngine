@@ -46,6 +46,34 @@ inline glm::vec3 unproject_uv_zo(float depth, glm::vec2 uv, const glm::mat4& inv
   return glm::vec3(world) / world.w;
 }
 
+inline auto calc_frustum_planes(glm::mat4& view_proj_mat, glm::vec4 (&planes)[6]) -> void {
+  ZoneScoped;
+
+  for (auto i = 0; i < 4; ++i) {
+    planes[0][i] = view_proj_mat[i][3] + view_proj_mat[i][0];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    planes[1][i] = view_proj_mat[i][3] - view_proj_mat[i][0];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    planes[2][i] = view_proj_mat[i][3] + view_proj_mat[i][1];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    planes[3][i] = view_proj_mat[i][3] - view_proj_mat[i][1];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    planes[4][i] = view_proj_mat[i][3] + view_proj_mat[i][2];
+  }
+  for (auto i = 0; i < 4; ++i) {
+    planes[5][i] = view_proj_mat[i][3] - view_proj_mat[i][2];
+  }
+
+  for (auto& plane : planes) {
+    plane /= glm::length(glm::vec3(plane));
+    plane.w = -plane.w;
+  }
+}
+
 bool decompose_transform(const glm::mat4& transform, glm::vec3& translation, glm::vec3& rotation, glm::vec3& scale);
 
 template <typename T>

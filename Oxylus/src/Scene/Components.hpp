@@ -80,16 +80,12 @@ ECS_COMPONENT_BEGIN(SpriteComponent)
   ECS_COMPONENT_MEMBER(flip_x, bool, false)
 
 #ifndef ECS_REFLECT_TYPES
-  glm::mat4 transform = {};
   AABB rect = {};
 
   // set if an animation is controlling this sprite
   std::optional<glm::vec2> current_uv_offset = std::nullopt;
 
   SpriteComponent() {}
-
-  glm::vec3 get_position() const { return glm::vec3(transform[3]); }
-  glm::vec2 get_size() const { return {glm::length(glm::vec3(transform[0])), glm::length(glm::vec3(transform[1]))}; }
 #endif
 ECS_COMPONENT_END();
 

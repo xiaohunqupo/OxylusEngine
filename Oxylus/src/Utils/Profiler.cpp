@@ -14,7 +14,9 @@ void TracyProfiler::init_for_vulkan(this TracyProfiler& self, VkContext* context
   auto graphics_queue_executor = static_cast<vuk::QueueExecutor*>(
       runtime.get_executor(vuk::DomainFlagBits::eGraphicsQueue));
   VkCommandPoolCreateInfo cpci{.sType = VK_STRUCTURE_TYPE_COMMAND_POOL_CREATE_INFO,
-                               .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT};
+                               .pNext = nullptr,
+                               .flags = VK_COMMAND_POOL_CREATE_RESET_COMMAND_BUFFER_BIT,
+                               .queueFamilyIndex = {}};
   cpci.queueFamilyIndex = graphics_queue_executor->get_queue_family_index();
   self.tracy_cpool = vuk::Unique<vuk::CommandPool>(allocator);
   allocator.allocate_command_pools(std::span{&*self.tracy_cpool, 1}, std::span{&cpci, 1});

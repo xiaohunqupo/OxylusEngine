@@ -7,11 +7,11 @@ import scene;
 
 import embedded.hemisphere;
 
-[[vk::binding(0, 1)]]
+[[vk::binding(0, 0)]]
 Sampler sampler;
-[[vk::binding(1, 1)]]
+[[vk::binding(1, 0)]]
 Image2D<f32x4> sky_transmittance_lut;
-[[vk::binding(2, 1)]]
+[[vk::binding(2, 0)]]
 StorageImage2D<f32x4, ImageFormat::RGBA16F> sky_multiscattering_lut;
 
 struct PushConstants {

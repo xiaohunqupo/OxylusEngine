@@ -315,8 +315,38 @@ void VkContext::end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment>
   self.num_frames = self.runtime->get_frame_count();
 }
 
+auto VkContext::wait(this VkContext& self) -> void {
+  ZoneScoped;
+
+  OX_LOG_INFO("Device wait idle triggered!");
+  self.runtime->wait_idle();
+}
+
+auto VkContext::wait_on(vuk::UntypedValue&& fut) -> void {
+  ZoneScoped;
+
+  thread_local vuk::Compiler _compiler;
+  fut.wait(frame_allocator.value(), _compiler);
+}
+
+auto VkContext::wait_on_rg(vuk::Value<vuk::ImageAttachment>&& fut, bool frame) -> vuk::ImageAttachment {
+  ZoneScoped;
+
+  auto& allocator = superframe_allocator.value();
+  if (frame && frame_allocator.has_value())
+    allocator = frame_allocator.value();
+
+  thread_local vuk::Compiler _compiler;
+  return *fut.get(allocator, _compiler);
+}
+
 auto VkContext::allocate_buffer(vuk::MemoryUsage usage, u64 size, u64 alignment) -> vuk::Unique<vuk::Buffer> {
   return *vuk::allocate_buffer(frame_allocator.value(), {.mem_usage = usage, .size = size, .alignment = alignment});
+}
+
+auto VkContext::allocate_buffer_super(vuk::MemoryUsage usage, u64 size, u64 alignment) -> vuk::Unique<vuk::Buffer> {
+  return *vuk::allocate_buffer(superframe_allocator.value(),
+                               {.mem_usage = usage, .size = size, .alignment = alignment});
 }
 
 auto
@@ -418,23 +448,5 @@ auto VkContext::scratch_buffer(const void* data, u64 size, usize alignment, vuk:
   std::memcpy(buffer->mapped_ptr, data, size);
   return buffer;
 #endif
-}
-
-auto VkContext::wait_on(vuk::UntypedValue&& fut) -> void {
-  ZoneScoped;
-
-  thread_local vuk::Compiler _compiler;
-  fut.wait(frame_allocator.value(), _compiler);
-}
-
-auto VkContext::wait_on_rg(vuk::Value<vuk::ImageAttachment>&& fut, bool frame) -> vuk::ImageAttachment {
-  ZoneScoped;
-
-  auto& allocator = superframe_allocator.value();
-  if (frame && frame_allocator.has_value())
-    allocator = frame_allocator.value();
-
-  thread_local vuk::Compiler _compiler;
-  return *fut.get(allocator, _compiler);
 }
 } // namespace ox

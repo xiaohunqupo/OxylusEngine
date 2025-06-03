@@ -24,7 +24,7 @@ auto ThumbnailRenderPipeline::init(VkContext& vk_context) -> void {
                         {.path = shaders_dir + "/editor/simple_forward.slang", .entry_points = {"vs_main", "fs_main"}});
 }
 
-auto ThumbnailRenderPipeline::shutdown() -> void {}
+auto ThumbnailRenderPipeline::deinit() -> void {}
 
 auto ThumbnailRenderPipeline::reset() -> void {}
 
@@ -40,12 +40,12 @@ auto ThumbnailRenderPipeline::on_render(VkContext& vk_context, const RenderInfo&
   auto final_attachment = vuk::acquire_ia(
       _final_image->get_name().c_str(), _final_image->attachment(), vuk::Access::eNone);
 
-  final_attachment = vuk::clear_image(final_attachment, vuk::White<f32>);
+  final_attachment = vuk::clear_image(final_attachment, vuk::Black<f32>);
 
   if (mesh == nullptr)
     return final_attachment;
 
-  CameraComponent cam{};
+  CameraComponent cam{.position = {0, 0, 3}};
   Camera::update(cam, {render_info.extent.width, render_info.extent.height});
 
   const auto camera_data = GPU::CameraData{

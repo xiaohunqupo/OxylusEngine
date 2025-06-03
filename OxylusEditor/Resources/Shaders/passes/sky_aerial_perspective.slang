@@ -5,11 +5,11 @@ import gpu;
 import sky;
 import scene;
 
-[[vk::binding(0, 1)]]
+[[vk::binding(0, 0)]]
 Image2D<f32x4> sky_transmittance_lut;
-[[vk::binding(1, 1)]]
+[[vk::binding(1, 0)]]
 Image2D<f32x4> sky_multiscattering_lut;
-[[vk::binding(2, 1)]]
+[[vk::binding(2, 0)]]
 StorageImage3D<f32x4, ImageFormat::RGBA16F> sky_aerial_perspective_lut;
 
 struct PushConstants {
@@ -81,7 +81,7 @@ func cs_main(u32x3 thread_id : SV_DispatchThreadID) {
     info.transmittance_image = sky_transmittance_lut;
     info.multiscattering_image = sky_multiscattering_lut;
 
-    const let result = integrate_single_scattered_luminance(C.atmosphere, material_sampler[1], info);
+    const let result = integrate_single_scattered_luminance(C.atmosphere, material_samplers[1], info);
     const let transmittance = dot(result.transmittance, f32x3(1.0f / 3.0f, 1.0f / 3.0f, 1.0f / 3.0f));
     sky_aerial_perspective_lut.store(thread_id, f32x4(result.luminance, transmittance));
 }

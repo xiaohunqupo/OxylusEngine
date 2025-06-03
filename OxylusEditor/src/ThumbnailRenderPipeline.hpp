@@ -10,7 +10,7 @@ public:
   ~ThumbnailRenderPipeline() override = default;
 
   auto init(VkContext& vk_context) -> void override;
-  auto shutdown() -> void override;
+  auto deinit() -> void override;
 
   auto on_render(VkContext& vk_context, const RenderInfo& render_info) -> vuk::Value<vuk::ImageAttachment> override;
 

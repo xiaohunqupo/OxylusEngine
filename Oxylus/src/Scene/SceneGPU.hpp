@@ -3,6 +3,13 @@
 #include "Asset/Material.hpp"
 
 namespace ox::GPU {
+enum class TransformID : u64 { Invalid = ~0_u64 };
+struct Transforms {
+  alignas(4) glm::mat4 local = {};
+  alignas(4) glm::mat4 world = {};
+  alignas(4) glm::mat3 normal = {};
+};
+
 enum class DebugView : i32 {
   None = 0,
   Triangles,
@@ -55,6 +62,24 @@ struct Mesh {
   alignas(8) u64 local_triangle_indices = 0;
 };
 
+enum class MaterialFlag : u32 {
+  None = 0,
+  // Image flags
+  HasAlbedoImage = 1 << 0,
+  HasNormalImage = 1 << 1,
+  HasEmissiveImage = 1 << 2,
+  HasMetallicRoughnessImage = 1 << 3,
+  HasOcclusionImage = 1 << 4,
+  // Normal flags
+  NormalTwoComponent = 1 << 5,
+  NormalFlipY = 1 << 6,
+  // Alpha
+  AlphaOpaque = 1 << 7,
+  AlphaMask = 1 << 8,
+  AlphaBlend = 1 << 9,
+};
+consteval void enable_bitmask(MaterialFlag);
+
 struct Material {
   alignas(4) glm::vec4 albedo_color = glm::vec4(1.0f);
   alignas(4) glm::vec2 uv_size = glm::vec3(1.0f);
@@ -62,7 +87,7 @@ struct Material {
   alignas(4) glm::vec3 emissive_color = glm::vec3(1.0f);
   alignas(4) f32 roughness_factor = 0.0f;
   alignas(4) f32 metallic_factor = 0.0f;
-  alignas(4) AlphaMode alpha_mode = AlphaMode::Opaque;
+  alignas(4) MaterialFlag flags = MaterialFlag::None;
   alignas(4) f32 alpha_cutoff = 0.0f;
   alignas(4) SamplingMode sampling_mode = SamplingMode::LinearRepeated;
   alignas(4) u32 albedo_image_index = ~0_u32;
@@ -72,27 +97,41 @@ struct Material {
   alignas(4) u32 occlusion_image_index = ~0_u32;
 
   static GPU::Material from_material(const ox::Material& material,
-                                     u32 albedo_id = ~0_u32,
-                                     u32 normal_id = ~0_u32,
-                                     u32 emissive_id = ~0_u32,
-                                     u32 metallic_roughness_id = ~0_u32,
-                                     u32 occlusion_id = ~0_u32) {
-    return {
+                                     option<u32> albedo_id = ~0_u32,
+                                     option<u32> normal_id = ~0_u32,
+                                     option<u32> emissive_id = ~0_u32,
+                                     option<u32> metallic_roughness_id = ~0_u32,
+                                     option<u32> occlusion_id = ~0_u32) {
+    auto mat = GPU::Material{
         .albedo_color = material.albedo_color,
         .uv_size = material.uv_size,
         .uv_offset = material.uv_offset,
         .emissive_color = material.emissive_color,
         .roughness_factor = material.roughness_factor,
         .metallic_factor = material.metallic_factor,
-        .alpha_mode = material.alpha_mode,
         .alpha_cutoff = material.alpha_cutoff,
         .sampling_mode = material.sampling_mode,
-        .albedo_image_index = albedo_id,
-        .normal_image_index = normal_id,
-        .emissive_image_index = emissive_id,
-        .metallic_roughness_image_index = metallic_roughness_id,
-        .occlusion_image_index = occlusion_id,
+        .albedo_image_index = albedo_id.value_or(~0_u32),
+        .normal_image_index = normal_id.value_or(~0_u32),
+        .emissive_image_index = emissive_id.value_or(~0_u32),
+        .metallic_roughness_image_index = metallic_roughness_id.value_or(~0_u32),
+        .occlusion_image_index = occlusion_id.value_or(~0_u32),
     };
+
+    mat.flags |= albedo_id.has_value() ? GPU::MaterialFlag::HasAlbedoImage : GPU::MaterialFlag::None;
+    mat.flags |= normal_id.has_value() ? GPU::MaterialFlag::HasNormalImage : GPU::MaterialFlag::None;
+    mat.flags |= emissive_id.has_value() ? GPU::MaterialFlag::HasEmissiveImage : GPU::MaterialFlag::None;
+    mat.flags |= metallic_roughness_id.has_value() ? GPU::MaterialFlag::HasMetallicRoughnessImage
+                                                   : GPU::MaterialFlag::None;
+    mat.flags |= occlusion_id.has_value() ? GPU::MaterialFlag::HasOcclusionImage : GPU::MaterialFlag::None;
+
+    switch (material.alpha_mode) {
+      case AlphaMode::Opaque: mat.flags |= GPU::MaterialFlag::AlphaOpaque; break;
+      case AlphaMode::Mask  : mat.flags |= GPU::MaterialFlag::AlphaMask; break;
+      case AlphaMode::Blend : mat.flags |= GPU::MaterialFlag::AlphaBlend; break;
+    }
+
+    return mat;
   };
 };
 
@@ -160,6 +199,7 @@ struct CameraData {
   alignas(4) glm::vec3 right = {};
   alignas(4) f32 fov = 0;
   alignas(4) u32 output_index = 0;
+  alignas(4) glm::vec2 resolution = {};
 };
 
 constexpr static u32 HISTOGRAM_THREADS_X = 16;

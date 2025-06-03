@@ -1,8 +1,26 @@
 #pragma once
 
 #include "Core/UUID.hpp"
+#include "Memory/SlotMap.hpp"
 #include "Render/RenderPipeline.hpp"
 #include "Scene/ECSModule/Core.hpp"
+#include "Scene/SceneGPU.hpp"
+
+template <>
+struct ankerl::unordered_dense::hash<flecs::id> {
+  using is_avalanching = void;
+  ox::u64 operator()(const flecs::id& v) const noexcept {
+    return ankerl::unordered_dense::detail::wyhash::hash(&v, sizeof(flecs::id));
+  }
+};
+
+template <>
+struct ankerl::unordered_dense::hash<flecs::entity> {
+  using is_avalanching = void;
+  ox::u64 operator()(const flecs::entity& v) const noexcept {
+    return ankerl::unordered_dense::detail::wyhash::hash(&v, sizeof(flecs::entity));
+  }
+};
 
 namespace ox {
 class Physics3DContactListener;
@@ -24,6 +42,10 @@ public:
 
   flecs::world world;
   ComponentDB component_db = {};
+
+  std::vector<GPU::TransformID> dirty_transforms = {};
+  SlotMap<GPU::Transforms, GPU::TransformID> transforms = {};
+  ankerl::unordered_dense::map<flecs::entity, GPU::TransformID> entity_transforms_map = {};
 
   explicit Scene(const Shared<RenderPipeline>& render_pipeline = nullptr);
   explicit Scene(const std::string& name);
@@ -52,6 +74,11 @@ public:
   auto get_world_transform(flecs::entity entity) const -> glm::mat4;
   auto get_local_transform(flecs::entity entity) const -> glm::mat4;
 
+  auto get_entity_transform_id(flecs::entity entity) const -> option<GPU::TransformID>;
+  auto get_entity_transform(GPU::TransformID transform_id) const -> const GPU::Transforms*;
+
+  auto set_dirty(this Scene& self, flecs::entity entity) -> void;
+
   // Physics interfaces
   auto on_contact_added(const JPH::Body& body1,
                         const JPH::Body& body2,
@@ -74,6 +101,9 @@ public:
 
 private:
   bool running = false;
+
+  auto add_transform(this Scene& self, flecs::entity entity) -> GPU::TransformID;
+  auto remove_transform(this Scene& self, flecs::entity entity) -> void;
 
   // Renderer
   Shared<RenderPipeline> _render_pipeline = nullptr;

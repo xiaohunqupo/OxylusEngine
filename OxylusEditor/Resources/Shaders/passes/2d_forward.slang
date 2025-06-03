@@ -7,6 +7,7 @@ import scene;
 struct PushConstants {
     Material* materials;
     Camera* camera_buffer;
+    Transform* transforms;
 };
 [[vk::push_constant]] PushConstants C;
 
@@ -19,12 +20,9 @@ struct VOutput {
 };
 
 struct VertexInput {
-  [[vk::location(0)]] float4 transform0 : TRANSFORM0;
-  [[vk::location(1)]] float4 transform1 : TRANSFORM1;
-  [[vk::location(2)]] float4 transform2 : TRANSFORM2;
-  [[vk::location(3)]] float4 transform3 : TRANSFORM3;
-  [[vk::location(4)]] uint material_id16_ypos16 : MAT_INDEX;
-  [[vk::location(5)]] uint flags16_distance16 : FLAGS;
+  [[vk::location(0)]] uint material_id16_ypos16 : MAT_INDEX;
+  [[vk::location(1)]] uint flags16_distance16 : FLAGS;
+  [[vk::location(2)]] uint transform_id : T_ID;
 };
 
 static float3 positions[6] =
@@ -41,14 +39,8 @@ VOutput vs_main(VertexInput input, uint vertex_id : SV_VertexID) {
   const u32 material_index = com::unpack_u32_low(input.material_id16_ypos16);
   Material material = C.materials[material_index];
 
-  mat4 transform = mat4(
-    input.transform0,
-    input.transform1,
-    input.transform2,
-    input.transform3
-  );
+  mat4 transform = C.transforms[input.transform_id].world;
   
-  float4x4 unpacked_transform = transpose(transform);
   float4 uv_size_offset = float4(material.uv_size, material.uv_offset);
 
   const uint vertex_index = vertex_id % 6;
@@ -58,7 +50,7 @@ VOutput vs_main(VertexInput input, uint vertex_id : SV_VertexID) {
 
   const int flip = flags & RENDER_FLAGS_2D_FLIP_X;
   float4 world_position = float4(float2(positions[vertex_index].xy * float2((float)((bool)flip ? -1 : 1), 1)), 0, 1);
-  world_position = mul(unpacked_transform, world_position);
+  world_position = mul(transform, world_position);
 
   output.position = mul(C.camera_buffer[0].projection_view, float4(world_position.xyz, 1.0f));
   output.material_index = material_index;

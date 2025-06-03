@@ -15,7 +15,7 @@ public:
   virtual ~RenderPipeline() = default;
 
   virtual auto init(VkContext& vk_context) -> void = 0;
-  virtual auto shutdown() -> void = 0;
+  virtual auto deinit() -> void = 0;
 
   [[nodiscard]]
   virtual auto on_render(VkContext& vk_context, const RenderInfo& render_info) -> vuk::Value<vuk::ImageAttachment> = 0;

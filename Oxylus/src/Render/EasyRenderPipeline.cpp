@@ -27,12 +27,12 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   auto& runtime = *vk_context.runtime;
   auto& allocator = *vk_context.superframe_allocator;
 
-  auto dslci_00 = vuk::descriptor_set_layout_create_info(
+  auto dslci_01 = vuk::descriptor_set_layout_create_info(
       {
           ds_layout_binding(BindlessID::Samplers, vuk::DescriptorType::eSampler),           // Samplers
           ds_layout_binding(BindlessID::SampledImages, vuk::DescriptorType::eSampledImage), // SampledImages
       },
-      0);
+      1);
 
   // --- Shaders ---
   auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
@@ -41,16 +41,16 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   Slang slang = {};
   slang.create_session({.root_directory = shaders_dir,
                         .definitions = {
-                            // {"CULLING_MESHLET_COUNT", std::to_string(Mesh::MAX_MESHLET_INDICES)},
-                            // {"CULLING_TRIANGLE_COUNT", std::to_string(Mesh::MAX_MESHLET_PRIMITIVES)},
+                            {"CULLING_MESHLET_COUNT", std::to_string(Mesh::MAX_MESHLET_INDICES)},
+                            {"CULLING_TRIANGLE_COUNT", std::to_string(Mesh::MAX_MESHLET_PRIMITIVES)},
                             {"HISTOGRAM_THREADS_X", std::to_string(GPU::HISTOGRAM_THREADS_X)},
                             {"HISTOGRAM_THREADS_Y", std::to_string(GPU::HISTOGRAM_THREADS_Y)},
                         }});
 
   slang.create_pipeline(runtime,
                         "2d_forward_pipeline",
-                        dslci_00,
-                        {.path = shaders_dir + "/2d_forward.slang", .entry_points = {"vs_main", "ps_main"}});
+                        dslci_01,
+                        {.path = shaders_dir + "/passes/2d_forward.slang", .entry_points = {"vs_main", "ps_main"}});
 
   // --- Sky ---
   slang.create_pipeline(runtime,
@@ -65,18 +65,52 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
 
   slang.create_pipeline(runtime,
                         "sky_view_pipeline",
-                        dslci_00,
+                        dslci_01,
                         {.path = shaders_dir + "/passes/sky_view.slang", .entry_points = {"cs_main"}});
 
   slang.create_pipeline(runtime,
                         "sky_aerial_perspective_pipeline",
-                        dslci_00,
+                        dslci_01,
                         {.path = shaders_dir + "/passes/sky_aerial_perspective.slang", .entry_points = {"cs_main"}});
 
   slang.create_pipeline(runtime,
                         "sky_final_pipeline",
-                        dslci_00,
+                        dslci_01,
                         {.path = shaders_dir + "/passes/sky_final.slang", .entry_points = {"vs_main", "fs_main"}});
+
+  // --- VISBUFFER ---
+  slang.create_pipeline(
+      runtime, "cull_meshlets", {}, {.path = shaders_dir + "/passes/cull_meshlets.slang", .entry_points = {"cs_main"}});
+
+  slang.create_pipeline(runtime,
+                        "cull_triangles",
+                        {},
+                        {.path = shaders_dir + "/passes/cull_triangles.slang", .entry_points = {"cs_main"}});
+
+  slang.create_pipeline(
+      runtime,
+      "visbuffer_encode",
+      {},
+      {.path = shaders_dir + "/passes/visbuffer_encode.slang", .entry_points = {"vs_main", "fs_main"}});
+
+  slang.create_pipeline(runtime,
+                        "visbuffer_clear",
+                        {},
+                        {.path = shaders_dir + "/passes/visbuffer_clear.slang", .entry_points = {"cs_main"}});
+
+  slang.create_pipeline(
+      runtime,
+      "visbuffer_decode",
+      {},
+      {.path = shaders_dir + "/passes/visbuffer_decode.slang", .entry_points = {"vs_main", "fs_main"}});
+
+  // --- PBR ---
+  slang.create_pipeline(
+      runtime, "brdf", dslci_01, {.path = shaders_dir + "/passes/brdf.slang", .entry_points = {"vs_main", "fs_main"}});
+
+  //  ── FFX ─────────────────────────────────────────────────────────────
+  slang.create_pipeline(
+      runtime, "hiz", dslci_01, {.path = shaders_dir + "/passes/hiz.slang", .entry_points = {"cs_main"}});
 
   // --- PostProcess ---
   slang.create_pipeline(runtime,
@@ -95,8 +129,8 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
                         {.path = shaders_dir + "/passes/tonemap.slang", .entry_points = {"vs_main", "fs_main"}});
 
   // --- DescriptorSets ---
-  this->descriptor_set_00 = runtime.create_persistent_descriptorset(
-      allocator, *runtime.get_named_pipeline("2d_forward_pipeline"), 0, 64);
+  this->descriptor_set_01 = runtime.create_persistent_descriptorset(
+      allocator, *runtime.get_named_pipeline("2d_forward_pipeline"), 1, 1);
 
   // --- Samplers ---
   auto hiz_sampler_ci = vuk::SamplerCreateInfo{
@@ -121,15 +155,15 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   const vuk::Sampler nearest_sampler_repeated = runtime.acquire_sampler(vuk::NearestSamplerRepeated,
                                                                         runtime.get_frame_count());
   const vuk::Sampler hiz_sampler = runtime.acquire_sampler(hiz_sampler_ci, runtime.get_frame_count());
-  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 0, linear_sampler_repeated);
-  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 1, linear_sampler_clamped);
+  this->descriptor_set_01->update_sampler(BindlessID::Samplers, 0, linear_sampler_repeated);
+  this->descriptor_set_01->update_sampler(BindlessID::Samplers, 1, linear_sampler_clamped);
 
-  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 2, nearest_sampler_repeated);
-  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 3, nearest_sampler_clamped);
+  this->descriptor_set_01->update_sampler(BindlessID::Samplers, 2, nearest_sampler_repeated);
+  this->descriptor_set_01->update_sampler(BindlessID::Samplers, 3, nearest_sampler_clamped);
 
-  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 4, linear_sampler_repeated_anisotropy);
+  this->descriptor_set_01->update_sampler(BindlessID::Samplers, 4, linear_sampler_repeated_anisotropy);
 
-  this->descriptor_set_00->update_sampler(BindlessID::Samplers, 5, hiz_sampler);
+  this->descriptor_set_01->update_sampler(BindlessID::Samplers, 5, hiz_sampler);
 
   // const vuk::Sampler cmp_depth_sampler = runtime.acquire_sampler(vuk::CmpDepthSampler, runtime.get_frame_count());
   // this->descriptor_set_00->update_sampler(12, 0, cmp_depth_sampler);
@@ -157,7 +191,7 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
       "transmittance_lut_pass",
       [](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eComputeRW) dst, VUK_BA(vuk::eComputeRead) atmos) {
         cmd_list.bind_compute_pipeline("sky_transmittance_pipeline")
-            .bind_image(1, 0, dst)
+            .bind_image(0, 0, dst)
             .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(atmos->device_address))
             .dispatch_invocations_per_pixel(dst);
 
@@ -173,9 +207,9 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
          VUK_IA(vuk::eComputeRW) sky_multiscatter_lut,
          VUK_BA(vuk::eComputeRead) atmos) {
         cmd_list.bind_compute_pipeline("sky_multiscatter_lut_pipeline")
-            .bind_sampler(1, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear})
-            .bind_image(1, 1, sky_transmittance_lut)
-            .bind_image(1, 2, sky_multiscatter_lut)
+            .bind_sampler(0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear})
+            .bind_image(0, 1, sky_transmittance_lut)
+            .bind_image(0, 2, sky_multiscatter_lut)
             .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(atmos->device_address))
             .dispatch_invocations_per_pixel(sky_multiscatter_lut);
 
@@ -191,93 +225,79 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   vk_context.wait_on(std::move(multiscatter_lut_attachment));
 }
 
-auto EasyRenderPipeline::shutdown() -> void {}
+auto EasyRenderPipeline::deinit() -> void {}
 
 auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& render_info)
     -> vuk::Value<vuk::ImageAttachment> {
   ZoneScoped;
 
-  const bool freeze_culling = static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get());
-  CameraComponent cam = freeze_culling ? frozen_camera : current_camera;
+  bool rebuild_transforms = false;
+  const auto buffer_size = this->transforms_buffer ? this->transforms_buffer->size : 0;
+  if (ox::size_bytes(this->transforms) > buffer_size) {
+    if (this->transforms_buffer->buffer != VK_NULL_HANDLE) {
+      // Device wait here is important, do not remove it. Why?
+      // We are using ONE transform buffer for all frames, if
+      // this buffer gets destroyed in the current frame, previous
+      // rendering frame buffer will get corrupted and crash the GPU.
+      vk_context.wait();
+      this->transforms_buffer.reset();
+    }
 
-  auto camera_data = GPU::CameraData{
-      .position = glm::vec4(cam.position, 0.0f),
-      .projection = cam.get_projection_matrix(),
-      .inv_projection = cam.get_inv_projection_matrix(),
-      .view = cam.get_view_matrix(),
-      .inv_view = cam.get_inv_view_matrix(),
-      .projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
-      .inv_projection_view = cam.get_inverse_projection_view(),
-      .previous_projection = cam.get_projection_matrix(),
-      .previous_inv_projection = cam.get_inv_projection_matrix(),
-      .previous_view = cam.get_view_matrix(),
-      .previous_inv_view = cam.get_inv_view_matrix(),
-      .previous_projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
-      .previous_inv_projection_view = cam.get_inverse_projection_view(),
-      .temporalaa_jitter = cam.jitter,
-      .temporalaa_jitter_prev = cam.jitter_prev,
-      .near_clip = cam.near_clip,
-      .far_clip = cam.far_clip,
-      .fov = cam.fov,
-      .output_index = 0,
-  };
+    this->transforms_buffer = vk_context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly,
+                                                               ox::size_bytes(this->transforms));
 
-  for (u32 i = 0; i < 6; i++) {
-    const auto* plane = Camera::get_frustum(cam, cam.position).planes[i];
-    camera_data.frustum_planes[i] = {plane->normal, plane->distance};
+    rebuild_transforms = true;
   }
 
+  auto transforms_buf = vuk::acquire_buf("transforms_buffer", *this->transforms_buffer, vuk::Access::eMemoryRead);
+
+  if (rebuild_transforms) {
+    transforms_buf = vk_context.upload_staging(this->transforms, std::move(transforms_buf));
+  } else if (!this->dirty_transforms.empty()) {
+    auto transform_count = this->dirty_transforms.size();
+    auto new_transforms_size_bytes = transform_count * sizeof(GPU::Transforms);
+    auto upload_buffer = vk_context.alloc_transient_buffer(vuk::MemoryUsage::eCPUonly, new_transforms_size_bytes);
+    auto* dst_transform_ptr = reinterpret_cast<GPU::Transforms*>(upload_buffer->mapped_ptr);
+    auto upload_offsets = std::vector<u64>(transform_count);
+
+    for (const auto& [dirty_transform_id, offset] : std::views::zip(this->dirty_transforms, upload_offsets)) {
+      auto index = SlotMap_decode_id(dirty_transform_id).index;
+      const auto& transform = this->transforms[index];
+      std::memcpy(dst_transform_ptr, &transform, sizeof(GPU::Transforms));
+      offset = index * sizeof(GPU::Transforms);
+      dst_transform_ptr++;
+    }
+
+    transforms_buf = vuk::make_pass(
+        "update scene transforms",
+        [upload_off = std::move(upload_offsets)](vuk::CommandBuffer& cmd_list,
+                                                 VUK_BA(vuk::Access::eTransferRead) src_buffer,
+                                                 VUK_BA(vuk::Access::eTransferWrite) dst_buffer) {
+          for (usize i = 0; i < upload_off.size(); i++) {
+            auto offset = upload_off[i];
+            auto src_subrange = src_buffer->subrange(i * sizeof(GPU::Transforms), sizeof(GPU::Transforms));
+            auto dst_subrange = dst_buffer->subrange(offset, sizeof(GPU::Transforms));
+            cmd_list.copy_buffer(src_subrange, dst_subrange);
+          }
+
+          return dst_buffer;
+        })(std::move(upload_buffer), std::move(transforms_buf));
+  }
+
+  camera_data.resolution = {render_info.extent.width, render_info.extent.height};
   auto camera_buffer = vk_context.scratch_buffer(std::span(&camera_data, 1));
 
-  RenderQueue2D render_queue_2d = {};
-
-  render_queue_2d.init();
-
-  std::vector<GPU::Material> gpu_materials = {};
-
-  std::vector<vuk::ImageView> texture_views = {};
-
-  for (const auto& sprite_component : this->sprite_component_list) {
-    const auto distance = glm::distance(glm::vec3(0.f, 0.f, cam.position.z),
-                                        glm::vec3(0.f, 0.f, sprite_component.get_position().z));
-
-    auto* asset_man = App::get_asset_manager();
-
-    const auto add_texture_if_exists = [&](const UUID& uuid) -> ox::option<u32> {
-      if (!uuid) {
-        return ox::nullopt;
-      }
-
-      auto* texture = asset_man->get_texture(uuid);
-      if (!texture) {
-        return ox::nullopt;
-      }
-
-      auto index = texture_views.size();
-      texture_views.emplace_back(*texture->get_view());
-      return static_cast<u32>(index);
-    };
-
-    if (auto* material = asset_man->get_material(sprite_component.material)) {
-      auto gpu_mat = GPU::Material::from_material(*material,
-                                                  add_texture_if_exists(material->albedo_texture).value_or(~0_u32));
-      gpu_mat.uv_offset = sprite_component.current_uv_offset.value_or(gpu_mat.uv_offset);
-      gpu_materials.emplace_back(gpu_mat);
-
-      render_queue_2d.add(sprite_component, gpu_materials.size() - 1, distance);
-    }
-  }
-
   for (u32 i = 0; i < texture_views.size(); i++) {
-    this->descriptor_set_00->update_sampled_image(
+    this->descriptor_set_01->update_sampled_image(
         BindlessID::SampledImages, i, texture_views[i], vuk::ImageLayout::eReadOnlyOptimalKHR);
   }
+  this->descriptor_set_01->commit(*vk_context.runtime);
 
   render_queue_2d.update();
   render_queue_2d.sort();
-  this->sprite_component_list.clear();
+  auto vertex_buffer_2d = vk_context.scratch_buffer(std::span(render_queue_2d.sprite_data));
 
-  this->descriptor_set_00->commit(*vk_context.runtime);
+  auto material_buffer = vk_context.scratch_buffer(std::span(gpu_materials));
 
   const auto final_attachment_ia = vuk::ImageAttachment{
       .usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
@@ -306,52 +326,50 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   };
   auto depth_attachment = vuk::clear_image(vuk::declare_ia("depth_image", depth_ia), vuk::DepthZero);
 
-  auto material_buffer = vk_context.scratch_buffer(std::span(gpu_materials));
-  auto vertex_buffer_2d = vk_context.scratch_buffer(std::span(render_queue_2d.sprite_data));
-
   if (!gpu_materials.empty() && !render_queue_2d.sprite_data.empty()) {
-    std::tie(final_attachment, depth_attachment, camera_buffer, vertex_buffer_2d, material_buffer) = vuk::make_pass(
-        "2d_forward_pass",
-        [render_queue_2d, &descriptor_set = *this->descriptor_set_00](vuk::CommandBuffer& command_buffer,
-                                                                      VUK_IA(vuk::eColorWrite) target,
-                                                                      VUK_IA(vuk::eDepthStencilRW) depth,
-                                                                      VUK_BA(vuk::eVertexRead) vertex_buffer,
-                                                                      VUK_BA(vuk::eVertexRead) materials,
-                                                                      VUK_BA(vuk::eVertexRead) camera) {
-          const auto vertex_pack_2d = vuk::Packed{
-              vuk::Format::eR32G32B32A32Sfloat, // 16 row
-              vuk::Format::eR32G32B32A32Sfloat, // 16 row
-              vuk::Format::eR32G32B32A32Sfloat, // 16 row
-              vuk::Format::eR32G32B32A32Sfloat, // 16 row
-              vuk::Format::eR32Uint,            // 4 material_id
-              vuk::Format::eR32Uint,            // 4 flags
-          };
+    std::tie(final_attachment, depth_attachment, camera_buffer, vertex_buffer_2d, material_buffer, transforms_buf) =
+        vuk::make_pass(
+            "2d_forward_pass",
+            [&rq2d = this->render_queue_2d,
+             &descriptor_set = *this->descriptor_set_01](vuk::CommandBuffer& command_buffer,
+                                                         VUK_IA(vuk::eColorWrite) target,
+                                                         VUK_IA(vuk::eDepthStencilRW) depth,
+                                                         VUK_BA(vuk::eVertexRead) vertex_buffer,
+                                                         VUK_BA(vuk::eVertexRead) materials,
+                                                         VUK_BA(vuk::eVertexRead) camera,
+                                                         VUK_BA(vuk::eVertexRead) transforms_) {
+              const auto vertex_pack_2d = vuk::Packed{
+                  vuk::Format::eR32Uint, // 4 material_id
+                  vuk::Format::eR32Uint, // 4 flags
+                  vuk::Format::eR32Uint, // 4 transforms_id
+              };
 
-          for (const auto& batch : render_queue_2d.batches) {
-            if (batch.count < 1)
-              continue;
+              for (const auto& batch : rq2d.batches) {
+                if (batch.count < 1)
+                  continue;
 
-            command_buffer.bind_graphics_pipeline(batch.pipeline_name)
-                .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
-                    .depthTestEnable = true,
-                    .depthWriteEnable = true,
-                    .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
-                })
-                .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
-                .set_viewport(0, vuk::Rect2D::framebuffer())
-                .set_scissor(0, vuk::Rect2D::framebuffer())
-                .broadcast_color_blend(vuk::BlendPreset::eAlphaBlend)
-                .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-                .bind_vertex_buffer(0, vertex_buffer, 0, vertex_pack_2d, vuk::VertexInputRate::eInstance)
-                .bind_persistent(0, descriptor_set)
-                .push_constants(vuk::ShaderStageFlagBits::eVertex | vuk::ShaderStageFlagBits::eFragment,
-                                0,
-                                PushConstants(materials->device_address, camera->device_address))
-                .draw(6, batch.count, 0, batch.offset);
-          }
+                command_buffer.bind_graphics_pipeline(batch.pipeline_name)
+                    .set_depth_stencil(vuk::PipelineDepthStencilStateCreateInfo{
+                        .depthTestEnable = true,
+                        .depthWriteEnable = true,
+                        .depthCompareOp = vuk::CompareOp::eGreaterOrEqual,
+                    })
+                    .set_dynamic_state(vuk::DynamicStateFlagBits::eScissor | vuk::DynamicStateFlagBits::eViewport)
+                    .set_viewport(0, vuk::Rect2D::framebuffer())
+                    .set_scissor(0, vuk::Rect2D::framebuffer())
+                    .broadcast_color_blend(vuk::BlendPreset::eAlphaBlend)
+                    .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+                    .bind_vertex_buffer(0, vertex_buffer, 0, vertex_pack_2d, vuk::VertexInputRate::eInstance)
+                    .bind_persistent(1, descriptor_set)
+                    .push_constants(
+                        vuk::ShaderStageFlagBits::eVertex | vuk::ShaderStageFlagBits::eFragment,
+                        0,
+                        PushConstants(materials->device_address, camera->device_address, transforms_->device_address))
+                    .draw(6, batch.count, 0, batch.offset);
+              }
 
-          return std::make_tuple(target, depth, camera, vertex_buffer, materials);
-        })(final_attachment, depth_attachment, vertex_buffer_2d, material_buffer, camera_buffer);
+              return std::make_tuple(target, depth, camera, vertex_buffer, materials, transforms_);
+            })(final_attachment, depth_attachment, vertex_buffer_2d, material_buffer, camera_buffer, transforms_buf);
   }
 
   if (this->atmosphere.has_value()) {
@@ -482,7 +500,7 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
            sun_buffer,
            camera_buffer) = vuk::make_pass( //
       "sky view",
-      [&descriptor_set = *this->descriptor_set_00](vuk::CommandBuffer& cmd_list,
+      [&descriptor_set = *this->descriptor_set_01](vuk::CommandBuffer& cmd_list,
                                                    VUK_BA(vuk::eComputeRead) atmosphere_,
                                                    VUK_BA(vuk::eComputeRead) sun_,
                                                    VUK_BA(vuk::eComputeRead) camera,
@@ -490,10 +508,10 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
                                                    VUK_IA(vuk::eComputeSampled) sky_multiscatter_lut,
                                                    VUK_IA(vuk::eComputeRW) sky_view_lut) {
         cmd_list.bind_compute_pipeline("sky_view_pipeline")
-            .bind_persistent(0, descriptor_set)
-            .bind_image(1, 0, sky_transmittance_lut)
-            .bind_image(1, 1, sky_multiscatter_lut)
-            .bind_image(1, 2, sky_view_lut)
+            .bind_persistent(1, descriptor_set)
+            .bind_image(0, 0, sky_transmittance_lut)
+            .bind_image(0, 1, sky_multiscatter_lut)
+            .bind_image(0, 2, sky_view_lut)
             .push_constants(vuk::ShaderStageFlagBits::eCompute,
                             0,
                             PushConstants(atmosphere_->device_address, sun_->device_address, camera->device_address))
@@ -513,7 +531,7 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
            sun_buffer,
            camera_buffer) = vuk::make_pass( //
       "sky aerial perspective",
-      [&descriptor_set = *this->descriptor_set_00](vuk::CommandBuffer& cmd_list,
+      [&descriptor_set = *this->descriptor_set_01](vuk::CommandBuffer& cmd_list,
                                                    VUK_BA(vuk::eComputeRead) atmosphere_,
                                                    VUK_BA(vuk::eComputeRead) sun_,
                                                    VUK_BA(vuk::eComputeRead) camera,
@@ -521,10 +539,10 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
                                                    VUK_IA(vuk::eComputeSampled) sky_multiscatter_lut,
                                                    VUK_IA(vuk::eComputeRW) sky_aerial_perspective_lut) {
         cmd_list.bind_compute_pipeline("sky_aerial_perspective_pipeline")
-            .bind_persistent(0, descriptor_set)
-            .bind_image(1, 0, sky_transmittance_lut)
-            .bind_image(1, 1, sky_multiscatter_lut)
-            .bind_image(1, 2, sky_aerial_perspective_lut)
+            .bind_persistent(1, descriptor_set)
+            .bind_image(0, 0, sky_transmittance_lut)
+            .bind_image(0, 1, sky_multiscatter_lut)
+            .bind_image(0, 2, sky_aerial_perspective_lut)
             .push_constants(vuk::ShaderStageFlagBits::eCompute,
                             0,
                             PushConstants(atmosphere_->device_address, sun_->device_address, camera->device_address))
@@ -540,7 +558,7 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
 
   std::tie(final_attachment, depth_attachment, camera_buffer) = vuk::make_pass(
       "sky final",
-      [&descriptor_set = *this->descriptor_set_00](vuk::CommandBuffer& cmd_list,
+      [&descriptor_set = *this->descriptor_set_01](vuk::CommandBuffer& cmd_list,
                                                    VUK_IA(vuk::eColorWrite) dst,
                                                    VUK_BA(vuk::eFragmentRead) atmosphere_,
                                                    VUK_BA(vuk::eFragmentRead) sun_,
@@ -560,7 +578,7 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
         };
 
         cmd_list.bind_graphics_pipeline("sky_final_pipeline")
-            .bind_persistent(0, descriptor_set)
+            .bind_persistent(1, descriptor_set)
             .set_rasterization({})
             .set_depth_stencil({.depthTestEnable = false,
                                 .depthWriteEnable = false,
@@ -569,10 +587,10 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
             .set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
             .set_viewport(0, vuk::Rect2D::framebuffer())
             .set_scissor(0, vuk::Rect2D::framebuffer())
-            .bind_image(1, 0, sky_transmittance_lut)
-            .bind_image(1, 1, sky_aerial_perspective_lut)
-            .bind_image(1, 2, sky_view_lut)
-            .bind_image(1, 3, depth)
+            .bind_image(0, 0, sky_transmittance_lut)
+            .bind_image(0, 1, sky_aerial_perspective_lut)
+            .bind_image(0, 2, sky_view_lut)
+            .bind_image(0, 3, depth)
             .push_constants(vuk::ShaderStageFlagBits::eFragment,
                             0,
                             PushConstants(atmosphere_->device_address, sun_->device_address, camera->device_address))
@@ -592,11 +610,17 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
 auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
   ZoneScoped;
 
+  this->transforms = scene->transforms.slots_unsafe();
+  this->dirty_transforms = scene->dirty_transforms;
+
+  CameraComponent current_camera = {};
+  CameraComponent frozen_camera = {};
+  const auto freeze_culling = static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get());
+
   scene->world
       .query_builder<const TransformComponent, const CameraComponent>() //
       .build()
-      .each([this](flecs::entity e, const TransformComponent& tc, const CameraComponent& c) {
-        const auto freeze_culling = static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get());
+      .each([&](flecs::entity e, const TransformComponent& tc, const CameraComponent& c) {
         if (freeze_culling && !this->saved_camera) {
           this->saved_camera = true;
           frozen_camera = current_camera;
@@ -606,12 +630,38 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
 
         if (static_cast<bool>(RendererCVar::cvar_freeze_culling_frustum.get()) &&
             static_cast<bool>(RendererCVar::cvar_draw_camera_frustum.get())) {
-          const auto proj = this->frozen_camera.get_projection_matrix() * this->frozen_camera.get_view_matrix();
+          const auto proj = frozen_camera.get_projection_matrix() * frozen_camera.get_view_matrix();
           DebugRenderer::draw_frustum(proj, glm::vec4(0, 1, 0, 1), 1.0f, 0.0f); // reversed-z
         }
 
-        this->current_camera = c;
+        current_camera = c;
       });
+
+  CameraComponent cam = freeze_culling ? frozen_camera : current_camera;
+
+  this->camera_data = GPU::CameraData{
+      .position = glm::vec4(cam.position, 0.0f),
+      .projection = cam.get_projection_matrix(),
+      .inv_projection = cam.get_inv_projection_matrix(),
+      .view = cam.get_view_matrix(),
+      .inv_view = cam.get_inv_view_matrix(),
+      .projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
+      .inv_projection_view = cam.get_inverse_projection_view(),
+      .previous_projection = cam.get_projection_matrix(),
+      .previous_inv_projection = cam.get_inv_projection_matrix(),
+      .previous_view = cam.get_view_matrix(),
+      .previous_inv_view = cam.get_inv_view_matrix(),
+      .previous_projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
+      .previous_inv_projection_view = cam.get_inverse_projection_view(),
+      .temporalaa_jitter = cam.jitter,
+      .temporalaa_jitter_prev = cam.jitter_prev,
+      .near_clip = cam.near_clip,
+      .far_clip = cam.far_clip,
+      .fov = cam.fov,
+      .output_index = 0,
+  };
+
+  math::calc_frustum_planes(camera_data.projection_view, camera_data.frustum_planes);
 
   option<GPU::Atmosphere> atmosphere_data = nullopt;
   option<GPU::Sun> sun_data = nullopt;
@@ -619,44 +669,82 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
   scene->world
       .query_builder<const TransformComponent, const LightComponent>() //
       .build()
-      .each([&sun_data, &atmosphere_data, cam = &this->current_camera](
-                flecs::entity e, const TransformComponent& tc, const LightComponent& lc) {
-        if (lc.type == LightComponent::LightType::Directional) {
-          auto& sund = sun_data.emplace();
-          sund.direction.x = glm::cos(tc.rotation.x) * glm::sin(tc.rotation.y);
-          sund.direction.y = glm::sin(tc.rotation.x) * glm::sin(tc.rotation.y);
-          sund.direction.z = glm::cos(tc.rotation.y);
-          sund.intensity = lc.intensity;
-        }
+      .each(
+          [&sun_data, &atmosphere_data, cam](flecs::entity e, const TransformComponent& tc, const LightComponent& lc) {
+            if (lc.type == LightComponent::LightType::Directional) {
+              auto& sund = sun_data.emplace();
+              sund.direction.x = glm::cos(tc.rotation.x) * glm::sin(tc.rotation.y);
+              sund.direction.y = glm::sin(tc.rotation.x) * glm::sin(tc.rotation.y);
+              sund.direction.z = glm::cos(tc.rotation.y);
+              sund.intensity = lc.intensity;
+            }
 
-        if (e.has<AtmosphereComponent>()) {
-          const auto& atmos_info = *e.get<AtmosphereComponent>();
-          auto& atmos = atmosphere_data.emplace();
-          atmos.rayleigh_scatter = atmos_info.rayleigh_scattering * 1e-3f;
-          atmos.rayleigh_density = atmos_info.rayleigh_density;
-          atmos.mie_scatter = atmos_info.mie_scattering * 1e-3f;
-          atmos.mie_density = atmos_info.mie_density;
-          atmos.mie_extinction = atmos_info.mie_extinction * 1e-3f;
-          atmos.mie_asymmetry = atmos_info.mie_asymmetry;
-          atmos.ozone_absorption = atmos_info.ozone_absorption * 1e-3f;
-          atmos.ozone_height = atmos_info.ozone_height;
-          atmos.ozone_thickness = atmos_info.ozone_thickness;
-          atmos.aerial_perspective_start_km = atmos_info.aerial_perspective_start_km;
+            if (e.has<AtmosphereComponent>()) {
+              const auto& atmos_info = *e.get<AtmosphereComponent>();
+              auto& atmos = atmosphere_data.emplace();
+              atmos.rayleigh_scatter = atmos_info.rayleigh_scattering * 1e-3f;
+              atmos.rayleigh_density = atmos_info.rayleigh_density;
+              atmos.mie_scatter = atmos_info.mie_scattering * 1e-3f;
+              atmos.mie_density = atmos_info.mie_density;
+              atmos.mie_extinction = atmos_info.mie_extinction * 1e-3f;
+              atmos.mie_asymmetry = atmos_info.mie_asymmetry;
+              atmos.ozone_absorption = atmos_info.ozone_absorption * 1e-3f;
+              atmos.ozone_height = atmos_info.ozone_height;
+              atmos.ozone_thickness = atmos_info.ozone_thickness;
+              atmos.aerial_perspective_start_km = atmos_info.aerial_perspective_start_km;
 
-          f32 eye_altitude = cam->position.y * GPU::CAMERA_SCALE_UNIT;
-          eye_altitude += atmos.planet_radius + GPU::PLANET_RADIUS_OFFSET;
-          atmos.eye_position = glm::vec3(0.0f, eye_altitude, 0.0f);
-        }
-      });
+              f32 eye_altitude = cam.position.y * GPU::CAMERA_SCALE_UNIT;
+              eye_altitude += atmos.planet_radius + GPU::PLANET_RADIUS_OFFSET;
+              atmos.eye_position = glm::vec3(0.0f, eye_altitude, 0.0f);
+            }
+          });
 
   this->atmosphere = atmosphere_data;
   this->sun = sun_data;
 
+  this->render_queue_2d.init();
+
   scene->world
       .query_builder<const TransformComponent, const SpriteComponent>() //
       .build()
-      .each([list = &this->sprite_component_list](
-                flecs::entity e, const TransformComponent& tc, const SpriteComponent& c) { list->emplace_back(c); });
+      .each([&scene,
+             &cam,
+             &rq2d = this->render_queue_2d,
+             &gmaterials = this->gpu_materials,
+             &tviews = this->texture_views](
+                flecs::entity e, const TransformComponent& tc, const SpriteComponent& comp) {
+        const auto distance = glm::distance(glm::vec3(0.f, 0.f, cam.position.z), glm::vec3(0.f, 0.f, tc.position.z));
+
+        auto* asset_man = App::get_asset_manager();
+
+        const auto add_texture_if_exists = [&tviews, asset_man](const UUID& uuid) -> ox::option<u32> {
+          if (!uuid) {
+            return ox::nullopt;
+          }
+
+          auto* texture = asset_man->get_texture(uuid);
+          if (!texture) {
+            return ox::nullopt;
+          }
+
+          auto index = tviews.size();
+          tviews.emplace_back(*texture->get_view());
+          return static_cast<u32>(index);
+        };
+
+        if (auto* material = asset_man->get_material(comp.material)) {
+          auto gpu_mat = GPU::Material::from_material(*material,
+                                                      add_texture_if_exists(material->albedo_texture).value_or(~0_u32));
+          gpu_mat.uv_offset = comp.current_uv_offset.value_or(gpu_mat.uv_offset);
+          gmaterials.emplace_back(gpu_mat);
+
+          if (auto transform_id = scene->get_entity_transform_id(e)) {
+            rq2d.add(comp, tc.position.y, SlotMap_decode_id(*transform_id).index, gmaterials.size() - 1, distance);
+          } else {
+            OX_LOG_WARN("No registered transform for entity: {}", e.name().c_str());
+          }
+        }
+      });
 
   option<GPU::HistogramInfo> hist_info = nullopt;
 

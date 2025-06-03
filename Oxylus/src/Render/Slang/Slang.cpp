@@ -7,8 +7,7 @@
 #include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
-void Slang::create_session(this Slang& self,
-                           const SessionInfo& session_info) {
+void Slang::create_session(this Slang& self, const SessionInfo& session_info) {
   ZoneScoped;
   auto& ctx = App::get_vkcontext();
 
@@ -16,9 +15,7 @@ void Slang::create_session(this Slang& self,
       {.definitions = session_info.definitions, .root_directory = session_info.root_directory});
 }
 
-void Slang::add_shader(this Slang& self,
-                       vuk::PipelineBaseCreateInfo& pipeline_ci,
-                       const CompileInfo& compile_info) {
+void Slang::add_shader(this Slang& self, vuk::PipelineBaseCreateInfo& pipeline_ci, const CompileInfo& compile_info) {
   ZoneScoped;
 
   if (!self.slang_session.has_value()) {
@@ -50,6 +47,8 @@ void Slang::create_pipeline(this Slang& self,
                             const vuk::Name& name,
                             const option<vuk::DescriptorSetLayoutCreateInfo>& dci,
                             const CompileInfo& compile_info) {
+  OX_CHECK_GT(compile_info.entry_points.size(), 0ul);
+
   vuk::PipelineBaseCreateInfo pipeline_ci = {};
   if (dci.has_value())
     pipeline_ci.explicit_set_layouts.emplace_back(*dci);

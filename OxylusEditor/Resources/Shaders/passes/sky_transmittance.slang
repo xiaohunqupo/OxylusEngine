@@ -5,7 +5,7 @@ import gpu;
 import sky;
 import scene;
 
-[[vk::binding(0, 1)]]
+[[vk::binding(0, 0)]]
 StorageImage2D<f32x4, ImageFormat::RGBA16F> sky_transmittance_lut;
 
 struct PushConstants {

@@ -207,6 +207,8 @@ Scene::~Scene() {
 
   if (running)
     runtime_stop();
+
+  _render_pipeline->deinit();
 }
 
 auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderPipeline>& render_pipeline) -> void {
@@ -223,6 +225,32 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
     self._render_pipeline = create_shared<EasyRenderPipeline>();
     self._render_pipeline->init(App::get_vkcontext());
   }
+
+  self.world.observer<TransformComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .event(flecs::OnRemove)
+      .each([&self](flecs::iter& it, usize i, TransformComponent&) {
+        auto entity = it.entity(i);
+        if (it.event() == flecs::OnSet) {
+          self.set_dirty(entity);
+        } else if (it.event() == flecs::OnAdd) {
+          self.add_transform(entity);
+          self.set_dirty(entity);
+        } else if (it.event() == flecs::OnRemove) {
+          self.remove_transform(entity);
+        }
+
+        // Set sprite rect
+        if (entity.has<SpriteComponent>(); auto* sprite = entity.get_mut<SpriteComponent>()) {
+          if (auto id = self.get_entity_transform_id(entity)) {
+            if (auto* transform = self.get_entity_transform(*id)) {
+              sprite->rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
+              sprite->rect = sprite->rect.get_transformed(transform->world);
+            }
+          }
+        }
+      });
 
   // Systems run order:
   // -- PreUpdate  -> Main Systems
@@ -347,6 +375,14 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
       .kind(flecs::PostUpdate)
       .each([](const TransformComponent& tc, MeshComponent& mc) {});
 
+  self.world.system<SpriteComponent>("SpritesUpdate")
+      .kind(flecs::PostUpdate)
+      .each([](const flecs::entity entity, SpriteComponent& sprite) {
+        if (RendererCVar::cvar_draw_bounding_boxes.get()) {
+          DebugRenderer::draw_aabb(sprite.rect, glm::vec4(1, 1, 1, 1.0f));
+        }
+      });
+
   self.world.system<SpriteComponent, SpriteAnimationComponent>("SpriteAnimationsUpdate")
       .kind(flecs::PostUpdate)
       .each([](flecs::iter& it, size_t, SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
@@ -392,19 +428,6 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
         uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0],
                    sprite_animation.frame_size[1] * 1.f / texture_size[1]};
         sprite.current_uv_offset = material->uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
-      });
-
-  self.world.system<SpriteComponent>("SpritesUpdate")
-      .kind(flecs::PostUpdate)
-      .each([&self](const flecs::entity entity, SpriteComponent& sprite) {
-        const auto world_transform = self.get_world_transform(entity);
-        sprite.transform = world_transform;
-        sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
-        sprite.rect = sprite.rect.get_transformed(world_transform);
-
-        if (RendererCVar::cvar_draw_bounding_boxes.get()) {
-          DebugRenderer::draw_aabb(sprite.rect, glm::vec4(1, 1, 1, 1.0f));
-        }
       });
 
   self.world.system<const TransformComponent, LightComponent>("LightsUpdate")
@@ -512,6 +535,7 @@ auto Scene::runtime_update(const Timestep& delta_time) -> void {
   world.progress();
 
   _render_pipeline->on_update(this);
+  this->dirty_transforms.clear();
 
   if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
     auto physics = App::get_system<Physics>(EngineSystems::Physics);
@@ -669,6 +693,76 @@ auto Scene::get_local_transform(flecs::entity entity) const -> glm::mat4 {
   const auto* tc = entity.get<TransformComponent>();
   return glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) *
          glm::scale(glm::mat4(1.0f), tc->scale);
+}
+
+auto Scene::set_dirty(this Scene& self, flecs::entity entity) -> void {
+  ZoneScoped;
+
+  auto visit_parent = [&self](this auto& visitor, flecs::entity e) -> glm::mat4 {
+    auto local_mat = glm::mat4(1.0f);
+    if (e.has<TransformComponent>()) {
+      local_mat = self.get_local_transform(e);
+    }
+
+    auto parent = e.parent();
+    if (parent) {
+      return visitor(parent) * local_mat;
+    } else {
+      return local_mat;
+    }
+  };
+
+  OX_ASSERT(entity.has<TransformComponent>());
+  auto it = self.entity_transforms_map.find(entity);
+  if (it == self.entity_transforms_map.end()) {
+    return;
+  }
+
+  auto transform_id = it->second;
+  auto* gpu_transform = self.transforms.slot(transform_id);
+  gpu_transform->local = glm::mat4(1.0f);
+  gpu_transform->world = visit_parent(entity);
+  gpu_transform->normal = glm::mat3(gpu_transform->world);
+  self.dirty_transforms.push_back(transform_id);
+
+  // notify children
+  entity.children([](flecs::entity e) {
+    if (e.has<TransformComponent>()) {
+      e.modified<TransformComponent>();
+    }
+  });
+}
+
+auto Scene::get_entity_transform_id(flecs::entity entity) const -> option<GPU::TransformID> {
+  auto it = entity_transforms_map.find(entity);
+  if (it == entity_transforms_map.end())
+    return nullopt;
+  return it->second;
+}
+
+auto Scene::get_entity_transform(GPU::TransformID transform_id) const -> const GPU::Transforms* {
+  return transforms.slotc(transform_id);
+}
+
+auto Scene::add_transform(this Scene& self, flecs::entity entity) -> GPU::TransformID {
+  ZoneScoped;
+
+  auto id = self.transforms.create_slot();
+  self.entity_transforms_map.emplace(entity, id);
+
+  return id;
+}
+
+auto Scene::remove_transform(this Scene& self, flecs::entity entity) -> void {
+  ZoneScoped;
+
+  auto it = self.entity_transforms_map.find(entity);
+  if (it == self.entity_transforms_map.end()) {
+    return;
+  }
+
+  self.transforms.destroy_slot(it->second);
+  self.entity_transforms_map.erase(it);
 }
 
 auto Scene::on_contact_added(const JPH::Body& body1,

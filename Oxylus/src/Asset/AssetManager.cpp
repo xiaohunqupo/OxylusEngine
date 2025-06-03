@@ -763,6 +763,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
   for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
     this->load_material(material_uuid, material);
   }
+
   //  ── SCENE HIERARCHY ─────────────────────────────────────────────────
   for (const auto& node : gltf_model->nodes) {
     mesh->nodes.push_back({.name = node.name,

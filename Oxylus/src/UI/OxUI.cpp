@@ -407,6 +407,7 @@ bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* too
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
     if (ImGui::Button("##x_reset", button_size)) {
       values.x = reset_value;
+      changed = true;
     }
     ImGui::PopStyleColor(4);
 
@@ -429,6 +430,7 @@ bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* too
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
     if (ImGui::Button("##y_reset", button_size)) {
       values.y = reset_value;
+      changed = true;
     }
     ImGui::PopStyleColor(4);
 
@@ -451,6 +453,7 @@ bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* too
     ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.1f, 0.25f, 0.8f, 1.0f});
     if (ImGui::Button("##z_reset", button_size)) {
       values.z = reset_value;
+      changed = true;
     }
     ImGui::PopStyleColor(4);
 
