@@ -1,33 +1,32 @@
-#include "OxUI.hpp"
+#include "EditorUI.hpp"
 
-#include <imgui_internal.h>
-#include <misc/cpp/imgui_stdlib.h>
+#include <imgui_stdlib.h>
 
 #include "Asset/AssetManager.hpp"
-#include "Asset/Texture.hpp"
 #include "Core/App.hpp"
-#include "Core/FileSystem.hpp"
-#include "ImGuiLayer.hpp"
-#include "Utils/StringUtils.hpp"
-#include "imgui.h"
+#include "UI/ImGuiLayer.hpp"
+#include "Utils/PayloadData.hpp"
 
 namespace ox {
-inline static int ui_context_id = 0;
-inline static int s_counter = 0;
-char ui::id_buffer[16];
+int UI::ui_context_id = 0;
+int UI::s_counter = 0;
+char UI::id_buffer[16] = {};
 
-void ui::push_id() {
+void UI::push_id() {
   ++ui_context_id;
   ImGui::PushID(ui_context_id);
   s_counter = 0;
 }
 
-void ui::pop_id() {
+void UI::pop_id() {
   ImGui::PopID();
   --ui_context_id;
 }
 
-bool ui::begin_properties(const ImGuiTableFlags flags, bool fixed_width, float width) {
+void UI::push_frame_style(bool on) { ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, on ? 1.f : 0.f); }
+void UI::pop_frame_style() { ImGui::PopStyleVar(); }
+
+bool UI::begin_properties(const ImGuiTableFlags flags, bool fixed_width, float width) {
   id_buffer[0] = '#';
   id_buffer[1] = '#';
   memset(id_buffer + 2, 0, 14);
@@ -47,9 +46,9 @@ bool ui::begin_properties(const ImGuiTableFlags flags, bool fixed_width, float w
   return false;
 }
 
-void ui::end_properties() { ImGui::EndTable(); }
+void UI::end_properties() { ImGui::EndTable(); }
 
-void ui::begin_property_grid(const char* label, const char* tooltip, const bool align_text_right) {
+void UI::begin_property_grid(const char* label, const char* tooltip, const bool align_text_right) {
   push_id();
 
   push_frame_style();
@@ -82,113 +81,13 @@ void ui::begin_property_grid(const char* label, const char* tooltip, const bool 
   std::memcpy(&id_buffer, buffer.data(), 16);
 }
 
-void ui::end_property_grid() {
+void UI::end_property_grid() {
   ImGui::PopID();
   pop_frame_style();
   pop_id();
 }
 
-void ui::push_frame_style(bool on) { ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, on ? 1.f : 0.f); }
-void ui::pop_frame_style() { ImGui::PopStyleVar(); }
-
-bool ui::button(const char* label, const ImVec2& size, const char* tooltip) {
-  push_frame_style();
-  bool changed = ImGui::Button(label, size);
-  tooltip_hover(tooltip);
-  pop_frame_style();
-  return changed;
-}
-
-bool ui::checkbox(const char* label, bool* v) {
-  push_frame_style();
-  bool changed = ImGui::Checkbox(label, v);
-  pop_frame_style();
-  return changed;
-}
-
-bool ui::combo(const char* label, int* value, const char** dropdown_strings, int count, const char* tooltip) {
-  push_frame_style();
-
-  bool modified = false;
-  const char* current = dropdown_strings[*value];
-
-  if (ImGui::BeginCombo(id_buffer, current)) {
-    for (int i = 0; i < count; i++) {
-      const bool is_selected = current == dropdown_strings[i];
-      if (ImGui::Selectable(dropdown_strings[i], is_selected)) {
-        current = dropdown_strings[i];
-        *value = i;
-        modified = true;
-      }
-
-      if (is_selected)
-        ImGui::SetItemDefaultFocus();
-    }
-    ImGui::EndCombo();
-  }
-
-  tooltip_hover(tooltip);
-
-  pop_frame_style();
-
-  return modified;
-}
-
-bool ui::input_text(
-    const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
-  push_frame_style();
-  bool changed = ImGui::InputText(label, str, flags, callback, user_data);
-  pop_frame_style();
-  return changed;
-}
-
-void ui::text(const char* text1, const char* text2, const char* tooltip) {
-  begin_property_grid(text1, tooltip);
-  ImGui::Text("%s", text2);
-  end_property_grid();
-}
-
-bool ui::property(const char* label, bool* flag, const char* tooltip) {
-  begin_property_grid(label, tooltip);
-  const bool modified = ImGui::Checkbox(id_buffer, flag);
-  end_property_grid();
-  return modified;
-}
-
-bool ui::property(const char* label, std::string* text, const ImGuiInputFlags flags, const char* tooltip) {
-  begin_property_grid(label, tooltip);
-  const bool modified = ImGui::InputText(id_buffer, text, flags);
-  end_property_grid();
-  return modified;
-}
-
-bool ui::property(const char* label, int* value, const char** dropdown_strings, const int count, const char* tooltip) {
-  begin_property_grid(label, tooltip);
-
-  bool modified = false;
-  const char* current = dropdown_strings[*value];
-
-  if (ImGui::BeginCombo(id_buffer, current)) {
-    for (int i = 0; i < count; i++) {
-      const bool is_selected = current == dropdown_strings[i];
-      if (ImGui::Selectable(dropdown_strings[i], is_selected)) {
-        current = dropdown_strings[i];
-        *value = i;
-        modified = true;
-      }
-
-      if (is_selected)
-        ImGui::SetItemDefaultFocus();
-    }
-    ImGui::EndCombo();
-  }
-
-  end_property_grid();
-
-  return modified;
-}
-
-void ui::tooltip_hover(const char* text) {
+void UI::tooltip_hover(const char* text) {
   if (text && ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
     ImGui::BeginTooltip();
     ImGui::TextUnformatted(text);
@@ -196,7 +95,69 @@ void ui::tooltip_hover(const char* text) {
   }
 }
 
-bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset, const char* tooltip) {
+ImVec2 UI::get_icon_button_size(const char8_t* icon, const char* label) {
+  const float line_height = ImGui::GetTextLineHeight();
+  const ImVec2 padding = ImGui::GetStyle().FramePadding;
+
+  float width = ImGui::CalcTextSize(StringUtils::from_char8_t(icon)).x;
+  width += ImGui::CalcTextSize(label).x;
+  width += padding.x * 2.0f;
+
+  return {width, line_height + padding.y * 2.0f};
+}
+
+void UI::center_next_window() {
+  const auto center = ImGui::GetMainViewport()->GetCenter();
+  ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+}
+
+void UI::spacing(uint32_t count) {
+  for (uint32_t i = 0; i < count; i++)
+    ImGui::Spacing();
+}
+
+void UI::align_right(float item_width) {
+  const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - item_width - ImGui::GetScrollX();
+  if (posX > ImGui::GetCursorPosX())
+    ImGui::SetCursorPosX(posX);
+}
+
+bool UI::property(const char* label, bool* flag, const char* tooltip) {
+  begin_property_grid(label, tooltip);
+  push_frame_style();
+  const bool modified = ImGui::Checkbox(id_buffer, flag);
+  pop_frame_style();
+  end_property_grid();
+  return modified;
+}
+
+bool UI::property(const char* label, int* value, const char** dropdown_strings, const int count, const char* tooltip) {
+  begin_property_grid(label, tooltip);
+
+  bool modified = false;
+  const char* current = dropdown_strings[*value];
+
+  if (ImGui::BeginCombo(id_buffer, current)) {
+    for (int i = 0; i < count; i++) {
+      const bool is_selected = current == dropdown_strings[i];
+      if (ImGui::Selectable(dropdown_strings[i], is_selected)) {
+        current = dropdown_strings[i];
+        *value = i;
+        modified = true;
+      }
+
+      if (is_selected)
+        ImGui::SetItemDefaultFocus();
+    }
+    ImGui::EndCombo();
+  }
+
+  end_property_grid();
+
+  return modified;
+}
+
+bool UI::texture_property(const char* label, UUID& texture_uuid, const char* tooltip) {
   begin_property_grid(label, tooltip);
   bool changed = false;
 
@@ -212,7 +173,16 @@ bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.35f, 0.35f, 0.35f, 1.0f});
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.25f, 0.25f, 0.25f, 1.0f});
 
-  auto texture_load_func = [](UUID* asset) {
+  static auto texture_load_func = [](UUID* asset, const std::string& path) {
+    if (!path.empty()) {
+      auto* asset_man = App::get_asset_manager();
+      if (auto new_texture = asset_man->import_asset(path)) {
+        *asset = new_texture;
+      }
+    }
+  };
+
+  auto dialog_load_func = [](UUID* asset) {
     const auto& window = App::get()->get_window();
     FileDialogFilter dialog_filters[] = {{.name = "Texture file", .pattern = "png"}};
     window.show_dialog({
@@ -229,11 +199,7 @@ bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset
               const auto first_path_len = std::strlen(first_path_cstr);
               const auto path = std::string(first_path_cstr, first_path_len);
 
-              if (!path.empty()) {
-                auto* asset_man = App::get_asset_manager();
-                *usr_d = asset_man->create_asset(AssetType::Texture, path);
-                asset_man->load_texture(*usr_d);
-              }
+              texture_load_func(usr_d, path);
             },
         .title = "Texture file",
         .default_path = fs::current_path(),
@@ -251,7 +217,7 @@ bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset
     auto texture = asset_man->get_texture(texture_uuid);
     if (texture) {
       if (ImGui::ImageButton(label, App::get()->get_imgui_layer()->add_image(*texture), {button_size, button_size})) {
-        texture_load_func(new_asset);
+        dialog_load_func(&texture_uuid);
         changed = true;
       }
       // tooltip
@@ -265,18 +231,17 @@ bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset
     }
   } else {
     if (ImGui::Button("NO\nTEXTURE", {button_size, button_size})) {
-      texture_load_func(new_asset);
+      dialog_load_func(&texture_uuid);
       changed = true;
     }
   }
   if (ImGui::BeginDragDropTarget()) {
-    // TODO: maybe take a callback for this
-    // if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload("CONTENT_BROWSER_ITEM")) {
-    //   const auto path = get_path_from_imgui_payload(payload);
-    //   *new_asset = asset_man->create_asset(AssetType::Texture, path);
-    //   asset_man->load_texture(*new_asset, {});
-    //   changed = true;
-    // }
+    if (const ImGuiPayload* payload = ImGui::AcceptDragDropPayload(PayloadData::DRAG_DROP_SOURCE)) {
+      const auto* p = PayloadData::from_payload(payload);
+      const auto path = p->get_str();
+      texture_load_func(&texture_uuid, path);
+      changed = true;
+    }
     ImGui::EndDragDropTarget();
   }
   ImGui::PopStyleColor(3);
@@ -286,7 +251,7 @@ bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset
   ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.3f, 0.3f, 0.3f, 1.0f});
   ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.2f, 0.2f, 0.2f, 1.0f});
   if (ImGui::Button("x", x_button_size)) {
-    *new_asset = UUID(nullptr);
+    texture_uuid = UUID(nullptr);
     changed = true;
   }
   ImGui::PopStyleColor(3);
@@ -296,97 +261,54 @@ bool ui::texture_property(const char* label, UUID& texture_uuid, UUID* new_asset
   return changed;
 }
 
-void ui::image(const Texture& texture,
-               ImVec2 size,
-               const ImVec2& uv0,
-               const ImVec2& uv1,
-               const ImVec4& tint_col,
-               const ImVec4& border_col) {
-  ImGui::Image(App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, tint_col, border_col);
-}
-
-void ui::image(vuk::Value<vuk::ImageAttachment>&& attch,
-               ImVec2 size,
-               const ImVec2& uv0,
-               const ImVec2& uv1,
-               const ImVec4& tint_col,
-               const ImVec4& border_col) {
-  ImGui::Image(App::get()->get_imgui_layer()->add_image(std::move(attch)), size, uv0, uv1, tint_col, border_col);
-}
-
-bool ui::image_button(const char* id,
-                      const Texture& texture,
-                      const ImVec2 size,
-                      const ImVec2& uv0,
-                      const ImVec2& uv1,
-                      const ImVec4& tint_col,
-                      const ImVec4& bg_col) {
-  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, bg_col, tint_col);
-}
-
-bool ui::draw_vec2_control(const char* label, glm::vec2& values, const char* tooltip, const float reset_value) {
-  bool changed = false;
-
-  begin_property_grid(label, tooltip);
-
-  push_frame_style(false);
-
-  const float x = ImGui::GetContentRegionAvail().x;
-  ImGui::PushMultiItemsWidths(2, x);
-
-  const float frame_height = ImGui::GetFrameHeight();
-  const ImVec2 button_size = {2.f, frame_height};
-
-  // X
-  {
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{1.0f, 1.0f, 1.0f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.9f, 0.2f, 0.2f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
-    if (ImGui::Button("##", button_size)) {
-      values.x = reset_value;
-    }
-    ImGui::PopStyleColor(4);
-
-    ImGui::SameLine();
-    if (ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f")) {
-      changed = true;
-    }
-    ImGui::PopItemWidth();
-    ImGui::PopStyleVar();
-  }
-
-  ImGui::SameLine();
-
-  // Y
-  {
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
-    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{1.0f, 1.0f, 1.0f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.3f, 0.8f, 0.3f, 1.0f});
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
-    if (ImGui::Button("##", button_size)) {
-      values.y = reset_value;
-    }
-    ImGui::PopStyleColor(4);
-
-    ImGui::SameLine();
-    if (ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f")) {
-      changed = true;
-    }
-    ImGui::PopItemWidth();
-    ImGui::PopStyleVar();
-  }
-
-  end_property_grid();
-
+bool UI::button(const char* label, const ImVec2& size, const char* tooltip) {
+  push_frame_style();
+  bool changed = ImGui::Button(label, size);
+  tooltip_hover(tooltip);
   pop_frame_style();
-
   return changed;
 }
 
-bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* tooltip, const float reset_value) {
+bool UI::toggle_button(const char* label,
+                       const bool state,
+                       const ImVec2 size,
+                       const float alpha,
+                       const float pressed_alpha,
+                       const ImGuiButtonFlags button_flags) {
+  if (state) {
+    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
+
+    color.w = pressed_alpha;
+    ImGui::PushStyleColor(ImGuiCol_Button, color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+  } else {
+    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Button];
+    ImVec4 hovered_color = ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered];
+    color.w = alpha;
+    hovered_color.w = pressed_alpha;
+    ImGui::PushStyleColor(ImGuiCol_Button, color);
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered_color);
+    color.w = pressed_alpha;
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+  }
+
+  const bool clicked = ImGui::ButtonEx(label, size, button_flags);
+
+  ImGui::PopStyleColor(3);
+
+  return clicked;
+}
+
+bool UI::input_text(
+    const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+  push_frame_style();
+  bool changed = ImGui::InputText(label, str, flags, callback, user_data);
+  pop_frame_style();
+  return changed;
+}
+
+bool UI::draw_vec3_control(const char* label, glm::vec3& values, const char* tooltip, const float reset_value) {
   bool changed = false;
 
   begin_property_grid(label, tooltip);
@@ -472,49 +394,97 @@ bool ui::draw_vec3_control(const char* label, glm::vec3& values, const char* too
   return changed;
 }
 
-bool ui::toggle_button(const char* label,
-                       const bool state,
-                       const ImVec2 size,
-                       const float alpha,
-                       const float pressed_alpha,
-                       const ImGuiButtonFlags button_flags) {
-  if (state) {
-    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_ButtonActive];
+bool UI::draw_vec2_control(const char* label, glm::vec2& values, const char* tooltip, const float reset_value) {
+  bool changed = false;
 
-    color.w = pressed_alpha;
-    ImGui::PushStyleColor(ImGuiCol_Button, color);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, color);
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
-  } else {
-    ImVec4 color = ImGui::GetStyle().Colors[ImGuiCol_Button];
-    ImVec4 hovered_color = ImGui::GetStyle().Colors[ImGuiCol_ButtonHovered];
-    color.w = alpha;
-    hovered_color.w = pressed_alpha;
-    ImGui::PushStyleColor(ImGuiCol_Button, color);
-    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, hovered_color);
-    color.w = pressed_alpha;
-    ImGui::PushStyleColor(ImGuiCol_ButtonActive, color);
+  begin_property_grid(label, tooltip);
+
+  push_frame_style(false);
+
+  const float x = ImGui::GetContentRegionAvail().x;
+  ImGui::PushMultiItemsWidths(2, x);
+
+  const float frame_height = ImGui::GetFrameHeight();
+  const ImVec2 button_size = {2.f, frame_height};
+
+  // X
+  {
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{1.0f, 1.0f, 1.0f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.9f, 0.2f, 0.2f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.8f, 0.1f, 0.15f, 1.0f});
+    if (ImGui::Button("##", button_size)) {
+      values.x = reset_value;
+    }
+    ImGui::PopStyleColor(4);
+
+    ImGui::SameLine();
+    if (ImGui::DragFloat("##X", &values.x, 0.1f, 0.0f, 0.0f, "%.2f")) {
+      changed = true;
+    }
+    ImGui::PopItemWidth();
+    ImGui::PopStyleVar();
   }
 
-  const bool clicked = ImGui::ButtonEx(label, size, button_flags);
+  ImGui::SameLine();
 
-  ImGui::PopStyleColor(3);
+  // Y
+  {
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2{0, 0});
+    ImGui::PushStyleColor(ImGuiCol_Text, ImVec4{1.0f, 1.0f, 1.0f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_Button, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4{0.3f, 0.8f, 0.3f, 1.0f});
+    ImGui::PushStyleColor(ImGuiCol_ButtonActive, ImVec4{0.2f, 0.7f, 0.2f, 1.0f});
+    if (ImGui::Button("##", button_size)) {
+      values.y = reset_value;
+    }
+    ImGui::PopStyleColor(4);
 
-  return clicked;
+    ImGui::SameLine();
+    if (ImGui::DragFloat("##Y", &values.y, 0.1f, 0.0f, 0.0f, "%.2f")) {
+      changed = true;
+    }
+    ImGui::PopItemWidth();
+    ImGui::PopStyleVar();
+  }
+
+  end_property_grid();
+
+  pop_frame_style();
+
+  return changed;
 }
 
-ImVec2 ui::get_icon_button_size(const char8_t* icon, const char* label) {
-  const float line_height = ImGui::GetTextLineHeight();
-  const ImVec2 padding = ImGui::GetStyle().FramePadding;
-
-  float width = ImGui::CalcTextSize(StringUtils::from_char8_t(icon)).x;
-  width += ImGui::CalcTextSize(label).x;
-  width += padding.x * 2.0f;
-
-  return {width, line_height + padding.y * 2.0f};
+void UI::image(const Texture& texture,
+               ImVec2 size,
+               const ImVec2& uv0,
+               const ImVec2& uv1,
+               const ImVec4& tint_col,
+               const ImVec4& border_col) {
+  ImGui::Image(App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, tint_col, border_col);
 }
 
-bool ui::icon_button(const char8_t* icon, const char* label, const ImVec4 icon_color) {
+void UI::image(vuk::Value<vuk::ImageAttachment>&& attch,
+               ImVec2 size,
+               const ImVec2& uv0,
+               const ImVec2& uv1,
+               const ImVec4& tint_col,
+               const ImVec4& border_col) {
+  ImGui::Image(App::get()->get_imgui_layer()->add_image(std::move(attch)), size, uv0, uv1, tint_col, border_col);
+}
+
+bool UI::image_button(const char* id,
+                      const Texture& texture,
+                      const ImVec2 size,
+                      const ImVec2& uv0,
+                      const ImVec2& uv1,
+                      const ImVec4& tint_col,
+                      const ImVec4& bg_col) {
+  return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, bg_col, tint_col);
+}
+
+bool UI::icon_button(const char8_t* icon, const char* label, const ImVec4 icon_color) {
   ImGui::PushID(label);
 
   const float line_height = ImGui::GetTextLineHeight();
@@ -539,7 +509,7 @@ bool ui::icon_button(const char8_t* icon, const char* label, const ImVec4 icon_c
   return clicked;
 }
 
-void ui::clipped_text(const ImVec2& pos_min,
+void UI::clipped_text(const ImVec2& pos_min,
                       const ImVec2& pos_max,
                       const char* text,
                       const char* text_end,
@@ -561,7 +531,7 @@ void ui::clipped_text(const ImVec2& pos_min,
     ImGui::LogRenderedText(&pos_min, text, text_display_end);
 }
 
-void ui::clipped_text(ImDrawList* draw_list,
+void UI::clipped_text(ImDrawList* draw_list,
                       const ImVec2& pos_min,
                       const ImVec2& pos_max,
                       const char* text,
@@ -592,37 +562,7 @@ void ui::clipped_text(ImDrawList* draw_list,
       nullptr, 0.0f, pos, ImGui::GetColorU32(ImGuiCol_Text), text, text_display_end, wrap_width, &fine_clip_rect);
 }
 
-void ui::spacing(const uint32_t count) {
-  for (uint32_t i = 0; i < count; i++)
-    ImGui::Spacing();
-}
-void ui::align_right(float item_width) {
-  const auto posX = ImGui::GetCursorPosX() + ImGui::GetColumnWidth() - item_width - ImGui::GetScrollX();
-  if (posX > ImGui::GetCursorPosX())
-    ImGui::SetCursorPosX(posX);
-}
-
-void ui::draw_gradient_shadow_bottom(const float scale) {
-  const auto draw_list = ImGui::GetWindowDrawList();
-  const auto pos = ImGui::GetWindowPos();
-  const auto window_height = ImGui::GetWindowHeight();
-  const auto window_width = ImGui::GetWindowWidth();
-
-  const ImRect bb(0, scale, pos.x + window_width, window_height + pos.y);
-  draw_list->AddRectFilledMultiColor(bb.Min,
-                                     bb.Max,
-                                     IM_COL32(20, 20, 20, 0),
-                                     IM_COL32(20, 20, 20, 0),
-                                     IM_COL32(20, 20, 20, 255),
-                                     IM_COL32(20, 20, 20, 255));
-}
-
-void ui::center_next_window() {
-  const auto center = ImGui::GetMainViewport()->GetCenter();
-  ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
-}
-
-void ui::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size, const ImVec2 padding, bool* visible) {
+void UI::draw_framerate_overlay(const ImVec2 work_pos, const ImVec2 work_size, const ImVec2 padding, bool* visible) {
   static int corner = 1;
   ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking |
                                   ImGuiWindowFlags_AlwaysAutoResize | ImGuiWindowFlags_NoSavedSettings |

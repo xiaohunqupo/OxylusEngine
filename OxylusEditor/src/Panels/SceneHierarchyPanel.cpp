@@ -11,9 +11,8 @@
 #include "Asset/Material.hpp"
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
+#include "EditorUI.hpp"
 #include "Scene/ECSModule/Core.hpp"
-#include "UI/ImGuiLayer.hpp"
-#include "UI/OxUI.hpp"
 #include "Utils/ImGuiScoped.hpp"
 #include "Utils/StringUtils.hpp"
 
@@ -389,7 +388,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
 
     const float filter_cursor_pos_x = ImGui::GetCursorPosX();
     _filter.Draw("###HierarchyFilter",
-                 ImGui::GetContentRegionAvail().x - (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
+                 ImGui::GetContentRegionAvail().x - (UI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
     ImGui::SameLine();
 
     if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLUS)))

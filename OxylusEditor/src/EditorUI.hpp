@@ -4,60 +4,52 @@
 #include <imgui_internal.h>
 #include <vuk/Value.hpp>
 
-namespace vuk {
-struct SampledImage;
-struct Texture;
-} // namespace vuk
+#include "Asset/Texture.hpp"
+#include "Core/UUID.hpp"
 
 namespace ox {
-struct UUID;
-class Texture;
-
-class ui {
+class UI {
 public:
+  static constexpr ImGuiTableFlags default_properties_flags = ImGuiTableFlags_BordersInnerV |
+                                                              ImGuiTableFlags_SizingStretchSame;
+
+  static int ui_context_id;
+  static int s_counter;
   static char id_buffer[16];
 
   static void push_id();
   static void pop_id();
 
-  static constexpr ImGuiTableFlags default_properties_flags = ImGuiTableFlags_BordersInnerV |
-                                                              ImGuiTableFlags_SizingStretchSame;
+  static void push_frame_style(bool on = true);
+  static void pop_frame_style();
+
   static bool
   begin_properties(ImGuiTableFlags flags = default_properties_flags, bool fixed_width = false, float width = 0.4f);
   static void end_properties();
 
-  static void begin_property_grid(const char* label, const char* tooltip, bool align_text_right = false);
+  static void begin_property_grid(const char* label, const char* tooltip, const bool align_text_right = false);
   static void end_property_grid();
 
-  static void push_frame_style(bool on = true);
-  static void pop_frame_style();
+  static void tooltip_hover(const char* text);
 
-  static bool button(const char* label, const ImVec2& size = ImVec2(0, 0), const char* tooltip = nullptr);
+  static ImVec2 get_icon_button_size(const char8_t* icon, const char* label);
 
-  static bool checkbox(const char* label, bool* v);
+  static void center_next_window();
 
-  static bool
-  combo(const char* label, int* value, const char** dropdown_strings, int count, const char* tooltip = nullptr);
+  static void spacing(const uint32_t count);
 
-  static bool input_text(const char* label,
-                         std::string* str,
-                         ImGuiInputTextFlags flags = 0,
-                         ImGuiInputTextCallback callback = NULL,
-                         void* user_data = NULL);
+  static void align_right(float item_width);
 
-  // Text
-  static void text(const char* text1, const char* text2, const char* tooltip = nullptr);
+  // --- Properties ---
 
   // Bool
   static bool property(const char* label, bool* flag, const char* tooltip = nullptr);
-
-  // InputField
-  static bool property(const char* label, std::string* text, ImGuiInputFlags flags = 0, const char* tooltip = nullptr);
 
   // Dropdown
   static bool
   property(const char* label, int* value, const char** dropdown_strings, int count, const char* tooltip = nullptr);
 
+  // Drag
   template <std::integral T>
   static bool
   property(const char* label, T* value, T min = 0, T max = 0, float speed = 1.0f, const char* tooltip = nullptr) {
@@ -94,6 +86,7 @@ public:
     return modified;
   }
 
+  // Drag
   template <std::floating_point T>
   static bool property(const char* label,
                        T* value,
@@ -141,11 +134,32 @@ public:
     return modified;
   }
 
-  // should be called after the item
-  static void tooltip_hover(const char* text);
-
   // Texture
-  static bool texture_property(const char* label, UUID& texture_uuid, UUID* new_asset, const char* tooltip = nullptr);
+  static bool texture_property(const char* label, UUID& texture_uuid, const char* tooltip = nullptr);
+
+  static bool button(const char* label, const ImVec2& size = ImVec2(0, 0), const char* tooltip = nullptr);
+
+  static bool toggle_button(const char* label,
+                            bool state,
+                            ImVec2 size = {0, 0},
+                            float alpha = 1.0f,
+                            float pressed_alpha = 1.0f,
+                            ImGuiButtonFlags button_flags = ImGuiButtonFlags_None);
+
+  static bool input_text(const char* label,
+                         std::string* str,
+                         ImGuiInputTextFlags flags = 0,
+                         ImGuiInputTextCallback callback = NULL,
+                         void* user_data = NULL);
+
+  // Vec3 with reset button
+  static bool
+  draw_vec3_control(const char* label, glm::vec3& values, const char* tooltip = nullptr, float reset_value = 0.0f);
+
+  static bool draw_vec2_control(const char* label,
+                                glm::vec2& values,
+                                const char* tooltip = nullptr,
+                                const float reset_value = 0.0f);
 
   static void image(vuk::Value<vuk::ImageAttachment>&& attch,
                     ImVec2 size,
@@ -170,25 +184,8 @@ public:
                            const ImVec4& tint_col = ImVec4(1, 1, 1, 1),
                            const ImVec4& bg_col = ImVec4(0, 0, 0, 0));
 
-  // Vec3 with reset button
-  static bool
-  draw_vec3_control(const char* label, glm::vec3& values, const char* tooltip = nullptr, float reset_value = 0.0f);
-
-  static bool draw_vec2_control(const char* label,
-                                glm::vec2& values,
-                                const char* tooltip = nullptr,
-                                const float reset_value = 0.0f);
-
-  static bool toggle_button(const char* label,
-                            bool state,
-                            ImVec2 size = {0, 0},
-                            float alpha = 1.0f,
-                            float pressed_alpha = 1.0f,
-                            ImGuiButtonFlags button_flags = ImGuiButtonFlags_None);
-
-  static ImVec2 get_icon_button_size(const char8_t* icon, const char* label);
-
   static bool icon_button(const char8_t* icon, const char* label, ImVec4 icon_color = {0.537f, 0.753f, 0.286f, 1.0f});
+
   static void clipped_text(const ImVec2& pos_min,
                            const ImVec2& pos_max,
                            const char* text,
@@ -207,18 +204,7 @@ public:
                            const ImRect* clip_rect,
                            float wrap_width);
 
-  static void spacing(uint32_t count = 1);
-
-  static void align_right(float item_width);
-
-  // bigger scale = smaller gradient
-  static void draw_gradient_shadow_bottom(float scale = 600.f);
-
-  static void center_next_window();
-
   static void
   draw_framerate_overlay(ImVec2 work_pos = {}, ImVec2 work_size = {}, ImVec2 padding = {}, bool* visible = nullptr);
-
-  static ImVec2 to_imvec2(glm::vec2 v) { return ImVec2(v.x, v.y); }
-}; // namespace ui
+};
 } // namespace ox

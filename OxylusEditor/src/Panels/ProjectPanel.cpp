@@ -4,12 +4,11 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
-#include "Asset/Texture.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Project.hpp"
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
-#include "UI/OxUI.hpp"
+#include "EditorUI.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/StringUtils.hpp"
 
@@ -45,7 +44,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
                          ImGuiWindowFlags_NoDecoration | ImGuiWindowFlags_NoDocking;
   static bool draw_new_project_panel = false;
 
-  ui::center_next_window();
+  UI::center_next_window();
   if (ImGui::BeginPopupModal("ProjectSelector", nullptr, flags)) {
     const float x = ImGui::GetContentRegionAvail().x;
     const float y = ImGui::GetFrameHeight();
@@ -55,16 +54,16 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
     const auto& window = App::get()->get_window();
     const f32 scale = window.get_content_scale();
 
-    ui::image(*EditorLayer::get()->engine_banner,
+    UI::image(*EditorLayer::get()->engine_banner,
               {static_cast<float>(banner_size.width) * scale, static_cast<float>(banner_size.height) * scale});
-    ui::spacing(2);
+    UI::spacing(2);
     ImGui::SeparatorText("Projects");
-    ui::spacing(2);
+    UI::spacing(2);
 
     if (draw_new_project_panel) {
-      ui::begin_properties();
+      UI::begin_properties();
       {
-        ui::begin_property_grid("Directory", nullptr, false);
+        UI::begin_property_grid("Directory", nullptr, false);
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.8f);
         ImGui::InputText("##Directory", &new_project_dir, flags);
         ImGui::SameLine();
@@ -75,27 +74,27 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
               .user_data = this,
               .callback =
                   [](void* user_data, const c8* const* files, i32) {
-            auto* panel = static_cast<ProjectPanel*>(user_data);
-            if (!files || !*files) {
-              return;
-            }
+                    auto* panel = static_cast<ProjectPanel*>(user_data);
+                    if (!files || !*files) {
+                      return;
+                    }
 
-            const auto first_path_cstr = *files;
-            const auto first_path_len = std::strlen(first_path_cstr);
-            panel->new_project_dir = std::string(first_path_cstr, first_path_len);
-            panel->new_project_dir = fs::append_paths(panel->new_project_dir, panel->new_project_name);
-          },
+                    const auto first_path_cstr = *files;
+                    const auto first_path_len = std::strlen(first_path_cstr);
+                    panel->new_project_dir = std::string(first_path_cstr, first_path_len);
+                    panel->new_project_dir = fs::append_paths(panel->new_project_dir, panel->new_project_name);
+                  },
               .title = "Project dir...",
               .default_path = fs::current_path(),
               .filters = dialog_filters,
               .multi_select = false,
           });
         }
-        ui::end_property_grid();
+        UI::end_property_grid();
       }
-      ui::property("Name", &new_project_name);
-      ui::property("Asset Directory", &new_project_asset_dir);
-      ui::end_properties();
+      UI::input_text("Name", &new_project_name);
+      UI::input_text("Asset Directory", &new_project_asset_dir);
+      UI::end_properties();
       ImGui::Separator();
       ImGui::SetNextItemWidth(-1);
       if (ImGui::Button("Create", ImVec2(120, 0))) {
@@ -129,31 +128,31 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
             .user_data = this,
             .callback =
                 [](void* user_data, const c8* const* files, i32) {
-          auto* usr_data = static_cast<ProjectPanel*>(user_data);
-          if (!files || !*files) {
-            return;
-          }
+                  auto* usr_data = static_cast<ProjectPanel*>(user_data);
+                  if (!files || !*files) {
+                    return;
+                  }
 
-          const auto first_path_cstr = *files;
-          const auto first_path_len = std::strlen(first_path_cstr);
-          const auto path = std::string(first_path_cstr, first_path_len);
-          if (!path.empty()) {
-            usr_data->load_project_for_editor(path);
-          }
-        },
+                  const auto first_path_cstr = *files;
+                  const auto first_path_len = std::strlen(first_path_cstr);
+                  const auto path = std::string(first_path_cstr, first_path_len);
+                  if (!path.empty()) {
+                    usr_data->load_project_for_editor(path);
+                  }
+                },
             .title = "Open project...",
             .default_path = fs::current_path(),
             .filters = dialog_filters,
             .multi_select = false,
         });
       }
-      ui::align_right(ImVec2(120, 0).x);
+      UI::align_right(ImVec2(120, 0).x);
       if (ImGui::Button("Skip", ImVec2(120, 0))) {
         visible = false;
         ImGui::CloseCurrentPopup();
       }
     }
-    ui::spacing(4);
+    UI::spacing(4);
     ImGui::EndPopup();
   }
 }

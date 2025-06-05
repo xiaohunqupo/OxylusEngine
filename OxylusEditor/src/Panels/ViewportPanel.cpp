@@ -7,13 +7,13 @@
 #include "Asset/AssetManager.hpp"
 #include "Core/Input.hpp"
 #include "EditorLayer.hpp"
+#include "EditorUI.hpp"
 #include "Render/Camera.hpp"
 #include "Render/RenderPipeline.hpp"
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Scene/ECSModule/Core.hpp"
 #include "UI/ImGuiLayer.hpp"
-#include "UI/OxUI.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/OxMath.hpp"
 #include "Utils/PayloadData.hpp"
@@ -54,7 +54,7 @@ void show_component_gizmo(const char8_t* icon,
 
         ImGui::PopStyleColor(2);
 
-        ui::tooltip_hover(name.data());
+        UI::tooltip_hover(name.data());
       });
 }
 
@@ -92,14 +92,14 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
     ImGui::SetNextWindowSize({300.f, 0.f});
     if (ImGui::BeginPopup("ViewportSettings")) {
-      ui::begin_properties();
-      ui::property("VSync", (bool*)RendererCVar::cvar_vsync.get_ptr());
-      ui::property<float>("Camera sensitivity", EditorCVar::cvar_camera_sens.get_ptr(), 0.1f, 20.0f);
-      ui::property<float>("Movement speed", EditorCVar::cvar_camera_speed.get_ptr(), 5, 100.0f);
-      ui::property("Smooth camera", (bool*)EditorCVar::cvar_camera_smooth.get_ptr());
-      ui::property("Camera zoom", EditorCVar::cvar_camera_zoom.get_ptr(), 1, 100);
-      ui::property<float>("Grid distance", RendererCVar::cvar_draw_grid_distance.get_ptr(), 10.f, 100.0f);
-      ui::end_properties();
+      UI::begin_properties();
+      UI::property("VSync", (bool*)RendererCVar::cvar_vsync.get_ptr());
+      UI::property<float>("Camera sensitivity", EditorCVar::cvar_camera_sens.get_ptr(), 0.1f, 20.0f);
+      UI::property<float>("Movement speed", EditorCVar::cvar_camera_speed.get_ptr(), 5, 100.0f);
+      UI::property("Smooth camera", (bool*)EditorCVar::cvar_camera_smooth.get_ptr());
+      UI::property("Camera zoom", EditorCVar::cvar_camera_zoom.get_ptr(), 1, 100);
+      UI::property<float>("Grid distance", RendererCVar::cvar_draw_grid_distance.get_ptr(), 10.f, 100.0f);
+      UI::end_properties();
       ImGui::EndPopup();
     }
 
@@ -249,44 +249,44 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         last_mouse_position = mouse_pos;
 
         constexpr float alpha = 0.6f;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW),
+        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW),
                               _gizmo_type == ImGuizmo::TRANSLATE,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_type = ImGuizmo::TRANSLATE;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D),
+        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D),
                               _gizmo_type == ImGuizmo::ROTATE,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_type = ImGuizmo::ROTATE;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND),
+        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND),
                               _gizmo_type == ImGuizmo::SCALE,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_type = ImGuizmo::SCALE;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE),
+        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE),
                               _gizmo_type == ImGuizmo::BOUNDS,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_type = ImGuizmo::BOUNDS;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL),
+        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL),
                               _gizmo_type == ImGuizmo::UNIVERSAL,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_type = ImGuizmo::UNIVERSAL;
-        if (ui::toggle_button(_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
+        if (UI::toggle_button(_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
                                                              : StringUtils::from_char8_t(ICON_MDI_EARTH_OFF),
                               _gizmo_mode == ImGuizmo::WORLD,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_mode = _gizmo_mode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
-        if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID),
+        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID),
                               RendererCVar::cvar_draw_grid.get(),
                               button_size,
                               alpha,
@@ -295,7 +295,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
         if (editor_camera.has<CameraComponent>()) {
           auto* cam = editor_camera.get_mut<CameraComponent>();
-          if (ui::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
+          if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
                                 cam->projection == CameraComponent::Projection::Orthographic,
                                 button_size,
                                 alpha,
@@ -326,7 +326,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         const bool highlight = EditorLayer::get()->scene_state == EditorLayer::SceneState::Play;
         const char8_t* icon = EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
                                                                                                : ICON_MDI_STOP;
-        if (ui::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
+        if (UI::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
           if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit)
             EditorLayer::get()->on_scene_play();
           else if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Play)
@@ -464,7 +464,7 @@ void ViewportPanel::on_update() {
 void ViewportPanel::draw_performance_overlay() {
   if (!performance_overlay_visible)
     return;
-  ui::draw_framerate_overlay(ImVec2(_viewport_position.x, _viewport_position.y),
+  UI::draw_framerate_overlay(ImVec2(_viewport_position.x, _viewport_position.y),
                              ImVec2(_viewport_panel_size.x, _viewport_panel_size.y),
                              {15, 55},
                              &performance_overlay_visible);

@@ -12,6 +12,7 @@
 #include "Core/Input.hpp"
 #include "Core/Project.hpp"
 #include "EditorTheme.hpp"
+#include "EditorUI.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/EditorSettingsPanel.hpp"
 #include "Panels/InspectorPanel.hpp"
@@ -21,7 +22,6 @@
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
 #include "UI/ImGuiLayer.hpp"
-#include "UI/OxUI.hpp"
 #include "Utils/CVars.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/EmbeddedBanner.hpp"
@@ -225,13 +225,13 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
         if (ImGui::BeginMenu("Assets")) {
           if (ImGui::MenuItem("Asset Manager")) {
           }
-          ui::tooltip_hover("WIP");
+          UI::tooltip_hover("WIP");
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Help")) {
           if (ImGui::MenuItem("About")) {
           }
-          ui::tooltip_hover("WIP");
+          UI::tooltip_hover("WIP");
           ImGui::EndMenu();
         }
         ImGui::SameLine();

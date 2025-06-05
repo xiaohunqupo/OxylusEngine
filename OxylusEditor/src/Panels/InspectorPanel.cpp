@@ -10,9 +10,9 @@
 #include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
 #include "EditorTheme.hpp"
+#include "EditorUI.hpp"
 #include "Render/ParticleSystem.hpp"
 #include "Scene/ECSModule/Core.hpp"
-#include "UI/OxUI.hpp"
 #include "Utils/ColorUtils.hpp"
 #include "Utils/PayloadData.hpp"
 #include "Utils/StringUtils.hpp"
@@ -92,7 +92,7 @@ void draw_component(const char* name, flecs::entity entity, UIFunction ui_functi
 
     const float frame_height = ImGui::GetFrameHeight();
     ImGui::SameLine(ImGui::GetContentRegionMax().x - frame_height * 1.2f);
-    if (ui::button(StringUtils::from_char8_t(ICON_MDI_SETTINGS), ImVec2{frame_height * 1.2f, frame_height}))
+    if (UI::button(StringUtils::from_char8_t(ICON_MDI_SETTINGS), ImVec2{frame_height * 1.2f, frame_height}))
       ImGui::OpenPopup("ComponentSettings");
 
     if (ImGui::BeginPopup("ComponentSettings")) {
@@ -127,7 +127,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
 
     const float x = ImGui::GetContentRegionAvail().x / 2;
     const float y = ImGui::GetFrameHeight();
-    if (ui::button(load_str.c_str(), {x, y})) {
+    if (UI::button(load_str.c_str(), {x, y})) {
       FileDialogFilter dialog_filters[] = {{.name = "Asset (.oxasset)", .pattern = "oxasset"}};
       window.show_dialog({
           .kind = DialogKind::OpenFile,
@@ -169,7 +169,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
     ImGui::SameLine();
 
     auto save_str = fmt::format("{} Save", StringUtils::from_char8_t(ICON_MDI_FILE_DOWNLOAD));
-    if (ui::button(save_str.c_str(), {x, y})) {
+    if (UI::button(save_str.c_str(), {x, y})) {
       FileDialogFilter dialog_filters[] = {{.name = "Asset (.oxasset)", .pattern = "oxasset"}};
       window.show_dialog({
           .kind = DialogKind::SaveFile,
@@ -208,10 +208,10 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
     }
   }
 
-  ui::begin_properties(ui::default_properties_flags);
+  UI::begin_properties(UI::default_properties_flags);
 
   const char* alpha_modes[] = {"Opaque", "Mash", "Blend"};
-  ui::property("Alpha mode", reinterpret_cast<int*>(&material->alpha_mode), alpha_modes, 3);
+  UI::property("Alpha mode", reinterpret_cast<int*>(&material->alpha_mode), alpha_modes, 3);
 
   const char* samplers[] = {
       "LinearRepeated",
@@ -220,49 +220,32 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
       "NearestClamped",
       "LinearRepeatedAnisotropy",
   };
-  ui::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 5);
+  UI::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 5);
 
-  ui::property_vector<glm::vec2>("UV Size", material->uv_size, 0.1f, 10.f);
-  ui::property_vector<glm::vec2>("UV Offset", material->uv_offset, -10.0f, 10.f);
+  UI::property_vector<glm::vec2>("UV Size", material->uv_size, 0.1f, 10.f);
+  UI::property_vector<glm::vec2>("UV Offset", material->uv_offset, -10.0f, 10.f);
 
-  ui::property_vector("Color", material->albedo_color, true, true);
+  UI::property_vector("Color", material->albedo_color, true, true);
 
-  auto* asset_man = App::get_asset_manager();
-
-  if (UUID new_asset = {}; ui::texture_property("Albedo", material->albedo_texture, &new_asset)) {
-    asset_man->unload_texture(material->albedo_texture);
-    material->albedo_texture = new_asset;
-  }
-
-  if (UUID new_asset = {}; ui::texture_property("Normal", material->normal_texture, &new_asset)) {
-    asset_man->unload_texture(material->normal_texture);
-    material->normal_texture = new_asset;
-  }
-
-  if (UUID new_asset = {}; ui::texture_property("Emissive", material->emissive_texture, &new_asset)) {
-    asset_man->unload_texture(material->emissive_texture);
-    material->emissive_texture = new_asset;
-  }
+  // NOTE: These properties leak when the old textures are discared.
+  // Since in editor you can manually free the old loaded textures
+  // for fast iterations I'll leave this behaviour.
+  UI::texture_property("Albedo", material->albedo_texture);
+  UI::texture_property("Normal", material->normal_texture);
+  UI::texture_property("Emissive", material->emissive_texture);
   if (material->emissive_texture) {
-    ui::property_vector("Emissive Color", material->emissive_color, true, true);
+    UI::property_vector("Emissive Color", material->emissive_color, true, true);
   }
 
-  if (UUID new_asset = {};
-      ui::texture_property("Metallic Roughness", material->metallic_roughness_texture, &new_asset)) {
-    asset_man->unload_texture(material->metallic_roughness_texture);
-    material->metallic_roughness_texture = new_asset;
-  }
+  UI::texture_property("Metallic Roughness", material->metallic_roughness_texture);
   if (material->metallic_roughness_texture) {
-    ui::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
-    ui::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
+    UI::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
+    UI::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
   }
 
-  if (UUID new_asset = {}; ui::texture_property("Occlusion", material->occlusion_texture, &new_asset)) {
-    asset_man->unload_texture(material->occlusion_texture);
-    material->occlusion_texture = new_asset;
-  }
+  UI::texture_property("Occlusion", material->occlusion_texture);
 
-  ui::end_properties();
+  UI::end_properties();
 }
 
 template <typename T>
@@ -275,23 +258,23 @@ static void draw_particle_over_lifetime_module(const std::string_view module_nam
                                                    ImGuiTreeNodeFlags_FramePadding;
 
   if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
-    ui::begin_properties();
-    ui::texture_property("Enabled", &property_module.enabled);
+    UI::begin_properties();
+    UI::texture_property("Enabled", &property_module.enabled);
 
     if (rotation) {
       T degrees = glm::degrees(property_module.start);
-      if (ui::property_vector("Start", degrees))
+      if (UI::property_vector("Start", degrees))
         property_module.start = glm::radians(degrees);
 
       degrees = glm::degrees(property_module.end);
-      if (ui::property_vector("End", degrees))
+      if (UI::property_vector("End", degrees))
         property_module.end = glm::radians(degrees);
     } else {
-      ui::property_vector("Start", property_module.start, color);
-      ui::property_vector("End", property_module.end, color);
+      UI::property_vector("Start", property_module.start, color);
+      UI::property_vector("End", property_module.end, color);
     }
 
-    ui::end_properties();
+    UI::end_properties();
 
     ImGui::TreePop();
   }
@@ -307,25 +290,25 @@ static void draw_particle_by_speed_module(const std::string_view module_name,
                                                    ImGuiTreeNodeFlags_FramePadding;
 
   if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
-    ui::begin_properties();
-    ui::texture_property("Enabled", &property_module.enabled);
+    UI::begin_properties();
+    UI::texture_property("Enabled", &property_module.enabled);
 
     if (rotation) {
       T degrees = glm::degrees(property_module.start);
-      if (ui::property_vector("Start", degrees))
+      if (UI::property_vector("Start", degrees))
         property_module.start = glm::radians(degrees);
 
       degrees = glm::degrees(property_module.end);
-      if (ui::property_vector("End", degrees))
+      if (UI::property_vector("End", degrees))
         property_module.end = glm::radians(degrees);
     } else {
-      ui::property_vector("Start", property_module.start, color);
-      ui::property_vector("End", property_module.end, color);
+      UI::property_vector("Start", property_module.start, color);
+      UI::property_vector("End", property_module.end, color);
     }
 
-    ui::texture_property("Min Speed", &property_module.min_speed);
-    ui::texture_property("Max Speed", &property_module.max_speed);
-    ui::end_properties();
+    UI::texture_property("Min Speed", &property_module.min_speed);
+    UI::texture_property("Max Speed", &property_module.max_speed);
+    UI::end_properties();
     ImGui::TreePop();
   }
 }
@@ -346,13 +329,13 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   static std::string new_name = entity.name().c_str();
   if (_rename_entity)
     ImGui::SetKeyboardFocusHere();
-  if (ui::input_text("##Tag", &new_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
+  if (UI::input_text("##Tag", &new_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
     entity.set_name(new_name.c_str());
   }
   ImGui::PopItemWidth();
   ImGui::SameLine();
 
-  if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLUS))) {
+  if (UI::button(StringUtils::from_char8_t(ICON_MDI_PLUS))) {
     ImGui::OpenPopup("Add Component");
   }
   if (ImGui::BeginPopup("Add Component")) {
@@ -381,19 +364,19 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
   draw_component<TransformComponent>(
       " Transform Component", entity, [](TransformComponent& component, flecs::entity e) {
-        ui::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV);
-        if (ui::draw_vec3_control("Translation", component.position)) {
+        UI::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV);
+        if (UI::draw_vec3_control("Translation", component.position)) {
           e.modified<TransformComponent>();
         }
         glm::vec3 rotation = glm::degrees(component.rotation);
-        if (ui::draw_vec3_control("Rotation", rotation)) {
+        if (UI::draw_vec3_control("Rotation", rotation)) {
           component.rotation = glm::radians(rotation);
           e.modified<TransformComponent>();
         }
-        if (ui::draw_vec3_control("Scale", component.scale, nullptr, 1.0f)) {
+        if (UI::draw_vec3_control("Scale", component.scale, nullptr, 1.0f)) {
           e.modified<TransformComponent>();
         }
-        ui::end_properties();
+        UI::end_properties();
       });
 
   draw_component<MeshComponent>(" Mesh Component", entity, [](MeshComponent& component, flecs::entity e) {
@@ -401,11 +384,11 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   });
 
   draw_component<SpriteComponent>(" Sprite Component", entity, [](SpriteComponent& component, flecs::entity e) {
-    ui::begin_properties();
-    ui::property("Layer", &component.layer);
-    ui::property("SortY", &component.sort_y);
-    ui::property("FlipX", &component.flip_x);
-    ui::end_properties();
+    UI::begin_properties();
+    UI::property("Layer", &component.layer);
+    UI::property("SortY", &component.sort_y);
+    UI::property("FlipX", &component.flip_x);
+    UI::end_properties();
 
     ImGui::SeparatorText("Material");
 
@@ -430,23 +413,23 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
   draw_component<SpriteAnimationComponent>(
       " Sprite Animation Component", entity, [](SpriteAnimationComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        if (ui::property("Number of frames", &component.num_frames))
+        UI::begin_properties();
+        if (UI::property("Number of frames", &component.num_frames))
           component.reset();
-        if (ui::property("Loop", &component.loop))
+        if (UI::property("Loop", &component.loop))
           component.reset();
-        if (ui::property("Inverted", &component.inverted))
+        if (UI::property("Inverted", &component.inverted))
           component.reset();
-        if (ui::property("Frames per second", &component.fps))
+        if (UI::property("Frames per second", &component.fps))
           component.reset();
-        if (ui::property("Columns", &component.columns))
+        if (UI::property("Columns", &component.columns))
           component.reset();
-        if (ui::draw_vec2_control("Frame size", component.frame_size))
+        if (UI::draw_vec2_control("Frame size", component.frame_size))
           component.reset();
         const float x = ImGui::GetContentRegionAvail().x;
         const float y = ImGui::GetFrameHeight();
         ImGui::Spacing();
-        if (ui::button("Auto", {x, y})) {
+        if (UI::button("Auto", {x, y})) {
           if (const auto* sc = e.get<SpriteComponent>()) {
             auto asset_man = App::get_asset_manager();
             if (const auto* material = asset_man->get_material(sc->material)) {
@@ -456,17 +439,17 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
             }
           }
         }
-        ui::end_properties();
+        UI::end_properties();
       });
 
   draw_component<AutoExposureComponent>(
       " Auto Exposure Component", entity, [](AutoExposureComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property("Min Exposure", &component.min_exposure);
-        ui::property("Max Exposure", &component.max_exposure);
-        ui::property("Adaptation Speed", &component.adaptation_speed);
-        ui::property("EV100 Bias", &component.ev100_bias);
-        ui::end_properties();
+        UI::begin_properties();
+        UI::property("Min Exposure", &component.min_exposure);
+        UI::property("Max Exposure", &component.max_exposure);
+        UI::property("Adaptation Speed", &component.adaptation_speed);
+        UI::property("EV100 Bias", &component.ev100_bias);
+        UI::end_properties();
       });
 
   draw_component<AudioSourceComponent>(
@@ -481,7 +464,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
         const float x = ImGui::GetContentRegionAvail().x;
         const float y = ImGui::GetFrameHeight();
-        if (ui::button(filepath.c_str(), {x, y})) {
+        if (UI::button(filepath.c_str(), {x, y})) {
           const auto& window = App::get()->get_window();
           FileDialogFilter dialog_filters[] = {{.name = "Audio file(.mp3, .wav, .flac)", .pattern = "mp3;wav;flac"}};
           window.show_dialog({
@@ -534,156 +517,156 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
         auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
 
-        ui::begin_properties();
-        if (ui::property("Volume Multiplier", &component.volume))
+        UI::begin_properties();
+        if (UI::property("Volume Multiplier", &component.volume))
           audio_engine->set_source_volume(audio_asset->get_source(), component.volume);
-        if (ui::property("Pitch Multiplier", &component.pitch))
+        if (UI::property("Pitch Multiplier", &component.pitch))
           audio_engine->set_source_pitch(audio_asset->get_source(), component.pitch);
-        if (ui::property("Looping", &component.looping))
+        if (UI::property("Looping", &component.looping))
           audio_engine->set_source_looping(audio_asset->get_source(), component.looping);
-        ui::property("Play On Awake", &component.play_on_awake);
-        ui::end_properties();
+        UI::property("Play On Awake", &component.play_on_awake);
+        UI::end_properties();
 
         ImGui::Spacing();
-        if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLAY "Play ")))
+        if (UI::button(StringUtils::from_char8_t(ICON_MDI_PLAY "Play ")))
           audio_engine->play_source(audio_asset->get_source());
         ImGui::SameLine();
-        if (ui::button(StringUtils::from_char8_t(ICON_MDI_PAUSE "Pause ")))
+        if (UI::button(StringUtils::from_char8_t(ICON_MDI_PAUSE "Pause ")))
           audio_engine->pause_source(audio_asset->get_source());
         ImGui::SameLine();
-        if (ui::button(StringUtils::from_char8_t(ICON_MDI_STOP "Stop ")))
+        if (UI::button(StringUtils::from_char8_t(ICON_MDI_STOP "Stop ")))
           audio_engine->stop_source(audio_asset->get_source());
         ImGui::Spacing();
 
-        ui::begin_properties();
-        ui::property("Spatialization", &component.spatialization);
+        UI::begin_properties();
+        UI::property("Spatialization", &component.spatialization);
 
         if (component.spatialization) {
           ImGui::Indent();
           const char* attenuation_type_strings[] = {"None", "Inverse", "Linear", "Exponential"};
           int attenuation_type = static_cast<int>(component.attenuation_model);
-          if (ui::property("Attenuation Model", &attenuation_type, attenuation_type_strings, 4)) {
+          if (UI::property("Attenuation Model", &attenuation_type, attenuation_type_strings, 4)) {
             component.attenuation_model = static_cast<AttenuationModelType>(attenuation_type);
             audio_engine->set_source_attenuation_model(audio_asset->get_source(), component.attenuation_model);
           }
-          if (ui::property("Roll Off", &component.roll_off))
+          if (UI::property("Roll Off", &component.roll_off))
             audio_engine->set_source_roll_off(audio_asset->get_source(), component.roll_off);
-          if (ui::property("Min Gain", &component.min_gain))
+          if (UI::property("Min Gain", &component.min_gain))
             audio_engine->set_source_min_gain(audio_asset->get_source(), component.min_gain);
-          if (ui::property("Max Gain", &component.max_gain))
+          if (UI::property("Max Gain", &component.max_gain))
             audio_engine->set_source_max_gain(audio_asset->get_source(), component.max_gain);
-          if (ui::property("Min Distance", &component.min_distance))
+          if (UI::property("Min Distance", &component.min_distance))
             audio_engine->set_source_min_distance(audio_asset->get_source(), component.min_distance);
-          if (ui::property("Max Distance", &component.max_distance))
+          if (UI::property("Max Distance", &component.max_distance))
             audio_engine->set_source_max_distance(audio_asset->get_source(), component.max_distance);
           float degrees = glm::degrees(component.cone_inner_angle);
-          if (ui::property("Cone Inner Angle", &degrees))
+          if (UI::property("Cone Inner Angle", &degrees))
             component.cone_inner_angle = glm::radians(degrees);
           degrees = glm::degrees(component.cone_outer_angle);
-          if (ui::property("Cone Outer Angle", &degrees))
+          if (UI::property("Cone Outer Angle", &degrees))
             component.cone_outer_angle = glm::radians(degrees);
-          ui::property("Cone Outer Gain", &component.cone_outer_gain);
-          ui::property("Doppler Factor", &component.doppler_factor);
+          UI::property("Cone Outer Gain", &component.cone_outer_gain);
+          UI::property("Doppler Factor", &component.doppler_factor);
           audio_engine->set_source_cone(audio_asset->get_source(),
                                         component.cone_inner_angle,
                                         component.cone_outer_angle,
                                         component.cone_outer_gain);
           ImGui::Unindent();
         }
-        ui::end_properties();
+        UI::end_properties();
       });
 
   draw_component<AudioListenerComponent>(
       " Audio Listener Component", entity, [](AudioListenerComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property("Active", &component.active);
+        UI::begin_properties();
+        UI::property("Active", &component.active);
         float degrees = glm::degrees(component.cone_inner_angle);
-        if (ui::property("Cone Inner Angle", &degrees))
+        if (UI::property("Cone Inner Angle", &degrees))
           component.cone_inner_angle = glm::radians(degrees);
         degrees = glm::degrees(component.cone_outer_angle);
-        if (ui::property("Cone Outer Angle", &degrees))
+        if (UI::property("Cone Outer Angle", &degrees))
           component.cone_outer_angle = glm::radians(degrees);
-        ui::property("Cone Outer Gain", &component.cone_outer_gain);
+        UI::property("Cone Outer Gain", &component.cone_outer_gain);
 
         auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
         audio_engine->set_listener_cone(component.listener_index,
                                         component.cone_inner_angle,
                                         component.cone_outer_angle,
                                         component.cone_outer_gain);
-        ui::end_properties();
+        UI::end_properties();
       });
 
   draw_component<LightComponent>(" Light Component", entity, [](LightComponent& component, flecs::entity e) {
-    ui::begin_properties();
+    UI::begin_properties();
     const char* light_type_strings[] = {"Directional", "Point", "Spot"};
     int light_type = component.type;
-    if (ui::property("Light Type", &light_type, light_type_strings, 3))
+    if (UI::property("Light Type", &light_type, light_type_strings, 3))
       component.type = static_cast<LightComponent::LightType>(light_type);
 
-    if (ui::property("Color Temperature Mode", &component.color_temperature_mode) && component.color_temperature_mode) {
+    if (UI::property("Color Temperature Mode", &component.color_temperature_mode) && component.color_temperature_mode) {
       ColorUtils::TempratureToColor(component.temperature, component.color);
     }
 
     if (component.color_temperature_mode) {
-      if (ui::property<u32>("Temperature (K)", &component.temperature, 1000, 40000))
+      if (UI::property<u32>("Temperature (K)", &component.temperature, 1000, 40000))
         ColorUtils::TempratureToColor(component.temperature, component.color);
     } else {
-      ui::property_vector("Color", component.color, true);
+      UI::property_vector("Color", component.color, true);
     }
 
-    ui::property("Intensity", &component.intensity, 0.0f, 100.0f);
+    UI::property("Intensity", &component.intensity, 0.0f, 100.0f);
 
     if (component.type != LightComponent::Directional) {
-      ui::property("Range", &component.range, 0.0f, 100.0f);
-      ui::property("Radius", &component.radius, 0.0f, 100.0f);
-      ui::property("Length", &component.length, 0.0f, 100.0f);
+      UI::property("Range", &component.range, 0.0f, 100.0f);
+      UI::property("Radius", &component.radius, 0.0f, 100.0f);
+      UI::property("Length", &component.length, 0.0f, 100.0f);
     }
 
     if (component.type == LightComponent::Spot) {
-      ui::property("Outer Cone Angle", &component.outer_cone_angle, 0.0f, 100.0f);
-      ui::property("Inner Cone Angle", &component.inner_cone_angle, 0.0f, 100.0f);
+      UI::property("Outer Cone Angle", &component.outer_cone_angle, 0.0f, 100.0f);
+      UI::property("Inner Cone Angle", &component.inner_cone_angle, 0.0f, 100.0f);
     }
 
-    ui::property("Cast Shadows", &component.cast_shadows);
+    UI::property("Cast Shadows", &component.cast_shadows);
 
     const ankerl::unordered_dense::map<u32, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
     const ankerl::unordered_dense::map<int, u32> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
 
     const char* res_strings[] = {"Auto", "512", "1024", "2048"};
     int idx = res_map.at(component.shadow_map_res);
-    if (ui::property("Shadow Resolution", &idx, res_strings, 4)) {
+    if (UI::property("Shadow Resolution", &idx, res_strings, 4)) {
       component.shadow_map_res = id_map.at(idx);
     }
 
     if (component.type == LightComponent::Directional) {
       for (u32 i = 0; i < (u32)component.cascade_distances.size(); ++i)
-        ui::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
+        UI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
     }
 
-    ui::end_properties();
+    UI::end_properties();
   });
 
   draw_component<AtmosphereComponent>(
       " Atmosphere Component", entity, [](AtmosphereComponent& component, flecs::entity e) {
-        ui::begin_properties();
+        UI::begin_properties();
 
-        ui::property_vector("Rayleigh Scattering", component.rayleigh_scattering, false);
-        ui::property("Rayleigh Density", &component.rayleigh_density, 0.0f, 10.0f);
-        ui::property_vector("Mie Scattering", component.mie_scattering, false);
-        ui::property("Mie Density", &component.mie_density, 0.0f, 2.0f);
-        ui::property("Mie Extinction", &component.mie_extinction, 0.0f, 5.0f);
-        ui::property("Mie Asymmetry", &component.mie_asymmetry, 0.0f, 5.0f);
-        ui::property_vector("Ozone Absorption", component.ozone_absorption, false);
-        ui::property("Ozone Height", &component.ozone_height, 0.0f, 30.0f);
-        ui::property("Ozone Thickness", &component.ozone_thickness, 0.0f, 20.0f);
-        ui::property("Aerial Perspective Start KM", &component.aerial_perspective_start_km, 0.0f, 100.0f);
+        UI::property_vector("Rayleigh Scattering", component.rayleigh_scattering, false);
+        UI::property("Rayleigh Density", &component.rayleigh_density, 0.0f, 10.0f);
+        UI::property_vector("Mie Scattering", component.mie_scattering, false);
+        UI::property("Mie Density", &component.mie_density, 0.0f, 2.0f);
+        UI::property("Mie Extinction", &component.mie_extinction, 0.0f, 5.0f);
+        UI::property("Mie Asymmetry", &component.mie_asymmetry, 0.0f, 5.0f);
+        UI::property_vector("Ozone Absorption", component.ozone_absorption, false);
+        UI::property("Ozone Height", &component.ozone_height, 0.0f, 30.0f);
+        UI::property("Ozone Thickness", &component.ozone_thickness, 0.0f, 20.0f);
+        UI::property("Aerial Perspective Start KM", &component.aerial_perspective_start_km, 0.0f, 100.0f);
 
-        ui::end_properties();
+        UI::end_properties();
       });
 
   draw_component<RigidbodyComponent>(
       " Rigidbody Component", entity, [](RigidbodyComponent& component, flecs::entity e) {
-        ui::begin_properties();
+        UI::begin_properties();
 
         const char* dofs_strings[] = {
             "None",
@@ -699,7 +682,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
           default                                      : current_dof_selection = 3; break;
         }
 
-        if (ui::property("Allowed degree of freedom", &current_dof_selection, dofs_strings, std::size(dofs_strings))) {
+        if (UI::property("Allowed degree of freedom", &current_dof_selection, dofs_strings, std::size(dofs_strings))) {
           switch (current_dof_selection) {
             case 0: component.allowed_dofs = RigidbodyComponent::AllowedDOFs::None; break;
             case 1: component.allowed_dofs = RigidbodyComponent::AllowedDOFs::All; break;
@@ -708,158 +691,158 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
         }
 
         ImGui::Indent();
-        ui::begin_property_grid("Allowed positions", nullptr);
+        UI::begin_property_grid("Allowed positions", nullptr);
         ImGui::CheckboxFlags("x", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::TranslationX);
         ImGui::SameLine();
         ImGui::CheckboxFlags("y", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::TranslationY);
         ImGui::SameLine();
         ImGui::CheckboxFlags("z", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::TranslationZ);
-        ui::end_property_grid();
+        UI::end_property_grid();
 
-        ui::begin_property_grid("Allowed rotations", nullptr);
+        UI::begin_property_grid("Allowed rotations", nullptr);
         ImGui::CheckboxFlags("x", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::RotationX);
         ImGui::SameLine();
         ImGui::CheckboxFlags("y", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::RotationY);
         ImGui::SameLine();
         ImGui::CheckboxFlags("z", (u32*)&component.allowed_dofs, (u32)RigidbodyComponent::AllowedDOFs::RotationZ);
-        ui::end_property_grid();
+        UI::end_property_grid();
         ImGui::Unindent();
 
         const char* body_type_strings[] = {"Static", "Kinematic", "Dynamic"};
         int body_type = static_cast<int>(component.type);
-        if (ui::property("Body Type", &body_type, body_type_strings, 3))
+        if (UI::property("Body Type", &body_type, body_type_strings, 3))
           component.type = static_cast<RigidbodyComponent::BodyType>(body_type);
 
-        ui::property("Allow Sleep", &component.allow_sleep);
-        ui::property("Awake", &component.awake);
+        UI::property("Allow Sleep", &component.allow_sleep);
+        UI::property("Awake", &component.awake);
         if (component.type == RigidbodyComponent::BodyType::Dynamic) {
-          ui::property("Mass", &component.mass, 0.01f, 10000.0f);
-          ui::property("Linear Drag", &component.linear_drag);
-          ui::property("Angular Drag", &component.angular_drag);
-          ui::property("Gravity Scale", &component.gravity_scale);
-          ui::property("Continuous", &component.continuous);
-          ui::property("Interpolation", &component.interpolation);
+          UI::property("Mass", &component.mass, 0.01f, 10000.0f);
+          UI::property("Linear Drag", &component.linear_drag);
+          UI::property("Angular Drag", &component.angular_drag);
+          UI::property("Gravity Scale", &component.gravity_scale);
+          UI::property("Continuous", &component.continuous);
+          UI::property("Interpolation", &component.interpolation);
 
           component.linear_drag = glm::max(component.linear_drag, 0.0f);
           component.angular_drag = glm::max(component.angular_drag, 0.0f);
         }
 
-        ui::property("Is Sensor", &component.is_sensor);
-        ui::end_properties();
+        UI::property("Is Sensor", &component.is_sensor);
+        UI::end_properties();
       });
 
   draw_component<BoxColliderComponent>(" Box Collider", entity, [](BoxColliderComponent& component, flecs::entity e) {
-    ui::begin_properties();
-    ui::property_vector("Size", component.size);
-    ui::property_vector("Offset", component.offset);
-    ui::property("Density", &component.density);
-    ui::property("Friction", &component.friction, 0.0f, 1.0f);
-    ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    ui::end_properties();
+    UI::begin_properties();
+    UI::property_vector("Size", component.size);
+    UI::property_vector("Offset", component.offset);
+    UI::property("Density", &component.density);
+    UI::property("Friction", &component.friction, 0.0f, 1.0f);
+    UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
+    UI::end_properties();
 
     component.density = glm::max(component.density, 0.001f);
   });
 
   draw_component<SphereColliderComponent>(
       " Sphere Collider", entity, [](SphereColliderComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property("Radius", &component.radius);
-        ui::property_vector("Offset", component.offset);
-        ui::property("Density", &component.density);
-        ui::property("Friction", &component.friction, 0.0f, 1.0f);
-        ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        ui::end_properties();
+        UI::begin_properties();
+        UI::property("Radius", &component.radius);
+        UI::property_vector("Offset", component.offset);
+        UI::property("Density", &component.density);
+        UI::property("Friction", &component.friction, 0.0f, 1.0f);
+        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
+        UI::end_properties();
 
         component.density = glm::max(component.density, 0.001f);
       });
 
   draw_component<CapsuleColliderComponent>(
       " Capsule Collider", entity, [](CapsuleColliderComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property("Height", &component.height);
-        ui::property("Radius", &component.radius);
-        ui::property_vector("Offset", component.offset);
-        ui::property("Density", &component.density);
-        ui::property("Friction", &component.friction, 0.0f, 1.0f);
-        ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        ui::end_properties();
+        UI::begin_properties();
+        UI::property("Height", &component.height);
+        UI::property("Radius", &component.radius);
+        UI::property_vector("Offset", component.offset);
+        UI::property("Density", &component.density);
+        UI::property("Friction", &component.friction, 0.0f, 1.0f);
+        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
+        UI::end_properties();
 
         component.density = glm::max(component.density, 0.001f);
       });
 
   draw_component<TaperedCapsuleColliderComponent>(
       " Tapered Capsule Collider", entity, [](TaperedCapsuleColliderComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property("Height", &component.height);
-        ui::property("Top Radius", &component.top_radius);
-        ui::property("Bottom Radius", &component.bottom_radius);
-        ui::property_vector("Offset", component.offset);
-        ui::property("Density", &component.density);
-        ui::property("Friction", &component.friction, 0.0f, 1.0f);
-        ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        ui::end_properties();
+        UI::begin_properties();
+        UI::property("Height", &component.height);
+        UI::property("Top Radius", &component.top_radius);
+        UI::property("Bottom Radius", &component.bottom_radius);
+        UI::property_vector("Offset", component.offset);
+        UI::property("Density", &component.density);
+        UI::property("Friction", &component.friction, 0.0f, 1.0f);
+        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
+        UI::end_properties();
 
         component.density = glm::max(component.density, 0.001f);
       });
 
   draw_component<CylinderColliderComponent>(
       " Cylinder Collider", entity, [](CylinderColliderComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property("Height", &component.height);
-        ui::property("Radius", &component.radius);
-        ui::property_vector("Offset", component.offset);
-        ui::property("Density", &component.density);
-        ui::property("Friction", &component.friction, 0.0f, 1.0f);
-        ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        ui::end_properties();
+        UI::begin_properties();
+        UI::property("Height", &component.height);
+        UI::property("Radius", &component.radius);
+        UI::property_vector("Offset", component.offset);
+        UI::property("Density", &component.density);
+        UI::property("Friction", &component.friction, 0.0f, 1.0f);
+        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
+        UI::end_properties();
 
         component.density = glm::max(component.density, 0.001f);
       });
 
   draw_component<MeshColliderComponent>(
       " Mesh Collider", entity, [](MeshColliderComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property_vector("Offset", component.offset);
-        ui::property("Friction", &component.friction, 0.0f, 1.0f);
-        ui::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        ui::end_properties();
+        UI::begin_properties();
+        UI::property_vector("Offset", component.offset);
+        UI::property("Friction", &component.friction, 0.0f, 1.0f);
+        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
+        UI::end_properties();
       });
 
   draw_component<CharacterControllerComponent>(
       " Character Controller", entity, [](CharacterControllerComponent& component, flecs::entity e) {
-        ui::begin_properties();
-        ui::property("CharacterHeightStanding", &component.character_height_standing);
-        ui::property("CharacterRadiusStanding", &component.character_radius_standing);
-        ui::property("CharacterHeightCrouching", &component.character_height_crouching);
-        ui::property("CharacterRadiusCrouching", &component.character_radius_crouching);
+        UI::begin_properties();
+        UI::property("CharacterHeightStanding", &component.character_height_standing);
+        UI::property("CharacterRadiusStanding", &component.character_radius_standing);
+        UI::property("CharacterHeightCrouching", &component.character_height_crouching);
+        UI::property("CharacterRadiusCrouching", &component.character_radius_crouching);
 
         // Movement
-        ui::property("ControlMovementDuringJump", &component.control_movement_during_jump);
-        ui::property("JumpForce", &component.jump_force);
+        UI::property("ControlMovementDuringJump", &component.control_movement_during_jump);
+        UI::property("JumpForce", &component.jump_force);
 
-        ui::property("Friction", &component.friction, 0.0f, 1.0f);
-        ui::property("CollisionTolerance", &component.collision_tolerance);
-        ui::end_properties();
+        UI::property("Friction", &component.friction, 0.0f, 1.0f);
+        UI::property("CollisionTolerance", &component.collision_tolerance);
+        UI::end_properties();
       });
 
   draw_component<CameraComponent>("Camera Component", entity, [](CameraComponent& component, flecs::entity e) {
     const auto is_perspective = component.projection == CameraComponent::Projection::Perspective;
-    ui::begin_properties();
+    UI::begin_properties();
 
     const char* proj_strs[] = {"Perspective", "Orthographic"};
     int proj = static_cast<int>(component.projection);
-    if (ui::property("Projection", &proj, proj_strs, 2))
+    if (UI::property("Projection", &proj, proj_strs, 2))
       component.projection = static_cast<CameraComponent::Projection>(proj);
 
     if (is_perspective) {
-      ui::property("FOV", &component.fov);
-      ui::property("Near Clip", &component.near_clip);
-      ui::property("Far Clip", &component.far_clip);
+      UI::property("FOV", &component.fov);
+      UI::property("Near Clip", &component.near_clip);
+      UI::property("Far Clip", &component.far_clip);
     } else {
-      ui::property("Zoom", &component.zoom);
+      UI::property("Zoom", &component.zoom);
     }
 
-    ui::end_properties();
+    UI::end_properties();
   });
 
   draw_component<LuaScriptComponent>(
@@ -869,7 +852,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
         name_filter.Draw("##scripts_filter",
                          ImGui::GetContentRegionAvail().x -
-                             (ui::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
+                             (UI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
 
         if (!name_filter.IsActive()) {
           ImGui::SameLine();
@@ -886,11 +869,11 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
                                                  ImGuiTreeNodeFlags_FramePadding;
             if (ImGui::TreeNodeEx(name.c_str(), flags, "%s", name.c_str())) {
               auto rld_str = fmt::format("{} Reload", StringUtils::from_char8_t(ICON_MDI_REFRESH));
-              if (ui::button(rld_str.c_str()))
+              if (UI::button(rld_str.c_str()))
                 system->reload();
               ImGui::SameLine();
               auto rmv_str = fmt::format("{} Remove", StringUtils::from_char8_t(ICON_MDI_TRASH_CAN));
-              if (ui::button(rmv_str.c_str()))
+              if (UI::button(rmv_str.c_str()))
                 component.lua_systems.erase(component.lua_systems.begin() + i);
               ImGui::TreePop();
             }
@@ -901,7 +884,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
         const float x = ImGui::GetContentRegionAvail().x;
         const float y = ImGui::GetFrameHeight();
         const auto btn = fmt::format("{} Drop a script file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
-        if (ui::button(btn.c_str(), {x, y})) {
+        if (UI::button(btn.c_str(), {x, y})) {
           const auto& window = App::get()->get_window();
           FileDialogFilter dialog_filters[] = {{.name = "Lua file(.lua)", .pattern = "lua"}};
           window.show_dialog({
@@ -951,44 +934,44 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
     ImGui::Text("Active Particles Count: %u", component.system->get_active_particle_count());
     ImGui::BeginDisabled(props.looping);
-    if (ui::button(StringUtils::from_char8_t(ICON_MDI_PLAY)))
+    if (UI::button(StringUtils::from_char8_t(ICON_MDI_PLAY)))
       component.system->play();
     ImGui::SameLine();
-    if (ui::button(StringUtils::from_char8_t(ICON_MDI_STOP)))
+    if (UI::button(StringUtils::from_char8_t(ICON_MDI_STOP)))
       component.system->stop();
     ImGui::EndDisabled();
 
     ImGui::Separator();
 
-    ui::begin_properties();
-    ui::texture_property("Duration", &props.duration);
-    if (ui::texture_property("Looping", &props.looping)) {
+    UI::begin_properties();
+    UI::texture_property("Duration", &props.duration);
+    if (UI::texture_property("Looping", &props.looping)) {
       if (props.looping)
         component.system->play();
     }
-    ui::texture_property("Start Delay", &props.start_delay);
-    ui::texture_property("Start Lifetime", &props.start_lifetime);
-    ui::property_vector("Start Velocity", props.start_velocity);
-    ui::property_vector("Start Color", props.start_color, true);
-    ui::property_vector("Start Size", props.start_size);
-    ui::property_vector("Start Rotation", props.start_rotation);
-    ui::texture_property("Gravity Modifier", &props.gravity_modifier);
-    ui::texture_property("Simulation Speed", &props.simulation_speed);
-    ui::texture_property("Play On Awake", &props.play_on_awake);
-    ui::texture_property("Max Particles", &props.max_particles);
-    ui::end_properties();
+    UI::texture_property("Start Delay", &props.start_delay);
+    UI::texture_property("Start Lifetime", &props.start_lifetime);
+    UI::property_vector("Start Velocity", props.start_velocity);
+    UI::property_vector("Start Color", props.start_color, true);
+    UI::property_vector("Start Size", props.start_size);
+    UI::property_vector("Start Rotation", props.start_rotation);
+    UI::texture_property("Gravity Modifier", &props.gravity_modifier);
+    UI::texture_property("Simulation Speed", &props.simulation_speed);
+    UI::texture_property("Play On Awake", &props.play_on_awake);
+    UI::texture_property("Max Particles", &props.max_particles);
+    UI::end_properties();
 
     ImGui::Separator();
 
-    ui::begin_properties();
-    ui::texture_property("Rate Over Time", &props.rate_over_time);
-    ui::texture_property("Rate Over Distance", &props.rate_over_distance);
-    ui::texture_property("Burst Count", &props.burst_count);
-    ui::texture_property("Burst Time", &props.burst_time);
-    ui::property_vector("Position Start", props.position_start);
-    ui::property_vector("Position End", props.position_end);
+    UI::begin_properties();
+    UI::texture_property("Rate Over Time", &props.rate_over_time);
+    UI::texture_property("Rate Over Distance", &props.rate_over_distance);
+    UI::texture_property("Burst Count", &props.burst_count);
+    UI::texture_property("Burst Time", &props.burst_time);
+    UI::property_vector("Position Start", props.position_start);
+    UI::property_vector("Position End", props.position_end);
     // OxUI::Property("Texture", props.Texture); //TODO:
-    ui::end_properties();
+    UI::end_properties();
 
     draw_particle_over_lifetime_module("Velocity Over Lifetime", props.velocity_over_lifetime);
     draw_particle_over_lifetime_module("Force Over Lifetime", props.force_over_lifetime);

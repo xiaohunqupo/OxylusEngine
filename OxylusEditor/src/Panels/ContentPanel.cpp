@@ -1,6 +1,5 @@
 #include "ContentPanel.hpp"
 
-#include <Core/VFS.hpp>
 #include <filesystem>
 #include <icons/IconsMaterialDesignIcons.h>
 #include <imgui.h>
@@ -9,17 +8,15 @@
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
-#include "Core/Project.hpp"
+#include "Core/VFS.hpp"
 #include "EditorContext.hpp"
 #include "EditorLayer.hpp"
+#include "EditorUI.hpp"
 #include "Thread/ThreadManager.hpp"
-#include "UI/ImGuiLayer.hpp"
-#include "UI/OxUI.hpp"
 #include "Utils/FileWatch.hpp"
 #include "Utils/PayloadData.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/StringUtils.hpp"
-#include "Utils/Timestep.hpp"
 
 namespace ox {
 static const ankerl::unordered_dense::map<FileType, const char*> FILE_TYPES_TO_STRING = {
@@ -325,16 +322,16 @@ void ContentPanel::render_header() {
   if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_COGS)))
     ImGui::OpenPopup("SettingsPopup");
   if (ImGui::BeginPopup("SettingsPopup")) {
-    ui::begin_properties(ImGuiTableFlags_SizingStretchSame);
-    ui::property("Thumbnail Size",
+    UI::begin_properties(ImGuiTableFlags_SizingStretchSame);
+    UI::property("Thumbnail Size",
                  EditorCVar::cvar_file_thumbnail_size.get_ptr(),
                  thumbnail_size_grid_limit - 0.1f,
                  thumbnail_max_limit,
                  nullptr,
                  0.1f,
                  "");
-    ui::property("Show file thumbnails", reinterpret_cast<bool*>(EditorCVar::cvar_file_thumbnails.get_ptr()));
-    ui::end_properties();
+    UI::property("Show file thumbnails", reinterpret_cast<bool*>(EditorCVar::cvar_file_thumbnails.get_ptr()));
+    UI::end_properties();
     ImGui::EndPopup();
   }
 
@@ -617,7 +614,7 @@ void ContentPanel::render_body(bool grid) {
         // Background button
         static std::string id = "###";
         id[2] = static_cast<char>(i);
-        const bool clicked = ui::toggle_button(id.c_str(), highlight, background_thumbnail_size, 0.1f);
+        const bool clicked = UI::toggle_button(id.c_str(), highlight, background_thumbnail_size, 0.1f);
         if (_elapsed_time > 0.25f && clicked) {
           editor_context.reset();
           editor_context.type = EditorContext::Type::File;
@@ -661,7 +658,7 @@ void ContentPanel::render_body(bool grid) {
         // Foreground Image
         ImGui::SetCursorPos({cursor_pos.x + padding, cursor_pos.y + padding});
         ImGui::SetItemAllowOverlap();
-        ui::image(*_white_texture,
+        UI::image(*_white_texture,
                   {background_thumbnail_size.x - padding * 2.0f, background_thumbnail_size.y - padding * 2.0f},
                   {},
                   {},
@@ -671,11 +668,11 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
         ImGui::SetItemAllowOverlap();
         if (thumbnail_cache_textures.contains(texture_name)) {
-          ui::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
+          UI::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
         } else if (thumbnail_cache_meshes.contains(texture_name)) {
           auto texture = Texture::from_attachment(*vk_context.frame_allocator, thumbnail_cache_meshes[texture_name]);
           texture->set_name(fs::get_file_name(texture_name));
-          ui::image(*texture, {thumb_image_size, thumb_image_size});
+          UI::image(*texture, {thumb_image_size, thumb_image_size});
         } else {
           ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
           auto file_type = FileType::Unknown;
@@ -690,7 +687,7 @@ void ContentPanel::render_body(bool grid) {
         // Type Color frame
         const ImVec2 type_color_frame_size = {scaled_thumbnail_size_x, scaled_thumbnail_size_x * 0.03f};
         ImGui::SetCursorPosX(cursor_pos.x + padding);
-        ui::image(*_white_texture,
+        UI::image(*_white_texture,
                   type_color_frame_size,
                   {0, 0},
                   {1, 1},
@@ -702,7 +699,7 @@ void ContentPanel::render_body(bool grid) {
             {rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
             {rect_min.x + rect_size.x,
              rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font->FontSize * 2.0f});
-        ui::clipped_text(
+        UI::clipped_text(
             clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
 
         if (!is_dir) {
@@ -735,7 +732,7 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - line_height);
         if (thumbnail_cache_textures.contains(texture_name)) {
-          ui::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
+          UI::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
         } else {
           auto file_type = FileType::Unknown;
           const auto& file_type_it = FILE_TYPES.find(file.extension.empty() ? "" : file.extension);
