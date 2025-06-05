@@ -446,7 +446,7 @@ auto Scene::runtime_start() -> void {
 
   // Physics
   {
-    ZoneScopedN("Physics Start");
+    ZoneNamedN(z, "Physics Start", true);
     body_activation_listener_3d = new Physics3DBodyActivationListener();
     contact_listener_3d = new Physics3DContactListener(this);
     const auto physics_system = App::get_system<Physics>(EngineSystems::Physics)->get_physics_system();
@@ -472,7 +472,7 @@ auto Scene::runtime_start() -> void {
 
   // Scripting
   {
-    ZoneScopedN("LuaScripting/on_init");
+    ZoneNamedN(z, "LuaScripting/on_init", true);
     world.query_builder<const LuaScriptComponent>().build().each(
         [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
           for (const auto& script : lsc.lua_systems) {
@@ -490,6 +490,7 @@ auto Scene::runtime_stop() -> void {
 
   // Physics
   {
+    ZoneNamedN(z, "Physics Stop", true);
     const auto physics = App::get_system<Physics>(EngineSystems::Physics);
     world.query_builder<RigidbodyComponent>().build().each(
         [physics](const flecs::entity& e, const RigidbodyComponent& rb) {
@@ -518,7 +519,7 @@ auto Scene::runtime_stop() -> void {
 
   // Scripting
   {
-    ZoneScopedN("LuaScripting/on_release");
+    ZoneNamedN(z, "LuaScripting/on_release", true);
     world.query_builder<const LuaScriptComponent>().build().each(
         [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
           for (const auto& script : lsc.lua_systems) {
@@ -562,7 +563,7 @@ void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   ZoneScoped;
 
   {
-    ZoneScopedN("LuaScripting/on_render");
+    ZoneNamedN(z, "LuaScripting/on_render", true);
     world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
       for (const auto& script : c.lua_systems) {
         script->on_render(extent, format);
@@ -772,7 +773,7 @@ auto Scene::on_contact_added(const JPH::Body& body1,
   ZoneScoped;
 
   {
-    ZoneScopedN("LuaScripting/on_contact_added");
+    ZoneNamedN(z, "LuaScripting/on_contact_added", true);
     world.query_builder<const LuaScriptComponent>().build().each(
         [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
           for (const auto& script : lsc.lua_systems) {
@@ -789,7 +790,7 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
   ZoneScoped;
 
   {
-    ZoneScopedN("LuaScripting/on_contact_persisted");
+    ZoneNamedN(z, "LuaScripting/on_contact_persisted", true);
     world.query_builder<const LuaScriptComponent>().build().each(
         [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
           for (const auto& script : lsc.lua_systems) {

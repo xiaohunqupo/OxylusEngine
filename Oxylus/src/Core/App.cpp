@@ -89,7 +89,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   vk_context = create_unique<VkContext>();
 
-  const bool enable_validation = app_spec.command_line_args.contains("vulkan-validation");
+  const bool enable_validation = app_spec.command_line_args.contains("--vulkan-validation");
   vk_context->create_context(window, enable_validation);
 
   DebugRenderer::init();
@@ -213,7 +213,7 @@ void App::run() {
     imgui_layer->begin_frame(timestep.get_seconds(), extent);
 
     {
-      ZoneScopedN("LayerStackUpdate");
+      ZoneNamedN(z, "LayerStackUpdate", true);
       for (auto* layer : *layer_stack.get()) {
         layer->on_update(timestep);
         layer->on_render(extent, swapchain_attachment->format);
@@ -221,7 +221,7 @@ void App::run() {
     }
 
     {
-      ZoneScopedN("EngineSystemUpdates");
+      ZoneNamedN(z, "EngineSystemUpdates", true);
       for (const auto& system : system_registry | std::views::values) {
         system->on_update();
         system->on_render(extent, swapchain_attachment->format);

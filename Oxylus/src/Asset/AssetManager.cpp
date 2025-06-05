@@ -791,7 +791,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
 
   for (const auto& gltf_mesh : mesh->meshes) {
     for (auto primitive_index : gltf_mesh.primitive_indices) {
-      ZoneScopedN("GPU Meshlet Generation");
+      ZoneNamedN(z, "GPU Meshlet Generation", true);
 
       auto& primitive = mesh->primitives[primitive_index];
       auto vertex_offset = model_vertex_positions.size();
@@ -810,7 +810,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
       auto meshlet_indices = std::vector<u32>();
       auto local_triangle_indices = std::vector<u8>();
       {
-        ZoneScopedN("Build Meshlets");
+        ZoneNamedN(z2, "Build Meshlets", true);
         // Worst case count
         auto max_meshlets = meshopt_buildMeshletsBound(
             raw_indices.size(), Mesh::MAX_MESHLET_INDICES, Mesh::MAX_MESHLET_PRIMITIVES);

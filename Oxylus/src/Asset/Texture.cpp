@@ -16,6 +16,8 @@
 
 namespace ox {
 void Texture::create(const std::string& path, const TextureLoadInfo& load_info, const std::source_location& loc) {
+  ZoneScoped;
+
   auto& allocator = App::get_vkcontext().superframe_allocator;
 
   const auto is_generic = load_info.mime == TextureLoadInfo::MimeType::Generic;
@@ -55,7 +57,7 @@ void Texture::create(const std::string& path, const TextureLoadInfo& load_info, 
 
       // If the image needs is in a supercompressed encoding, transcode it to a desired format
       if (ktxTexture2_NeedsTranscoding(ktx)) {
-        ZoneScopedN("Transcode KTX 2 Texture");
+        ZoneNamedN(z, "Transcode KTX 2 Texture", true);
         if (const auto result = ktxTexture2_TranscodeBasis(ktx, ktxTranscodeFormat, KTX_TF_HIGH_QUALITY);
             result != KTX_SUCCESS) {
           OX_LOG_ERROR("Couldn't transcode KTX2 file {}", ktxErrorString(result));
@@ -125,6 +127,8 @@ auto Texture::reset_view(vuk::Allocator& allocator) -> void {
 }
 
 auto Texture::from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> Unique<Texture> {
+  ZoneScoped;
+
   Unique<Texture> t = create_unique<Texture>();
   t->_view = vuk::Unique<vuk::ImageView>(allocator, ia.image_view);
   t->_image = vuk::Unique<vuk::Image>(allocator, ia.image);
@@ -133,14 +137,17 @@ auto Texture::from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& i
 }
 
 vuk::Value<vuk::ImageAttachment> Texture::acquire(const vuk::Name name, const vuk::Access last_access) const {
+  ZoneScoped;
   return vuk::acquire_ia(name.is_invalid() ? vuk::Name(_name) : name, attachment(), last_access);
 }
 
 vuk::Value<vuk::ImageAttachment> Texture::discard(vuk::Name name) const {
+  ZoneScoped;
   return vuk::discard_ia(name.is_invalid() ? vuk::Name(_name) : name, attachment());
 }
 
 void Texture::set_name(std::string_view name, const std::source_location& loc) {
+  ZoneScoped;
   auto& ctx = App::get_vkcontext();
   if (!name.empty()) {
     ctx.runtime->set_name(_image->image, vuk::Name(name));
@@ -157,6 +164,8 @@ void Texture::set_name(std::string_view name, const std::source_location& loc) {
 
 Unique<u8[]>
 Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* height, uint32_t* bits, bool srgb) {
+  ZoneScoped;
+
   const auto filePath = std::filesystem::path(filename);
 
   if (!exists(filePath))
@@ -187,6 +196,8 @@ Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* 
 
 Unique<u8[]> Texture::load_stb_image_from_memory(
     void* buffer, size_t len, uint32_t* width, uint32_t* height, uint32_t* bits, bool flipY, bool srgb) {
+  ZoneScoped;
+
   int tex_width = 0, tex_height = 0, tex_channels = 0;
   int size_of_channel = 8;
   const auto pixels = stbi_load_from_memory(
@@ -215,6 +226,8 @@ Unique<u8[]> Texture::load_stb_image_from_memory(
 }
 
 u8* Texture::get_magenta_texture(uint32_t width, uint32_t height, uint32_t channels) {
+  ZoneScoped;
+
   const uint32_t size = width * height * channels;
   const auto data = new u8[size];
 
@@ -226,6 +239,8 @@ u8* Texture::get_magenta_texture(uint32_t width, uint32_t height, uint32_t chann
 }
 
 u8* Texture::convert_to_four_channels(uint32_t width, uint32_t height, const u8* three_channel_data) {
+  ZoneScoped;
+
   const auto bufferSize = width * height * 4;
   const auto buffer = new u8[bufferSize];
   auto* rgba = buffer;

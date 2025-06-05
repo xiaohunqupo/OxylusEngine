@@ -23,7 +23,7 @@ namespace ox {
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 
 ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config) {
-  ZoneScopedN("Font Loading");
+  ZoneScoped;
 
   ImGuiIO& io = ImGui::GetIO();
   io.Fonts->TexGlyphPadding = 1;
@@ -31,7 +31,7 @@ ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config)
 }
 
 void ImGuiLayer::build_fonts() {
-  ZoneScopedN("Font Building");
+  ZoneScoped;
 
   ImGuiIO& io = ImGui::GetIO();
   unsigned char* pixels;
