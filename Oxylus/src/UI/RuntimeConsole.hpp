@@ -1,22 +1,45 @@
 ﻿#pragma once
 
+#include <charconv>
 #include <imgui.h>
 
 namespace ox {
 class RuntimeConsole {
 public:
   struct ParsedCommandValue {
-    std::string str_value = {};
+    std::string str_value;
 
-    ParsedCommandValue(std::string str) : str_value(std::move(str)) {}
+    explicit ParsedCommandValue(std::string str) noexcept : str_value(std::move(str)) {}
+
+    const std::string& as_string() const noexcept { return str_value; }
 
     template <typename T = int32_t>
-    std::optional<T> as() const {
-      // T value = {};
-      // if (std::from_chars(str_value.c_str(), str_value.data() + str_value.size(), value).ec == std::errc{})
-      //   return (T)value;
-      return {};
+    [[nodiscard]]
+    std::optional<T> as() const noexcept {
+      if constexpr (std::is_same_v<T, std::string>) {
+        return str_value;
+      } else if constexpr (std::is_same_v<T, bool>) {
+        if (str_value == "true")
+          return true;
+        if (str_value == "false")
+          return false;
+      }
+
+      T value{};
+      const auto* begin = str_value.data();
+      const auto* end = begin + str_value.size();
+
+      auto [ptr, ec] = std::from_chars(begin, end, value);
+
+      if (ec == std::errc{} && ptr == end) {
+        return value;
+      }
+
+      return std::nullopt;
     }
+
+    explicit operator std::string() const noexcept { return str_value; }
+    explicit operator std::string_view() const noexcept { return str_value; }
   };
 
   bool set_focus_to_keyboard_always = false;

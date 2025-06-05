@@ -40,6 +40,8 @@ public:
 
   static void align_right(float item_width);
 
+  static void text(std::string_view label, std::string_view value, const char* tooltip = nullptr);
+
   // --- Properties ---
 
   // Bool
@@ -150,7 +152,8 @@ public:
                          std::string* str,
                          ImGuiInputTextFlags flags = 0,
                          ImGuiInputTextCallback callback = NULL,
-                         void* user_data = NULL);
+                         void* user_data = NULL,
+                         const char* tooltip = nullptr);
 
   // Vec3 with reset button
   static bool

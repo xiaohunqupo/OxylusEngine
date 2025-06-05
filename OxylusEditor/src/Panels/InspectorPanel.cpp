@@ -233,12 +233,10 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
   UI::texture_property("Albedo", material->albedo_texture);
   UI::texture_property("Normal", material->normal_texture);
   UI::texture_property("Emissive", material->emissive_texture);
-  UI::property_vector("Emissive Color", material->emissive_color, true, true);
-
+  UI::property_vector("Emissive Color", material->emissive_color, true, false);
   UI::texture_property("Metallic Roughness", material->metallic_roughness_texture);
   UI::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
   UI::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
-
   UI::texture_property("Occlusion", material->occlusion_texture);
 
   UI::end_properties();
@@ -325,9 +323,11 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   static std::string new_name = entity.name().c_str();
   if (_rename_entity)
     ImGui::SetKeyboardFocusHere();
-  if (UI::input_text("##Tag", &new_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
+  UI::push_frame_style();
+  if (ImGui::InputText("##Tag", &new_name, ImGuiInputTextFlags_EnterReturnsTrue)) {
     entity.set_name(new_name.c_str());
   }
+  UI::pop_frame_style();
   ImGui::PopItemWidth();
   ImGui::SameLine();
 
@@ -376,7 +376,12 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
       });
 
   draw_component<MeshComponent>(" Mesh Component", entity, [](MeshComponent& component, flecs::entity e) {
-
+    UI::begin_properties();
+    auto mesh_uuid_str = component.mesh_uuid.str();
+    UI::input_text("Mesh UUID", &mesh_uuid_str, ImGuiInputTextFlags_ReadOnly);
+    UI::text("Mesh Index", std::to_string(component.mesh_index));
+    UI::property("Cast shadows", &component.cast_shadows);
+    UI::end_properties();
   });
 
   draw_component<SpriteComponent>(" Sprite Component", entity, [](SpriteComponent& component, flecs::entity e) {
@@ -985,8 +990,14 @@ void InspectorPanel::draw_asset_info(Asset* asset) {
   ZoneScoped;
   auto* asset_man = App::get_asset_manager();
   auto type_str = asset_man->to_asset_type_sv(asset->type);
-  ImGui::TextUnformatted(fmt::format("Asset Type: {}", type_str).c_str());
-  ImGui::TextUnformatted(fmt::format("Asset Path: {}", asset->path).c_str());
-  ImGui::TextUnformatted(fmt::format("Asset UUID: {}", asset->uuid.str().c_str()).c_str());
+  auto uuid_str = asset->uuid.str();
+
+  ImGui::SeparatorText("Asset");
+  ImGui::Indent();
+  UI::begin_properties(ImGuiTableFlags_BordersInnerV | ImGuiTableFlags_SizingFixedFit);
+  UI::text("Asset Type", type_str);
+  UI::input_text("Asset UUID", &uuid_str, ImGuiInputTextFlags_ReadOnly);
+  UI::input_text("Asset Path", &asset->path, ImGuiInputTextFlags_ReadOnly);
+  UI::end_properties();
 }
 } // namespace ox

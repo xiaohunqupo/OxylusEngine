@@ -65,10 +65,8 @@ ECS_COMPONENT_BEGIN(MeshComponent)
   ECS_COMPONENT_MEMBER(mesh_uuid, UUID, {})
   ECS_COMPONENT_MEMBER(mesh_index, u32, {})
   ECS_COMPONENT_MEMBER(cast_shadows, bool, true)
-  ECS_COMPONENT_MEMBER(stationary, bool, false)
 
 #ifndef ECS_REFLECT_TYPES
-  glm::mat4 transform = glm::mat4{1};
   AABB aabb = {};
 #endif
 ECS_COMPONENT_END();

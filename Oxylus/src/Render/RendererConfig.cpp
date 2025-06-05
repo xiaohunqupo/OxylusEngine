@@ -1,8 +1,6 @@
 #include "RendererConfig.hpp"
 
-#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
-#include "Thread/TaskScheduler.hpp"
 #include "Utils/Toml.hpp"
 
 namespace ox {
@@ -64,12 +62,6 @@ bool RendererConfig::save_config(const char* path) const {
           },
       },
       {
-          "shadows",
-          toml::table{
-              {"size", RendererCVar::cvar_shadows_size.get()},
-          },
-      },
-      {
           "fxaa",
           toml::table{
               {"enabled", (bool)RendererCVar::cvar_fxaa_enable.get()},
@@ -110,9 +102,6 @@ bool RendererConfig::load_config(const char* path) {
 
   const auto ssr_config = toml["ssr"];
   RendererCVar::cvar_ssr_enable.set(ssr_config["enabled"].as_boolean()->get());
-
-  const auto shadows_config = toml["shadows"];
-  RendererCVar::cvar_shadows_size.set((int)shadows_config["size"].as_integer()->get());
 
   const auto fxaa_config = toml["fxaa"];
   RendererCVar::cvar_fxaa_enable.set(fxaa_config["enabled"].as_boolean()->get());

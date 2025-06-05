@@ -30,10 +30,14 @@ static const char8_t* get_level_icon(const loguru::Verbosity level) {
 }
 
 RuntimeConsole::RuntimeConsole() {
-  Log::add_callback("runtime_console", [](void* user_data, const loguru::Message& message) {
-    const auto console = reinterpret_cast<RuntimeConsole*>(user_data);
-    console->add_log(message.message, message.verbosity);
-  }, this, loguru::Verbosity_INFO);
+  Log::add_callback(
+      "runtime_console",
+      [](void* user_data, const loguru::Message& message) {
+        const auto console = reinterpret_cast<RuntimeConsole*>(user_data);
+        console->add_log(message.message, message.verbosity);
+      },
+      this,
+      loguru::Verbosity_INFO);
 
   // Default commands
   register_command("quit", "", [] { App::get()->close(); });
@@ -205,7 +209,8 @@ void RuntimeConsole::process_command(const std::string& command) {
 
   auto* cvar_system = CVarSystem::get();
   const std::hash<std::string> hasher = {};
-  const auto cvar = cvar_system->get_cvar(hasher(parsed_command.c_str()));
+  const auto hashed = hasher(parsed_command);
+  const auto cvar = cvar_system->get_cvar(hashed);
   if (cvar) {
     is_cvar_variable = true;
     switch (cvar->type) {
@@ -282,10 +287,10 @@ void RuntimeConsole::process_command(const std::string& command) {
 
 RuntimeConsole::ParsedCommandValue RuntimeConsole::parse_value(const std::string& command) {
   if (command.find(' ') == std::string::npos)
-    return {""};
+    return RuntimeConsole::ParsedCommandValue("");
   const auto offset = command.find(' ');
   const auto value = command.substr(offset + 1, command.size() - offset);
-  return {value};
+  return RuntimeConsole::ParsedCommandValue(value);
 }
 
 std::string RuntimeConsole::parse_command(const std::string& command) { return command.substr(0, command.find(' ')); }

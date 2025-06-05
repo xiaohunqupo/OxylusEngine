@@ -122,6 +122,12 @@ void UI::align_right(float item_width) {
     ImGui::SetCursorPosX(posX);
 }
 
+void UI::text(std::string_view label, std::string_view value, const char* tooltip) {
+  begin_property_grid(label.data(), tooltip);
+  ImGui::TextUnformatted(value.data());
+  end_property_grid();
+}
+
 bool UI::property(const char* label, bool* flag, const char* tooltip) {
   begin_property_grid(label, tooltip);
   push_frame_style();
@@ -301,10 +307,16 @@ bool UI::toggle_button(const char* label,
   return clicked;
 }
 
-bool UI::input_text(
-    const char* label, std::string* str, ImGuiInputTextFlags flags, ImGuiInputTextCallback callback, void* user_data) {
+bool UI::input_text(const char* label,
+                    std::string* str,
+                    ImGuiInputTextFlags flags,
+                    ImGuiInputTextCallback callback,
+                    void* user_data,
+                    const char* tooltip) {
   push_frame_style();
+  begin_property_grid(label, tooltip);
   bool changed = ImGui::InputText(label, str, flags, callback, user_data);
+  end_property_grid();
   pop_frame_style();
   return changed;
 }

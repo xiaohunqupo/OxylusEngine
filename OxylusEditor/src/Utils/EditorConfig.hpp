@@ -1,9 +1,9 @@
 #pragma once
 
-#include <Utils/CVars.hpp>
-#include <filesystem>
 #include <string>
 #include <vector>
+
+#include "Utils/CVars.hpp"
 
 namespace ox {
 class Project;
