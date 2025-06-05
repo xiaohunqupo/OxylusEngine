@@ -307,6 +307,8 @@ vuk::Value<vuk::ImageAttachment> VkContext::new_frame(this VkContext& self) {
 }
 
 void VkContext::end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment> target_) {
+  ZoneScoped;
+
   auto entire_thing = vuk::enqueue_presentation(std::move(target_));
   vuk::ProfilingCallbacks cbs = self.tracy_profiler->setup_vuk_callback();
   entire_thing.submit(*self.frame_allocator, self.compiler, {.graph_label = {}, .callbacks = cbs});

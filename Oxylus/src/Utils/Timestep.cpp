@@ -8,6 +8,8 @@ Timestep::Timestep() : m_timestep(0.0), m_last_time(0.0), m_elapsed(0.0) { m_Tim
 Timestep::~Timestep() { delete m_Timer; }
 
 void Timestep::on_update() {
+  ZoneScoped;
+
   double currentTime = m_Timer->get_elapsed_msd();
   double maxFrameTime = -1.0;
   double dt = currentTime - m_last_time;

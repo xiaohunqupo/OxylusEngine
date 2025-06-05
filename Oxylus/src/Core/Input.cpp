@@ -15,6 +15,8 @@ void Input::set_instance() {
 }
 
 void Input::reset_pressed() {
+  ZoneScoped;
+
   memset(input_data.key_pressed, 0, MAX_KEYS);
   memset(input_data.mouse_clicked, 0, MAX_BUTTONS);
   input_data.scroll_offset_y = 0;

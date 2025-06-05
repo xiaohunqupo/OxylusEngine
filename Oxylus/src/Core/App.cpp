@@ -123,6 +123,8 @@ App& App::push_overlay(Layer* layer) {
 }
 
 void App::run() {
+  ZoneScoped;
+
   const auto input_sys = get_system<Input>(EngineSystems::Input);
   const auto asset_man = get_system<AssetManager>(EngineSystems::AssetManager);
 
@@ -210,14 +212,20 @@ void App::run() {
 
     imgui_layer->begin_frame(timestep.get_seconds(), extent);
 
-    for (auto* layer : *layer_stack.get()) {
-      layer->on_update(timestep);
-      layer->on_render(extent, swapchain_attachment->format);
+    {
+      ZoneScopedN("LayerStackUpdate");
+      for (auto* layer : *layer_stack.get()) {
+        layer->on_update(timestep);
+        layer->on_render(extent, swapchain_attachment->format);
+      }
     }
 
-    for (const auto& system : system_registry | std::views::values) {
-      system->on_update();
-      system->on_render(extent, swapchain_attachment->format);
+    {
+      ZoneScopedN("EngineSystemUpdates");
+      for (const auto& system : system_registry | std::views::values) {
+        system->on_update();
+        system->on_render(extent, swapchain_attachment->format);
+      }
     }
 
     swapchain_attachment = imgui_layer->end_frame(*vk_context, std::move(swapchain_attachment));

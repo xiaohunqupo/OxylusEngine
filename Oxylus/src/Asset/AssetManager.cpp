@@ -186,6 +186,8 @@ auto AssetManager::read_meta_file(const std::string& path) -> std::unique_ptr<As
 }
 
 auto AssetManager::load_deferred_assets() -> void {
+  ZoneScoped;
+
   for (auto& task : deferred_load_queue) {
     task();
   }
