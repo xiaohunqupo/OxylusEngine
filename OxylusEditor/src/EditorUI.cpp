@@ -177,7 +177,8 @@ bool UI::texture_property(const char* label, UUID& texture_uuid, const char* too
     if (!path.empty()) {
       auto* asset_man = App::get_asset_manager();
       if (auto new_texture = asset_man->import_asset(path)) {
-        *asset = new_texture;
+        if (asset_man->load_texture(new_texture))
+          *asset = new_texture;
       }
     }
   };

@@ -233,15 +233,11 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
   UI::texture_property("Albedo", material->albedo_texture);
   UI::texture_property("Normal", material->normal_texture);
   UI::texture_property("Emissive", material->emissive_texture);
-  if (material->emissive_texture) {
-    UI::property_vector("Emissive Color", material->emissive_color, true, true);
-  }
+  UI::property_vector("Emissive Color", material->emissive_color, true, true);
 
   UI::texture_property("Metallic Roughness", material->metallic_roughness_texture);
-  if (material->metallic_roughness_texture) {
-    UI::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
-    UI::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
-  }
+  UI::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
+  UI::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
 
   UI::texture_property("Occlusion", material->occlusion_texture);
 
