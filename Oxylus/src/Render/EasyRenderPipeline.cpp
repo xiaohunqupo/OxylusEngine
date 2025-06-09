@@ -380,7 +380,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                                                         ox::size_bytes(this->gpu_meshlet_instances));
     }
 
-    const auto meshlet_instance_count = this->gpu_meshlet_instances.size();
+    const auto meshlet_instance_count = static_cast<u32>(this->gpu_meshlet_instances.size());
     auto meshes_buffer_value = vuk::Value<vuk::Buffer>{};
     if (!this->gpu_meshes.empty()) {
       meshes_buffer_value = vk_context.upload_staging(std::span(this->gpu_meshes), *this->meshes_buffer);
@@ -514,12 +514,6 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(meshes_buffer_final),
            std::move(camera_buffer));
 
-    auto visbuffer_attachment = vuk::declare_ia("visbuffer",
-                                                {.usage = vuk::ImageUsageFlagBits::eStorage, //
-                                                 .format = vuk::Format::eR64Uint,
-                                                 .sample_count = vuk::Samples::e1});
-    visbuffer_attachment.same_shape_as(final_attachment);
-
     auto visbuffer_data_attachment = vuk::declare_ia(
         "visbuffer data",
         {.usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
@@ -534,25 +528,23 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
          .sample_count = vuk::Samples::e1});
     overdraw_attachment.same_shape_as(final_attachment);
 
-    std::tie(visbuffer_attachment, visbuffer_data_attachment, overdraw_attachment) = vuk::make_pass(
+    std::tie(visbuffer_data_attachment, overdraw_attachment) = vuk::make_pass(
         "vis clear",
         []( //
             vuk::CommandBuffer& cmd_list,
-            VUK_IA(vuk::eComputeWrite) visbuffer,
             VUK_IA(vuk::eComputeWrite) visbuffer_data,
             VUK_IA(vuk::eComputeWrite) overdraw) {
           cmd_list //
               .bind_compute_pipeline("visbuffer_clear")
-              .bind_image(0, 0, visbuffer)
-              .bind_image(0, 1, visbuffer_data)
-              .bind_image(0, 2, overdraw)
+              .bind_image(0, 0, visbuffer_data)
+              .bind_image(0, 1, overdraw)
               .push_constants(vuk::ShaderStageFlagBits::eCompute,
                               0,
-                              PushConstants(glm::uvec2(visbuffer->extent.width, visbuffer->extent.height)))
-              .dispatch_invocations_per_pixel(visbuffer);
+                              PushConstants(glm::uvec2(visbuffer_data->extent.width, visbuffer_data->extent.height)))
+              .dispatch_invocations_per_pixel(visbuffer_data);
 
-          return std::make_tuple(visbuffer, visbuffer_data, overdraw);
-        })(std::move(visbuffer_attachment), std::move(visbuffer_data_attachment), std::move(overdraw_attachment));
+          return std::make_tuple(visbuffer_data, overdraw);
+        })(std::move(visbuffer_data_attachment), std::move(overdraw_attachment));
 
     std::tie(visbuffer_data_attachment,
              depth_attachment,
@@ -679,7 +671,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
     // std::tie(depth_attachment, hiz_attachment) = hiz_generate_pass(std::move(depth_attachment),
     //                                                                std::move(hiz_attachment));
-    vk_context.wait_on(std::move(hiz_attachment));
+    //vk_context.wait_on(std::move(hiz_attachment));
 
     auto albedo_attachment = vuk::declare_ia(
         "albedo",

@@ -135,6 +135,7 @@ void cs_main(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
     u32 active_triangle_index = 0;
     if (local_index < meshlet.triangle_count) {
         triangle_passed = test_triangle(mesh, meshlet, local_index);
+        triangle_passed = true;
         if (triangle_passed) {
             active_triangle_index = com::atomic_add(triangles_passed_shared, 1, com::memory_order_relaxed);
         }
@@ -148,7 +149,7 @@ void cs_main(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 
     com::control_barrier(com::memory_order_acq_rel);
 
-    if (true) {
+    if (triangle_passed) {
         const u32 index_offset = base_index_shared + active_triangle_index * 3;
         C.reordered_indices[index_offset + 0] = (visible_meshlet_index << MESHLET_PRIMITIVE_BITS) | ((triangle_index + 0) & MESHLET_PRIMITIVE_MASK);
         C.reordered_indices[index_offset + 1] = (visible_meshlet_index << MESHLET_PRIMITIVE_BITS) | ((triangle_index + 1) & MESHLET_PRIMITIVE_MASK);

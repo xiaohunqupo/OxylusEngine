@@ -191,6 +191,7 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   vk10_features.features.multiViewport = true;
   vk10_features.features.samplerAnisotropy = true;
   vk10_features.features.multiDrawIndirect = true;
+  vk10_features.features.fragmentStoresAndAtomics = true;
 
   VkPhysicalDeviceVulkan11Features vk11_features{};
   vk11_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_VULKAN_1_1_FEATURES;

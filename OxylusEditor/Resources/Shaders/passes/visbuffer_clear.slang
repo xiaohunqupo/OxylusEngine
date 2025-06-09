@@ -5,12 +5,9 @@ import gpu;
 import passes.visbuffer;
 
 [[vk::binding(0, 0)]]
-StorageImage2D<u64, ImageFormat::R64UI> visbuffer_image;
-
-[[vk::binding(1, 0)]]
 StorageImage2D<u32, ImageFormat::R32UI> visbuffer_data_image;
 
-[[vk::binding(2, 0)]]
+[[vk::binding(1, 0)]]
 StorageImage2D<u32, ImageFormat::R32UI> overdraw_image;
 
 struct PushConstants {
