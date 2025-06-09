@@ -86,9 +86,11 @@ vuk::ProfilingCallbacks TracyProfiler::setup_vuk_callback() {
 }
 
 void TracyProfiler::destroy_context() {
+#if TRACY_ENABLE
   for (auto ctx : contexts) {
     TracyVkDestroy(ctx);
   }
+#endif
   tracy_cbufai.reset();
   tracy_cpool.reset();
 }
