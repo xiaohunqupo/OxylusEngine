@@ -159,9 +159,10 @@ private:
   std::vector<GPU::TransformID> dirty_transforms = {};
   vuk::Unique<vuk::Buffer> transforms_buffer = vuk::Unique<vuk::Buffer>();
 
-  std::vector<GPU::Material> gpu_materials = {};
-  std::vector<vuk::ImageView> texture_views = {};
   GPU::CameraData camera_data = {};
+
+  std::vector<GPU::Mesh> gpu_meshes = {};
+  std::vector<GPU::MeshletInstance> gpu_meshlet_instances = {};
 
   option<GPU::Atmosphere> atmosphere = nullopt;
   option<GPU::Sun> sun = nullopt;
@@ -170,6 +171,8 @@ private:
 
   Texture sky_transmittance_lut_view;
   Texture sky_multiscatter_lut_view;
+
+  Texture hiz_view;
 
   auto sky_pass(VkContext& vk_context,
                 vuk::Value<vuk::Buffer>& camera_buffer,

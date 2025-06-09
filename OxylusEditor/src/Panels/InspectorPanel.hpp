@@ -15,7 +15,7 @@ public:
 
   void on_render(vuk::Extent3D extent, vuk::Format format) override;
 
-  static void draw_material_properties(Material* material, const UUID& uuid, flecs::entity load_event);
+  static void draw_material_properties(Material* material, const UUID& material_uuid, flecs::entity load_event);
 
 private:
   void draw_components(flecs::entity entity);

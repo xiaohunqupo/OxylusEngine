@@ -46,6 +46,7 @@ public:
   std::vector<GPU::TransformID> dirty_transforms = {};
   SlotMap<GPU::Transforms, GPU::TransformID> transforms = {};
   ankerl::unordered_dense::map<flecs::entity, GPU::TransformID> entity_transforms_map = {};
+  ankerl::unordered_dense::map<std::pair<UUID, usize>, std::vector<GPU::TransformID>> rendering_meshes_map = {};
 
   explicit Scene(const Shared<RenderPipeline>& render_pipeline = nullptr);
   explicit Scene(const std::string& name);
@@ -64,7 +65,10 @@ public:
   auto is_running() const -> bool { return running; }
 
   auto create_entity(const std::string& name = "") const -> flecs::entity;
+
   auto create_mesh_entity(const UUID& asset_uuid) -> flecs::entity;
+  auto attach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool;
+  auto detach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool;
 
   auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
 
@@ -101,6 +105,8 @@ public:
 
 private:
   bool running = false;
+
+  bool meshes_dirty = false;
 
   auto add_transform(this Scene& self, flecs::entity entity) -> GPU::TransformID;
   auto remove_transform(this Scene& self, flecs::entity entity) -> void;

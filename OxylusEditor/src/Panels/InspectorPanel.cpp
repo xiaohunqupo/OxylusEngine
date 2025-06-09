@@ -114,13 +114,13 @@ void draw_component(const char* name, flecs::entity entity, UIFunction ui_functi
     entity.remove<T>();
 }
 
-void InspectorPanel::draw_material_properties(Material* material, const UUID& uuid, flecs::entity load_event) {
-  if (uuid) {
+void InspectorPanel::draw_material_properties(Material* material, const UUID& material_uuid, flecs::entity load_event) {
+  if (material_uuid) {
     const auto& window = App::get()->get_window();
-    static auto uuid_copy = uuid;
+    static auto uuid_copy = material_uuid;
     static auto load_event_copy = load_event;
 
-    auto uuid_str = fmt::format("UUID: {}", uuid.str());
+    auto uuid_str = fmt::format("UUID: {}", material_uuid.str());
     ImGui::TextUnformatted(uuid_str.c_str());
 
     auto load_str = fmt::format("{} Load", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
@@ -195,7 +195,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
 
     if (ImGui::BeginDragDropSource()) {
       std::string path_str = fmt::format("new_material");
-      auto payload = PayloadData(path_str, uuid);
+      auto payload = PayloadData(path_str, material_uuid);
       ImGui::SetDragDropPayload(PayloadData::DRAG_DROP_TARGET, &payload, payload.size());
       ImGui::TextUnformatted(path_str.c_str());
       ImGui::EndDragDropSource();
@@ -208,10 +208,12 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
     }
   }
 
+  bool dirty = false;
+
   UI::begin_properties(UI::default_properties_flags);
 
   const char* alpha_modes[] = {"Opaque", "Mash", "Blend"};
-  UI::property("Alpha mode", reinterpret_cast<int*>(&material->alpha_mode), alpha_modes, 3);
+  dirty |= UI::property("Alpha mode", reinterpret_cast<int*>(&material->alpha_mode), alpha_modes, 3);
 
   const char* samplers[] = {
       "LinearRepeated",
@@ -220,26 +222,32 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& uu
       "NearestClamped",
       "LinearRepeatedAnisotropy",
   };
-  UI::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 5);
+  dirty |= UI::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 5);
 
-  UI::property_vector<glm::vec2>("UV Size", material->uv_size, 0.1f, 10.f);
-  UI::property_vector<glm::vec2>("UV Offset", material->uv_offset, -10.0f, 10.f);
+  dirty |= UI::property_vector<glm::vec2>("UV Size", material->uv_size, 0.1f, 10.f);
+  dirty |= UI::property_vector<glm::vec2>("UV Offset", material->uv_offset, -10.0f, 10.f);
 
-  UI::property_vector("Color", material->albedo_color, true, true);
+  dirty |= UI::property_vector("Color", material->albedo_color, true, true);
 
   // NOTE: These properties leak when the old textures are discared.
   // Since in editor you can manually free the old loaded textures
   // for fast iterations I'll leave this behaviour.
-  UI::texture_property("Albedo", material->albedo_texture);
-  UI::texture_property("Normal", material->normal_texture);
-  UI::texture_property("Emissive", material->emissive_texture);
-  UI::property_vector("Emissive Color", material->emissive_color, true, false);
-  UI::texture_property("Metallic Roughness", material->metallic_roughness_texture);
-  UI::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
-  UI::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
-  UI::texture_property("Occlusion", material->occlusion_texture);
+  dirty |= UI::texture_property("Albedo", material->albedo_texture);
+  dirty |= UI::texture_property("Normal", material->normal_texture);
+  dirty |= UI::texture_property("Emissive", material->emissive_texture);
+  dirty |= UI::property_vector("Emissive Color", material->emissive_color, true, false);
+  dirty |= UI::texture_property("Metallic Roughness", material->metallic_roughness_texture);
+  dirty |= UI::property("Roughness Factor", &material->roughness_factor, 0.0f, 1.0f);
+  dirty |= UI::property("Metallic Factor", &material->metallic_factor, 0.0f, 1.0f);
+  dirty |= UI::texture_property("Occlusion", material->occlusion_texture);
 
   UI::end_properties();
+
+  if (dirty) {
+    auto* asset_man = App::get_asset_manager();
+    if (auto* asset = asset_man->get_asset(material_uuid))
+      asset_man->set_material_dirty(asset->material_id);
+  }
 }
 
 template <typename T>

@@ -97,11 +97,11 @@ struct Material {
   alignas(4) u32 occlusion_image_index = ~0_u32;
 
   static GPU::Material from_material(const ox::Material& material,
-                                     option<u32> albedo_id = ~0_u32,
-                                     option<u32> normal_id = ~0_u32,
-                                     option<u32> emissive_id = ~0_u32,
-                                     option<u32> metallic_roughness_id = ~0_u32,
-                                     option<u32> occlusion_id = ~0_u32) {
+                                     option<u32> albedo_id = nullopt,
+                                     option<u32> normal_id = nullopt,
+                                     option<u32> emissive_id = nullopt,
+                                     option<u32> metallic_roughness_id = nullopt,
+                                     option<u32> occlusion_id = nullopt) {
     auto mat = GPU::Material{
         .albedo_color = material.albedo_color,
         .uv_size = material.uv_size,

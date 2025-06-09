@@ -252,6 +252,22 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
         }
       });
 
+  self.world.observer<MeshComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnRemove)
+      .each([&self](flecs::iter& it, usize i, MeshComponent& rendering_mesh) {
+        if (!rendering_mesh.mesh_uuid) {
+          return;
+        }
+
+        auto entity = it.entity(i);
+        if (it.event() == flecs::OnSet) {
+          self.attach_mesh(entity, rendering_mesh.mesh_uuid, rendering_mesh.mesh_index);
+        } else if (it.event() == flecs::OnRemove) {
+          self.detach_mesh(entity, rendering_mesh.mesh_uuid, rendering_mesh.mesh_index);
+        }
+      });
+
   // Systems run order:
   // -- PreUpdate  -> Main Systems
   // -- OnUpdate   -> Physics Systems
@@ -427,7 +443,7 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
         auto texture_size = glm::vec2(albedo_texture->get_extent().width, albedo_texture->get_extent().height);
         uv_size = {sprite_animation.frame_size[0] * 1.f / texture_size[0],
                    sprite_animation.frame_size[1] * 1.f / texture_size[1]};
-        sprite.current_uv_offset = material->uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
+        material->uv_offset = material->uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
       });
 
   self.world.system<const TransformComponent, LightComponent>("LightsUpdate")
@@ -590,6 +606,8 @@ auto Scene::create_entity(const std::string& name) const -> flecs::entity {
 }
 
 auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
+  ZoneScoped;
+
   auto* asset_man = App::get_asset_manager();
 
   // sanity check
@@ -616,14 +634,15 @@ auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
       const auto R = glm::mat4_cast(cur_node.rotation);
       const auto S = glm::scale(glm::mat4(1.0f), cur_node.scale);
       auto TRS = T * R * S;
-      auto* transform_comp = node_entity.get_mut<TransformComponent>();
+      auto transform_comp = TransformComponent{};
       {
         glm::quat rotation = {};
         glm::vec3 skew = {};
         glm::vec4 perspective = {};
-        glm::decompose(TRS, transform_comp->scale, rotation, transform_comp->position, skew, perspective);
-        transform_comp->rotation = glm::eulerAngles(glm::quat(rotation[3], rotation[0], rotation[1], rotation[2]));
+        glm::decompose(TRS, transform_comp.scale, rotation, transform_comp.position, skew, perspective);
+        transform_comp.rotation = glm::eulerAngles(glm::quat(rotation[3], rotation[0], rotation[1], rotation[2]));
       }
+      node_entity.set(transform_comp);
 
       if (cur_node.mesh_index.has_value()) {
         node_entity.set<MeshComponent>(
@@ -631,6 +650,7 @@ auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
       }
 
       node_entity.child_of(root);
+      node_entity.modified<TransformComponent>();
 
       visitor(node_entity, cur_node.child_indices);
     }
@@ -764,6 +784,59 @@ auto Scene::remove_transform(this Scene& self, flecs::entity entity) -> void {
 
   self.transforms.destroy_slot(it->second);
   self.entity_transforms_map.erase(it);
+}
+
+auto Scene::attach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool {
+  ZoneScoped;
+
+  auto transforms_it = self.entity_transforms_map.find(entity);
+  if (!self.entity_transforms_map.contains(entity)) {
+    OX_LOG_FATAL("Target entity must have a transform component!");
+    return false;
+  }
+
+  const auto transform_id = transforms_it->second;
+
+  auto old_mesh_uuid = std::ranges::find_if(self.rendering_meshes_map, [transform_id](const auto& entry) {
+    const auto& [_, transform_ids] = entry;
+    return std::ranges::contains(transform_ids, transform_id);
+  });
+
+  if (old_mesh_uuid != self.rendering_meshes_map.end()) {
+    self.detach_mesh(entity, old_mesh_uuid->first.first, mesh_index);
+  }
+
+  auto [instances_it, inserted] = self.rendering_meshes_map.try_emplace(std::pair{mesh_uuid, mesh_index});
+  if (!inserted && instances_it == self.rendering_meshes_map.end()) {
+    return false;
+  }
+
+  instances_it->second.emplace_back(transform_id);
+  self.meshes_dirty = true;
+  self.set_dirty(entity);
+
+  return true;
+}
+
+auto Scene::detach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool {
+  ZoneScoped;
+
+  if (!self.entity_transforms_map.contains(entity) || !self.rendering_meshes_map.contains({mesh_uuid, mesh_index})) {
+    return false;
+  }
+
+  const auto transform_id = self.entity_transforms_map[entity];
+  auto& instances = self.rendering_meshes_map[{mesh_uuid, mesh_index}];
+
+  if (std::erase(instances, transform_id) > 0) {
+    self.meshes_dirty = true;
+
+    if (instances.empty()) {
+      self.rendering_meshes_map.erase({mesh_uuid, mesh_index});
+    }
+  }
+
+  return true;
 }
 
 auto Scene::on_contact_added(const JPH::Body& body1,

@@ -118,6 +118,14 @@ void Texture::create(const std::string& path, const TextureLoadInfo& load_info, 
   set_name(_name, loc);
 }
 
+auto Texture::destroy() -> void {
+  ZoneScoped;
+  _attachment = {};
+  _name = {};
+  _view.reset();
+  _image.reset();
+}
+
 auto Texture::reset_view(vuk::Allocator& allocator) -> void {
   ZoneScoped;
 

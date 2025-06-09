@@ -165,9 +165,6 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
 
   this->descriptor_set_01->update_sampler(BindlessID::Samplers, 5, hiz_sampler);
 
-  // const vuk::Sampler cmp_depth_sampler = runtime.acquire_sampler(vuk::CmpDepthSampler, runtime.get_frame_count());
-  // this->descriptor_set_00->update_sampler(12, 0, cmp_depth_sampler);
-
   sky_transmittance_lut_view = Texture("sky_transmittance_lut");
   sky_transmittance_lut_view.create({},
                                     {.preset = vuk::ImageAttachment::Preset::eSTT2DUnmipped,
@@ -231,6 +228,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     -> vuk::Value<vuk::ImageAttachment> {
   ZoneScoped;
 
+  auto* asset_man = App::get_asset_manager();
+
   bool rebuild_transforms = false;
   const auto buffer_size = this->transforms_buffer ? this->transforms_buffer->size : 0;
   if (ox::size_bytes(this->transforms) > buffer_size) {
@@ -287,17 +286,13 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   camera_data.resolution = {render_info.extent.width, render_info.extent.height};
   auto camera_buffer = vk_context.scratch_buffer(std::span(&camera_data, 1));
 
-  for (u32 i = 0; i < texture_views.size(); i++) {
-    this->descriptor_set_01->update_sampled_image(
-        BindlessID::SampledImages, i, texture_views[i], vuk::ImageLayout::eReadOnlyOptimalKHR);
-  }
+  auto material_buffer = asset_man->get_materials_buffer(
+      vk_context, *this->descriptor_set_01, BindlessID::SampledImages);
   this->descriptor_set_01->commit(*vk_context.runtime);
 
   render_queue_2d.update();
   render_queue_2d.sort();
   auto vertex_buffer_2d = vk_context.scratch_buffer(std::span(render_queue_2d.sprite_data));
-
-  auto material_buffer = vk_context.scratch_buffer(std::span(gpu_materials));
 
   const auto final_attachment_ia = vuk::ImageAttachment{
       .usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
@@ -326,7 +321,25 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   };
   auto depth_attachment = vuk::clear_image(vuk::declare_ia("depth_image", depth_ia), vuk::DepthZero);
 
-  if (!gpu_materials.empty() && !render_queue_2d.sprite_data.empty()) {
+  const auto square_extent = vuk::Extent3D{
+      .width = std::bit_floor(render_info.extent.width),
+      .height = std::bit_floor(render_info.extent.height),
+      .depth = 1,
+  };
+
+  if (this->hiz_view.get_extent() != square_extent) {
+    if (this->hiz_view) {
+      this->hiz_view.destroy();
+    }
+
+    this->hiz_view.create({}, {.preset = Preset::eSTT2D, .format = vuk::Format::eR32Sfloat, .extent = square_extent});
+    this->hiz_view.set_name("hiz");
+  }
+
+  auto hiz_attachment = this->hiz_view.acquire("hiz", vuk::eNone);
+
+  // --- 2D Pass ---
+  if (!render_queue_2d.sprite_data.empty()) {
     std::tie(final_attachment, depth_attachment, camera_buffer, vertex_buffer_2d, material_buffer, transforms_buf) =
         vuk::make_pass(
             "2d_forward_pass",
@@ -610,6 +623,8 @@ auto EasyRenderPipeline::sky_pass(VkContext& vk_context,
 auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
   ZoneScoped;
 
+  auto* asset_man = App::get_asset_manager();
+
   this->transforms = scene->transforms.slots_unsafe();
   this->dirty_transforms = scene->dirty_transforms;
 
@@ -702,46 +717,56 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
   this->atmosphere = atmosphere_data;
   this->sun = sun_data;
 
+  gpu_meshes.clear();
+  gpu_meshlet_instances.clear();
+
+  for (const auto& [rendering_mesh, transform_ids] : scene->rendering_meshes_map) {
+    auto* model = asset_man->get_mesh(rendering_mesh.first);
+    const auto& mesh = model->meshes[rendering_mesh.second];
+
+    // Per mesh info
+    auto mesh_offset = gpu_meshes.size();
+    auto& gpu_mesh = gpu_meshes.emplace_back();
+    gpu_mesh.indices = model->indices->device_address;
+    gpu_mesh.vertex_positions = model->vertex_positions->device_address;
+    gpu_mesh.vertex_normals = model->vertex_normals->device_address;
+    gpu_mesh.texture_coords = model->texture_coords->device_address;
+    gpu_mesh.local_triangle_indices = model->local_triangle_indices->device_address;
+    gpu_mesh.meshlet_bounds = model->meshlet_bounds->device_address;
+    gpu_mesh.meshlets = model->meshlets->device_address;
+
+    // Instancing
+    for (const auto transform_id : transform_ids) {
+      for (const auto primitive_index : mesh.primitive_indices) {
+        auto& primitive = model->primitives[primitive_index];
+        for (u32 meshlet_index = 0; meshlet_index < primitive.meshlet_count; meshlet_index++) {
+          auto& meshlet_instance = gpu_meshlet_instances.emplace_back();
+          meshlet_instance.mesh_index = mesh_offset;
+          meshlet_instance.material_index = primitive.material_index;
+          meshlet_instance.transform_index = SlotMap_decode_id(transform_id).index;
+          meshlet_instance.meshlet_index = meshlet_index + primitive.meshlet_offset;
+        }
+      }
+    }
+  }
+
   this->render_queue_2d.init();
 
   scene->world
       .query_builder<const TransformComponent, const SpriteComponent>() //
       .build()
-      .each([&scene,
-             &cam,
-             &rq2d = this->render_queue_2d,
-             &gmaterials = this->gpu_materials,
-             &tviews = this->texture_views](
+      .each([asset_man, &scene, &cam, &rq2d = this->render_queue_2d](
                 flecs::entity e, const TransformComponent& tc, const SpriteComponent& comp) {
         const auto distance = glm::distance(glm::vec3(0.f, 0.f, cam.position.z), glm::vec3(0.f, 0.f, tc.position.z));
-
-        auto* asset_man = App::get_asset_manager();
-
-        const auto add_texture_if_exists = [&tviews, asset_man](const UUID& uuid) -> ox::option<u32> {
-          if (!uuid) {
-            return ox::nullopt;
-          }
-
-          auto* texture = asset_man->get_texture(uuid);
-          if (!texture) {
-            return ox::nullopt;
-          }
-
-          auto index = tviews.size();
-          tviews.emplace_back(*texture->get_view());
-          return static_cast<u32>(index);
-        };
-
-        if (auto* material = asset_man->get_material(comp.material)) {
-          auto gpu_mat = GPU::Material::from_material(*material,
-                                                      add_texture_if_exists(material->albedo_texture).value_or(~0_u32));
-          gpu_mat.uv_offset = comp.current_uv_offset.value_or(gpu_mat.uv_offset);
-          gmaterials.emplace_back(gpu_mat);
-
+        if (auto* material = asset_man->get_asset(comp.material)) {
           if (auto transform_id = scene->get_entity_transform_id(e)) {
-            rq2d.add(comp, tc.position.y, SlotMap_decode_id(*transform_id).index, gmaterials.size() - 1, distance);
+            rq2d.add(comp,
+                     tc.position.y,
+                     SlotMap_decode_id(*transform_id).index,
+                     SlotMap_decode_id(material->material_id).index,
+                     distance);
           } else {
-            OX_LOG_WARN("No registered transform for entity: {}", e.name().c_str());
+            OX_LOG_WARN("No registered transform for sprite entity: {}", e.name().c_str());
           }
         }
       });

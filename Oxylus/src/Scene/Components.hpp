@@ -80,9 +80,6 @@ ECS_COMPONENT_BEGIN(SpriteComponent)
 #ifndef ECS_REFLECT_TYPES
   AABB rect = {};
 
-  // set if an animation is controlling this sprite
-  std::optional<glm::vec2> current_uv_offset = std::nullopt;
-
   SpriteComponent() {}
 #endif
 ECS_COMPONENT_END();

@@ -42,6 +42,8 @@ public:
               const TextureLoadInfo& load_info,
               const std::source_location& loc = std::source_location::current()) -> void;
 
+  auto destroy() -> void;
+
   static auto from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> Unique<Texture>;
 
   auto attachment() const -> vuk::ImageAttachment { return _attachment; }
@@ -59,6 +61,8 @@ public:
   auto set_name(std::string_view name, const std::source_location& loc = std::source_location::current()) -> void;
 
   auto get_view_id() const -> u64 { return _view->id; }
+
+  operator bool() const { return static_cast<bool>(_image); }
 
   static auto load_stb_image(const std::string& filename,
                              uint32_t* width = nullptr,
