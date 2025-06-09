@@ -71,6 +71,7 @@ auto ThumbnailRenderPipeline::on_render(VkContext& vk_context, const RenderInfo&
   };
 
   auto camera_buffer = vk_context.scratch_buffer(camera_data);
+
   auto vertex_positions = *mesh->vertex_positions;
   auto indices = *mesh->indices;
   auto indices_count = mesh->indices_count;

@@ -43,6 +43,7 @@ public:
   flecs::world world;
   ComponentDB component_db = {};
 
+  bool meshes_dirty = false;
   std::vector<GPU::TransformID> dirty_transforms = {};
   SlotMap<GPU::Transforms, GPU::TransformID> transforms = {};
   ankerl::unordered_dense::map<flecs::entity, GPU::TransformID> entity_transforms_map = {};
@@ -105,8 +106,6 @@ public:
 
 private:
   bool running = false;
-
-  bool meshes_dirty = false;
 
   auto add_transform(this Scene& self, flecs::entity entity) -> GPU::TransformID;
   auto remove_transform(this Scene& self, flecs::entity entity) -> void;

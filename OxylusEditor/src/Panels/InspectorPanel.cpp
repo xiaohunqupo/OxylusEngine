@@ -390,6 +390,25 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     UI::text("Mesh Index", std::to_string(component.mesh_index));
     UI::property("Cast shadows", &component.cast_shadows);
     UI::end_properties();
+
+    auto load_event = App::get()->world.entity("mesh_material_load_event");
+    auto* asset_man = App::get_asset_manager();
+    if (auto* mesh = asset_man->get_mesh(component.mesh_uuid)) {
+      for (auto& mat_uuid : mesh->materials) {
+        static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen |
+                                                         ImGuiTreeNodeFlags_SpanAvailWidth |
+                                                         ImGuiTreeNodeFlags_AllowItemOverlap |
+                                                         ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
+
+        if (auto* material = asset_man->get_material(mat_uuid)) {
+          const auto mat_uuid_str = mat_uuid.str();
+          if (ImGui::TreeNodeEx(mat_uuid_str.c_str(), TREE_FLAGS, "%s", mat_uuid_str.c_str())) {
+            draw_material_properties(material, mat_uuid, load_event);
+            ImGui::TreePop();
+          }
+        }
+      }
+    }
   });
 
   draw_component<SpriteComponent>(" Sprite Component", entity, [](SpriteComponent& component, flecs::entity e) {

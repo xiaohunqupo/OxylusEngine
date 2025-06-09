@@ -148,7 +148,7 @@ void cs_main(uint3 group_id : SV_GroupID, uint3 group_thread_id : SV_GroupThread
 
     com::control_barrier(com::memory_order_acq_rel);
 
-    if (triangle_passed) {
+    if (true) {
         const u32 index_offset = base_index_shared + active_triangle_index * 3;
         C.reordered_indices[index_offset + 0] = (visible_meshlet_index << MESHLET_PRIMITIVE_BITS) | ((triangle_index + 0) & MESHLET_PRIMITIVE_MASK);
         C.reordered_indices[index_offset + 1] = (visible_meshlet_index << MESHLET_PRIMITIVE_BITS) | ((triangle_index + 1) & MESHLET_PRIMITIVE_MASK);

@@ -626,7 +626,6 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
 
   // Load embedded textures
   std::vector<UUID> texture_uuids = {};
-  std::vector<TextureLoadInfo> load_infos = {};
 
   auto embedded_textures = std::vector<UUID>();
   auto embedded_texture_uuids_json = meta_json->doc["embedded_textures"].get_array();
@@ -720,9 +719,8 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     info->vertex_texcoords[offset] = texcoord;
   };
 
-  auto on_materials_load = [&load_infos, //
-                            texture_uuids,
-                            asset_path](std::vector<GLTFImageInfo>& images) {
+  auto on_materials_load = [mesh, &materials, texture_uuids, asset_path](std::vector<GLTFImageInfo>& images) {
+    std::vector<TextureLoadInfo> load_infos = {};
     for (auto& t : images) {
       std::visit(ox::match{
                      [&](const ::fs::path& p) {}, // noop
@@ -747,6 +745,10 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     const auto* task_scheduler = App::get_system<TaskScheduler>(EngineSystems::TaskScheduler);
     task_scheduler->schedule_task(&load_task);
     task_scheduler->wait_task(&load_task);
+
+    for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
+      asset_man->load_material(material_uuid, material);
+    }
   };
 
   GLTFCallbacks gltf_callbacks = {.model = mesh};
@@ -761,10 +763,6 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
   if (!gltf_model.has_value()) {
     OX_LOG_ERROR("Failed to parse Model '{}'!", asset_path);
     return false;
-  }
-
-  for (const auto& [material_uuid, material] : std::views::zip(mesh->materials, materials)) {
-    this->load_material(material_uuid, material);
   }
 
   //  ── SCENE HIERARCHY ─────────────────────────────────────────────────

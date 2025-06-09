@@ -344,8 +344,10 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
 void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   ZoneScoped;
   const auto sun = scene->create_entity("Sun");
-  sun.get_mut<TransformComponent>()->rotation.x = glm::radians(25.f);
+  sun.get_mut<TransformComponent>()->rotation.x = glm::radians(90.f);
+  sun.get_mut<TransformComponent>()->rotation.y = glm::radians(45.f);
   sun.set<LightComponent>({.type = LightComponent::LightType::Directional, .intensity = 10.f});
+  sun.add<AtmosphereComponent>();
 }
 
 void EditorLayer::save_scene() {

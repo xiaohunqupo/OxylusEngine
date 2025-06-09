@@ -18,7 +18,6 @@ struct Asset {
   UUID uuid = {};
   std::string path = {};
   AssetType type = AssetType::None;
-  ox::option<std::vector<u8>> data = ox::nullopt;
   union {
     MeshID mesh_id = MeshID::Invalid;
     TextureID texture_id;

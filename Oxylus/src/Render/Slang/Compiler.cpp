@@ -289,11 +289,14 @@ auto SlangCompiler::new_session(const SlangSessionInfo& info) -> option<SlangSes
        .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "slang"}},
       {.name = slang::CompilerOptionName::VulkanUseEntryPointName,
        .value = {.kind = slang::CompilerOptionValueKind::Int, .intValue0 = 1}},
-      {.name = slang::CompilerOptionName::DisableWarnings,
-       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "39001,41012"}},
+      {.name = slang::CompilerOptionName::DisableWarning,
+       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "39001"}},
+      {.name = slang::CompilerOptionName::DisableWarning,
+       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "41012"}},
+      {.name = slang::CompilerOptionName::DisableWarning,
+       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "41017"}},
       {.name = slang::CompilerOptionName::Capability,
-       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "vk_mem_model"}},
-  };
+       .value = {.kind = slang::CompilerOptionValueKind::String, .stringValue0 = "vk_mem_model"}}};
   std::vector<slang::PreprocessorMacroDesc> macros;
   macros.reserve(info.definitions.size());
   for (const auto& [first, second] : info.definitions) {

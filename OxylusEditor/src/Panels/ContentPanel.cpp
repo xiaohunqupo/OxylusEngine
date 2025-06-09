@@ -570,7 +570,7 @@ void ContentPanel::render_body(bool grid) {
         } else if (file.type == FileType::Mesh) {
           if (thumbnail_cache_meshes.contains(file.file_path)) {
             texture_name = file.file_path;
-          } else {
+          } else if (mesh_thumbnails_enabled) {
             const auto name = fs::get_file_name(file.file_path);
             auto rp = create_unique<ThumbnailRenderPipeline>();
             rp->set_name(name);

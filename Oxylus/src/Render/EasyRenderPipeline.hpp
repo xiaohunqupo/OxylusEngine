@@ -161,8 +161,11 @@ private:
 
   GPU::CameraData camera_data = {};
 
+  bool meshes_dirty = false;
   std::vector<GPU::Mesh> gpu_meshes = {};
   std::vector<GPU::MeshletInstance> gpu_meshlet_instances = {};
+  vuk::Unique<vuk::Buffer> meshes_buffer = vuk::Unique<vuk::Buffer>();
+  vuk::Unique<vuk::Buffer> meshlet_instances_buffer = vuk::Unique<vuk::Buffer>();
 
   option<GPU::Atmosphere> atmosphere = nullopt;
   option<GPU::Sun> sun = nullopt;
@@ -173,10 +176,5 @@ private:
   Texture sky_multiscatter_lut_view;
 
   Texture hiz_view;
-
-  auto sky_pass(VkContext& vk_context,
-                vuk::Value<vuk::Buffer>& camera_buffer,
-                vuk::Value<vuk::ImageAttachment>& final_attachment,
-                vuk::Value<vuk::ImageAttachment>& depth_attachment) -> void;
 };
 } // namespace ox

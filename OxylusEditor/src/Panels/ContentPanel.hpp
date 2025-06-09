@@ -72,6 +72,7 @@ private:
   ImGuiTextFilter m_filter;
   f32 _elapsed_time = 0.0f;
 
+  bool mesh_thumbnails_enabled = false;
   ankerl::unordered_dense::map<std::string, Shared<Texture>> thumbnail_cache_textures;
   ankerl::unordered_dense::map<std::string, vuk::ImageAttachment> thumbnail_cache_meshes;
   ankerl::unordered_dense::map<std::string, Unique<ThumbnailRenderPipeline>> thumbnail_render_pipeline_cache;

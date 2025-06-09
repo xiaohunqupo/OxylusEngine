@@ -15,7 +15,6 @@ struct VertexOutput {
 
 struct VertexInput {
   f32x3 position;
-  //f32x2 tex_coord;
 };
 
 [[shader("vertex")]]
@@ -29,5 +28,5 @@ func vs_main(VertexInput input) -> VertexOutput{
 
 [[shader("fragment")]]
 f32x4 fs_main(VertexOutput input) : SV_TARGET {
-  return f32x4(1.0f, 0.0f, 0.0f, 1.0f);
+  return f32x4(0.5, 0.5, 0.5, 1);
 }
