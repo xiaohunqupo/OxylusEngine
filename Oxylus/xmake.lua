@@ -71,7 +71,7 @@ target("Oxylus")
         "stb",
         "miniaudio",
         "imgui",
-        "imguizmo",
+        "imguizmo-lr",
         "glm",
         "flecs",
         "fastgltf",

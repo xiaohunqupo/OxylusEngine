@@ -254,8 +254,10 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     rebuild_transforms = true;
   }
 
-  auto transforms_buffer_value = vuk::acquire_buf(
-      "transforms_buffer", *this->transforms_buffer, vuk::Access::eMemoryRead);
+  auto transforms_buffer_value = vuk::Value<vuk::Buffer>{};
+  if (this->transforms_buffer->buffer != VK_NULL_HANDLE) {
+    transforms_buffer_value = vuk::acquire_buf("transforms_buffer", *this->transforms_buffer, vuk::Access::eMemoryRead);
+  }
 
   if (rebuild_transforms) {
     transforms_buffer_value = vk_context.upload_staging(this->transforms, std::move(transforms_buffer_value));
@@ -355,7 +357,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   const auto debugging = debug_view != GPU::DebugView::None;
 
   // --- 3D Pass ---
-  if (!this->gpu_meshes.empty()) {
+  if (!this->gpu_meshes.empty() && !this->gpu_meshlet_instances.empty()) {
     const auto cull_flags = GPU::CullFlags::All; // TODO: Configurable
 
     buffer_size = this->meshes_buffer ? this->meshes_buffer->size : 0;
@@ -380,27 +382,16 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                                                         ox::size_bytes(this->gpu_meshlet_instances));
     }
 
-    const auto meshlet_instance_count = static_cast<u32>(this->gpu_meshlet_instances.size());
-    auto meshes_buffer_value = vuk::Value<vuk::Buffer>{};
-    if (!this->gpu_meshes.empty()) {
+    vuk::Value<vuk::Buffer> meshes_buffer_value;
+    vuk::Value<vuk::Buffer> meshlet_instances_buffer_value;
+    if (this->meshes_dirty) {
       meshes_buffer_value = vk_context.upload_staging(std::span(this->gpu_meshes), *this->meshes_buffer);
-    }
-
-    auto meshlet_instances_buffer_value = vuk::Value<vuk::Buffer>{};
-    if (!this->gpu_meshlet_instances.empty()) {
       meshlet_instances_buffer_value = vk_context.upload_staging(std::span(this->gpu_meshlet_instances),
                                                                  *this->meshlet_instances_buffer);
-    }
-
-    vuk::Value<vuk::Buffer> meshes_buffer_final;
-    vuk::Value<vuk::Buffer> meshlet_instances_buffer_final;
-    if (this->meshes_dirty) {
-      meshes_buffer_final = std::move(meshes_buffer_value);
-      meshlet_instances_buffer_final = std::move(meshlet_instances_buffer_value);
       this->meshes_dirty = false;
     } else {
-      meshes_buffer_final = vuk::acquire_buf("meshes_buffer", *this->meshes_buffer, vuk::Access::eNone);
-      meshlet_instances_buffer_final = vuk::acquire_buf(
+      meshes_buffer_value = vuk::acquire_buf("meshes_buffer", *this->meshes_buffer, vuk::Access::eNone);
+      meshlet_instances_buffer_value = vuk::acquire_buf(
           "meshlet_instances_buffer", *this->meshlet_instances_buffer, vuk::Access::eNone);
     }
 
@@ -420,6 +411,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     }
     auto hiz_attachment = this->hiz_view.acquire("hiz", vuk::eNone);
 
+    const auto meshlet_instance_count = static_cast<u32>(this->gpu_meshlet_instances.size());
+
     //  ── CULL MESHLETS ───────────────────────────────────────────────────
     auto cull_triangles_cmd_buffer = vk_context.scratch_buffer<vuk::DispatchIndirectCommand>({.x = 0, .y = 1, .z = 1});
     auto visible_meshlet_instances_indices_buffer = vk_context.alloc_transient_buffer(
@@ -427,9 +420,9 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
     std::tie(cull_triangles_cmd_buffer,
              visible_meshlet_instances_indices_buffer,
-             meshlet_instances_buffer_final,
+             meshlet_instances_buffer_value,
              transforms_buffer_value,
-             meshes_buffer_final,
+             meshes_buffer_value,
              camera_buffer) = vuk::make_pass( //
         "vis cull meshlets",
         [meshlet_instance_count](vuk::CommandBuffer& cmd_list,
@@ -456,21 +449,22 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               cull_triangles_cmd, visible_meshlet_instances_indices, meshlet_instances, transforms_, meshes, camera);
         })(std::move(cull_triangles_cmd_buffer),
            std::move(visible_meshlet_instances_indices_buffer),
-           std::move(meshlet_instances_buffer_final),
+           std::move(meshlet_instances_buffer_value),
            std::move(transforms_buffer_value),
-           std::move(meshes_buffer_final),
+           std::move(meshes_buffer_value),
            std::move(camera_buffer));
 
     auto draw_command_buffer = vk_context.scratch_buffer<vuk::DrawIndexedIndirectCommand>({.instanceCount = 1});
     auto reordered_indices_buffer = vk_context.alloc_transient_buffer(
         vuk::MemoryUsage::eGPUonly, meshlet_instance_count * Mesh::MAX_MESHLET_PRIMITIVES * 3 * sizeof(u32));
+
     std::tie(hiz_attachment,
              draw_command_buffer,
              visible_meshlet_instances_indices_buffer,
              reordered_indices_buffer,
-             meshlet_instances_buffer_final,
+             meshlet_instances_buffer_value,
              transforms_buffer_value,
-             meshes_buffer_final,
+             meshes_buffer_value,
              camera_buffer) = vuk::make_pass( //
         "vis cull triangles",
         [](vuk::CommandBuffer& cmd_list,
@@ -509,9 +503,9 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(draw_command_buffer),
            std::move(visible_meshlet_instances_indices_buffer),
            std::move(reordered_indices_buffer),
-           std::move(meshlet_instances_buffer_final),
+           std::move(meshlet_instances_buffer_value),
            std::move(transforms_buffer_value),
-           std::move(meshes_buffer_final),
+           std::move(meshes_buffer_value),
            std::move(camera_buffer));
 
     auto visbuffer_data_attachment = vuk::declare_ia(
@@ -550,9 +544,9 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              depth_attachment,
              camera_buffer,
              visible_meshlet_instances_indices_buffer,
-             meshlet_instances_buffer_final,
+             meshlet_instances_buffer_value,
              transforms_buffer_value,
-             meshes_buffer_final,
+             meshes_buffer_value,
              material_buffer,
              overdraw_attachment) = vuk::make_pass( //
         "vis encode",
@@ -603,9 +597,9 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(depth_attachment),
            std::move(camera_buffer),
            std::move(visible_meshlet_instances_indices_buffer),
-           std::move(meshlet_instances_buffer_final),
+           std::move(meshlet_instances_buffer_value),
            std::move(transforms_buffer_value),
-           std::move(meshes_buffer_final),
+           std::move(meshes_buffer_value),
            std::move(material_buffer),
            std::move(overdraw_attachment));
 
@@ -625,10 +619,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     hiz_attachment = vuk::clear_image(std::move(hiz_attachment), vuk::Black<f32>);
     auto hiz_generate_pass = vuk::make_pass(
         "hiz generate",
-        []( //
-            vuk::CommandBuffer& cmd_list,
-            VUK_IA(vuk::eComputeSampled) src,
-            VUK_IA(vuk::eComputeRW) dst) {
+        [](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eComputeSampled) src, VUK_IA(vuk::eComputeRW) dst) {
           auto extent = dst->extent;
           auto mip_count = dst->level_count;
           OX_CHECK_LT(mip_count, 13u);
@@ -671,7 +662,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
     // std::tie(depth_attachment, hiz_attachment) = hiz_generate_pass(std::move(depth_attachment),
     //                                                                std::move(hiz_attachment));
-    //vk_context.wait_on(std::move(hiz_attachment));
+    // vk_context.wait_on(std::move(hiz_attachment));
 
     auto albedo_attachment = vuk::declare_ia(
         "albedo",
@@ -712,7 +703,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              metallic_roughness_occlusion_attachment,
              camera_buffer,
              visible_meshlet_instances_indices_buffer,
-             meshlet_instances_buffer_final,
+             meshlet_instances_buffer_value,
              transforms_buffer_value,
              material_buffer,
              visbuffer_data_attachment) = vuk::make_pass( //
@@ -766,8 +757,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(metallic_roughness_occlusion_attachment),
            std::move(camera_buffer),
            std::move(visible_meshlet_instances_indices_buffer),
-           std::move(meshlet_instances_buffer_final),
-           std::move(meshes_buffer_final),
+           std::move(meshlet_instances_buffer_value),
+           std::move(meshes_buffer_value),
            std::move(transforms_buffer_value),
            std::move(material_buffer),
            std::move(visbuffer_data_attachment));
@@ -1276,6 +1267,8 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
   if (scene->meshes_dirty) {
     this->meshes_dirty = true;
 
+    OX_LOG_INFO("meshes_dirty");
+
     this->gpu_meshes.clear();
     this->gpu_meshlet_instances.clear();
 
@@ -1284,8 +1277,8 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
       const auto& mesh = model->meshes[rendering_mesh.second];
 
       // Per mesh info
-      auto mesh_offset = gpu_meshes.size();
-      auto& gpu_mesh = gpu_meshes.emplace_back();
+      auto mesh_offset = static_cast<u32>(this->gpu_meshes.size());
+      auto& gpu_mesh = this->gpu_meshes.emplace_back();
       gpu_mesh.indices = model->indices->device_address;
       gpu_mesh.vertex_positions = model->vertex_positions->device_address;
       gpu_mesh.vertex_normals = model->vertex_normals->device_address;

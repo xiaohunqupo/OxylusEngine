@@ -6,7 +6,7 @@ add_requires("imgui v1.91.8-docking", { configs = {
     wchar32 = true,
 }, system = false })
 
-add_requires("imguizmo v1.91.8-docking")
+add_requires("imguizmo-lr v1.91.8-docking")
 
 add_requires("glm 1.0.1", { configs = {
     header_only = true,

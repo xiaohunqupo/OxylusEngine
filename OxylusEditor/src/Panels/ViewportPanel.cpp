@@ -545,6 +545,8 @@ void ViewportPanel::draw_gizmos() {
         const glm::vec3 delta_rotation = rotation - tc->rotation;
         tc->rotation += delta_rotation;
         tc->scale = scale;
+
+        selected_entity.modified<TransformComponent>();
       }
     }
   }

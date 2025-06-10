@@ -230,6 +230,7 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
       .event(flecs::OnSet)
       .event(flecs::OnAdd)
       .event(flecs::OnRemove)
+      .without<MeshComponent>()
       .each([&self](flecs::iter& it, usize i, TransformComponent&) {
         auto entity = it.entity(i);
         if (it.event() == flecs::OnSet) {
@@ -240,31 +241,45 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
         } else if (it.event() == flecs::OnRemove) {
           self.remove_transform(entity);
         }
+      });
 
-        // Set sprite rect
-        if (entity.has<SpriteComponent>(); auto* sprite = entity.get_mut<SpriteComponent>()) {
-          if (auto id = self.get_entity_transform_id(entity)) {
-            if (auto* transform = self.get_entity_transform(*id)) {
-              sprite->rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
-              sprite->rect = sprite->rect.get_transformed(transform->world);
-            }
-          }
+  self.world.observer<TransformComponent, MeshComponent>()
+      .event(flecs::OnAdd)
+      .event(flecs::OnSet)
+      .event(flecs::OnRemove)
+      .each([&self](flecs::iter& it, usize i, TransformComponent& tc, MeshComponent& mc) {
+        auto entity = it.entity(i);
+        const auto mesh_event = it.event_id() == self.world.component<MeshComponent>();
+        if (it.event() == flecs::OnSet) {
+          if (!self.entity_transforms_map.contains(entity))
+            self.add_transform(entity);
+          self.set_dirty(entity);
+
+          if (mesh_event && mc.mesh_uuid)
+            self.attach_mesh(entity, mc.mesh_uuid, mc.mesh_index);
+        } else if (it.event() == flecs::OnAdd) {
+          self.add_transform(entity);
+          self.set_dirty(entity);
+        } else if (it.event() == flecs::OnRemove) {
+          if (mc.mesh_uuid)
+            self.detach_mesh(entity, mc.mesh_uuid, mc.mesh_index);
+
+          self.remove_transform(entity);
         }
       });
 
-  self.world.observer<MeshComponent>()
+  self.world.observer<TransformComponent, SpriteComponent>()
       .event(flecs::OnSet)
+      .event(flecs::OnAdd)
       .event(flecs::OnRemove)
-      .each([&self](flecs::iter& it, usize i, MeshComponent& rendering_mesh) {
-        if (!rendering_mesh.mesh_uuid) {
-          return;
-        }
-
+      .each([&self](flecs::iter& it, usize i, TransformComponent&, SpriteComponent& sprite) {
         auto entity = it.entity(i);
-        if (it.event() == flecs::OnSet) {
-          self.attach_mesh(entity, rendering_mesh.mesh_uuid, rendering_mesh.mesh_index);
-        } else if (it.event() == flecs::OnRemove) {
-          self.detach_mesh(entity, rendering_mesh.mesh_uuid, rendering_mesh.mesh_index);
+        // Set sprite rect
+        if (auto id = self.get_entity_transform_id(entity)) {
+          if (auto* transform = self.get_entity_transform(*id)) {
+            sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
+            sprite.rect = sprite.rect.get_transformed(transform->world);
+          }
         }
       });
 
@@ -821,19 +836,19 @@ auto Scene::attach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh
 auto Scene::detach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool {
   ZoneScoped;
 
-  if (!self.entity_transforms_map.contains(entity) || !self.rendering_meshes_map.contains({mesh_uuid, mesh_index})) {
+  auto instances_it = self.rendering_meshes_map.find(std::pair(mesh_uuid, mesh_index));
+  auto transforms_it = self.entity_transforms_map.find(entity);
+  if (instances_it == self.rendering_meshes_map.end() || transforms_it == self.entity_transforms_map.end()) {
     return false;
   }
 
-  const auto transform_id = self.entity_transforms_map[entity];
-  auto& instances = self.rendering_meshes_map[{mesh_uuid, mesh_index}];
+  const auto transform_id = transforms_it->second;
+  auto& instances = instances_it->second;
+  std::erase_if(instances, [transform_id](const GPU::TransformID& id) { return id == transform_id; });
+  self.meshes_dirty = true;
 
-  if (std::erase(instances, transform_id) > 0) {
-    self.meshes_dirty = true;
-
-    if (instances.empty()) {
-      self.rendering_meshes_map.erase({mesh_uuid, mesh_index});
-    }
+  if (instances.empty()) {
+    self.rendering_meshes_map.erase(instances_it);
   }
 
   return true;
@@ -951,13 +966,13 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* mc = entity.get<MeshColliderComponent>()) {
+#if TODO
+  (const auto* mc = entity.get<MeshColliderComponent>()) {
     if (const auto* mesh_component = entity.get<MeshComponent>()) {
       const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), mc->friction, mc->restitution);
 
       // TODO: We should only get the vertices and indices for this particular MeshComponent using
       // MeshComponent::node_index
-#if 0
       auto vertices = mesh_component->mesh_base->_vertices;
       const auto& indices = mesh_component->mesh_base->_indices;
 
@@ -993,10 +1008,11 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
       JPH::PhysicsMaterialList material_list = {};
       material_list.emplace_back(mat);
       JPH::MeshShapeSettings shape_settings(vertex_list, indexedTriangleList, material_list);
-      compound_shape_settings.AddShape({mc->offset.x, mc->offset.y, mc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
-#endif
+      compound_shape_settings.AddShape(
+          {mc->offset.x, mc->offset.y, mc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
     }
   }
+#endif
 
   // Body
   auto rotation = glm::quat(transform.rotation);
