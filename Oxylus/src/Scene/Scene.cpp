@@ -612,7 +612,7 @@ auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   flecs::entity e = world.entity();
   if (name.empty()) {
     memory::ScopedStack stack;
-    e.set_name(stack.format_char("Entity {}", e.raw_id()));
+    e.set_name(stack.format_char("Entity {}", e.id()));
   } else {
     e.set_name(name.c_str());
   }

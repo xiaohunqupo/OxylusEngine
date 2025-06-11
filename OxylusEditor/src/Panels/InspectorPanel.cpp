@@ -328,7 +328,7 @@ void draw_add_component(const flecs::entity entity, const char* name) {
 
 void InspectorPanel::draw_components(const flecs::entity entity) {
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.9f);
-  static std::string new_name = entity.name().c_str();
+  std::string new_name = entity.name().c_str();
   if (_rename_entity)
     ImGui::SetKeyboardFocusHere();
   UI::push_frame_style();

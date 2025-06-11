@@ -17,6 +17,15 @@
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
+static flecs::entity clone_entity(flecs::entity entity) {
+  std::string clone_name = entity.name().c_str();
+  while (entity.world().lookup(clone_name.data())) {
+    clone_name = fmt::format("{}_clone", clone_name);
+  }
+  auto cloned_entity = entity.clone(true);
+  return cloned_entity.set_name(clone_name.data());
+}
+
 SceneHierarchyPanel::SceneHierarchyPanel() : EditorPanel("Scene Hierarchy", ICON_MDI_VIEW_LIST, true) {}
 
 auto SceneHierarchyPanel::set_scene(const Shared<Scene>& scene) -> void {
@@ -95,7 +104,7 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
     if (ImGui::MenuItem("Rename", "F2"))
       _renaming_entity = entity;
     if (ImGui::MenuItem("Duplicate", "Ctrl+D")) {
-      _selected_entity.set(entity.clone(true));
+      _selected_entity.set(clone_entity(entity));
     }
     if (ImGui::MenuItem("Delete", "Del"))
       entity_deleted = true;
@@ -350,7 +359,7 @@ void SceneHierarchyPanel::draw_context_menu() {
 auto SceneHierarchyPanel::on_update() -> void {
   if (_selected_entity.get() != flecs::entity::null()) {
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_D)) {
-      _selected_entity.set(_selected_entity.get().clone(true));
+      _selected_entity.set(clone_entity(_selected_entity.get()));
     }
     if (ImGui::IsKeyPressed(ImGuiKey_Delete) &&
         (_table_hovered || EditorLayer::get()->viewport_panels[0]->is_viewport_hovered)) {
