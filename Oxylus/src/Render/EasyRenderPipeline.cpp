@@ -952,7 +952,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   }
 
   // --- Atmosphere Pass ---
-  if (this->atmosphere.has_value() && !debugging) {
+  if (this->atmosphere.has_value() && this->sun.has_value() && !debugging) {
     auto sky_view_lut_attachment = vuk::declare_ia(
         "sky_view_lut",
         {.image_type = vuk::ImageType::e2D,
@@ -1265,8 +1265,6 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
 
   if (scene->meshes_dirty) {
     this->meshes_dirty = true;
-
-    OX_LOG_INFO("meshes_dirty");
 
     this->gpu_meshes.clear();
     this->gpu_meshlet_instances.clear();
