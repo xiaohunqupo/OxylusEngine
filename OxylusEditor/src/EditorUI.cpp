@@ -230,7 +230,10 @@ bool UI::texture_property(const char* label, UUID& texture_uuid, const char* too
       // tooltip
       if (ImGui::IsItemHovered(ImGuiHoveredFlags_DelayNormal | ImGuiHoveredFlags_NoSharedDelay)) {
         ImGui::BeginTooltip();
-        ImGui::TextUnformatted(texture_asset->path.c_str());
+        const auto* texture_underlying = asset_man->get_texture(texture_asset->texture_id);
+        const auto txt_name = fmt::format(
+            "{}:{}", texture_asset->path, vuk::format_to_sv(texture_underlying->get_format()));
+        ImGui::TextUnformatted(txt_name.c_str());
         ImGui::Spacing();
         ImGui::Image(App::get()->get_imgui_layer()->add_image(*texture), {tooltip_size, tooltip_size});
         ImGui::EndTooltip();

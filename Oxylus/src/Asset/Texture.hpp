@@ -54,6 +54,7 @@ public:
   auto get_image() const -> const vuk::Unique<vuk::Image>& { return _image; }
   auto get_view() const -> const vuk::Unique<vuk::ImageView>& { return _view; }
   auto get_extent() const -> const vuk::Extent3D& { return _attachment.extent; }
+  auto get_format() const -> vuk::Format { return _attachment.format; }
 
   auto reset_view(vuk::Allocator& allocator) -> void;
 
