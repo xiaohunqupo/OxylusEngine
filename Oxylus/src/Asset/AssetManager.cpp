@@ -873,30 +873,32 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
 
   mesh->indices_count = model_indices.size();
 
-  mesh->indices = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_indices));
+  mesh->indices = context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_indices));
   context.wait_on(context.upload_staging(std::span(model_indices), *mesh->indices));
 
-  mesh->vertex_positions = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_vertex_positions));
+  mesh->vertex_positions = context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly,
+                                                         ox::size_bytes(model_vertex_positions));
   context.wait_on(context.upload_staging(std::span(model_vertex_positions), *mesh->vertex_positions));
 
-  mesh->vertex_normals = context.allocate_buffer(vuk::MemoryUsage::eGPUonly,
-                                                 ox::size_bytes(gltf_callbacks.vertex_normals));
+  mesh->vertex_normals = context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly,
+                                                       ox::size_bytes(gltf_callbacks.vertex_normals));
   context.wait_on(context.upload_staging(std::span(gltf_callbacks.vertex_normals), *mesh->vertex_normals));
 
   if (!gltf_callbacks.vertex_texcoords.empty()) {
-    mesh->texture_coords = context.allocate_buffer(vuk::MemoryUsage::eGPUonly,
-                                                   ox::size_bytes(gltf_callbacks.vertex_texcoords));
+    mesh->texture_coords = context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly,
+                                                         ox::size_bytes(gltf_callbacks.vertex_texcoords));
     context.wait_on(context.upload_staging(std::span(gltf_callbacks.vertex_texcoords), *mesh->texture_coords));
   }
 
-  mesh->meshlets = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_meshlets));
+  mesh->meshlets = context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_meshlets));
   context.wait_on(context.upload_staging(std::span(model_meshlets), *mesh->meshlets));
 
-  mesh->meshlet_bounds = context.allocate_buffer(vuk::MemoryUsage::eGPUonly, ox::size_bytes(model_meshlet_bounds));
+  mesh->meshlet_bounds = context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly,
+                                                       ox::size_bytes(model_meshlet_bounds));
   context.wait_on(context.upload_staging(std::span(model_meshlet_bounds), *mesh->meshlet_bounds));
 
-  mesh->local_triangle_indices = context.allocate_buffer(vuk::MemoryUsage::eGPUonly,
-                                                         ox::size_bytes(model_local_triangle_indices));
+  mesh->local_triangle_indices = context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly,
+                                                               ox::size_bytes(model_local_triangle_indices));
   context.wait_on(context.upload_staging(std::span(model_local_triangle_indices), *mesh->local_triangle_indices));
 
   return true;
