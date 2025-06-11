@@ -352,7 +352,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                                                            vuk::Access::eComputeSampled);
 
   // TODO: Configurable
-  const auto debug_view = GPU::DebugView::None;
+  const auto debug_view = static_cast<GPU::DebugView>(RendererCVar::cvar_debug_view.get());
   const f32 debug_heatmap_scale = 5.0;
   const auto debugging = debug_view != GPU::DebugView::None;
 
@@ -413,7 +413,6 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
     const auto meshlet_instance_count = static_cast<u32>(this->gpu_meshlet_instances.size());
 
-    //  ── CULL MESHLETS ───────────────────────────────────────────────────
     auto cull_triangles_cmd_buffer = vk_context.scratch_buffer<vuk::DispatchIndirectCommand>({.x = 0, .y = 1, .z = 1});
     auto visible_meshlet_instances_indices_buffer = vk_context.alloc_transient_buffer(
         vuk::MemoryUsage::eGPUonly, meshlet_instance_count * sizeof(u32));

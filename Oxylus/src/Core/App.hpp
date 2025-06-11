@@ -2,6 +2,7 @@
 
 #include <flecs.h>
 
+#include "Core/LayerStack.hpp"
 #include "ESystem.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
@@ -64,7 +65,7 @@ struct AppSpec {
   std::string name = "Oxylus App";
   std::string working_directory = {};
   std::string assets_path = "Resources";
-  uint32_t device_index = 0;
+  bool headless = false;
   AppCommandLineArgs command_line_args = {};
   WindowInfo window_info = {};
 };
@@ -114,7 +115,7 @@ public:
   const AppCommandLineArgs& get_command_line_args() const { return app_spec.command_line_args; }
 
   ImGuiLayer* get_imgui_layer() const { return imgui_layer; }
-  const Shared<LayerStack>& get_layer_stack() const { return layer_stack; }
+  const Unique<LayerStack>& get_layer_stack() const { return layer_stack; }
 
   const Window& get_window() const { return window; }
   static VkContext& get_vkcontext() { return *_instance->vk_context; }
@@ -162,7 +163,7 @@ private:
   static App* _instance;
   AppSpec app_spec = {};
   ImGuiLayer* imgui_layer = nullptr;
-  Shared<LayerStack> layer_stack = nullptr;
+  Unique<LayerStack> layer_stack = nullptr;
   Unique<VkContext> vk_context = nullptr;
   Window window = {};
   glm::vec2 swapchain_extent = {};

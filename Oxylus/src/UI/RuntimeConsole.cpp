@@ -40,9 +40,9 @@ RuntimeConsole::RuntimeConsole() {
       loguru::Verbosity_INFO);
 
   // Default commands
-  register_command("quit", "", [] { App::get()->close(); });
-  register_command("clear", "", [this] { clear_log(); });
-  register_command("help", "", [this] { help_command(); });
+  register_command("quit", "", [](const ParsedCommandValue&) { App::get()->close(); });
+  register_command("clear", "", [this](const ParsedCommandValue&) { clear_log(); });
+  register_command("help", "", [this](const ParsedCommandValue& value) { help_command(value); });
 
   request_scroll_to_bottom = true;
 }
@@ -51,7 +51,7 @@ RuntimeConsole::~RuntimeConsole() { Log::remove_callback("runtime_console"); }
 
 void RuntimeConsole::register_command(const std::string& command,
                                       const std::string& on_succes_log,
-                                      const std::function<void()>& action) {
+                                      const std::function<void(const ParsedCommandValue& value)>& action) {
   command_map.emplace(command, ConsoleCommand{nullptr, nullptr, nullptr, action, on_succes_log});
 }
 
@@ -260,7 +260,7 @@ void RuntimeConsole::process_command(const std::string& command) {
   if (command_map.contains(parsed_command)) {
     const auto& c = command_map[parsed_command];
     if (c.action != nullptr) {
-      c.action();
+      c.action(value);
     }
     if (!value.str_value.empty()) {
       if (c.str_value != nullptr) {
@@ -395,13 +395,24 @@ int RuntimeConsole::input_text_callback(ImGuiInputTextCallbackData* data) {
   return 0;
 }
 
-void RuntimeConsole::help_command() {
-  const auto available_commands = get_available_commands();
-  std::string t = "Available commands: \n";
-  for (const auto& c : available_commands)
-    t.append(fmt::format("\t {} \n", c));
+void RuntimeConsole::help_command(const ParsedCommandValue& value) {
+  if (!value.as_string().empty()) {
+    auto* cvar_system = CVarSystem::get();
+    const std::hash<std::string> hasher = {};
+    const auto hashed = hasher(value.as_string());
+    const auto cvar = cvar_system->get_cvar(hashed);
+    if (cvar) {
+      const auto cvar_description = fmt::format("CVar Description: {}", cvar->description);
+      add_log(cvar_description.c_str(), loguru::Verbosity_INFO);
+    }
+  } else {
+    const auto available_commands = get_available_commands();
+    std::string t = "Available commands: \n";
+    for (const auto& c : available_commands)
+      t.append(fmt::format("\t {} \n", c));
 
-  add_log(t.c_str(), loguru::Verbosity_INFO);
+    add_log(t.c_str(), loguru::Verbosity_INFO);
+  }
 }
 
 std::vector<std::string> RuntimeConsole::get_available_commands() {

@@ -50,8 +50,9 @@ public:
   RuntimeConsole();
   ~RuntimeConsole();
 
-  void
-  register_command(const std::string& command, const std::string& on_succes_log, const std::function<void()>& action);
+  void register_command(const std::string& command,
+                        const std::string& on_succes_log,
+                        const std::function<void(const ParsedCommandValue& value)>& action);
   void register_command(const std::string& command, const std::string& on_succes_log, int32_t* value);
   void register_command(const std::string& command, const std::string& on_succes_log, std::string* value);
   void register_command(const std::string& command, const std::string& on_succes_log, bool* value);
@@ -73,7 +74,7 @@ private:
     int32_t* int_value = nullptr;
     std::string* str_value = nullptr;
     bool* bool_value = nullptr;
-    std::function<void()> action = nullptr;
+    std::function<void(const ParsedCommandValue& value)> action = nullptr;
     std::string on_succes_log = {};
   };
 
@@ -81,7 +82,7 @@ private:
   ankerl::unordered_dense::map<std::string, ConsoleCommand> command_map;
   void process_command(const std::string& command);
 
-  void help_command();
+  void help_command(const ParsedCommandValue& value);
   std::vector<std::string> get_available_commands();
 
   ParsedCommandValue parse_value(const std::string& command);

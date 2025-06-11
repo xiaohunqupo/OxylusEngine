@@ -9,7 +9,6 @@
 #include "Core/Input.hpp"
 #include "FileSystem.hpp"
 #include "Layer.hpp"
-#include "LayerStack.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "Physics/Physics.hpp"
 #include "Render/RendererConfig.hpp"
@@ -52,7 +51,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   _instance = this;
 
-  layer_stack = create_shared<LayerStack>();
+  layer_stack = create_unique<LayerStack>();
   thread_manager = create_shared<ThreadManager>();
 
   if (app_spec.working_directory.empty())
