@@ -22,7 +22,7 @@ struct GLTFSamplerInfo {
 struct GLTFImageInfo {
   std::string name = {};
   AssetFileType file_type = {};
-  std::variant<fs::path, std::vector<u8>> image_data = {};
+  std::variant<::fs::path, std::vector<u8>> image_data = {};
 };
 
 struct GLTFTextureInfo {

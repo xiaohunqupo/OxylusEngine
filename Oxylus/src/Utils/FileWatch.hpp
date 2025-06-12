@@ -28,13 +28,16 @@
   #ifndef NOMINMAX
     #define NOMINMAX
   #endif
+  #ifndef WIN32_LEAN_AND_MEAN
+    #define WIN32_LEAN_AND_MEAN
+  #endif
+  #include <Windows.h>
   #include <Pathcch.h>
   #include <iostream>
   #include <shlwapi.h>
   #include <stdio.h>
   #include <stdlib.h>
   #include <tchar.h>
-  #include <windows.h>
 #endif // WIN32
 
 #if __unix__

@@ -41,7 +41,7 @@ constexpr u32 fnv32(const T& val) {
   return fnv32(&val, sizeof(T));
 }
 
-constexpr u32 fnv32_str(std::string_view str) { return fnv32(str.data(), str.length()); }
+constexpr u32 fnv32_str(std::string_view str) { return fnv32(str.data(), static_cast<u32>(str.length())); }
 
 constexpr u64 fnv64(const c8* data, usize data_size) {
   u64 fnv = detail::fnv64_val;
@@ -60,7 +60,8 @@ constexpr u64 fnv64(const T& val) {
 constexpr u64 fnv64_str(std::string_view str) { return fnv64(str.data(), str.length()); }
 
 // COMPILE TIME
-consteval u32 fnv32_c(std::string_view str) { return fnv32(str.data(), str.length()); }
+consteval u32 fnv32_c(std::string_view str) { return fnv32(str.data(), static_cast<u32>(str.length()));
+}
 
 // COMPILE TIME
 consteval u64 fnv64_c(std::string_view str) { return fnv64(str.data(), str.length()); }

@@ -83,10 +83,10 @@ auto read_material_data(Material* mat, simdjson::ondemand::value& material_obj) 
   json_to_vec(albedo_color.value_unsafe(), mat->albedo_color);
   auto emissive_color = material_obj["emissive_color"];
   json_to_vec(emissive_color.value_unsafe(), mat->emissive_color);
-  mat->roughness_factor = material_obj["roughness_factor"].get_double().value_unsafe();
-  mat->metallic_factor = material_obj["metallic_factor"].get_double().value_unsafe();
+  mat->roughness_factor = static_cast<f32>(material_obj["roughness_factor"].get_double().value_unsafe());
+  mat->metallic_factor = static_cast<f32>(material_obj["metallic_factor"].get_double().value_unsafe());
   mat->alpha_mode = static_cast<AlphaMode>(material_obj["alpha_mode"].get_uint64().value_unsafe());
-  mat->alpha_cutoff = material_obj["alpha_cutoff"].get_double().value_unsafe();
+  mat->alpha_cutoff = static_cast<f32>(material_obj["alpha_cutoff"].get_double().value_unsafe());
   mat->albedo_texture = UUID::from_string(material_obj["albedo_texture"].get_string().value_unsafe())
                             .value_or(UUID(nullptr));
   mat->normal_texture = UUID::from_string(material_obj["normal_texture"].get_string().value_unsafe())
@@ -233,6 +233,7 @@ auto AssetManager::to_asset_type_sv(AssetType type) -> std::string_view {
     case AssetType::Scene   : return "Scene";
     case AssetType::Audio   : return "Audio";
     case AssetType::Script  : return "Script";
+    default                 : return {};
   }
 }
 
@@ -308,16 +309,17 @@ auto AssetManager::import_asset(const std::string& path) -> UUID {
       for (auto& v : gltf_model->textures) {
         auto& image = gltf_model->images[v.image_index.value()];
         auto& texture_uuid = textures.emplace_back();
-        auto match = ox::match{
-            [&](const std::vector<u8>& data) {
-              texture_uuid = this->create_asset(AssetType::Texture, {});
-              embedded_textures.push_back(texture_uuid);
-            },
-            [&](const std::string& image_path) { //
-              texture_uuid = this->import_asset(image_path);
-            },
-        };
-        std::visit(match, image.image_data);
+
+        std::visit(ox::match{
+                       [&](const std::vector<u8>& data) {
+                         texture_uuid = this->create_asset(AssetType::Texture, {});
+                         embedded_textures.push_back(texture_uuid);
+                       },
+                       [&](const ::fs::path& image_path) { //
+                         texture_uuid = this->import_asset(image_path.string());
+                       },
+                   },
+                   image.image_data);
       }
 
       auto material_uuids = std::vector<UUID>(gltf_model->materials.size());
@@ -421,7 +423,7 @@ auto AssetManager::register_asset(const std::string& path) -> UUID {
   auto uuid = UUID::from_string(uuid_json.value_unsafe()).value();
   auto type = static_cast<AssetType>(type_json.value_unsafe().get_uint64());
 
-  if (!this->register_asset(uuid, type, asset_path)) {
+  if (!this->register_asset(uuid, type, asset_path.string())) {
     return UUID(nullptr);
   }
 
@@ -436,8 +438,9 @@ auto AssetManager::register_asset(const std::string& path) -> UUID {
       } else {
         OX_LOG_ERROR("Couldn't parse material meta data!");
       }
-    } break;
-    default:
+      break;
+    }
+    default: break;
   }
 
   return uuid;
@@ -695,7 +698,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     info->vertex_texcoords.resize(info->vertex_texcoords.size() + vertex_count);
     info->indices.resize(info->indices.size() + index_count);
 
-    gltf_mesh.primitive_indices.push_back(primitive_index);
+    gltf_mesh.primitive_indices.push_back(static_cast<u32>(primitive_index));
     primitive.material_index = global_material_index;
     primitive.vertex_offset = vertex_offset;
     primitive.vertex_count = vertex_count;
@@ -848,17 +851,17 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
             meshlet_bb_max = glm::max(meshlet_bb_max, tri_pos);
           }
 
-          meshlet.vertex_offset = vertex_offset;
-          meshlet.index_offset = index_offset + raw_meshlet.vertex_offset;
-          meshlet.triangle_offset = triangle_offset + raw_meshlet.triangle_offset;
+          meshlet.vertex_offset = static_cast<u32>(vertex_offset);
+          meshlet.index_offset = static_cast<u32>(index_offset + raw_meshlet.vertex_offset);
+          meshlet.triangle_offset = static_cast<u32>(triangle_offset + raw_meshlet.triangle_offset);
           meshlet.triangle_count = raw_meshlet.triangle_count;
           meshlet_aabb.aabb_min = meshlet_bb_min;
           meshlet_aabb.aabb_max = meshlet_bb_max;
         }
 
-        primitive.meshlet_count = meshlet_count;
-        primitive.meshlet_offset = meshlet_offset;
-        primitive.local_triangle_indices_offset = triangle_offset;
+        primitive.meshlet_count = static_cast<u32>(meshlet_count);
+        primitive.meshlet_offset = static_cast<u32>(meshlet_offset);
+        primitive.local_triangle_indices_offset = static_cast<u32>(triangle_offset);
       }
 
       std::ranges::move(raw_vertex_positions, std::back_inserter(model_vertex_positions));

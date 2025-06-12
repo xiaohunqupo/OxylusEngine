@@ -224,8 +224,8 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
   };
   dirty |= UI::property("Sampler", reinterpret_cast<int*>(&material->sampling_mode), samplers, 5);
 
-  dirty |= UI::property_vector<glm::vec2>("UV Size", material->uv_size, 0.1f, 10.f);
-  dirty |= UI::property_vector<glm::vec2>("UV Offset", material->uv_offset, -10.0f, 10.f);
+  dirty |= UI::property_vector<glm::vec2>("UV Size", material->uv_size, false, false, nullptr, 0.1f, 0.1f, 10.f);
+  dirty |= UI::property_vector<glm::vec2>("UV Offset", material->uv_offset, false, false, nullptr, 0.1f, -10.f, 10.f);
 
   dirty |= UI::property_vector("Color", material->albedo_color, true, true);
 

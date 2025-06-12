@@ -65,6 +65,7 @@ target("Oxylus")
         "/EHsc",
         "/bigobj",
         "-wd4100",
+        "/Zc:preprocessor",
         { force = true, public = true, tools = { "msvc", "cl", "clang_cl", "clang-cl" } })
 
     add_packages(

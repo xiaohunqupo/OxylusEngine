@@ -30,7 +30,7 @@ namespace ox {
 #endif
 
 ECS_COMPONENT_BEGIN(LayerComponent)
-  ECS_COMPONENT_MEMBER(layer, u32, 1)
+  ECS_COMPONENT_MEMBER(layer, u16, 1)
 ECS_COMPONENT_END();
 
 ECS_COMPONENT_BEGIN(TransformComponent)

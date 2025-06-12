@@ -70,7 +70,7 @@ auto AssetDirectory::add_subdir(this AssetDirectory& self, std::unique_ptr<Asset
 
 auto AssetDirectory::add_asset(this AssetDirectory& self, const ::fs::path& path) -> UUID {
   auto* asset_man = App::get_asset_manager();
-  auto asset_uuid = asset_man->import_asset(path);
+  auto asset_uuid = asset_man->import_asset(path.string());
   if (!asset_uuid) {
     return UUID(nullptr);
   }

@@ -37,6 +37,7 @@ auto engine_system_to_sv(EngineSystems type) -> std::string_view {
     case EngineSystems::Physics       : return "Physics";
     case EngineSystems::Input         : return "Input";
     case EngineSystems::Count         : return "";
+    default                           : return {};
   }
 }
 

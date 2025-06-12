@@ -148,7 +148,7 @@ auto json_to_entity(Scene& self, //
                      [&](bool* v) { *v = static_cast<bool>(member_json.get_bool().value_unsafe()); },
                      [&](f32* v) { *v = static_cast<f32>(member_json.get_double().value_unsafe()); },
                      [&](i32* v) { *v = static_cast<i32>(member_json.get_int64().value_unsafe()); },
-                     [&](u32* v) { *v = member_json.get_uint64().value_unsafe(); },
+                     [&](u32* v) { *v = static_cast<u32>(member_json.get_uint64().value_unsafe()); },
                      [&](i64* v) { *v = member_json.get_int64().value_unsafe(); },
                      [&](u64* v) { *v = member_json.get_uint64().value_unsafe(); },
                      [&](glm::vec2* v) { json_to_vec(member_json.value_unsafe(), *v); },

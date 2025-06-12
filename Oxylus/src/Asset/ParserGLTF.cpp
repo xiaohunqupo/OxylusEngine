@@ -312,13 +312,13 @@ auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> o
 
       auto& position_accessor = asset.accessors[position_attrib->accessorIndex];
       auto& index_accessor = asset.accessors[primitive.indicesAccessor.value()];
-      u32 primitive_vertex_count = position_accessor.count;
-      u32 primitive_index_count = index_accessor.count;
+      u32 primitive_vertex_count = static_cast<u32>(position_accessor.count);
+      u32 primitive_index_count = static_cast<u32>(index_accessor.count);
 
       if (callbacks.on_new_primitive) {
         callbacks.on_new_primitive(callbacks.user_data,
                                    mesh_index,
-                                   primitive.materialIndex.value(),
+                                   static_cast<u32>(primitive.materialIndex.value()),
                                    global_vertex_offset,
                                    primitive_vertex_count,
                                    global_index_offset,

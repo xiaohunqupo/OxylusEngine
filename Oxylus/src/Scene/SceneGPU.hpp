@@ -140,9 +140,9 @@ struct Sun {
   alignas(4) f32 intensity = 10.0f;
 };
 
-constexpr static f32 CAMERA_SCALE_UNIT = 0.01;
-constexpr static f32 INV_CAMERA_SCALE_UNIT = 1.0 / CAMERA_SCALE_UNIT;
-constexpr static f32 PLANET_RADIUS_OFFSET = 0.001;
+constexpr static f32 CAMERA_SCALE_UNIT = 0.01f;
+constexpr static f32 INV_CAMERA_SCALE_UNIT = 1.0f / CAMERA_SCALE_UNIT;
+constexpr static f32 PLANET_RADIUS_OFFSET = 0.001f;
 
 struct Atmosphere {
   alignas(4) glm::vec3 eye_position = {}; // this is camera pos but its always above planet_radius

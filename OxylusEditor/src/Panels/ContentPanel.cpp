@@ -86,15 +86,15 @@ static bool drag_drop_target(const std::filesystem::path& drop_path) {
 
       auto* asset_man = App::get_asset_manager();
 
-      std::string file_path = {};
+      ::fs::path file_path = {};
       u32 counter = 0;
       do {
         file_path = drop_path /
                     fmt::format("{}{}", asset->get_str(), (counter > 0 ? "_" + std::to_string(counter) : ""));
         counter++;
-      } while (fs::exists(file_path + ".oxasset"));
+      } while (::fs::exists(file_path / ".oxasset"));
 
-      if (!asset_man->export_asset(asset->uuid, file_path))
+      if (!asset_man->export_asset(asset->uuid, file_path.string()))
         OX_LOG_ERROR("Couldn't export asset!");
       return true;
     }
@@ -136,7 +136,7 @@ static void open_file(const std::filesystem::path& path) {
         break;
       }
       case ox::FileType::Material: break;
-      default:
+      default                    : break;
     }
   } else {
     fs::open_file_externally(filepath);

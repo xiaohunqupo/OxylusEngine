@@ -85,7 +85,7 @@ void LuaSystem::init_script(const std::string& path) {
 void LuaSystem::on_init(Scene* scene, flecs::entity entity) {
   ZoneScoped;
   if (on_init_func) {
-    bind_globals(scene, entity, App::get_timestep().get_millis());
+    bind_globals(scene, entity, static_cast<f32>(App::get_timestep().get_millis()));
     const auto result = on_init_func->call();
     check_result(result, "on_init");
   }

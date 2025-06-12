@@ -120,7 +120,9 @@ public:
                               bool color = false,
                               const bool show_alpha = true,
                               const char* tooltip = nullptr,
-                              float delta = 0.1f) {
+                              float delta = 0.1f,
+                              f32 min = 0.f,
+                              f32 max = 1.f) {
     begin_property_grid(label, tooltip);
     bool modified;
     const int component_count = value.length();
@@ -130,7 +132,7 @@ public:
       else
         modified = ImGui::ColorEdit3(id_buffer, glm::value_ptr(value));
     } else {
-      modified = ImGui::DragScalarN(id_buffer, ImGuiDataType_Float, glm::value_ptr(value), component_count, delta);
+      modified = ImGui::DragScalarN(id_buffer, ImGuiDataType_Float, glm::value_ptr(value), component_count, delta, &min, &max);
     }
     end_property_grid();
     return modified;
