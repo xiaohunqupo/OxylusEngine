@@ -13,7 +13,6 @@
 #include <Jolt/Physics/Collision/Shape/RotatedTranslatedShape.h>
 #include <Jolt/Physics/Collision/Shape/SphereShape.h>
 #include <Jolt/Physics/Collision/Shape/TaperedCapsuleShape.h>
-#include <flecs/addons/cpp/entity.hpp>
 #include <glm/gtx/matrix_decompose.hpp>
 #include <simdjson.h>
 #include <sol/state.hpp>

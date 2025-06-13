@@ -1,6 +1,5 @@
 #include "EasyRenderPipeline.hpp"
 
-#include <flecs/addons/cpp/entity.hpp>
 #include <vuk/ImageAttachment.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Types.hpp>
