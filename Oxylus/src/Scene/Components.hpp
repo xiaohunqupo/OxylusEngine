@@ -128,7 +128,7 @@ ECS_COMPONENT_END();
 
 ECS_COMPONENT_BEGIN(CameraComponent)
 #ifndef ECS_REFLECT_TYPES
-  enum class Projection {
+  enum Projection {
     Perspective = 0,
     Orthographic = 1,
   };
@@ -234,8 +234,8 @@ ECS_COMPONENT_END();
 // Physics
 ECS_COMPONENT_BEGIN(RigidbodyComponent)
 #ifndef ECS_REFLECT_TYPES
-  enum class BodyType { Static = 0, Kinematic, Dynamic };
-  enum class AllowedDOFs : u32 {
+  enum BodyType { Static = 0, Kinematic, Dynamic };
+  enum AllowedDOFs : u32 {
     None = 0b000000, ///< No degrees of freedom are allowed. Note that this is not valid and will crash. Use a static
                      ///< body instead.
     All = 0b111111,  ///< All degrees of freedom are allowed
