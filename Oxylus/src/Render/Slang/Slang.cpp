@@ -34,7 +34,7 @@ void Slang::add_shader(this Slang& self, vuk::PipelineBaseCreateInfo& pipeline_c
   for (auto& v : compile_info.entry_points) {
     auto entry_point = slang_module->get_entry_point(v);
     if (!entry_point.has_value()) {
-      OX_LOG_ERROR("Shader stage '{}' is not found for shader module '{}'", v, module_name);
+      OX_LOG_FATAL("Shader stage '{}' is not found for shader module '{}'", v, module_name);
       return;
     }
 
