@@ -10,6 +10,7 @@ on:
 env:
   VULKAN_VERSION: 1.4.309.0
   LLVM_VERSION: 20
+  LLVM_WINDOWS_VERSION: 20.1.4
 
 jobs:
   build:
@@ -62,9 +63,9 @@ jobs:
 
       - name: Install LLVM for Windows
         if: ${{ matrix.platform.os == 'windows' }}
-        uses: std-microblock/install-llvm-action@master
+        uses: KyleMayes/install-llvm-action@master
         with:
-          version: "19.1.7"
+          version: "${{env.LLVM_WINDOWS_VERSION}}"
 
       # Install xmake
       - name: Setup xmake
