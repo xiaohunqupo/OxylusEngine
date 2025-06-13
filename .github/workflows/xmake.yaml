@@ -3,9 +3,9 @@ permissions:
   contents: write
 on:
   push:
-    branches: [ dev ]
+    branches: [ main ]
   pull_request:
-    branches: [ dev ]
+    branches: [ main ]
 
 env:
   VULKAN_VERSION: 1.4.309.0
