@@ -283,7 +283,19 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   tracy_profiler = create_shared<TracyProfiler>();
   tracy_profiler->init_for_vulkan(this);
 
-  OX_LOG_INFO("Vulkan context initialized using device: {}", device_name);
+  u32 instanceVersion = VK_API_VERSION_1_0;
+  auto FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(
+      fps.vkGetInstanceProcAddr(nullptr, "vkEnumerateInstanceVersion"));
+  if (FN_vkEnumerateInstanceVersion) {
+    FN_vkEnumerateInstanceVersion(&instanceVersion);
+  }
+
+  const u32 major = VK_VERSION_MAJOR(instanceVersion);
+  const u32 minor = VK_VERSION_MINOR(instanceVersion);
+  const u32 patch = VK_VERSION_PATCH(instanceVersion);
+
+  OX_LOG_INFO(
+      "Vulkan context initialized using device: {} with Vulkan Version: {}.{}.{}", device_name, major, minor, patch);
 }
 
 vuk::Value<vuk::ImageAttachment> VkContext::new_frame(this VkContext& self) {
