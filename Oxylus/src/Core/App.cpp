@@ -69,10 +69,9 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   register_system<ModuleRegistry>(EngineSystems::ModuleRegistry);
   register_system<RendererConfig>(EngineSystems::RendererConfig);
   register_system<Physics>(EngineSystems::Physics);
+  register_system<Input>(EngineSystems::Input);
 
   window = Window::create(app_spec.window_info);
-
-  register_system<Input>(EngineSystems::Input);
 
   for (const auto& [type, system] : system_registry) {
     Timer timer{};

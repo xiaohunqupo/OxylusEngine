@@ -314,12 +314,10 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
 
   self.world.system<const TransformComponent, AudioSourceComponent>("AudioSourceUpdate")
       .kind(flecs::PreUpdate)
-      .each([&self](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
+      .each([](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
         auto* asset_man = App::get_asset_manager();
         if (auto* audio = asset_man->get_audio(ac.audio_source)) {
           auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
-          const glm::mat4 inverted = glm::inverse(self.get_world_transform(e));
-          const glm::vec3 forward = normalize(glm::vec3(inverted[2]));
           audio_engine->set_source_attenuation_model(audio->get_source(), ac.attenuation_model);
           audio_engine->set_source_volume(audio->get_source(), ac.volume);
           audio_engine->set_source_pitch(audio->get_source(), ac.pitch);

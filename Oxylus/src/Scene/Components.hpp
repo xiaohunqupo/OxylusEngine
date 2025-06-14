@@ -180,6 +180,7 @@ ECS_COMPONENT_BEGIN(CameraComponent)
 ECS_COMPONENT_END();
 
 ECS_COMPONENT_BEGIN(ParticleSystemComponent)
+    ECS_COMPONENT_MEMBER(placeholder, u32, 0) // so warnings shut up for now
 ECS_COMPONENT_END();
 
 ECS_COMPONENT_BEGIN(LightComponent)

@@ -230,6 +230,6 @@ using option =
                        std::optional<T>>;
 
 template <typename T>
-using OptionRef = option<std::reference_wrapper<T>>;
+using option_ref = option<std::reference_wrapper<T>>;
 
 } // namespace ox

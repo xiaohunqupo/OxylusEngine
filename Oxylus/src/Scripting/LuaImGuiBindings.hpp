@@ -288,7 +288,7 @@ inline void TextUnformatted(const std::string& text) { ImGui::TextUnformatted(te
 inline void TextUnformatted(const std::string& text, const std::string& textEnd) {
   ImGui::TextUnformatted(text.c_str(), textEnd.c_str());
 }
-inline void Text(const std::string& text) { ImGui::Text(text.c_str()); }
+inline void Text(const char* text) { ImGui::Text(text); }
 inline void TextColored(float colR, float colG, float colB, float colA, const std::string& text) {
   ImGui::TextColored({colR, colG, colB, colA}, text.c_str());
 }
