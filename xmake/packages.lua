@@ -44,7 +44,7 @@ add_requires("toml++ v3.4.0")
 
 add_requires("simdjson v3.12.2")
 
-add_requires("joltphysics v5.3.0", { configs = {
+add_requires("joltphysics-ox v5.3.0", { configs = {
     debug_renderer = true,
     rtti = true,
     avx = true,
@@ -53,6 +53,7 @@ add_requires("joltphysics v5.3.0", { configs = {
     sse4_1 = true,
     sse4_2 = true,
     tzcnt = true,
+    enable_floating_point_exceptions = false,
 } })
 
 add_requires("tracy v0.11.1", { configs = {

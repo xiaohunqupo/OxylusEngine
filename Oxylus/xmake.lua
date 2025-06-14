@@ -87,7 +87,7 @@ target("Oxylus")
         "libsdl3",
         "toml++",
         "rapidjson",
-        "joltphysics",
+        "joltphysics-ox",
         "tracy",
         "sol2",
         "enkits",
