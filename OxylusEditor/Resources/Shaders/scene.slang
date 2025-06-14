@@ -304,6 +304,6 @@ public struct UVGradient {
 // --- Bindings ---
 
 [[vk::binding(0, 1)]]
-public Sampler material_samplers[];
+public SamplerState material_samplers[];
 [[vk::binding(1, 1)]]
 public Image2D<f32x4> material_images[];
