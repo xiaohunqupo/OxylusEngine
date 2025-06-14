@@ -254,23 +254,6 @@ void SceneHierarchyPanel::draw_context_menu() {
       to_select = _scene->create_entity();
     }
 
-    if (ImGui::BeginMenu("Primitives")) {
-      if (ImGui::MenuItem("Cube")) {
-        to_select = _scene->create_entity();
-        // @OLD _scene->load_mesh(AssetManager::get_mesh_asset("Resources/Objects/cube.glb"));
-      }
-      if (ImGui::MenuItem("Plane")) {
-        to_select = _scene->create_entity();
-        // @OLD _scene->load_mesh(AssetManager::get_mesh_asset("Resources/Objects/plane.glb"));
-      }
-      if (ImGui::MenuItem("Sphere")) {
-        to_select = _scene->create_entity();
-        // @OLD _scene->load_mesh(AssetManager::get_mesh_asset("Resources/Objects/sphere.glb"));
-      }
-
-      ImGui::EndMenu();
-    }
-
     auto* asset_man = App::get_asset_manager();
 
     if (ImGui::MenuItem("Sprite")) {
@@ -280,7 +263,7 @@ void SceneHierarchyPanel::draw_context_menu() {
     }
 
     if (ImGui::MenuItem("Camera")) {
-      to_select = _scene->create_entity();
+      to_select = _scene->create_entity("Camera");
       to_select.add<CameraComponent>().get_mut<TransformComponent>()->rotation.y = glm::radians(-90.f);
     }
 
@@ -291,36 +274,6 @@ void SceneHierarchyPanel::draw_context_menu() {
     if (ImGui::BeginMenu("Light")) {
       if (ImGui::MenuItem("Light")) {
         to_select = _scene->create_entity().add<LightComponent>();
-      }
-
-      ImGui::EndMenu();
-    }
-
-    if (ImGui::BeginMenu("Physics")) {
-      if (ImGui::MenuItem("Sphere")) {
-        to_select = _scene->create_entity()
-                        .add<RigidbodyComponent>()
-                        .add<SphereColliderComponent>()
-                        .add<MeshComponent>();
-        // TODO _scene->registry.emplace<MeshComponent>(to_select,
-        // AssetManager::get_mesh_asset("Resources/Objects/sphere.glb"));
-      }
-
-      if (ImGui::MenuItem("Cube")) {
-        to_select = _scene->create_entity("Cube")
-                        .add<RigidbodyComponent>()
-                        .add<BoxColliderComponent>()
-                        .add<MeshComponent>();
-        // TODO _scene->registry.emplace<MeshComponent>(to_select,
-        // AssetManager::get_mesh_asset("Resources/Objects/cube.glb"));
-      }
-
-      if (ImGui::MenuItem("Character Controller")) {
-        to_select = _scene->create_entity("Character Controller")
-                        .add<CharacterControllerComponent>()
-                        .add<MeshComponent>();
-        // TODO _scene->registry.emplace<MeshComponent>(to_select,
-        // AssetManager::get_mesh_asset("Resources/Objects/capsule.glb"));
       }
 
       ImGui::EndMenu();
@@ -357,12 +310,20 @@ void SceneHierarchyPanel::draw_context_menu() {
 }
 
 auto SceneHierarchyPanel::on_update() -> void {
+  auto* editor_layer = EditorLayer::get();
+  auto& editor_context = editor_layer->get_context();
+
+  if (editor_context.type == EditorContext::Type::Entity) {
+    if (editor_context.entity.has_value())
+      _selected_entity.set(editor_context.entity.value());
+  }
+
   if (_selected_entity.get() != flecs::entity::null()) {
     if (ImGui::IsKeyDown(ImGuiKey_LeftCtrl) && ImGui::IsKeyPressed(ImGuiKey_D)) {
       _selected_entity.set(clone_entity(_selected_entity.get()));
     }
     if (ImGui::IsKeyPressed(ImGuiKey_Delete) &&
-        (_table_hovered || EditorLayer::get()->viewport_panels[0]->is_viewport_hovered)) {
+        (_table_hovered || editor_layer->viewport_panels[0]->is_viewport_hovered)) {
       _selected_entity.get().destruct();
       _selected_entity.reset();
     }

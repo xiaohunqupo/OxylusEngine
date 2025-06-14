@@ -41,14 +41,11 @@ void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
             return option<std::monostate>{};
 
           auto* asset_man = App::get_asset_manager();
-
           auto meta_file = asset_man->read_meta_file(path);
-
-          auto meta = asset_man->read_meta_file(path);
-          if (!meta)
+          if (!meta_file)
             return option<std::monostate>{};
 
-          auto uuid_str_json = meta->doc["uuid"].get_string();
+          auto uuid_str_json = meta_file->doc["uuid"].get_string();
           if (uuid_str_json.error())
             return option<std::monostate>{};
 

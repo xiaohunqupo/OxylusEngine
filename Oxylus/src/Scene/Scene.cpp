@@ -693,8 +693,6 @@ auto Scene::copy(const Shared<Scene>& src_scene) -> Shared<Scene> {
   writer.end_array();
   writer.end_obj();
 
-  OX_LOG_INFO("{}", writer.stream.str().c_str());
-
   auto content = simdjson::padded_string(writer.stream.str());
   simdjson::ondemand::parser parser;
   auto doc = parser.iterate(content);
@@ -710,6 +708,8 @@ auto Scene::copy(const Shared<Scene>& src_scene) -> Shared<Scene> {
       return nullptr;
     }
   }
+
+  new_scene->meshes_dirty = true;
 
   return new_scene;
 }

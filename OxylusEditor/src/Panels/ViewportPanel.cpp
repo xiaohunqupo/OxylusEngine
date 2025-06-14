@@ -70,7 +70,9 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     bool viewport_settings_popup = false;
     ImVec2 start_cursor_pos = ImGui::GetCursorPos();
 
-    auto& editor_theme = EditorLayer::get()->editor_theme;
+    auto* editor_layer = EditorLayer::get();
+
+    auto& editor_theme = editor_layer->editor_theme;
     const auto popup_item_spacing = editor_theme.popup_item_spacing;
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, popup_item_spacing);
     if (ImGui::BeginPopupContextItem("RightClick")) {
@@ -149,7 +151,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         const auto* payload = PayloadData::from_payload(imgui_payload);
         const auto path = ::fs::path(payload->get_str());
         if (path.extension() == ".oxscene") {
-          EditorLayer::get()->open_scene(path);
+          editor_layer->open_scene(path);
         }
         if (path.extension() == ".gltf" || path.extension() == ".glb") {
           auto* asset_man = App::get_asset_manager();
@@ -162,6 +164,9 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     }
 
     if (editor_camera.has<CameraComponent>() && !_scene->is_running()) {
+      if (editor_layer->scene_state == EditorLayer::SceneState::Edit)
+        editor_camera.enable();
+
       const auto& cam = *editor_camera.get<CameraComponent>();
       auto projection = cam.get_projection_matrix();
       projection[1][1] *= -1;
@@ -295,6 +300,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
         if (editor_camera.has<CameraComponent>()) {
           auto* cam = editor_camera.get_mut<CameraComponent>();
+          UI::push_id();
           if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
                                 cam->projection == CameraComponent::Projection::Orthographic,
                                 button_size,
@@ -304,6 +310,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
                                   ? CameraComponent::Projection::Perspective
                                   : CameraComponent::Projection::Orthographic;
         }
+        UI::pop_id();
 
         ImGui::PopStyleVar(2);
       }
@@ -323,24 +330,26 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {1, 1});
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
 
-        const bool highlight = EditorLayer::get()->scene_state == EditorLayer::SceneState::Play;
-        const char8_t* icon = EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
+        const bool highlight = editor_layer->scene_state == EditorLayer::SceneState::Play;
+        const char8_t* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
                                                                                                : ICON_MDI_STOP;
         if (UI::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
-          if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Edit)
-            EditorLayer::get()->on_scene_play();
-          else if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Play)
-            EditorLayer::get()->on_scene_stop();
+          if (editor_layer->scene_state == EditorLayer::SceneState::Edit) {
+            editor_layer->on_scene_play();
+            editor_camera.disable();
+          } else if (editor_layer->scene_state == EditorLayer::SceneState::Play) {
+            editor_layer->on_scene_stop();
+          }
         }
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.4f));
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PAUSE), button_size)) {
-          if (EditorLayer::get()->scene_state == EditorLayer::SceneState::Play)
-            EditorLayer::get()->on_scene_stop();
+          if (editor_layer->scene_state == EditorLayer::SceneState::Play)
+            editor_layer->on_scene_stop();
         }
         ImGui::SameLine();
         if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_STEP_FORWARD), button_size)) {
-          EditorLayer::get()->on_scene_simulate();
+          editor_layer->on_scene_simulate();
         }
         ImGui::PopStyleColor();
 

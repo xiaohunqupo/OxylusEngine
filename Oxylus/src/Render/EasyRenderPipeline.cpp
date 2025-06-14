@@ -761,7 +761,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(material_buffer),
            std::move(visbuffer_data_attachment));
 
-    if (!debugging && atmosphere.has_value()) {
+    if (!debugging && atmosphere.has_value() && sun.has_value()) {
       // --- BRDF ---
       auto brdf_pass = vuk::make_pass(
           "brdf",

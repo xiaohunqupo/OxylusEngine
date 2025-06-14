@@ -133,7 +133,7 @@ ECS_COMPONENT_BEGIN(CameraComponent)
     Orthographic = 1,
   };
 #endif
-  ECS_COMPONENT_MEMBER(projection, CameraComponent::Projection, Projection::Perspective)
+  ECS_COMPONENT_MEMBER(projection, u32, Projection::Perspective)
   ECS_COMPONENT_MEMBER(fov, f32, 60.f)
   ECS_COMPONENT_MEMBER(aspect, f32, 16.f / 9.f)
   ECS_COMPONENT_MEMBER(far_clip, f32, 1000.f)
@@ -185,9 +185,9 @@ ECS_COMPONENT_END();
 
 ECS_COMPONENT_BEGIN(LightComponent)
 #ifndef ECS_REFLECT_TYPES
-  enum LightType { Directional = 0, Point, Spot };
-  ECS_COMPONENT_MEMBER(type, LightComponent::LightType, Point)
+  enum LightType : u32 { Directional = 0, Point, Spot };
 #endif
+  ECS_COMPONENT_MEMBER(type, u32, LightType::Point)
   ECS_COMPONENT_MEMBER(color_temperature_mode, bool, false)
   ECS_COMPONENT_MEMBER(temperature, u32, 6570)
   ECS_COMPONENT_MEMBER(color, glm::vec3, {1.0f, 1.0f, 1.0f})
@@ -249,8 +249,8 @@ ECS_COMPONENT_BEGIN(RigidbodyComponent)
     Plane2D = TranslationX | TranslationY | RotationZ, ///< Body can only move in X and Y axis and rotate around Z axis
   };
 #endif
-  ECS_COMPONENT_MEMBER(allowed_dofs, RigidbodyComponent::AllowedDOFs, AllowedDOFs::All)
-  ECS_COMPONENT_MEMBER(type, RigidbodyComponent::BodyType, BodyType::Dynamic)
+  ECS_COMPONENT_MEMBER(allowed_dofs, u32, AllowedDOFs::All)
+  ECS_COMPONENT_MEMBER(type, u32, BodyType::Dynamic)
   ECS_COMPONENT_MEMBER(mass, f32, 1.0f)
   ECS_COMPONENT_MEMBER(linear_drag, f32, 0.0f)
   ECS_COMPONENT_MEMBER(angular_drag, f32, 0.05f)
