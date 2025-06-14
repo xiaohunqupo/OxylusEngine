@@ -33,7 +33,7 @@ add_requires("vuk 2025.05.06", { configs = {
     debug_allocations = false,
 }, debug = is_mode("debug") })
 
-add_requires("shader-slang v2025.9.2", { system = false })
+add_requires("shader-slang v2025.10.4", { system = false })
 
 add_requires("libsdl3", { configs = {
     wayland = false,
