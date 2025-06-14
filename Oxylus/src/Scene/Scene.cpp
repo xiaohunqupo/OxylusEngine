@@ -733,15 +733,15 @@ auto Scene::get_local_transform(flecs::entity entity) const -> glm::mat4 {
 auto Scene::set_dirty(this Scene& self, flecs::entity entity) -> void {
   ZoneScoped;
 
-  auto visit_parent = [&self](this auto& visitor, flecs::entity e) -> glm::mat4 {
+  auto visit_parent = [](this auto& visitor, Scene& s, flecs::entity e) -> glm::mat4 {
     auto local_mat = glm::mat4(1.0f);
     if (e.has<TransformComponent>()) {
-      local_mat = self.get_local_transform(e);
+      local_mat = s.get_local_transform(e);
     }
 
     auto parent = e.parent();
     if (parent) {
-      return visitor(parent) * local_mat;
+      return visitor(s, parent) * local_mat;
     } else {
       return local_mat;
     }
@@ -756,7 +756,7 @@ auto Scene::set_dirty(this Scene& self, flecs::entity entity) -> void {
   auto transform_id = it->second;
   auto* gpu_transform = self.transforms.slot(transform_id);
   gpu_transform->local = glm::mat4(1.0f);
-  gpu_transform->world = visit_parent(entity);
+  gpu_transform->world = visit_parent(self, entity);
   gpu_transform->normal = glm::mat3(gpu_transform->world);
   self.dirty_transforms.push_back(transform_id);
 
