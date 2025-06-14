@@ -58,10 +58,14 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
     UI::spacing(2);
 
     if (ImGui::BeginChild("##Contents", {}, ImGuiChildFlags_AutoResizeY)) {
+      UI::push_frame_style();
       if (draw_new_project_panel) {
         UI::begin_properties();
 
+        UI::input_text("Name", &new_project_name);
+
         UI::begin_property_grid("Directory", nullptr, false);
+
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.8f);
         ImGui::InputText("##Directory", &new_project_dir, flags);
         ImGui::SameLine();
@@ -88,9 +92,9 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
               .multi_select = false,
           });
         }
+
         UI::end_property_grid();
 
-        UI::input_text("Name", &new_project_name);
         UI::input_text("Asset Directory", &new_project_asset_dir);
         UI::end_properties();
 
@@ -152,8 +156,11 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
           ImGui::CloseCurrentPopup();
         }
       }
+
+      UI::pop_frame_style();
       ImGui::EndChild();
     }
+
     ImGui::EndPopup();
   }
 }
