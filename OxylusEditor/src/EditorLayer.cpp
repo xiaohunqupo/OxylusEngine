@@ -401,6 +401,12 @@ void EditorLayer::on_scene_stop() {
   active_scene->runtime_stop();
   active_scene = nullptr;
   set_editor_context(editor_scene);
+
+  editor_scene->world
+      .query_builder() //
+      .with<TransformComponent>()
+      .build()
+      .each([](flecs::entity e) { e.modified<TransformComponent>(); });
 }
 
 void EditorLayer::on_scene_simulate() {
@@ -413,6 +419,7 @@ void EditorLayer::on_scene_simulate() {
 Shared<Scene> EditorLayer::get_active_scene() { return active_scene; }
 
 void EditorLayer::set_editor_context(const Shared<Scene>& scene) {
+  scene->meshes_dirty = true;
   auto* shpanel = get_panel<SceneHierarchyPanel>();
   shpanel->set_scene(scene);
   for (const auto& panel : viewport_panels) {

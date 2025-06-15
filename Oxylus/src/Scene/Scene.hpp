@@ -73,7 +73,6 @@ public:
 
   auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
 
-  auto has_entity(UUID uuid) const -> bool;
   static auto copy(const Shared<Scene>& src_scene) -> Shared<Scene>;
 
   auto get_world_transform(flecs::entity entity) const -> glm::mat4;
