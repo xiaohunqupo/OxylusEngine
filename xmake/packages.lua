@@ -30,7 +30,7 @@ add_requires("loguru v2.1.0", { configs = {
 
 add_requires("vk-bootstrap v1.4.307", { system = false, debug = is_mode("debug") })
 
-add_requires("vuk 2025.05.06", { configs = {
+add_requires("vuk 2025.06.15", { configs = {
     debug_allocations = false,
 }, debug = is_mode("debug") })
 
