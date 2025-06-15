@@ -15,7 +15,7 @@ struct PayloadData {
   PayloadData(const std::string& s, const UUID& id = {}) {
     OX_CHECK_LT(s.size(), sizeof(str), "String can't fit into payload");
 
-    strncpy_s(str, s.c_str(), sizeof(str));
+    std::strncpy(str, s.c_str(), sizeof(str));
     str[sizeof(str) - 1] = '\0'; // null-termination
     uuid = id;
   }
