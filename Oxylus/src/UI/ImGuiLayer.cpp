@@ -22,12 +22,30 @@
 namespace ox {
 ImGuiLayer::ImGuiLayer() : Layer("ImGuiLayer") {}
 
-ImFont* ImGuiLayer::load_font(const std::string& path, ImFontConfig font_config) {
+ImFont* ImGuiLayer::load_default_font() {
+  ImGuiIO& io = ImGui::GetIO();
+  return io.Fonts->AddFontDefault();
+}
+
+ImFont* ImGuiLayer::load_font(const std::string& path, f32 font_size, option<ImFontConfig> font_config) {
   ZoneScoped;
 
   ImGuiIO& io = ImGui::GetIO();
-  io.Fonts->TexGlyphPadding = 1;
-  return io.Fonts->AddFontFromFileTTF(path.c_str(), font_config.SizePixels, &font_config);
+  if (font_config.has_value())
+    return io.Fonts->AddFontFromFileTTF(path.c_str(), font_size, &*font_config);
+
+  return io.Fonts->AddFontFromFileTTF(path.c_str(), font_size);
+}
+
+ImFont* ImGuiLayer::add_icon_font(float font_size, ImFontConfig font_config, bool mono) {
+  ZoneScoped;
+  const ImGuiIO& io = ImGui::GetIO();
+
+  if (mono)
+    font_config.GlyphMinAdvanceX = font_size;
+
+  return io.Fonts->AddFontFromMemoryCompressedTTF(
+      MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &font_config);
 }
 
 void ImGuiLayer::build_fonts() {
@@ -59,8 +77,9 @@ void ImGuiLayer::on_attach() {
                     ImGuiConfigFlags_DockingEnable | ImGuiConfigFlags_DpiEnableScaleFonts | ImGuiConfigFlags_IsSRGB;
   io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset | ImGuiBackendFlags_HasMouseCursors;
   /*io.BackendFlags |= ImGuiBackendFlags_RendererHasViewports;*/
-  io.BackendRendererName = "oxylus";
   io.BackendFlags |= ImGuiBackendFlags_RendererHasVtxOffset;
+  io.BackendFlags |= ImGuiBackendFlags_RendererHasTextures;
+  io.BackendRendererName = "oxylus";
 
   auto& allocator = *App::get_vkcontext().superframe_allocator;
   auto& ctx = allocator.get_context();
@@ -73,22 +92,6 @@ void ImGuiLayer::on_attach() {
 
   slang.create_pipeline(
       ctx, "imgui", {}, {.path = shaders_dir + "/passes/imgui.slang", .entry_points = {"vs_main", "fs_main"}});
-}
-
-ImFont* ImGuiLayer::add_icon_font(float font_size, bool merge) {
-  ZoneScoped;
-  const ImGuiIO& io = ImGui::GetIO();
-  static constexpr ImWchar ICONS_RANGES[] = {ICON_MIN_MDI, ICON_MAX_MDI, 0};
-  ImFontConfig icons_config;
-  icons_config.MergeMode = merge;
-  icons_config.PixelSnapH = true;
-  icons_config.GlyphOffset.y = 0.5f;
-  icons_config.OversampleH = icons_config.OversampleV = 3;
-  icons_config.GlyphMinAdvanceX = 0.0f;
-  icons_config.SizePixels = font_size;
-
-  return io.Fonts->AddFontFromMemoryCompressedTTF(
-      MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &icons_config, ICONS_RANGES);
 }
 
 void ImGuiLayer::on_detach() { ImGui::DestroyContext(); }
@@ -104,8 +107,6 @@ void ImGuiLayer::begin_frame(const f64 delta_time, const vuk::Extent3D extent) {
   rendering_images.clear();
   acquired_images.clear();
 
-  add_image(font_texture->acquire());
-
   ImGui::NewFrame();
   ImGuizmo::BeginFrame();
 
@@ -118,20 +119,18 @@ void ImGuiLayer::begin_frame(const f64 delta_time, const vuk::Extent3D extent) {
     app->get_window().show_cursor(false);
   } else {
     auto next_cursor = WindowCursor::Arrow;
-    // clang-format off
-        switch (imgui_cursor) {
-            case ImGuiMouseCursor_Arrow: next_cursor = WindowCursor::Arrow; break;
-            case ImGuiMouseCursor_TextInput: next_cursor = WindowCursor::TextInput; break;
-            case ImGuiMouseCursor_ResizeAll: next_cursor = WindowCursor::ResizeAll; break;
-            case ImGuiMouseCursor_ResizeNS: next_cursor = WindowCursor::ResizeNS; break;
-            case ImGuiMouseCursor_ResizeEW: next_cursor = WindowCursor::ResizeEW; break;
-            case ImGuiMouseCursor_ResizeNESW: next_cursor = WindowCursor::ResizeNESW; break;
-            case ImGuiMouseCursor_ResizeNWSE: next_cursor = WindowCursor::ResizeNWSE; break;
-            case ImGuiMouseCursor_Hand: next_cursor = WindowCursor::Hand; break;
-            case ImGuiMouseCursor_NotAllowed: next_cursor = WindowCursor::NotAllowed; break;
-            default: break;
-        }
-    // clang-format on
+    switch (imgui_cursor) {
+      case ImGuiMouseCursor_Arrow     : next_cursor = WindowCursor::Arrow; break;
+      case ImGuiMouseCursor_TextInput : next_cursor = WindowCursor::TextInput; break;
+      case ImGuiMouseCursor_ResizeAll : next_cursor = WindowCursor::ResizeAll; break;
+      case ImGuiMouseCursor_ResizeNS  : next_cursor = WindowCursor::ResizeNS; break;
+      case ImGuiMouseCursor_ResizeEW  : next_cursor = WindowCursor::ResizeEW; break;
+      case ImGuiMouseCursor_ResizeNESW: next_cursor = WindowCursor::ResizeNESW; break;
+      case ImGuiMouseCursor_ResizeNWSE: next_cursor = WindowCursor::ResizeNWSE; break;
+      case ImGuiMouseCursor_Hand      : next_cursor = WindowCursor::Hand; break;
+      case ImGuiMouseCursor_NotAllowed: next_cursor = WindowCursor::NotAllowed; break;
+      default                         : break;
+    }
     app->get_window().show_cursor(true);
 
     if (app->get_window().get_cursor() != next_cursor) {
@@ -146,6 +145,30 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::
   ImGui::Render();
 
   ImDrawData* draw_data = ImGui::GetDrawData();
+
+  if (draw_data->Textures != nullptr) {
+    for (ImTextureData* tex : *draw_data->Textures) {
+      if (tex->Status == ImTextureStatus_WantCreate || tex->Status == ImTextureStatus_WantUpdates) {
+        if (font_texture) {
+          font_texture->destroy();
+        }
+
+        font_texture = create_shared<Texture>();
+        font_texture->create(
+            {},
+            {
+                .preset = Preset::eRTT2DUnmipped,
+                .format = vuk::Format::eR8G8B8A8Srgb,
+                .mime = {},
+                .loaded_data = tex->GetPixels(),
+                .extent = vuk::Extent3D{static_cast<u32>(tex->Width), static_cast<u32>(tex->Height), 1u},
+            });
+
+        tex->SetTexID(1);
+        tex->SetStatus(ImTextureStatus_OK);
+      }
+    }
+  }
 
   auto reset_render_state =
       [this, draw_data](vuk::CommandBuffer& command_buffer, const vuk::Buffer& vertex, const vuk::Buffer& index) {
@@ -194,13 +217,15 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::
   }
 
   auto sampled_images_array = vuk::declare_array("imgui_sampled", std::span(rendering_images));
+  auto font_acquired = font_texture->acquire();
 
   return vuk::make_pass(
       "imgui",
       [verts = imvert, inds = imind, reset_render_state, draw_data](
           vuk::CommandBuffer& command_buffer,
           VUK_IA(vuk::eColorWrite) color_rt,
-          VUK_ARG(vuk::ImageAttachment[], vuk::Access::eFragmentSampled) sis) {
+          VUK_ARG(vuk::ImageAttachment[], vuk::Access::eFragmentSampled) sis,
+          VUK_IA(vuk::eFragmentSampled) font) {
         command_buffer.set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
             .set_rasterization(vuk::PipelineRasterizationStateCreateInfo{})
             .set_color_blend(color_rt, vuk::BlendPreset::eAlphaBlend);
@@ -252,12 +277,12 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::
 
                 command_buffer.bind_sampler(
                     0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear});
-                if (im_cmd->TextureId != 0) {
-                  const auto index = im_cmd->TextureId - 1;
+                if (im_cmd->TexRef._TexData == NULL && im_cmd->TexRef._TexID != 0) {
+                  const auto index = im_cmd->GetTexID() - 1;
                   const auto& image = sis[index];
                   command_buffer.bind_image(0, 1, image);
                 } else {
-                  command_buffer.bind_image(0, 1, sis[0]);
+                  command_buffer.bind_image(0, 1, font);
                 }
 
                 command_buffer.draw_indexed(im_cmd->ElemCount,
@@ -273,7 +298,7 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::
         }
 
         return color_rt;
-      })(std::move(target), std::move(sampled_images_array));
+      })(std::move(target), std::move(sampled_images_array), std::move(font_acquired));
 }
 
 ImTextureID ImGuiLayer::add_image(vuk::Value<vuk::ImageAttachment>&& attachment) {

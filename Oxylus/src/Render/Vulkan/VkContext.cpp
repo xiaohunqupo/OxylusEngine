@@ -87,6 +87,7 @@ vuk::Swapchain make_swapchain(vuk::Allocator& allocator,
     vuk::ImageAttachment attachment = {
         .image = vuk::Image{.image = images[i], .allocation = nullptr},
         .image_view = vuk::ImageView{{0}, views[i]},
+        .usage = vuk::ImageUsageFlagBits::eColorAttachment | vuk::ImageUsageFlagBits::eTransferDst,
         .extent = {.width = vkswapchain->extent.width, .height = vkswapchain->extent.height, .depth = 1},
         .format = static_cast<vuk::Format>(vkswapchain->image_format),
         .sample_count = vuk::Samples::e1,

@@ -232,9 +232,6 @@ std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std:
         }
 
         ImGui::TreePop();
-      } else {
-        /*for ([[maybe_unused]] const auto& e : std::filesystem::recursive_directory_iterator(entryPath))
-          (*count)--;*/
       }
     }
   }
@@ -424,14 +421,13 @@ void ContentPanel::render_header() {
 
 void ContentPanel::render_side_view() {
   ZoneScoped;
-  static int selectionMask = 0;
+  static int selection_mask = 0;
 
-  constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_RowBg | ImGuiTableFlags_NoPadInnerX |
-                                         ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_ContextMenuInBody |
-                                         ImGuiTableFlags_ScrollY;
+  constexpr ImGuiTableFlags tableFlags = ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_NoPadOuterX |
+                                         ImGuiTableFlags_ContextMenuInBody | ImGuiTableFlags_ScrollY;
 
-  constexpr ImGuiTreeNodeFlags treeNodeFlags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_FramePadding |
-                                               ImGuiTreeNodeFlags_SpanFullWidth;
+  constexpr ImGuiTreeNodeFlags tree_node_flags = ImGuiTreeNodeFlags_OpenOnArrow | ImGuiTreeNodeFlags_FramePadding |
+                                                 ImGuiTreeNodeFlags_SpanFullWidth;
 
   ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {0, 0});
   if (ImGui::BeginTable("SideViewTable", 1, tableFlags)) {
@@ -440,25 +436,22 @@ void ContentPanel::render_side_view() {
 
     const auto& editor_theme = EditorLayer::get()->editor_theme;
 
-    ImGuiTreeNodeFlags nodeFlags = treeNodeFlags;
-    const bool selected = _current_directory == _assets_directory && selectionMask == 0;
+    ImGuiTreeNodeFlags node_flags = tree_node_flags;
+    const bool selected = _current_directory == _assets_directory && selection_mask == 0;
     if (selected) {
-      nodeFlags |= ImGuiTreeNodeFlags_Selected;
+      node_flags |= ImGuiTreeNodeFlags_Selected;
       ImGui::PushStyleColor(ImGuiCol_Header, editor_theme.header_selected_color);
       ImGui::PushStyleColor(ImGuiCol_HeaderHovered, editor_theme.header_selected_color);
     } else {
       ImGui::PushStyleColor(ImGuiCol_HeaderHovered, editor_theme.header_hovered_color);
     }
 
-    const bool opened = ImGui::TreeNodeEx(_assets_directory.string().c_str(), nodeFlags, "");
-    // bool clickedTree = false;
-    // if (ImGui::IsItemClicked())
-    // clickedTree = true;
+    const bool opened = ImGui::TreeNodeEx(_assets_directory.string().c_str(), node_flags, "");
     ImGui::PopStyleColor(selected ? 2 : 1);
 
     if (ImGui::IsItemClicked() && !ImGui::IsItemToggledOpen()) {
       update_directory_entries(_assets_directory);
-      selectionMask = 0;
+      selection_mask = 0;
     }
     const char8_t* folderIcon = opened ? ICON_MDI_FOLDER_OPEN : ICON_MDI_FOLDER;
     ImGui::SameLine();
@@ -470,18 +463,15 @@ void ContentPanel::render_side_view() {
 
     if (opened) {
       uint32_t count = 0;
-      // for ([[maybe_unused]] const auto& entry : std::filesystem::recursive_directory_iterator(m_AssetsDirectory))
-      //   count++;
+      const auto [is_clicked, clicked_node] = directory_tree_view_recursive(
+          _assets_directory, &count, &selection_mask, tree_node_flags);
 
-      const auto [isClicked, clickedNode] = directory_tree_view_recursive(
-          _assets_directory, &count, &selectionMask, treeNodeFlags);
-
-      if (isClicked) {
+      if (is_clicked) {
         // (process outside of tree loop to avoid visual inconsistencies during the clicking frame)
         if (ImGui::GetIO().KeyCtrl)
-          selectionMask ^= BIT(clickedNode); // CTRL+click to toggle
+          selection_mask ^= BIT(clicked_node); // CTRL+click to toggle
         else
-          selectionMask = BIT(clickedNode);  // Click to single-select
+          selection_mask = BIT(clicked_node);  // Click to single-select
       }
 
       ImGui::TreePop();
@@ -523,8 +513,7 @@ void ContentPanel::render_body(bool grid) {
   if (!grid) {
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {0, 0});
     column_count = 1;
-    flags |= ImGuiTableFlags_RowBg | ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_NoPadInnerX |
-             ImGuiTableFlags_SizingStretchSame;
+    flags |= ImGuiTableFlags_NoPadOuterX | ImGuiTableFlags_NoPadInnerX | ImGuiTableFlags_SizingStretchSame;
   } else {
     ImGui::PushStyleVar(ImGuiStyleVar_CellPadding, {scaled_thumbnail_size_x * 0.05f, scaled_thumbnail_size_x * 0.05f});
     flags |= ImGuiTableFlags_PadOuterX | ImGuiTableFlags_SizingFixedFit;
@@ -601,7 +590,7 @@ void ContentPanel::render_body(bool grid) {
       ImGui::TableNextColumn();
 
       const auto& path = file.directory_entry.path();
-      std::string strPath = path.string();
+      std::string str_path = path.string();
 
       if (grid) {
         cursor_pos = ImGui::GetCursorPos();
@@ -615,10 +604,10 @@ void ContentPanel::render_body(bool grid) {
         static std::string id = "###";
         id[2] = static_cast<char>(i);
         const bool clicked = UI::toggle_button(id.c_str(), highlight, background_thumbnail_size, 0.1f);
-        if (_elapsed_time > 0.25f && clicked) {
+        if (clicked) {
           editor_context.reset();
           editor_context.type = EditorContext::Type::File;
-          editor_context.str.emplace(strPath);
+          editor_context.str.emplace(str_path);
         }
         ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, editor_theme.popup_item_spacing);
         if (ImGui::BeginPopupContextItem()) {
@@ -659,7 +648,7 @@ void ContentPanel::render_body(bool grid) {
         ImGui::SetCursorPos({cursor_pos.x + padding, cursor_pos.y + padding});
         ImGui::SetItemAllowOverlap();
         UI::image(*_white_texture,
-                  {background_thumbnail_size.x - padding * 2.0f, background_thumbnail_size.y - padding * 2.0f},
+                  {background_thumbnail_size.x - padding * 2.f, background_thumbnail_size.y - padding * 2.f},
                   {},
                   {},
                   EditorLayer::get()->editor_theme.window_bg_alternative_color);
@@ -674,14 +663,14 @@ void ContentPanel::render_body(bool grid) {
           texture->set_name(fs::get_file_name(texture_name));
           UI::image(*texture, {thumb_image_size, thumb_image_size});
         } else {
-          ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
           auto file_type = FileType::Unknown;
           const auto& file_type_it = FILE_TYPES.find(file.extension.empty() ? "" : file.extension);
           if (file_type_it != FILE_TYPES.end()) {
             file_type = file_type_it->second;
           }
+          ImGui::PushFontSize(thumb_image_size);
           ImGui::TextUnformatted(StringUtils::from_char8_t(FILE_TYPES_TO_ICON.at(file_type)));
-          ImGui::PopFont();
+          ImGui::PopFontSize();
         }
 
         // Type Color frame
@@ -698,19 +687,21 @@ void ContentPanel::render_body(bool grid) {
         const ImRect clip_rect = ImRect(
             {rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
             {rect_min.x + rect_size.x,
-             rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font->FontSize * 2.0f});
+             rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font_size * 2.0f});
+        ImGui::PushFontSize(14.f);
         UI::clipped_text(
             clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
+        ImGui::PopFontSize();
 
         if (!is_dir) {
           constexpr auto y_pos_pad = 10.f;
           ImGui::SetCursorPos(
               {cursor_pos.x + padding * 2.0f,
-               cursor_pos.y + background_thumbnail_size.y - editor_theme.small_font->FontSize * 2.0f + y_pos_pad});
+               cursor_pos.y + background_thumbnail_size.y - editor_theme.small_font_size * 2.0f + y_pos_pad});
           ImGui::BeginDisabled();
-          ImGui::PushFont(editor_theme.small_font);
+          ImGui::PushFontSize(editor_theme.small_font_size);
           ImGui::TextUnformatted(file.file_type_string.data());
-          ImGui::PopFont();
+          ImGui::PopFontSize();
           ImGui::EndDisabled();
         }
       } else {
@@ -742,6 +733,7 @@ void ContentPanel::render_body(bool grid) {
           ImGui::TextUnformatted(StringUtils::from_char8_t(FILE_TYPES_TO_ICON.at(file_type)));
         }
         ImGui::SameLine();
+
         ImGui::TextUnformatted(filename);
 
         if (opened)

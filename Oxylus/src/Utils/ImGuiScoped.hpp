@@ -85,14 +85,6 @@ struct TextWrapPos {
   IMGUI_DELETE_MOVE_COPY(TextWrapPos);
 };
 
-struct AllowKeyboardFocus {
-  AllowKeyboardFocus(bool allow_keyboard_focus) { ImGui::PushAllowKeyboardFocus(allow_keyboard_focus); }
-
-  ~AllowKeyboardFocus() { ImGui::PopAllowKeyboardFocus(); }
-
-  IMGUI_DELETE_MOVE_COPY(AllowKeyboardFocus);
-};
-
 struct ButtonRepeat {
   ButtonRepeat(bool repeat) { ImGui::PushButtonRepeat(repeat); }
 

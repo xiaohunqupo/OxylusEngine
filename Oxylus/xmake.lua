@@ -65,15 +65,8 @@ target("Oxylus")
         "/EHsc",
         "/bigobj",
         "-wd4100",
-        { public = true, tools = { "cl", "clang_cl", "clang-cl" } })
-
-    add_cxxflags(
-        "/permissive-",
-        "/EHsc",
-        "/bigobj",
-        "-wd4100",
         "/Zc:preprocessor",
-        { public = true, tools = { "cl", "msvc" } })
+        { public = true, tools = { "msvc", "cl", "clang_cl", "clang-cl" } })
 
     add_packages(
         "stb",

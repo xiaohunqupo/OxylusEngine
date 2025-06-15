@@ -34,10 +34,10 @@ constexpr auto neutral_orange = ImColor(214, 93, 14, 255);
 
 class EditorTheme {
 public:
+  f32 regular_font_size = 16.0f;
+  f32 small_font_size = 12.0f;
   ImFont* regular_font = nullptr;
-  ImFont* small_font = nullptr;
   ImFont* bold_font = nullptr;
-  ImFont* big_icons = nullptr;
 
   inline static ImVec4 header_selected_color;
   inline static ImVec4 header_hovered_color;

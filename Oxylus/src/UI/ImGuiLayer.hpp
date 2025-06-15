@@ -26,9 +26,10 @@ public:
   ImTextureID add_image(vuk::Value<vuk::ImageAttachment>&& attachment);
   ImTextureID add_image(const Texture& texture);
 
-  ImFont* load_font(const std::string& path, ImFontConfig font_config);
-  ImFont* add_icon_font(float font_size, bool merge);
-  void build_fonts();
+  ImFont* load_default_font();
+  ImFont* load_font(const std::string& path, f32 font_size = 0.f, option<ImFontConfig> font_config = nullopt);
+  ImFont* add_icon_font(float font_size, ImFontConfig font_config, bool mono = true);
+  void build_fonts(); // Legacy API
 
   void on_mouse_pos(glm::vec2 pos);
   void on_mouse_button(u8 button, bool down);

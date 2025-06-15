@@ -31,7 +31,7 @@ public:
   VkSurfaceKHR surface;
   vkb::Instance vkb_instance;
   vkb::Device vkb_device;
-  u32 num_inflight_frames = 3;
+  u32 num_inflight_frames = vkb::SwapchainBuilder::BufferMode::TRIPLE_BUFFERING;
   u64 num_frames = 0;
   u32 current_frame = 0;
   Shared<TracyProfiler> tracy_profiler = {};

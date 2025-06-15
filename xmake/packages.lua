@@ -2,9 +2,10 @@ add_requires("stb 2024.06.01")
 
 add_requires("miniaudio 0.11.22")
 
-add_requires("imgui v1.91.8-docking", { configs = {
+add_requires("imgui d896eab16620f80e3cae9b164eb62f71b47f6e45", { configs = {
     wchar32 = true,
-}, system = false })
+    debug = is_mode("debug")
+} })
 
 add_requires("imguizmo-lr v1.91.8-docking")
 
@@ -27,7 +28,7 @@ add_requires("loguru v2.1.0", { configs = {
     fmt = true,
 }, system = false })
 
-add_requires("vk-bootstrap v1.4.307", { system = false })
+add_requires("vk-bootstrap v1.4.307", { system = false, debug = is_mode("debug") })
 
 add_requires("vuk 2025.05.06", { configs = {
     debug_allocations = false,

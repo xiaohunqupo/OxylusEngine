@@ -23,26 +23,17 @@ void EditorTheme::init(this EditorTheme& self) {
   auto* imguilayer = app->get_imgui_layer();
 
   ImFontConfig fonts_config;
+  fonts_config.SizePixels = self.regular_font_size;
+
   fonts_config.MergeMode = false;
-  fonts_config.PixelSnapH = true;
-  fonts_config.OversampleH = fonts_config.OversampleV = 3;
-  fonts_config.GlyphMinAdvanceX = 4.0f;
+  self.regular_font = imguilayer->load_font(regular_font_path, self.regular_font_size, fonts_config);
+  fonts_config.MergeMode = true;
+  imguilayer->add_icon_font(self.regular_font_size, fonts_config);
 
-  fonts_config.SizePixels = 16.0f;
-  self.regular_font = imguilayer->load_font(regular_font_path, fonts_config);
-  imguilayer->add_icon_font(fonts_config.SizePixels, true);
-
-  fonts_config.SizePixels = 12.0f;
-  self.small_font = imguilayer->load_font(regular_font_path, fonts_config);
-  imguilayer->add_icon_font(fonts_config.SizePixels, true);
-
-  fonts_config.SizePixels = 16.0f;
-  self.bold_font = imguilayer->load_font(bold_font_path, fonts_config);
-  imguilayer->add_icon_font(fonts_config.SizePixels, true);
-
-  self.big_icons = imguilayer->add_icon_font(48, false);
-
-  imguilayer->build_fonts();
+  fonts_config.MergeMode = false;
+  self.bold_font = imguilayer->load_font(bold_font_path, self.regular_font_size, fonts_config);
+  fonts_config.MergeMode = true;
+  imguilayer->add_icon_font(self.regular_font_size, fonts_config);
 
   self.component_icon_map[typeid(LightComponent).hash_code()] = ICON_MDI_LIGHTBULB;
   self.component_icon_map[typeid(CameraComponent).hash_code()] = ICON_MDI_CAMERA;

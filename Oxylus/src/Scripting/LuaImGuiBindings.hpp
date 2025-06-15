@@ -222,8 +222,6 @@ inline float CalcItemWidth() { return ImGui::CalcItemWidth(); }
 inline void PushTextWrapPos() { ImGui::PushTextWrapPos(); }
 inline void PushTextWrapPos(float wrapLocalPosX) { ImGui::PushTextWrapPos(wrapLocalPosX); }
 inline void PopTextWrapPos() { ImGui::PopTextWrapPos(); }
-inline void PushAllowKeyboardFocus(bool allowKeyboardFocus) { ImGui::PushAllowKeyboardFocus(allowKeyboardFocus); }
-inline void PopAllowKeyboardFocus() { ImGui::PopAllowKeyboardFocus(); }
 inline void PushButtonRepeat(bool repeat) { ImGui::PushButtonRepeat(repeat); }
 inline void PopButtonRepeat() { ImGui::PopButtonRepeat(); }
 
@@ -2857,8 +2855,6 @@ inline void init(sol::state* lua) {
   ImGui.set_function("PushTextWrapPos",
                      sol::overload(sol::resolve<void()>(PushTextWrapPos), sol::resolve<void(float)>(PushTextWrapPos)));
   ImGui.set_function("PopTextWrapPos", PopTextWrapPos);
-  ImGui.set_function("PushAllowKeyboardFocus", PushAllowKeyboardFocus);
-  ImGui.set_function("PopAllowKeyboardFocus", PopAllowKeyboardFocus);
   ImGui.set_function("PushButtonRepeat", PushButtonRepeat);
   ImGui.set_function("PopButtonRepeat", PopButtonRepeat);
 #pragma endregion Parameters stacks(current window)

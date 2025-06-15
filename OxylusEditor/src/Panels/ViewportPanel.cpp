@@ -43,14 +43,15 @@ void show_component_gizmo(const char8_t* icon,
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.7f, 0.7f, 0.7f, 0.0f));
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
-        ImGui::PushFont(EditorLayer::get()->editor_theme.big_icons);
+        constexpr auto icon_size = 48.f;
+        ImGui::PushFontSize(icon_size);
         if (ImGui::Button(StringUtils::from_char8_t(icon), {50.f, 50.f})) {
           auto& editor_context = EditorLayer::get()->get_context();
           editor_context.reset();
           editor_context.entity = entity;
           editor_context.type = EditorContext::Type::Entity;
         }
-        ImGui::PopFont();
+        ImGui::PopFontSize();
 
         ImGui::PopStyleColor(2);
 

@@ -72,11 +72,12 @@ void draw_component(const char* name, flecs::entity entity, UIFunction ui_functi
                                                    ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed |
                                                    ImGuiTreeNodeFlags_FramePadding;
 
-  const float line_height = GImGui->Font->FontSize + GImGui->Style.FramePadding.y * 2.0f;
+  auto& editor_theme = EditorLayer::get()->editor_theme;
+
+  const float line_height = editor_theme.regular_font_size + GImGui->Style.FramePadding.y * 2.0f;
 
   ImGui::SetCursorPosY(ImGui::GetCursorPosY() + line_height * 0.25f);
 
-  auto& editor_theme = EditorLayer::get()->editor_theme;
   const auto id = typeid(T).hash_code();
   OX_ASSERT(editor_theme.component_icon_map.contains(id));
   std::string name_str = StringUtils::from_char8_t(editor_theme.component_icon_map[id]);
