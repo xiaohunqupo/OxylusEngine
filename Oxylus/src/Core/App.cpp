@@ -52,8 +52,8 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   _instance = this;
 
-  layer_stack = create_unique<LayerStack>();
-  thread_manager = create_shared<ThreadManager>();
+  layer_stack = std::make_unique<LayerStack>();
+  thread_manager = std::make_shared<ThreadManager>();
 
   if (app_spec.working_directory.empty())
     app_spec.working_directory = std::filesystem::current_path().string();
@@ -86,7 +86,7 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   // Shortcut for commonly used Systems
   Input::set_instance();
 
-  vk_context = create_unique<VkContext>();
+  vk_context = std::make_unique<VkContext>();
 
   const bool enable_validation = app_spec.command_line_args.contains("--vulkan-validation");
   vk_context->create_context(window, enable_validation);

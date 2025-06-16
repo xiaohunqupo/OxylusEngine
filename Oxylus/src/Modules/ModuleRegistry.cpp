@@ -24,12 +24,12 @@ Module* ModuleRegistry::add_lib(const std::string& name, std::string_view path) 
 
     const auto new_path = path_str + "_copy";
 
-    auto lib = create_unique<dylib>(new_path);
+    auto lib = std::make_unique<dylib>(new_path);
 
     const auto create_func = lib->get_function<ModuleInterface*()>("create_module");
     ModuleInterface* interface = create_func();
 
-    auto module = create_unique<Module>(std::move(lib), interface, path_str);
+    auto module = std::make_unique<Module>(std::move(lib), interface, path_str);
     libs.emplace(name, std::move(module));
 
     OX_LOG_INFO("Successfully loaded module: {}", name);

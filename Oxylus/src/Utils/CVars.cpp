@@ -106,7 +106,7 @@ CVarParameter* CVarSystem::init_cvar(const char* name, const char* description) 
   const std::hash<std::string> hasher = {};
   const auto name_str = std::string(name);
   const usize namehash = hasher(name_str);
-  return saved_cvars.emplace(namehash, create_unique<CVarParameter>(CVarParameter({}, {}, {}, name, description)))
+  return saved_cvars.emplace(namehash, std::make_unique<CVarParameter>(CVarParameter({}, {}, {}, name, description)))
       .first->second.get();
 }
 

@@ -17,8 +17,8 @@ public:
   static vuk::Value<vuk::ImageAttachment>
   generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttachment> hdr_image);
 
-  // static Shared<Mesh> generate_quad();
-  // static Shared<Mesh> generate_cube();
-  // static Shared<Mesh> generate_sphere();
+  // static std::shared_ptr<Mesh> generate_quad();
+  // static std::shared_ptr<Mesh> generate_cube();
+  // static std::shared_ptr<Mesh> generate_sphere();
 };
 } // namespace ox

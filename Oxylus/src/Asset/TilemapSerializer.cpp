@@ -29,7 +29,7 @@ void TilemapSerializer::deserialize(const std::string& path) {
   // for (auto& layer : doc["layers"].GetArray()) {
   // const auto img_path = fs::append_paths(root_path, layer.GetString());
   // auto texture = AssetManager::get_texture_asset({.path = img_path});
-  // auto mat = create_shared<SpriteMaterial>();
+  // auto mat = std::make_shared<SpriteMaterial>();
   // mat->set_albedo_texture(texture);
   // _component->layers.emplace(layer.GetString(), mat);
   // }

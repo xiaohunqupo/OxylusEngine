@@ -49,12 +49,12 @@ public:
   ankerl::unordered_dense::map<flecs::entity, GPU::TransformID> entity_transforms_map = {};
   ankerl::unordered_dense::map<std::pair<UUID, usize>, std::vector<GPU::TransformID>> rendering_meshes_map = {};
 
-  explicit Scene(const Shared<RenderPipeline>& render_pipeline = nullptr);
+  explicit Scene(const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr);
   explicit Scene(const std::string& name);
 
   ~Scene();
 
-  auto init(this Scene& self, const std::string& name, const Shared<RenderPipeline>& render_pipeline = nullptr) -> void;
+  auto init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
 
   auto runtime_start() -> void;
   auto runtime_stop() -> void;
@@ -73,7 +73,7 @@ public:
 
   auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
 
-  static auto copy(const Shared<Scene>& src_scene) -> Shared<Scene>;
+  static auto copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Scene>;
 
   auto get_world_transform(flecs::entity entity) const -> glm::mat4;
   auto get_local_transform(flecs::entity entity) const -> glm::mat4;
@@ -98,7 +98,7 @@ public:
   auto create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const
       -> void;
 
-  auto get_render_pipeline() -> Shared<RenderPipeline> { return _render_pipeline; }
+  auto get_render_pipeline() -> std::shared_ptr<RenderPipeline> { return _render_pipeline; }
 
   auto save_to_file(this const Scene& self, std::string path) -> bool;
   auto load_from_file(this Scene& self, const std::string& path) -> bool;
@@ -110,7 +110,7 @@ private:
   auto remove_transform(this Scene& self, flecs::entity entity) -> void;
 
   // Renderer
-  Shared<RenderPipeline> _render_pipeline = nullptr;
+  std::shared_ptr<RenderPipeline> _render_pipeline = nullptr;
 
   // Physics
   Physics3DContactListener* contact_listener_3d;

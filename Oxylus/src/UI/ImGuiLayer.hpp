@@ -9,7 +9,7 @@
 namespace ox {
 class ImGuiLayer : public Layer {
 public:
-  Shared<Texture> font_texture = nullptr;
+  std::shared_ptr<Texture> font_texture = nullptr;
   std::vector<vuk::Value<vuk::ImageAttachment>> rendering_images;
   ankerl::unordered_dense::map<u64, ImTextureID> acquired_images;
 

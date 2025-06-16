@@ -5,7 +5,7 @@
 #include "LuaImGuiBindings.hpp"
 
 namespace ox::LuaBindings {
-void bind_ui(const Shared<sol::state>& state) {
+void bind_ui(const std::shared_ptr<sol::state>& state) {
   LuaImGuiBindings::init(state.get());
 
   // TODO: the rest of the api

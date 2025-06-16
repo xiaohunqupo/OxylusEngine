@@ -53,7 +53,7 @@ private:
     std::string file_path;
     std::string extension;
     std::filesystem::directory_entry directory_entry;
-    Shared<Texture> thumbnail = nullptr;
+    std::shared_ptr<Texture> thumbnail = nullptr;
     bool is_directory = false;
 
     FileType type;
@@ -73,11 +73,11 @@ private:
   f32 _elapsed_time = 0.0f;
 
   bool mesh_thumbnails_enabled = false;
-  ankerl::unordered_dense::map<std::string, Shared<Texture>> thumbnail_cache_textures;
+  ankerl::unordered_dense::map<std::string, std::shared_ptr<Texture>> thumbnail_cache_textures;
   ankerl::unordered_dense::map<std::string, vuk::ImageAttachment> thumbnail_cache_meshes;
-  ankerl::unordered_dense::map<std::string, Unique<ThumbnailRenderPipeline>> thumbnail_render_pipeline_cache;
+  ankerl::unordered_dense::map<std::string, std::unique_ptr<ThumbnailRenderPipeline>> thumbnail_render_pipeline_cache;
 
-  Shared<Texture> _white_texture;
+  std::shared_ptr<Texture> _white_texture;
   std::filesystem::path _directory_to_delete;
 };
 } // namespace ox

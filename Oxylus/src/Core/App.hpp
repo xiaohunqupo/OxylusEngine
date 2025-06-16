@@ -95,7 +95,7 @@ struct DialogSaveEvent {
 };
 } // namespace Event
 
-using SystemRegistry = ankerl::unordered_dense::map<EngineSystems, Shared<ESystem>>;
+using SystemRegistry = ankerl::unordered_dense::map<EngineSystems, std::shared_ptr<ESystem>>;
 class App {
 public:
   App(const AppSpec& spec);
@@ -115,7 +115,7 @@ public:
   const AppCommandLineArgs& get_command_line_args() const { return app_spec.command_line_args; }
 
   ImGuiLayer* get_imgui_layer() const { return imgui_layer; }
-  const Unique<LayerStack>& get_layer_stack() const { return layer_stack; }
+  const std::unique_ptr<LayerStack>& get_layer_stack() const { return layer_stack; }
 
   const Window& get_window() const { return window; }
   static VkContext& get_vkcontext() { return *_instance->vk_context; }
@@ -137,7 +137,7 @@ public:
       return;
     }
 
-    Shared<T> system = create_shared<T>(std::forward<Args>(args)...);
+    std::shared_ptr<T> system = std::make_shared<T>(std::forward<Args>(args)...);
     system->app = this;
     system_registry.emplace(type, std::move(system));
   }
@@ -163,14 +163,14 @@ private:
   static App* _instance;
   AppSpec app_spec = {};
   ImGuiLayer* imgui_layer = nullptr;
-  Unique<LayerStack> layer_stack = nullptr;
-  Unique<VkContext> vk_context = nullptr;
+  std::unique_ptr<LayerStack> layer_stack = nullptr;
+  std::unique_ptr<VkContext> vk_context = nullptr;
   Window window = {};
   glm::vec2 swapchain_extent = {};
 
   SystemRegistry system_registry = {};
 
-  Shared<ThreadManager> thread_manager = nullptr;
+  std::shared_ptr<ThreadManager> thread_manager = nullptr;
   Timestep timestep = {};
 
   bool is_running = true;

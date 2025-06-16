@@ -44,7 +44,7 @@ public:
 
   auto destroy() -> void;
 
-  static auto from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> Unique<Texture>;
+  static auto from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> std::unique_ptr<Texture>;
 
   auto attachment() const -> vuk::ImageAttachment { return _attachment; }
   auto acquire(vuk::Name name = {}, vuk::Access last_access = vuk::Access::eFragmentSampled) const
@@ -69,7 +69,7 @@ public:
                              uint32_t* width = nullptr,
                              uint32_t* height = nullptr,
                              uint32_t* bits = nullptr,
-                             bool srgb = true) -> Unique<u8[]>;
+                             bool srgb = true) -> std::unique_ptr<u8[]>;
 
   static auto load_stb_image_from_memory(void* buffer,
                                          size_t len,
@@ -77,7 +77,7 @@ public:
                                          uint32_t* height = nullptr,
                                          uint32_t* bits = nullptr,
                                          bool flipY = false,
-                                         bool srgb = true) -> Unique<u8[]>;
+                                         bool srgb = true) -> std::unique_ptr<u8[]>;
 
   static auto get_magenta_texture(uint32_t width, uint32_t height, uint32_t channels) -> u8*;
 

@@ -68,7 +68,7 @@ RendererCommon::generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttac
   return vuk::generate_mips(converge(envmap_output), target->level_count);
 }
 
-// Shared<Mesh> RendererCommon::generate_quad() {
+// std::shared_ptr<Mesh> RendererCommon::generate_quad() {
 // if (mesh_lib.quad)
 // return mesh_lib.quad;
 
@@ -87,12 +87,12 @@ RendererCommon::generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttac
 
 // const auto indices = std::vector<uint32_t>{0, 1, 2, 2, 3, 0};
 
-// mesh_lib.quad = create_shared<Mesh>(vertices, indices);
+// mesh_lib.quad = std::make_shared<Mesh>(vertices, indices);
 
 // return mesh_lib.quad;
 // }
 
-// Shared<Mesh> RendererCommon::generate_cube() {
+// std::shared_ptr<Mesh> RendererCommon::generate_cube() {
 // if (mesh_lib.cube)
 // return mesh_lib.cube;
 
@@ -180,12 +180,12 @@ RendererCommon::generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttac
 // std::vector<uint32_t> indices = {0,  1,  2,  0,  2,  3,  4,  5,  6,  4,  6,  7,  8,  9,  10, 8,  10, 11,
 // 12, 13, 14, 12, 14, 15, 16, 17, 18, 16, 18, 19, 20, 21, 22, 20, 22, 23};
 
-// mesh_lib.cube = create_shared<Mesh>(vertices, indices);
+// mesh_lib.cube = std::make_shared<Mesh>(vertices, indices);
 
 // return mesh_lib.cube;
 // }
 
-// Shared<Mesh> RendererCommon::generate_sphere() {
+// std::shared_ptr<Mesh> RendererCommon::generate_sphere() {
 // if (mesh_lib.sphere)
 // return mesh_lib.sphere;
 
@@ -237,7 +237,7 @@ RendererCommon::generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttac
 // }
 // }
 
-// mesh_lib.sphere = create_shared<Mesh>(vertices, indices);
+// mesh_lib.sphere = std::make_shared<Mesh>(vertices, indices);
 
 // return mesh_lib.sphere;
 // }

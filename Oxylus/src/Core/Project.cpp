@@ -83,7 +83,7 @@ auto AssetDirectory::add_asset(this AssetDirectory& self, const ::fs::path& path
 auto AssetDirectory::refresh(this AssetDirectory& self) -> void { populate_directory(&self, {}); }
 
 auto Project::register_assets(const std::string& path) -> void {
-  this->asset_directory = create_unique<AssetDirectory>(path, nullptr);
+  this->asset_directory = std::make_unique<AssetDirectory>(path, nullptr);
   populate_directory(this->asset_directory.get(), {});
 }
 

@@ -8,7 +8,7 @@
 #include "LuaHelpers.hpp"
 
 namespace ox::LuaBindings {
-void bind_input(const Shared<sol::state>& state) {
+void bind_input(const std::shared_ptr<sol::state>& state) {
   ZoneScoped;
   auto input = state->create_table("Input");
 

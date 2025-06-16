@@ -28,7 +28,7 @@ static flecs::entity clone_entity(flecs::entity entity) {
 
 SceneHierarchyPanel::SceneHierarchyPanel() : EditorPanel("Scene Hierarchy", ICON_MDI_VIEW_LIST, true) {}
 
-auto SceneHierarchyPanel::set_scene(const Shared<Scene>& scene) -> void {
+auto SceneHierarchyPanel::set_scene(const std::shared_ptr<Scene>& scene) -> void {
   _scene = scene;
   _selected_entity.reset();
 }

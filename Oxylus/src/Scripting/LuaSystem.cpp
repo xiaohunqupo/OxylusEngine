@@ -27,7 +27,7 @@ void LuaSystem::init_script(const std::string& path) {
   }
 
   const auto state = App::get_system<LuaManager>(EngineSystems::LuaManager)->get_state();
-  environment = create_unique<sol::environment>(*state, sol::create, state->globals());
+  environment = std::make_unique<sol::environment>(*state, sol::create, state->globals());
 
   const auto load_file_result = state->script_file(file_path, *environment, sol::script_pass_on_error);
 
@@ -51,31 +51,31 @@ void LuaSystem::init_script(const std::string& path) {
     OX_LOG_ERROR("{} {}", l, e);
   }
 
-  on_init_func = create_unique<sol::protected_function>((*environment)["on_init"]);
+  on_init_func = std::make_unique<sol::protected_function>((*environment)["on_init"]);
   if (!on_init_func->valid())
     on_init_func.reset();
 
-  on_update_func = create_unique<sol::protected_function>((*environment)["on_update"]);
+  on_update_func = std::make_unique<sol::protected_function>((*environment)["on_update"]);
   if (!on_update_func->valid())
     on_update_func.reset();
 
-  on_fixed_update_func = create_unique<sol::protected_function>((*environment)["on_fixed_update"]);
+  on_fixed_update_func = std::make_unique<sol::protected_function>((*environment)["on_fixed_update"]);
   if (!on_fixed_update_func->valid())
     on_fixed_update_func.reset();
 
-  on_render_func = create_unique<sol::protected_function>((*environment)["on_render"]);
+  on_render_func = std::make_unique<sol::protected_function>((*environment)["on_render"]);
   if (!on_render_func->valid())
     on_render_func.reset();
 
-  on_release_func = create_unique<sol::protected_function>((*environment)["on_release"]);
+  on_release_func = std::make_unique<sol::protected_function>((*environment)["on_release"]);
   if (!on_release_func->valid())
     on_release_func.reset();
 
-  on_contact_added_func = create_unique<sol::protected_function>((*environment)["on_contact_added"]);
+  on_contact_added_func = std::make_unique<sol::protected_function>((*environment)["on_contact_added"]);
   if (!on_contact_added_func->valid())
     on_contact_added_func.reset();
 
-  on_contact_persisted_func = create_unique<sol::protected_function>((*environment)["on_contact_persisted"]);
+  on_contact_persisted_func = std::make_unique<sol::protected_function>((*environment)["on_contact_persisted"]);
   if (!on_contact_persisted_func->valid())
     on_contact_persisted_func.reset();
 

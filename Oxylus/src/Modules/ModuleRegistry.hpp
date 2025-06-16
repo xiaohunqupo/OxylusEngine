@@ -8,7 +8,7 @@ namespace ox {
 class ModuleInterface;
 
 struct Module {
-  Unique<dylib> lib;
+  std::unique_ptr<dylib> lib;
   ModuleInterface* interface;
   std::string path;
 };
@@ -24,7 +24,7 @@ public:
   void clear();
 
 private:
-  ankerl::unordered_dense::map<std::string, Unique<Module>> libs = {};
+  ankerl::unordered_dense::map<std::string, std::unique_ptr<Module>> libs = {};
   std::vector<std::string> copied_file_paths = {};
 };
 } // namespace ox

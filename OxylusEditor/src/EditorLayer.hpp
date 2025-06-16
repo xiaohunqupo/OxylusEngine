@@ -31,12 +31,12 @@ public:
   SceneState scene_state = SceneState::Edit;
 
   // Panels
-  ankerl::unordered_dense::map<size_t, Unique<EditorPanel>> editor_panels;
-  std::vector<Unique<ViewportPanel>> viewport_panels;
+  ankerl::unordered_dense::map<size_t, std::unique_ptr<EditorPanel>> editor_panels;
+  std::vector<std::unique_ptr<ViewportPanel>> viewport_panels;
 
   template <typename T>
   void add_panel() {
-    editor_panels.emplace(typeid(T).hash_code(), create_unique<T>());
+    editor_panels.emplace(typeid(T).hash_code(), std::make_unique<T>());
   }
 
   template <typename T>
@@ -46,12 +46,12 @@ public:
     return dynamic_cast<T*>(editor_panels[hash_code].get());
   }
 
-  Unique<Project> active_project = nullptr;
+  std::unique_ptr<Project> active_project = nullptr;
 
   EditorTheme editor_theme;
 
   // Logo
-  Shared<Texture> engine_banner = nullptr;
+  std::shared_ptr<Texture> engine_banner = nullptr;
 
   // Layout
   ImGuiID dockspace_id;
@@ -78,12 +78,12 @@ public:
   EditorContext& get_context() { return editor_context; }
 
   void editor_shortcuts();
-  Shared<Scene> get_active_scene();
-  void set_editor_context(const Shared<Scene>& scene);
+  std::shared_ptr<Scene> get_active_scene();
+  void set_editor_context(const std::shared_ptr<Scene>& scene);
   bool open_scene(const std::filesystem::path& path);
   static void load_default_scene(const std::shared_ptr<Scene>& scene);
 
-  Shared<Scene> get_selected_scene() { return get_panel<SceneHierarchyPanel>()->get_scene(); }
+  std::shared_ptr<Scene> get_selected_scene() { return get_panel<SceneHierarchyPanel>()->get_scene(); }
 
   void set_scene_state(SceneState state);
   void set_docking_layout(EditorLayout layout);
@@ -107,8 +107,8 @@ private:
   std::vector<Archive> history;
   int historyPos = -1;
 
-  Shared<Scene> editor_scene;
-  Shared<Scene> active_scene;
+  std::shared_ptr<Scene> editor_scene;
+  std::shared_ptr<Scene> active_scene;
   static EditorLayer* instance;
 };
 } // namespace ox

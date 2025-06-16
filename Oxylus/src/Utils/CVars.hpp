@@ -67,7 +67,7 @@ public:
 
 private:
   std::shared_mutex mutex_;
-  ankerl::unordered_dense::map<usize, Unique<CVarParameter>> saved_cvars;
+  ankerl::unordered_dense::map<usize, std::unique_ptr<CVarParameter>> saved_cvars;
   std::vector<CVarParameter*> cached_edit_parameters;
 
   CVarParameter* init_cvar(const char* name, const char* description);

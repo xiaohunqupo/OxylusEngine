@@ -407,7 +407,7 @@ ECS_COMPONENT_END();
 ECS_COMPONENT_BEGIN(LuaScriptComponent)
   ECS_COMPONENT_MEMBER(script_uuid, UUID, {})
 #ifndef ECS_REFLECT_TYPES
-  ECS_COMPONENT_MEMBER(lua_systems, std::vector<Shared<LuaSystem>>, {})
+  ECS_COMPONENT_MEMBER(lua_systems, std::vector<std::shared_ptr<LuaSystem>>, {})
 #endif
 ECS_COMPONENT_END();
 

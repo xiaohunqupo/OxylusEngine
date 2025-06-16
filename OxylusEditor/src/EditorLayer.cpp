@@ -40,11 +40,11 @@ void EditorLayer::on_attach() {
 
   editor_theme.init();
 
-  active_project = create_unique<Project>();
+  active_project = std::make_unique<Project>();
 
   editor_config.load_config();
 
-  engine_banner = create_shared<Texture>();
+  engine_banner = std::make_shared<Texture>();
   engine_banner->create(
       {},
       {.preset = Preset::eRTT2DUnmipped,
@@ -61,10 +61,10 @@ void EditorLayer::on_attach() {
   add_panel<ProjectPanel>();
   add_panel<StatisticsPanel>();
 
-  const auto& viewport = viewport_panels.emplace_back(create_unique<ViewportPanel>());
+  const auto& viewport = viewport_panels.emplace_back(std::make_unique<ViewportPanel>());
   viewport->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
 
-  editor_scene = create_shared<Scene>();
+  editor_scene = std::make_shared<Scene>();
   load_default_scene(editor_scene);
   set_editor_context(editor_scene);
 
@@ -202,7 +202,7 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
         }
         if (ImGui::BeginMenu("Window")) {
           if (ImGui::MenuItem("Add viewport", nullptr)) {
-            viewport_panels.emplace_back(create_unique<ViewportPanel>())
+            viewport_panels.emplace_back(std::make_unique<ViewportPanel>())
                 ->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
           }
           ImGui::MenuItem("Inspector", nullptr, &get_panel<InspectorPanel>()->visible);
@@ -290,7 +290,7 @@ void EditorLayer::editor_shortcuts() {
 }
 
 void EditorLayer::new_scene() {
-  const Shared<Scene> new_scene = create_shared<Scene>(editor_scene->get_render_pipeline());
+  const std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(editor_scene->get_render_pipeline());
   editor_scene = new_scene;
   set_editor_context(new_scene);
   last_save_scene_path.clear();
@@ -332,7 +332,7 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
       OX_LOG_WARN("Could not load {0} - not a scene file", path.filename().string());
     return false;
   }
-  const auto new_scene = create_shared<Scene>();
+  const auto new_scene = std::make_shared<Scene>();
   if (new_scene->load_from_file(path.string())) {
     editor_scene = new_scene;
     set_editor_context(new_scene);
@@ -416,9 +416,9 @@ void EditorLayer::on_scene_simulate() {
   set_editor_context(active_scene);
 }
 
-Shared<Scene> EditorLayer::get_active_scene() { return active_scene; }
+std::shared_ptr<Scene> EditorLayer::get_active_scene() { return active_scene; }
 
-void EditorLayer::set_editor_context(const Shared<Scene>& scene) {
+void EditorLayer::set_editor_context(const std::shared_ptr<Scene>& scene) {
   scene->meshes_dirty = true;
   auto* shpanel = get_panel<SceneHierarchyPanel>();
   shpanel->set_scene(scene);

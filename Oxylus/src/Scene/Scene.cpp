@@ -196,7 +196,7 @@ auto ComponentDB::is_component_known(this ComponentDB& self, flecs::id component
 
 auto ComponentDB::get_components(this ComponentDB& self) -> std::span<flecs::id> { return self.components; }
 
-Scene::Scene(const Shared<RenderPipeline>& render_pipeline) { this->init("Untitled", render_pipeline); }
+Scene::Scene(const std::shared_ptr<RenderPipeline>& render_pipeline) { this->init("Untitled", render_pipeline); }
 
 Scene::Scene(const std::string& name) { init(name); }
 
@@ -210,7 +210,7 @@ Scene::~Scene() {
   _render_pipeline->deinit();
 }
 
-auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderPipeline>& render_pipeline) -> void {
+auto Scene::init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline) -> void {
   ZoneScoped;
 
   self.scene_name = name;
@@ -221,7 +221,7 @@ auto Scene::init(this Scene& self, const std::string& name, const Shared<RenderP
   self._render_pipeline = render_pipeline;
 
   if (!self._render_pipeline) {
-    self._render_pipeline = create_shared<EasyRenderPipeline>();
+    self._render_pipeline = std::make_shared<EasyRenderPipeline>();
     self._render_pipeline->init(App::get_vkcontext());
   }
 
@@ -673,12 +673,12 @@ auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
   return root_entity;
 }
 
-auto Scene::copy(const Shared<Scene>& src_scene) -> Shared<Scene> {
+auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Scene> {
   ZoneScoped;
 
   // Copies the world but not the renderer. Imports component db from start.
 
-  Shared<Scene> new_scene = create_shared<Scene>(src_scene->_render_pipeline);
+  std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->_render_pipeline);
 
   new_scene->component_db.import_module(new_scene->world.import <Core>());
 
@@ -1073,7 +1073,7 @@ void Scene::create_character_controller(const TransformComponent& transform,
                                  .Get();
 
   // Create character
-  const Shared<JPH::CharacterSettings> settings = create_shared<JPH::CharacterSettings>();
+  const std::shared_ptr<JPH::CharacterSettings> settings = std::make_shared<JPH::CharacterSettings>();
   settings->mMaxSlopeAngle = JPH::DegreesToRadians(45.0f);
   settings->mLayer = PhysicsLayers::MOVING;
   settings->mShape = capsule_shape;

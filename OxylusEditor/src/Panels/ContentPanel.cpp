@@ -245,7 +245,7 @@ ContentPanel::ContentPanel() : EditorPanel("Contents", ICON_MDI_FOLDER_STAR, tru
   thumbnail_max_limit *= scale;
   thumbnail_size_grid_limit *= scale;
 
-  _white_texture = create_shared<Texture>();
+  _white_texture = std::make_shared<Texture>();
   char white_texture_data[16 * 16 * 4];
   memset(white_texture_data, 0xff, 16 * 16 * 4);
   _white_texture->create({},
@@ -549,7 +549,7 @@ void ContentPanel::render_body(bool grid) {
             // make sure this runs only if it's not already queued
             if (ThreadManager::get()->asset_thread.get_queue_size() == 0) {
               ThreadManager::get()->asset_thread.queue_job([this, file_path = file.file_path] {
-                auto thumbnail_texture = create_shared<Texture>();
+                auto thumbnail_texture = std::make_shared<Texture>();
                 thumbnail_texture->create(file_path, {.preset = Preset::eRTT2DUnmipped});
                 thumbnail_cache_textures.emplace(file_path, thumbnail_texture);
               });
@@ -561,7 +561,7 @@ void ContentPanel::render_body(bool grid) {
             texture_name = file.file_path;
           } else if (mesh_thumbnails_enabled) {
             const auto name = fs::get_file_name(file.file_path);
-            auto rp = create_unique<ThumbnailRenderPipeline>();
+            auto rp = std::make_unique<ThumbnailRenderPipeline>();
             rp->set_name(name);
 
             auto* asset_man = App::get_asset_manager();

@@ -17,9 +17,9 @@ public:
                         uint32_t depth = 0,
                         bool force_expand_tree = false,
                         bool is_part_of_prefab = false) -> ImRect;
-  auto set_scene(const Shared<Scene>& scene) -> void;
+  auto set_scene(const std::shared_ptr<Scene>& scene) -> void;
 
-  auto get_scene() const -> const Shared<Scene>& { return _scene; }
+  auto get_scene() const -> const std::shared_ptr<Scene>& { return _scene; }
 
 private:
   class SelectedEntity {
@@ -39,7 +39,7 @@ private:
   flecs::entity _dragged_entity_target = {};
   flecs::entity _deleted_entity = {};
 
-  Shared<Scene> _scene = nullptr;
+  std::shared_ptr<Scene> _scene = nullptr;
   ImGuiTextFilter _filter;
   bool _table_hovered = false;
   bool _window_hovered = false;

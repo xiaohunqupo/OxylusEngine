@@ -134,10 +134,10 @@ auto Texture::reset_view(vuk::Allocator& allocator) -> void {
   _attachment.image_view = *_view;
 }
 
-auto Texture::from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> Unique<Texture> {
+auto Texture::from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> std::unique_ptr<Texture> {
   ZoneScoped;
 
-  Unique<Texture> t = create_unique<Texture>();
+  std::unique_ptr<Texture> t = std::make_unique<Texture>();
   t->_view = vuk::Unique<vuk::ImageView>(allocator, ia.image_view);
   t->_image = vuk::Unique<vuk::Image>(allocator, ia.image);
   t->_attachment = ia;
@@ -170,7 +170,7 @@ void Texture::set_name(std::string_view name, const std::source_location& loc) {
   }
 }
 
-Unique<u8[]>
+std::unique_ptr<u8[]>
 Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* height, uint32_t* bits, bool srgb) {
   ZoneScoped;
 
@@ -195,14 +195,14 @@ Texture::load_stb_image(const std::string& filename, uint32_t* width, uint32_t* 
     *bits = tex_channels * size_of_channel;
 
   const int32_t size = tex_width * tex_height * tex_channels * size_of_channel / 8;
-  auto result = create_unique<u8[]>(size);
+  auto result = std::make_unique<u8[]>(size);
   memcpy(result.get(), pixels, size);
   stbi_image_free(pixels);
 
   return result;
 }
 
-Unique<u8[]> Texture::load_stb_image_from_memory(
+std::unique_ptr<u8[]> Texture::load_stb_image_from_memory(
     void* buffer, size_t len, uint32_t* width, uint32_t* height, uint32_t* bits, bool flipY, bool srgb) {
   ZoneScoped;
 
@@ -226,7 +226,7 @@ Unique<u8[]> Texture::load_stb_image_from_memory(
     *bits = tex_channels * size_of_channel;
 
   const int32_t size = tex_width * tex_height * tex_channels * size_of_channel / 8;
-  auto result = create_unique<u8[]>(size);
+  auto result = std::make_unique<u8[]>(size);
   memcpy(result.get(), pixels, size);
 
   stbi_image_free(pixels);

@@ -284,7 +284,7 @@ auto VkContext::create_context(this VkContext& self, const Window& window, bool 
 
   self.shader_compiler = SlangCompiler::create().value();
 
-  self.tracy_profiler = create_shared<TracyProfiler>();
+  self.tracy_profiler = std::make_shared<TracyProfiler>();
   self.tracy_profiler->init_for_vulkan(&self);
 
   u32 instanceVersion = VK_API_VERSION_1_0;

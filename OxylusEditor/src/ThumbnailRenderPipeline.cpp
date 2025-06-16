@@ -32,7 +32,7 @@ auto ThumbnailRenderPipeline::on_render(VkContext& vk_context, const RenderInfo&
     -> vuk::Value<vuk::ImageAttachment> {
 
   if (_final_image == nullptr) {
-    _final_image = create_unique<Texture>();
+    _final_image = std::make_unique<Texture>();
     _final_image->create({}, {.preset = Preset::eRTT2DUnmipped, .extent = render_info.extent});
     _final_image->set_name(thumbnail_name);
   }

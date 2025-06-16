@@ -364,7 +364,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
   }
 }
 
-void ViewportPanel::set_context(const Shared<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel) {
+void ViewportPanel::set_context(const std::shared_ptr<Scene>& scene, SceneHierarchyPanel& scene_hierarchy_panel) {
   _scene_hierarchy_panel = &scene_hierarchy_panel;
 
   if (!scene)

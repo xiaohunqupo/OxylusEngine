@@ -56,7 +56,7 @@ void ImGuiLayer::build_fonts() {
   int width, height;
   io.Fonts->Build();
   io.Fonts->GetTexDataAsRGBA32(&pixels, &width, &height);
-  font_texture = create_shared<Texture>();
+  font_texture = std::make_shared<Texture>();
   font_texture->create({},
                        {
                            .preset = Preset::eRTT2DUnmipped,
@@ -153,7 +153,7 @@ vuk::Value<vuk::ImageAttachment> ImGuiLayer::end_frame(VkContext& context, vuk::
           font_texture->destroy();
         }
 
-        font_texture = create_shared<Texture>();
+        font_texture = std::make_shared<Texture>();
         font_texture->create(
             {},
             {

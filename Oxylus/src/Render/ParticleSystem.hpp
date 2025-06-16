@@ -73,7 +73,7 @@ struct ParticleProperties {
   OverLifetimeModule<glm::vec3> rotation_over_lifetime;
   BySpeedModule<glm::vec3> rotation_by_speed;
 
-  Shared<Texture> texture = nullptr;
+  std::shared_ptr<Texture> texture = nullptr;
 };
 
 class ParticleSystem {

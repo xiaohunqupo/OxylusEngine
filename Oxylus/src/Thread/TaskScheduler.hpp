@@ -17,7 +17,7 @@ public:
   auto init() -> std::expected<void, std::string> override;
   auto deinit() -> std::expected<void, std::string> override;
 
-  Unique<enki::TaskScheduler>& get_underlying() { return task_scheduler; }
+  std::unique_ptr<enki::TaskScheduler>& get_underlying() { return task_scheduler; }
 
   void schedule_task(ITaskSet* set) const { task_scheduler->AddTaskSetToPipe(set); }
 
@@ -28,7 +28,7 @@ public:
   void wait_for_all();
 
 private:
-  Unique<enki::TaskScheduler> task_scheduler;
-  std::vector<Unique<TaskSet>> task_sets = {};
+  std::unique_ptr<enki::TaskScheduler> task_scheduler;
+  std::vector<std::unique_ptr<TaskSet>> task_sets = {};
 };
 } // namespace ox

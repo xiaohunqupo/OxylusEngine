@@ -8,7 +8,7 @@
 
 namespace ox::LuaBindings {
 
-void bind_scene(const Shared<sol::state>& state) {
+void bind_scene(const std::shared_ptr<sol::state>& state) {
   ZoneScoped;
   sol::usertype<Scene> scene_type = state->new_usertype<Scene>("Scene");
   scene_type.set_function("create_entity",

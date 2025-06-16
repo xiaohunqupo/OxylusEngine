@@ -927,7 +927,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
                     const auto first_path_len = std::strlen(first_path_cstr);
                     const auto p_str = std::string(first_path_cstr, first_path_len);
                     if (fs::get_file_extension(p_str) == "lua") {
-                      user_data_comp->lua_systems.emplace_back(create_shared<LuaSystem>(p_str));
+                      user_data_comp->lua_systems.emplace_back(std::make_shared<LuaSystem>(p_str));
                     }
                   },
               .title = "Open lua file...",

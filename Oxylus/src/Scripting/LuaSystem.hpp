@@ -50,14 +50,14 @@ private:
   std::string file_path = {};
   ankerl::unordered_dense::map<int, std::string> errors = {};
 
-  Unique<sol::environment> environment = nullptr;
-  Unique<sol::protected_function> on_init_func = nullptr;
-  Unique<sol::protected_function> on_release_func = nullptr;
-  Unique<sol::protected_function> on_update_func = nullptr;
-  Unique<sol::protected_function> on_render_func = nullptr;
-  Unique<sol::protected_function> on_fixed_update_func = nullptr;
-  Unique<sol::protected_function> on_contact_added_func = nullptr;
-  Unique<sol::protected_function> on_contact_persisted_func = nullptr;
+  std::unique_ptr<sol::environment> environment = nullptr;
+  std::unique_ptr<sol::protected_function> on_init_func = nullptr;
+  std::unique_ptr<sol::protected_function> on_release_func = nullptr;
+  std::unique_ptr<sol::protected_function> on_update_func = nullptr;
+  std::unique_ptr<sol::protected_function> on_render_func = nullptr;
+  std::unique_ptr<sol::protected_function> on_fixed_update_func = nullptr;
+  std::unique_ptr<sol::protected_function> on_contact_added_func = nullptr;
+  std::unique_ptr<sol::protected_function> on_contact_persisted_func = nullptr;
 
   void init_script(const std::string& path);
   void check_result(const sol::protected_function_result& result, const char* func_name);

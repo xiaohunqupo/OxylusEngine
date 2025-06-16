@@ -34,7 +34,7 @@ public:
   u32 num_inflight_frames = vkb::SwapchainBuilder::BufferMode::TRIPLE_BUFFERING;
   u64 num_frames = 0;
   u32 current_frame = 0;
-  Shared<TracyProfiler> tracy_profiler = {};
+  std::shared_ptr<TracyProfiler> tracy_profiler = {};
   vuk::Compiler compiler = {};
   SlangCompiler shader_compiler = {};
 

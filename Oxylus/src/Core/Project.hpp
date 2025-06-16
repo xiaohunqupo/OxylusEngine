@@ -47,7 +47,7 @@ public:
   auto set_project_dir(const std::string& dir) -> void { project_directory = dir; }
   auto get_project_file_path() const -> const std::string& { return project_file_path; }
 
-  auto get_asset_directory() -> const Unique<AssetDirectory>& { return asset_directory; }
+  auto get_asset_directory() -> const std::unique_ptr<AssetDirectory>& { return asset_directory; }
 
   auto register_assets(const std::string& path) -> void;
 
@@ -60,6 +60,6 @@ private:
   std::string project_directory = {};
   std::string project_file_path = {};
   ::fs::file_time_type last_module_write_time = {};
-  Unique<AssetDirectory> asset_directory = nullptr;
+  std::unique_ptr<AssetDirectory> asset_directory = nullptr;
 };
 } // namespace ox

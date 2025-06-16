@@ -20,10 +20,10 @@ public:
   auto set_mesh(this ThumbnailRenderPipeline& self, Mesh* mesh) -> void;
   auto set_name(this ThumbnailRenderPipeline& self, const std::string& name) -> void;
 
-  auto get_final_image() -> Unique<Texture>& { return _final_image; }
+  auto get_final_image() -> std::unique_ptr<Texture>& { return _final_image; }
 
 private:
-  Unique<Texture> _final_image = nullptr;
+  std::unique_ptr<Texture> _final_image = nullptr;
 
   std::string thumbnail_name = "thumb";
   Mesh* mesh = nullptr;
