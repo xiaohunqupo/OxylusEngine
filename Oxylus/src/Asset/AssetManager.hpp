@@ -90,7 +90,9 @@ public:
   auto unload_texture(const UUID& uuid) -> bool;
   auto is_texture_loaded(const UUID& uuid) -> bool;
 
-  auto load_material(const UUID& uuid, const Material& material_info) -> bool;
+  auto load_material(const UUID& uuid,
+                     const Material& material_info,
+                     option<ankerl::unordered_dense::map<UUID, TextureLoadInfo>> texture_info_map = nullopt) -> bool;
   auto unload_material(const UUID& uuid) -> bool;
 
   auto load_scene(const UUID& uuid) -> bool;

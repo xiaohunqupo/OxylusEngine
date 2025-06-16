@@ -62,16 +62,13 @@ struct GLTFSceneInfo {
 
 struct GLTFMeshCallbacks {
   void* user_data = nullptr;
-  // clang-format off
-    void (*on_new_primitive)
-       (void *user_data,
-        u32 mesh_index,
-        u32 material_index,
-        u32 vertex_offset,
-        u32 vertex_count,
-        u32 index_offset,
-        u32 index_count) = nullptr;
-  // clang-format on
+  void (*on_new_primitive)(void* user_data,
+                           u32 mesh_index,
+                           u32 material_index,
+                           u32 vertex_offset,
+                           u32 vertex_count,
+                           u32 index_offset,
+                           u32 index_count) = nullptr;
 
   // Accessors
   void (*on_access_index)(void* user_data, u32 mesh_index, u64 offset, u32 index) = nullptr;
@@ -80,7 +77,10 @@ struct GLTFMeshCallbacks {
   void (*on_access_texcoord)(void* user_data, u32 mesh_index, u64 offset, glm::vec2 texcoord) = nullptr;
   void (*on_access_color)(void* user_data, u32 mesh_index, u64 offset, glm::vec4 color) = nullptr;
 
-  std::function<void(std::vector<GLTFImageInfo>& images)> on_materials_load = nullptr;
+  std::function<void(std::vector<GLTFMaterialInfo>& gltf_materials,
+                     std::vector<GLTFTextureInfo>& textures,
+                     std::vector<GLTFImageInfo>& images)>
+      on_materials_load = nullptr;
 };
 
 struct GLTFMeshInfo {
@@ -92,7 +92,7 @@ struct GLTFMeshInfo {
   std::vector<GLTFSceneInfo> scenes = {};
   ox::option<usize> defualt_scene_index = ox::nullopt;
 
-  static auto parse(const fs::path& path, GLTFMeshCallbacks callbacks = {}) -> ox::option<GLTFMeshInfo>;
-  static auto parse_info(const fs::path& path) -> ox::option<GLTFMeshInfo>;
+  static auto parse(const ::fs::path& path, GLTFMeshCallbacks callbacks = {}) -> ox::option<GLTFMeshInfo>;
+  static auto parse_info(const ::fs::path& path) -> ox::option<GLTFMeshInfo>;
 };
 } // namespace ox

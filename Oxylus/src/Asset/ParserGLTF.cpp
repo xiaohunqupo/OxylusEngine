@@ -68,7 +68,7 @@ static auto to_asset_file_type(fastgltf::MimeType mime) -> AssetFileType {
   }
 }
 
-auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> ox::option<GLTFMeshInfo> {
+auto GLTFMeshInfo::parse(const ::fs::path& path, GLTFMeshCallbacks callbacks) -> ox::option<GLTFMeshInfo> {
   ZoneScoped;
 
   auto gltf_buffer = fastgltf::GltfDataBuffer::FromPath(path);
@@ -243,7 +243,7 @@ auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> o
   }
 
   if (callbacks.on_materials_load) {
-    callbacks.on_materials_load(model.images);
+    callbacks.on_materials_load(model.materials, model.textures, model.images);
   }
 
   ///////////////////////////////////////////////
@@ -369,7 +369,7 @@ auto GLTFMeshInfo::parse(const fs::path& path, GLTFMeshCallbacks callbacks) -> o
   return model;
 }
 
-auto GLTFMeshInfo::parse_info(const fs::path& path) -> ox::option<GLTFMeshInfo> {
+auto GLTFMeshInfo::parse_info(const ::fs::path& path) -> ox::option<GLTFMeshInfo> {
   ZoneScoped;
 
   auto gltf_buffer = fastgltf::GltfDataBuffer::FromPath(path);

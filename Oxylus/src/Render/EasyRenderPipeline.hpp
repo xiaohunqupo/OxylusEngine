@@ -155,6 +155,8 @@ private:
   RenderQueue2D render_queue_2d = {};
   bool saved_camera = false;
 
+  vuk::Unique<vuk::Buffer> exposure_buffer = vuk::Unique<vuk::Buffer>();
+
   std::span<GPU::Transforms> transforms = {};
   std::vector<GPU::TransformID> dirty_transforms = {};
   vuk::Unique<vuk::Buffer> transforms_buffer = vuk::Unique<vuk::Buffer>();

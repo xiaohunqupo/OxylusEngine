@@ -28,7 +28,7 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
 
   auto dslci_01 = vuk::descriptor_set_layout_create_info(
       {
-          ds_layout_binding(BindlessID::Samplers, vuk::DescriptorType::eSampler),           // Samplers
+          ds_layout_binding(BindlessID::Samplers, vuk::DescriptorType::eSampler, 6),           // Samplers
           ds_layout_binding(BindlessID::SampledImages, vuk::DescriptorType::eSampledImage), // SampledImages
       },
       1);
@@ -134,8 +134,7 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
                         {.path = shaders_dir + "/passes/tonemap.slang", .entry_points = {"vs_main", "fs_main"}});
 
   // --- DescriptorSets ---
-  this->descriptor_set_01 = runtime.create_persistent_descriptorset(
-      allocator, *runtime.get_named_pipeline("2d_forward_pipeline"), 1, 1);
+  this->descriptor_set_01 = runtime.create_persistent_descriptorset(allocator, dslci_01, 1);
 
   // --- Samplers ---
   auto hiz_sampler_ci = vuk::SamplerCreateInfo{
@@ -225,6 +224,12 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
 
   vk_context.wait_on(std::move(transmittance_lut_attachment));
   vk_context.wait_on(std::move(multiscatter_lut_attachment));
+
+  if (this->exposure_buffer) {
+    vk_context.wait();
+    this->exposure_buffer.reset();
+  }
+  this->exposure_buffer = vk_context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly, sizeof(GPU::HistogramLuminance));
 }
 
 auto EasyRenderPipeline::deinit() -> void {}
@@ -1113,8 +1118,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           return std::make_tuple(src, histogram);
         })(std::move(final_attachment), std::move(histogram_buffer));
 
-    auto exposure_buffer = vk_context.allocate_buffer(vuk::MemoryUsage::eGPUonly, sizeof(GPU::HistogramLuminance));
-    auto exposure_buffer_value = vuk::acquire_buf("exposure buffer", *exposure_buffer, vuk::eNone);
+    auto exposure_buffer_value = vuk::acquire_buf("exposure buffer", *this->exposure_buffer, vuk::eNone);
 
     if (histogram_info.has_value()) {
       exposure_buffer_value = vuk::make_pass(
