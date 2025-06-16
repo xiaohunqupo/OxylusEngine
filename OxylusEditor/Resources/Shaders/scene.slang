@@ -73,7 +73,7 @@ public struct Material {
   public func sample_albedo_color(in UVGradient grad) -> f32x4 {
     if (this.flags & MaterialFlag::HasAlbedoImage) {
         const let color = material_images[this.albedo_image_index]
-            .sample_grad(material_samplers[this.albedo_image_index], grad.uv, grad.ddx, grad.ddy);
+            .sample_grad(material_samplers[this.sampling_mode], grad.uv, grad.ddx, grad.ddy);
         return this.albedo_color * color;
     }
 
@@ -83,7 +83,7 @@ public struct Material {
   public func sample_normal_color(in UVGradient grad) -> f32x3 {
     if (this.flags & MaterialFlag::HasNormalImage) {
         return material_images[this.normal_image_index]
-            .sample_grad(material_samplers[this.normal_image_index], grad.uv, grad.ddx, grad.ddy).rgb;
+            .sample_grad(material_samplers[this.sampling_mode], grad.uv, grad.ddx, grad.ddy).rgb;
     }
 
     return { 0.0 };
@@ -92,7 +92,7 @@ public struct Material {
   public func sample_emissive_color(in UVGradient grad) -> f32x3 {
     if (this.flags & MaterialFlag::HasEmissiveImage) {
         const let color = material_images[this.emissive_image_index]
-            .sample_grad(material_samplers[this.emissive_image_index], grad.uv, grad.ddx, grad.ddy).rgb;
+            .sample_grad(material_samplers[this.sampling_mode], grad.uv, grad.ddx, grad.ddy).rgb;
         return this.emissive_color * color;
     }
 
@@ -103,7 +103,7 @@ public struct Material {
     const let metallic_roughness = f32x2(this.metallic_factor, this.roughness_factor);
     if (this.flags & MaterialFlag::HasMetallicRoughnessImage) {
         const let color = material_images[this.metallic_rougness_image_index]
-            .sample_grad(material_samplers[this.metallic_rougness_image_index], grad.uv, grad.ddx, grad.ddy).bg;
+            .sample_grad(material_samplers[this.sampling_mode], grad.uv, grad.ddx, grad.ddy).bg;
         return metallic_roughness * color;
     }
 
@@ -113,7 +113,7 @@ public struct Material {
   public func sample_occlusion_color(in UVGradient grad) -> f32 {
     if (this.flags & MaterialFlag::HasOcclusionImage) {
         return material_images[this.occlusion_image_index]
-            .sample_grad(material_samplers[this.occlusion_image_index], grad.uv, grad.ddx, grad.ddy).r;
+            .sample_grad(material_samplers[this.sampling_mode], grad.uv, grad.ddx, grad.ddy).r;
     }
 
     return 1.0;
