@@ -23,12 +23,19 @@
 
 namespace ox {
 auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
+  if (initalized)
+    return;
+
+  initalized = true;
+
   auto& runtime = *vk_context.runtime;
   auto& allocator = *vk_context.superframe_allocator;
 
+  vk_context.wait();
+
   auto dslci_01 = vuk::descriptor_set_layout_create_info(
       {
-          ds_layout_binding(BindlessID::Samplers, vuk::DescriptorType::eSampler, 6),           // Samplers
+          ds_layout_binding(BindlessID::Samplers, vuk::DescriptorType::eSampler, 6),        // Samplers
           ds_layout_binding(BindlessID::SampledImages, vuk::DescriptorType::eSampledImage), // SampledImages
       },
       1);
@@ -226,7 +233,6 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   vk_context.wait_on(std::move(multiscatter_lut_attachment));
 
   if (this->exposure_buffer) {
-    vk_context.wait();
     this->exposure_buffer.reset();
   }
   this->exposure_buffer = vk_context.allocate_buffer_super(vuk::MemoryUsage::eGPUonly, sizeof(GPU::HistogramLuminance));

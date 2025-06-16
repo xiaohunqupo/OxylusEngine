@@ -129,7 +129,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     _viewport_offset = {_viewport_bounds[0].x + off * 0.5f, _viewport_bounds[0].y};
 
     const auto* app = App::get();
-    auto* render_pipeline = _scene->get_render_pipeline();
+    auto render_pipeline = _scene->get_render_pipeline();
     if (render_pipeline != nullptr) {
       const RenderPipeline::RenderInfo render_info = {
           .extent = extent,

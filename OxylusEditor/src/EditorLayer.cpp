@@ -290,7 +290,7 @@ void EditorLayer::editor_shortcuts() {
 }
 
 void EditorLayer::new_scene() {
-  const Shared<Scene> new_scene = create_shared<Scene>();
+  const Shared<Scene> new_scene = create_shared<Scene>(editor_scene->get_render_pipeline());
   editor_scene = new_scene;
   set_editor_context(new_scene);
   last_save_scene_path.clear();

@@ -98,7 +98,7 @@ public:
   auto create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const
       -> void;
 
-  auto get_render_pipeline() -> RenderPipeline* { return _render_pipeline.get(); }
+  auto get_render_pipeline() -> Shared<RenderPipeline> { return _render_pipeline; }
 
   auto save_to_file(this const Scene& self, std::string path) -> bool;
   auto load_from_file(this Scene& self, const std::string& path) -> bool;

@@ -275,7 +275,11 @@ void SceneHierarchyPanel::draw_context_menu() {
       if (ImGui::MenuItem("Light")) {
         to_select = _scene->create_entity().add<LightComponent>();
       }
-
+      if (ImGui::MenuItem("Sun")) {
+        to_select = _scene->create_entity()
+                        .set<LightComponent>(LightComponent{.type = LightComponent::Directional, .intensity = 10.f})
+                        .add<AtmosphereComponent>();
+      }
       ImGui::EndMenu();
     }
 

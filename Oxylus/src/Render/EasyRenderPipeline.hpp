@@ -150,6 +150,8 @@ private:
     }
   };
 
+  bool initalized = false;
+
   vuk::Unique<vuk::PersistentDescriptorSet> descriptor_set_01 = vuk::Unique<vuk::PersistentDescriptorSet>();
 
   RenderQueue2D render_queue_2d = {};

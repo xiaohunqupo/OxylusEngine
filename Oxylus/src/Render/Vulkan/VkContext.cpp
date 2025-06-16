@@ -109,7 +109,9 @@ vuk::Swapchain make_swapchain(vuk::Allocator& allocator,
 
 VkContext::~VkContext() { runtime->wait_idle(); }
 
-void VkContext::handle_resize(u32 width, u32 height) {
+auto VkContext::handle_resize(u32 width, u32 height) -> void {
+  wait();
+
   if (width == 0 && height == 0) {
     suspend = true;
   } else {
@@ -118,14 +120,14 @@ void VkContext::handle_resize(u32 width, u32 height) {
   }
 }
 
-void VkContext::set_vsync(bool enable) {
+auto VkContext::set_vsync(bool enable) -> void {
   const auto set_present_mode = enable ? vuk::PresentModeKHR::eFifo : vuk::PresentModeKHR::eImmediate;
   present_mode = set_present_mode;
 }
 
-bool VkContext::is_vsync() const { return present_mode == vuk::PresentModeKHR::eFifo; }
+auto VkContext::is_vsync() const -> bool { return present_mode == vuk::PresentModeKHR::eFifo; }
 
-void VkContext::create_context(const Window& window, bool vulkan_validation_layers) {
+auto VkContext::create_context(this VkContext& self, const Window& window, bool vulkan_validation_layers) -> void {
   ZoneScoped;
   vkb::InstanceBuilder builder;
   builder //
@@ -156,12 +158,12 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
         "Couldn't initialize the instance! Make sure your GPU drivers are up to date and it supports Vulkan 1.3");
   }
 
-  vkb_instance = inst_ret.value();
-  auto instance = vkb_instance.instance;
-  vkb::PhysicalDeviceSelector selector{vkb_instance};
-  surface = window.get_surface(instance);
+  self.vkb_instance = inst_ret.value();
+  auto instance = self.vkb_instance.instance;
+  vkb::PhysicalDeviceSelector selector{self.vkb_instance};
+  self.surface = window.get_surface(instance);
   selector //
-      .set_surface(surface)
+      .set_surface(self.surface)
       .prefer_gpu_device_type(vkb::PreferredDeviceType::discrete)
       .set_minimum_version(1, 3);
 
@@ -176,12 +178,12 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   if (auto phys_ret = selector.select(); !phys_ret) {
     OX_LOG_ERROR("{}", phys_ret.full_error().type.message());
   } else {
-    vkbphysical_device = phys_ret.value();
-    device_name = phys_ret.value().name;
+    self.vkbphysical_device = phys_ret.value();
+    self.device_name = phys_ret.value().name;
   }
 
-  physical_device = vkbphysical_device.physical_device;
-  vkb::DeviceBuilder device_builder{vkbphysical_device};
+  self.physical_device = self.vkbphysical_device.physical_device;
+  vkb::DeviceBuilder device_builder{self.vkbphysical_device};
 
   VkPhysicalDeviceFeatures2 vk10_features{};
   vk10_features.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2;
@@ -249,40 +251,41 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
     OX_LOG_ERROR("Couldn't create device");
   }
 
-  vkb_device = dev_ret.value();
-  graphics_queue = vkb_device.get_queue(vkb::QueueType::graphics).value();
-  u32 graphics_queue_family_index = vkb_device.get_queue_index(vkb::QueueType::graphics).value();
-  transfer_queue = vkb_device.get_queue(vkb::QueueType::transfer).value();
-  auto transfer_queue_family_index = vkb_device.get_queue_index(vkb::QueueType::transfer).value();
-  device = vkb_device.device;
+  self.vkb_device = dev_ret.value();
+  self.graphics_queue = self.vkb_device.get_queue(vkb::QueueType::graphics).value();
+  u32 graphics_queue_family_index = self.vkb_device.get_queue_index(vkb::QueueType::graphics).value();
+  self.transfer_queue = self.vkb_device.get_queue(vkb::QueueType::transfer).value();
+  auto transfer_queue_family_index = self.vkb_device.get_queue_index(vkb::QueueType::transfer).value();
+  self.device = self.vkb_device.device;
   vuk::FunctionPointers fps;
-  fps.vkGetInstanceProcAddr = vkb_instance.fp_vkGetInstanceProcAddr;
-  fps.vkGetDeviceProcAddr = vkb_instance.fp_vkGetDeviceProcAddr;
-  fps.load_pfns(instance, device, true);
+  fps.vkGetInstanceProcAddr = self.vkb_instance.fp_vkGetInstanceProcAddr;
+  fps.vkGetDeviceProcAddr = self.vkb_instance.fp_vkGetDeviceProcAddr;
+  fps.load_pfns(instance, self.device, true);
   std::vector<std::unique_ptr<vuk::Executor>> executors;
 
   executors.push_back(create_vkqueue_executor(
-      fps, device, graphics_queue, graphics_queue_family_index, vuk::DomainFlagBits::eGraphicsQueue));
+      fps, self.device, self.graphics_queue, graphics_queue_family_index, vuk::DomainFlagBits::eGraphicsQueue));
   executors.push_back(create_vkqueue_executor(
-      fps, device, transfer_queue, transfer_queue_family_index, vuk::DomainFlagBits::eTransferQueue));
+      fps, self.device, self.transfer_queue, transfer_queue_family_index, vuk::DomainFlagBits::eTransferQueue));
   executors.push_back(std::make_unique<vuk::ThisThreadExecutor>());
 
-  runtime.emplace(vuk::RuntimeCreateParameters{instance, device, physical_device, std::move(executors), fps});
+  self.runtime.emplace(
+      vuk::RuntimeCreateParameters{instance, self.device, self.physical_device, std::move(executors), fps});
 
-  set_vsync(static_cast<bool>(RendererCVar::cvar_vsync.get()));
+  self.set_vsync(static_cast<bool>(RendererCVar::cvar_vsync.get()));
 
-  superframe_resource.emplace(*runtime, num_inflight_frames);
-  superframe_allocator.emplace(*superframe_resource);
+  self.superframe_resource.emplace(*self.runtime, self.num_inflight_frames);
+  self.superframe_allocator.emplace(*self.superframe_resource);
 
-  auto& frame_resource = superframe_resource->get_next_frame();
-  frame_allocator.emplace(frame_resource);
+  auto& frame_resource = self.superframe_resource->get_next_frame();
+  self.frame_allocator.emplace(frame_resource);
 
-  runtime->set_shader_target_version(VK_API_VERSION_1_3);
+  self.runtime->set_shader_target_version(VK_API_VERSION_1_3);
 
-  shader_compiler = SlangCompiler::create().value();
+  self.shader_compiler = SlangCompiler::create().value();
 
-  tracy_profiler = create_shared<TracyProfiler>();
-  tracy_profiler->init_for_vulkan(this);
+  self.tracy_profiler = create_shared<TracyProfiler>();
+  self.tracy_profiler->init_for_vulkan(&self);
 
   u32 instanceVersion = VK_API_VERSION_1_0;
   auto FN_vkEnumerateInstanceVersion = PFN_vkEnumerateInstanceVersion(
@@ -295,11 +298,14 @@ void VkContext::create_context(const Window& window, bool vulkan_validation_laye
   const u32 minor = VK_VERSION_MINOR(instanceVersion);
   const u32 patch = VK_VERSION_PATCH(instanceVersion);
 
-  OX_LOG_INFO(
-      "Vulkan context initialized using device: {} with Vulkan Version: {}.{}.{}", device_name, major, minor, patch);
+  OX_LOG_INFO("Vulkan context initialized using device: {} with Vulkan Version: {}.{}.{}",
+              self.device_name,
+              major,
+              minor,
+              patch);
 }
 
-vuk::Value<vuk::ImageAttachment> VkContext::new_frame(this VkContext& self) {
+auto VkContext::new_frame(this VkContext& self) -> vuk::Value<vuk::ImageAttachment> {
   ZoneScoped;
 
   if (self.frame_allocator) {
@@ -320,7 +326,7 @@ vuk::Value<vuk::ImageAttachment> VkContext::new_frame(this VkContext& self) {
   return acquired_image;
 }
 
-void VkContext::end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment> target_) {
+auto VkContext::end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment> target_) -> void {
   ZoneScoped;
 
   auto entire_thing = vuk::enqueue_presentation(std::move(target_));

@@ -43,18 +43,18 @@ public:
   VkContext() = default;
   ~VkContext();
 
-  void create_context(const Window& window, bool vulkan_validation_layers);
+  auto create_context(this VkContext& self, const Window& window, bool vulkan_validation_layers) -> void;
 
-  vuk::Value<vuk::ImageAttachment> new_frame(this VkContext& self);
+  auto new_frame(this VkContext& self) -> vuk::Value<vuk::ImageAttachment>;
 
-  void end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment> target);
+  auto end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment> target) -> void;
 
-  void handle_resize(u32 width, u32 height);
-  void set_vsync(bool enable);
+  auto handle_resize(u32 width, u32 height) -> void;
+  auto set_vsync(bool enable) -> void;
 
   bool is_vsync() const;
 
-  uint32_t get_max_viewport_count() const { return vkbphysical_device.properties.limits.maxViewports; }
+  auto get_max_viewport_count() const -> uint32_t  { return vkbphysical_device.properties.limits.maxViewports; }
 
   auto wait(this VkContext& self) -> void;
 
