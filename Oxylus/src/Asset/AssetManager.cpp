@@ -593,6 +593,10 @@ auto AssetManager::unload_asset(const UUID& uuid) -> bool {
       return this->unload_audio(uuid);
       break;
     }
+    case AssetType::Script: {
+      return this->unload_script(uuid);
+      break;
+    }
     default:;
   }
 
@@ -1192,7 +1196,7 @@ auto AssetManager::load_script(const UUID& uuid) -> bool {
   if (asset->is_loaded())
     return true;
 
-  asset->script_id = script_map.create_slot(std::make_unique<LuaSystem>());
+  asset->script_id = script_map.create_slot(std::make_unique<LuaSystem>(asset->path));
   auto* system = script_map.slot(asset->script_id);
   system->get()->load(asset->path);
 
@@ -1498,7 +1502,7 @@ auto AssetManager::get_script(const UUID& uuid) -> LuaSystem* {
   }
 
   OX_CHECK_EQ(asset->type, AssetType::Script);
-  if (asset->type != AssetType::Script || asset->audio_id == AudioID::Invalid) {
+  if (asset->type != AssetType::Script || asset->script_id == ScriptID::Invalid) {
     return nullptr;
   }
 

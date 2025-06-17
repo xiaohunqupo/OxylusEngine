@@ -199,15 +199,7 @@ ECS_COMPONENT_BEGIN(LightComponent)
   ECS_COMPONENT_MEMBER(inner_cone_angle, f32, 0.0f)
   ECS_COMPONENT_MEMBER(cast_shadows, bool, true)
   ECS_COMPONENT_MEMBER(shadow_map_res, u32, 1024)
-
 #ifndef ECS_REFLECT_TYPES
-  ECS_COMPONENT_MEMBER(cascade_distances, std::vector<f32>, {8, 80, 800})
-#endif
-
-#ifndef ECS_REFLECT_TYPES
-  glm::vec3 position = {};
-  glm::vec3 rotation = {};
-  glm::vec3 direction = {};
   RectPacker::Rect shadow_rect = {};
 #endif
 ECS_COMPONENT_END();
@@ -406,9 +398,6 @@ ECS_COMPONENT_END();
 // Scripting
 ECS_COMPONENT_BEGIN(LuaScriptComponent)
   ECS_COMPONENT_MEMBER(script_uuid, UUID, {})
-#ifndef ECS_REFLECT_TYPES
-  ECS_COMPONENT_MEMBER(lua_systems, std::vector<std::shared_ptr<LuaSystem>>, {})
-#endif
 ECS_COMPONENT_END();
 
 ECS_COMPONENT_TAG(Hidden);

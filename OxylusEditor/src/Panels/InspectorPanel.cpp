@@ -663,12 +663,6 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
     if (UI::property("Shadow Resolution", &idx, res_strings, 4)) {
       component.shadow_map_res = id_map.at(idx);
     }
-
-    if (component.type == LightComponent::Directional) {
-      for (u32 i = 0; i < (u32)component.cascade_distances.size(); ++i)
-        UI::property(fmt::format("Cascade {}", i).c_str(), &component.cascade_distances[i]);
-    }
-
     UI::end_properties();
   });
 
@@ -873,37 +867,23 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
 
   draw_component<LuaScriptComponent>(
       "Lua Script Component", entity, [](LuaScriptComponent& component, flecs::entity e) {
-        const float filter_cursor_pos_x = ImGui::GetCursorPosX();
-        ImGuiTextFilter name_filter;
+        auto* asset_man = App::get_asset_manager();
 
-        name_filter.Draw("##scripts_filter",
-                         ImGui::GetContentRegionAvail().x -
-                             (UI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * ImGui::GetStyle().FramePadding.x));
-
-        if (!name_filter.IsActive()) {
+        if (auto* script = asset_man->get_script(component.script_uuid)) {
+          auto script_path = script->get_path();
+          UI::begin_properties(ImGuiTableFlags_SizingFixedFit);
+          UI::text("File Name:", fs::get_file_name(script_path));
+          UI::input_text("Path:", &script_path, ImGuiInputTextFlags_ReadOnly);
+          UI::end_properties();
+          auto rld_str = fmt::format("{} Reload", StringUtils::from_char8_t(ICON_MDI_REFRESH));
+          if (UI::button(rld_str.c_str()))
+            script->reload();
           ImGui::SameLine();
-          ImGui::SetCursorPosX(filter_cursor_pos_x + ImGui::GetFontSize() * 0.5f);
-          ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
-        }
-
-        for (u32 i = 0; i < (u32)component.lua_systems.size(); i++) {
-          const auto& system = component.lua_systems[i];
-          auto name = fs::get_file_name(system->get_path());
-          if (name_filter.PassFilter(name.c_str())) {
-            ImGui::PushID(i);
-            constexpr ImGuiTreeNodeFlags flags = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanFullWidth |
-                                                 ImGuiTreeNodeFlags_FramePadding;
-            if (ImGui::TreeNodeEx(name.c_str(), flags, "%s", name.c_str())) {
-              auto rld_str = fmt::format("{} Reload", StringUtils::from_char8_t(ICON_MDI_REFRESH));
-              if (UI::button(rld_str.c_str()))
-                system->reload();
-              ImGui::SameLine();
-              auto rmv_str = fmt::format("{} Remove", StringUtils::from_char8_t(ICON_MDI_TRASH_CAN));
-              if (UI::button(rmv_str.c_str()))
-                component.lua_systems.erase(component.lua_systems.begin() + i);
-              ImGui::TreePop();
-            }
-            ImGui::PopID();
+          auto rmv_str = fmt::format("{} Remove", StringUtils::from_char8_t(ICON_MDI_TRASH_CAN));
+          if (UI::button(rmv_str.c_str())) {
+            if (component.script_uuid)
+              asset_man->unload_asset(component.script_uuid);
+            component.script_uuid = UUID(nullptr);
           }
         }
 
@@ -927,7 +907,14 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
                     const auto first_path_len = std::strlen(first_path_cstr);
                     const auto p_str = std::string(first_path_cstr, first_path_len);
                     if (fs::get_file_extension(p_str) == "lua") {
-                      user_data_comp->lua_systems.emplace_back(std::make_shared<LuaSystem>(p_str));
+                      auto* am = App::get_asset_manager();
+                      if (UUID imported_script = am->import_asset(p_str)) {
+                        if (am->load_script(imported_script)) {
+                          if (user_data_comp->script_uuid)
+                            am->unload_asset(user_data_comp->script_uuid);
+                          user_data_comp->script_uuid = imported_script;
+                        }
+                      }
                     }
                   },
               .title = "Open lua file...",
@@ -943,9 +930,12 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
               return;
             if (fs::get_file_extension(payload->get_str()) == "lua") {
               auto* asset_man = App::get_asset_manager();
-              if (auto imported = asset_man->import_asset(payload->str)) {
-                component.script_uuid = imported;
-                asset_man->unload_asset(component.script_uuid);
+              if (auto imported_script = asset_man->import_asset(payload->str)) {
+                if (asset_man->load_script(imported_script)) {
+                  if (component.script_uuid)
+                    asset_man->unload_asset(component.script_uuid);
+                  component.script_uuid = imported_script;
+                }
               }
             }
           }

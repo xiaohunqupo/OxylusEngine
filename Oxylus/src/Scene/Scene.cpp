@@ -210,7 +210,8 @@ Scene::~Scene() {
   _render_pipeline->deinit();
 }
 
-auto Scene::init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline) -> void {
+auto Scene::init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline)
+    -> void {
   ZoneScoped;
 
   self.scene_name = name;
@@ -291,9 +292,10 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   self.world.system<const LuaScriptComponent>("LuaScriptsUpdate")
       .kind(flecs::PreUpdate)
-      .each([&self](flecs::iter& it, size_t, const LuaScriptComponent& c) {
-        for (const auto& script : c.lua_systems) {
-          script->bind_globals(&self, it.entity(0), it.delta_time());
+      .each([&self](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
+        auto* asset_man = App::get_asset_manager();
+        if (auto* script = asset_man->get_script(c.script_uuid)) {
+          script->bind_globals(&self, it.entity(i), it.delta_time());
           script->on_update(it.delta_time());
         }
       });
@@ -340,10 +342,10 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   self.world.system<const LuaScriptComponent>()
       .kind(flecs::OnUpdate)
-      .each([](flecs::iter& it, size_t, const LuaScriptComponent& c) {
-        OX_LOG_INFO("lua");
-        for (const auto& system : c.lua_systems) {
-          system->on_fixed_update(it.delta_time());
+      .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
+        auto* asset_man = App::get_asset_manager();
+        if (auto* script = asset_man->get_script(c.script_uuid)) {
+          script->on_fixed_update(it.delta_time());
         }
       });
 
@@ -457,14 +459,6 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
                    sprite_animation.frame_size[1] * 1.f / texture_size[1]};
         material->uv_offset = material->uv_offset + glm::vec2{uv_size.x * frame_x, uv_size.y * frame_y};
       });
-
-  self.world.system<const TransformComponent, LightComponent>("LightsUpdate")
-      .kind(flecs::PostUpdate)
-      .each([](const TransformComponent& tc, LightComponent& lc) {
-        lc.position = tc.position;
-        lc.rotation = tc.rotation;
-        lc.direction = glm::normalize(math::transform_normal(glm::vec4(0, 1, 0, 0), toMat4(glm::quat(tc.rotation))));
-      });
 }
 
 auto Scene::runtime_start() -> void {
@@ -502,8 +496,9 @@ auto Scene::runtime_start() -> void {
   {
     ZoneNamedN(z, "LuaScripting/on_init", true);
     world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
-          for (const auto& script : lsc.lua_systems) {
+        [this](const flecs::entity& e, const LuaScriptComponent& c) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* script = asset_man->get_script(c.script_uuid)) {
             script->reload();
             script->on_init(this, e);
           }
@@ -549,8 +544,9 @@ auto Scene::runtime_stop() -> void {
   {
     ZoneNamedN(z, "LuaScripting/on_release", true);
     world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& lsc) {
-          for (const auto& script : lsc.lua_systems) {
+        [this](const flecs::entity& e, const LuaScriptComponent& c) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* script = asset_man->get_script(c.script_uuid)) {
             script->on_release(this, e);
           }
         });
@@ -593,7 +589,8 @@ void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   {
     ZoneNamedN(z, "LuaScripting/on_render", true);
     world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
-      for (const auto& script : c.lua_systems) {
+      auto* asset_man = App::get_asset_manager();
+      if (auto* script = asset_man->get_script(c.script_uuid)) {
         script->on_render(extent, format);
       }
     });
@@ -860,9 +857,12 @@ auto Scene::on_contact_added(const JPH::Body& body1,
   {
     ZoneNamedN(z, "LuaScripting/on_contact_added", true);
     world.query_builder<const LuaScriptComponent>().build().each(
-        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
-          for (const auto& script : lsc.lua_systems) {
-            script->on_contact_added(this, e, body1, body2, manifold, settings);
+        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& c) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* asset = asset_man->get_asset(c.script_uuid)) {
+            if (auto* script = asset_man->get_script(asset->script_id)) {
+              script->on_contact_added(this, e, body1, body2, manifold, settings);
+            }
           }
         });
   }
@@ -877,9 +877,12 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
   {
     ZoneNamedN(z, "LuaScripting/on_contact_persisted", true);
     world.query_builder<const LuaScriptComponent>().build().each(
-        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& lsc) {
-          for (const auto& script : lsc.lua_systems) {
-            script->on_contact_persisted(this, e, body1, body2, manifold, settings);
+        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& c) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* asset = asset_man->get_asset(c.script_uuid)) {
+            if (auto* script = asset_man->get_script(asset->script_id)) {
+              script->on_contact_persisted(this, e, body1, body2, manifold, settings);
+            }
           }
         });
   }
