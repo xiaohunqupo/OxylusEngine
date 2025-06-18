@@ -1,10 +1,10 @@
-﻿#include "DebugRenderer.hpp"
+﻿#include "Render/DebugRenderer.hpp"
 
 #include <vuk/vsl/Core.hpp>
 
 #include "Core/App.hpp"
 #include "Utils/OxMath.hpp"
-#include "Vulkan/VkContext.hpp"
+#include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
 DebugRenderer* DebugRenderer::instance = nullptr;

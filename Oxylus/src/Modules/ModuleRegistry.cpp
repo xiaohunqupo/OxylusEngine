@@ -1,6 +1,6 @@
-﻿#include "ModuleRegistry.hpp"
+﻿#include "Modules/ModuleRegistry.hpp"
 
-#include "ModuleInterface.hpp"
+#include "Modules/ModuleInterface.hpp"
 
 namespace ox {
 auto ModuleRegistry::init() -> std::expected<void, std::string> { return {}; }

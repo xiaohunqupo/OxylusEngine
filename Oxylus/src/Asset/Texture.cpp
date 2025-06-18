@@ -1,6 +1,6 @@
 ﻿#define STB_IMAGE_IMPLEMENTATION
 
-#include "Texture.hpp"
+#include "Asset/Texture.hpp"
 
 #include <ktx.h>
 #include <stb_image.h>

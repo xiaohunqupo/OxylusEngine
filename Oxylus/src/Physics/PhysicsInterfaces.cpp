@@ -1,8 +1,8 @@
-﻿#include "PhysicsInterfaces.hpp"
+﻿#include "Physics/PhysicsInterfaces.hpp"
 
 #include <Jolt/Physics/Body/Body.h>
 
-#include "PhysicsMaterial.hpp"
+#include "Physics/PhysicsMaterial.hpp"
 #include "Scene/Scene.hpp"
 
 bool ObjectLayerPairFilterImpl::ShouldCollide(JPH::ObjectLayer inObject1, JPH::ObjectLayer inObject2) const {

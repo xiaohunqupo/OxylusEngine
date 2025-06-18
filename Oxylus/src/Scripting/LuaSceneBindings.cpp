@@ -1,9 +1,9 @@
-﻿#include "LuaSceneBindings.hpp"
+﻿#include "Scripting/LuaSceneBindings.hpp"
 
 #include <sol/state.hpp>
 #include <sol/variadic_args.hpp>
 
-#include "LuaHelpers.hpp"
+#include "Scripting/LuaHelpers.hpp"
 #include "Scene/Scene.hpp"
 
 namespace ox::LuaBindings {

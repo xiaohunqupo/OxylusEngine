@@ -1,10 +1,10 @@
-﻿#include "LuaMathBindings.hpp"
+﻿#include "Scripting/LuaMathBindings.hpp"
 
 #include <sol/overload.hpp>
 #include <sol/state.hpp>
 #include <sol/types.hpp>
 
-#include "LuaHelpers.hpp"
+#include "Scripting/LuaHelpers.hpp"
 #include "Render/BoundingVolume.hpp"
 
 namespace ox::LuaBindings {

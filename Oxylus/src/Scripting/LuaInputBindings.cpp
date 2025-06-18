@@ -1,11 +1,11 @@
-﻿#include "LuaInputBindings.hpp"
+﻿#include "Scripting/LuaInputBindings.hpp"
 
 #include <sol/state.hpp>
 #include <sol/string_view.hpp>
 
 #include "Core/Input.hpp"
 #include "Core/Keycodes.hpp"
-#include "LuaHelpers.hpp"
+#include "Scripting/LuaHelpers.hpp"
 
 namespace ox::LuaBindings {
 void bind_input(sol::state* state) {

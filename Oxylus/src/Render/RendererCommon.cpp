@@ -1,14 +1,14 @@
-﻿#include "RendererCommon.hpp"
+﻿#include "Render/RendererCommon.hpp"
 
 #include <vuk/RenderGraph.hpp>
 #include <vuk/vsl/Core.hpp>
 
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
-#include "MeshVertex.hpp"
+#include "Render/MeshVertex.hpp"
+#include "Render/Utils/VukCommon.hpp"
+#include "Render/Vulkan/VkContext.hpp"
 #include "Utils/OxMath.hpp"
-#include "Utils/VukCommon.hpp"
-#include "Vulkan/VkContext.hpp"
 
 namespace ox {
 vuk::Value<vuk::ImageAttachment>
@@ -40,26 +40,26 @@ RendererCommon::generate_cubemap_from_equirectangular(vuk::Value<vuk::ImageAttac
                                      [capture_projection, capture_views](vuk::CommandBuffer& command_buffer,
                                                                          VUK_IA(vuk::eColorWrite) cube_map,
                                                                          VUK_IA(vuk::eFragmentSampled) hdr) {
-    command_buffer.set_viewport(0, vuk::Rect2D::framebuffer())
-        .set_scissor(0, vuk::Rect2D::framebuffer())
-        .broadcast_color_blend(vuk::BlendPreset::eOff)
-        .set_rasterization({})
-        .bind_image(0, 2, hdr)
-        .bind_sampler(0, 2, vuk::LinearSamplerClamped)
-        .bind_graphics_pipeline("equirectangular_to_cubemap");
+                                       command_buffer.set_viewport(0, vuk::Rect2D::framebuffer())
+                                           .set_scissor(0, vuk::Rect2D::framebuffer())
+                                           .broadcast_color_blend(vuk::BlendPreset::eOff)
+                                           .set_rasterization({})
+                                           .bind_image(0, 2, hdr)
+                                           .bind_sampler(0, 2, vuk::LinearSamplerClamped)
+                                           .bind_graphics_pipeline("equirectangular_to_cubemap");
 
-    auto* projection = command_buffer.scratch_buffer<glm::mat4>(0, 0);
-    *projection = capture_projection;
-    const auto view = command_buffer.scratch_buffer<glm::mat4[6]>(0, 1);
-    memcpy(view, capture_views, sizeof(capture_views));
+                                       auto* projection = command_buffer.scratch_buffer<glm::mat4>(0, 0);
+                                       *projection = capture_projection;
+                                       const auto view = command_buffer.scratch_buffer<glm::mat4[6]>(0, 1);
+                                       memcpy(view, capture_views, sizeof(capture_views));
 
-    // const auto cube = generate_cube();
-    // cube->bind_vertex_buffer(command_buffer);
-    // cube->bind_index_buffer(command_buffer);
-    // command_buffer.draw_indexed(cube->index_count, 6, 0, 0, 0);
+                                       // const auto cube = generate_cube();
+                                       // cube->bind_vertex_buffer(command_buffer);
+                                       // cube->bind_index_buffer(command_buffer);
+                                       // command_buffer.draw_indexed(cube->index_count, 6, 0, 0, 0);
 
-    return cube_map;
-  });
+                                       return cube_map;
+                                     });
 
   auto envmap_output = cubemap_pass(hdr_image.mip(0), target);
 
@@ -255,17 +255,17 @@ vuk::Value<vuk::ImageAttachment> RendererCommon::apply_blur(const vuk::Value<vuk
 
   auto pass = vuk::make_pass(
       "blur", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eFragmentSampled) src, VUK_IA(vuk::eColorRW) target) {
-    command_buffer.bind_graphics_pipeline("gaussian_blur_pipeline")
-        .set_viewport(0, vuk::Rect2D::framebuffer())
-        .set_scissor(0, vuk::Rect2D::framebuffer())
-        .broadcast_color_blend(vuk::BlendPreset::eOff)
-        .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
-        .bind_image(0, 0, src)
-        .bind_sampler(0, 0, vuk::LinearSamplerClamped)
-        .draw(3, 1, 0, 0);
+        command_buffer.bind_graphics_pipeline("gaussian_blur_pipeline")
+            .set_viewport(0, vuk::Rect2D::framebuffer())
+            .set_scissor(0, vuk::Rect2D::framebuffer())
+            .broadcast_color_blend(vuk::BlendPreset::eOff)
+            .set_rasterization({.cullMode = vuk::CullModeFlagBits::eNone})
+            .bind_image(0, 0, src)
+            .bind_sampler(0, 0, vuk::LinearSamplerClamped)
+            .draw(3, 1, 0, 0);
 
-    return target;
-  });
+        return target;
+      });
 
   return pass(src_attachment, dst_attachment);
 }

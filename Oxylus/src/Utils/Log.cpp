@@ -1,4 +1,6 @@
-#include "Log.hpp"
+#include "Utils/Log.hpp"
+
+#include "Oxylus.hpp"
 
 namespace ox {
 void Log::init(int argc, char** argv) {

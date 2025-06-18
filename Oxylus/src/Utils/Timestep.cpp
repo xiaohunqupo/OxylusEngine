@@ -1,6 +1,6 @@
-﻿#include "Timestep.hpp"
+﻿#include "Utils/Timestep.hpp"
 
-#include "Timer.hpp"
+#include "Utils/Timer.hpp"
 
 namespace ox {
 Timestep::Timestep() : m_timestep(0.0), m_last_time(0.0), m_elapsed(0.0) { m_Timer = new Timer(); }

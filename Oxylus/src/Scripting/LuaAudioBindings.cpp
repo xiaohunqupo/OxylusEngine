@@ -1,9 +1,9 @@
-﻿#include "LuaAudioBindings.hpp"
+﻿#include "Scripting/LuaAudioBindings.hpp"
 
 #include <sol/state.hpp>
 
 #include "Asset/AudioSource.hpp"
-#include "LuaHelpers.hpp"
+#include "Scripting/LuaHelpers.hpp"
 #include "Scene/ECSModule/Core.hpp"
 
 namespace ox::LuaBindings {

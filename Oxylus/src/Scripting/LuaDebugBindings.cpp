@@ -1,8 +1,8 @@
-﻿#include "LuaDebugBindings.hpp"
+﻿#include "Scripting/LuaDebugBindings.hpp"
 
 #include <sol/state.hpp>
 
-#include "LuaHelpers.hpp"
+#include "Scripting/LuaHelpers.hpp"
 #include "Physics/RayCast.hpp"
 #include "Render/DebugRenderer.hpp"
 

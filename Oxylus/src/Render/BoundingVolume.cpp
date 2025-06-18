@@ -1,6 +1,6 @@
-﻿#include "BoundingVolume.hpp"
+﻿#include "Render/BoundingVolume.hpp"
 
-#include "Frustum.hpp"
+#include "Render/Frustum.hpp"
 #include "Physics/RayCast.hpp"
 
 namespace ox {

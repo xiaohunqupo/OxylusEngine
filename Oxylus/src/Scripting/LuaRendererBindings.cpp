@@ -1,8 +1,8 @@
-﻿#include "LuaRendererBindings.hpp"
+﻿#include "Scripting/LuaRendererBindings.hpp"
 
 #include <sol/state.hpp>
 
-#include "LuaHelpers.hpp"
+#include "Scripting/LuaHelpers.hpp"
 #include "Render/Window.hpp"
 
 namespace ox::LuaBindings {

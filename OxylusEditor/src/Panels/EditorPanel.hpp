@@ -3,6 +3,8 @@
 #include <stdint.h>
 #include <string>
 
+#include "Oxylus.hpp"
+
 namespace ox {
 class EditorPanel {
 public:

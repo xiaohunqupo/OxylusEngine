@@ -1,4 +1,4 @@
-#include "RendererConfig.hpp"
+#include "Render/RendererConfig.hpp"
 
 #include "Core/FileSystem.hpp"
 #include "Utils/Toml.hpp"

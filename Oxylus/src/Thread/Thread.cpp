@@ -1,4 +1,4 @@
-#include "Thread.hpp"
+#include "Thread/Thread.hpp"
 
 namespace ox {
 Thread::Thread() { worker = std::thread(&Thread::queue_loop, this); }

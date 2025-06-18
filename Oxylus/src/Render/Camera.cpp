@@ -1,4 +1,4 @@
-#include "Camera.hpp"
+#include "Render/Camera.hpp"
 
 #include "Scene/ECSModule/Core.hpp"
 

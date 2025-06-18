@@ -1,14 +1,14 @@
-﻿#include "LuaPhysicsBindings.hpp"
+﻿#include "Scripting/LuaPhysicsBindings.hpp"
 
 #include <sol/state.hpp>
 
 #include "Jolt/Jolt.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h"
 #include "Jolt/Physics/Collision/CastResult.h"
-#include "LuaHelpers.hpp"
 #include "Physics/Physics.hpp"
 #include "Physics/RayCast.hpp"
 #include "Scene/ECSModule/Core.hpp"
+#include "Scripting/LuaHelpers.hpp"
 
 namespace ox {
 void LuaBindings::bind_physics(sol::state* state) {

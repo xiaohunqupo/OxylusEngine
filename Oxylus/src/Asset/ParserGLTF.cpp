@@ -1,4 +1,4 @@
-#include "ParserGLTF.hpp"
+#include "Asset/ParserGLTF.hpp"
 
 #include <fastgltf/core.hpp>
 #include <fastgltf/tools.hpp>

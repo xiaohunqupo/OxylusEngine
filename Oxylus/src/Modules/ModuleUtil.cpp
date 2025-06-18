@@ -1,8 +1,8 @@
-﻿#include "ModuleUtil.hpp"
+﻿#include "Modules/ModuleUtil.hpp"
 
 #include "Core/App.hpp"
-#include "ModuleInterface.hpp"
-#include "ModuleRegistry.hpp"
+#include "Modules/ModuleInterface.hpp"
+#include "Modules/ModuleRegistry.hpp"
 
 namespace ox {
 void ModuleUtil::load_module(const std::string& name, const std::string& path) {

@@ -2,6 +2,8 @@
 #include <ankerl/unordered_dense.h>
 #include <imgui.h>
 
+#include "Oxylus.hpp"
+
 struct ImFont;
 
 namespace ox {

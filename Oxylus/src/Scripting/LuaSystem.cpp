@@ -1,4 +1,4 @@
-﻿#include "LuaSystem.hpp"
+﻿#include "Scripting/LuaSystem.hpp"
 
 #include <Jolt/Jolt.h>
 #include <Jolt/Physics/Body/Body.h>
@@ -6,7 +6,7 @@
 #include <sol/state.hpp>
 
 #include "Core/App.hpp"
-#include "LuaManager.hpp"
+#include "Scripting/LuaManager.hpp"
 #include "Scene/Scene.hpp"
 
 namespace ox {

@@ -1,14 +1,14 @@
-#include "App.hpp"
+#include "Core/App.hpp"
 
-#include <filesystem>
 #include <ranges>
 #include <vuk/vsl/Core.hpp>
 
 #include "Asset/AssetManager.hpp"
 #include "Audio/AudioEngine.hpp"
+#include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
-#include "FileSystem.hpp"
-#include "Layer.hpp"
+#include "Core/Layer.hpp"
+#include "Core/VFS.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "Physics/Physics.hpp"
 #include "Render/RendererConfig.hpp"
@@ -21,7 +21,6 @@
 #include "Utils/Profiler.hpp"
 #include "Utils/Random.hpp"
 #include "Utils/Timer.hpp"
-#include "VFS.hpp"
 
 namespace ox {
 auto engine_system_to_sv(EngineSystems type) -> std::string_view {

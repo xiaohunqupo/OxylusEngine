@@ -1,4 +1,4 @@
-#include "ThreadManager.hpp"
+#include "Thread/ThreadManager.hpp"
 
 namespace ox {
 ThreadManager* ThreadManager::instance = nullptr;

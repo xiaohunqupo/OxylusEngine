@@ -1,19 +1,19 @@
-﻿#include "LuaManager.hpp"
+﻿#include "Scripting/LuaManager.hpp"
 
 #include <sol/sol.hpp>
 
 #ifdef OX_LUA_BINDINGS
-  #include "LuaApplicationBindings.hpp"
-  #include "LuaAssetManagerBindings.hpp"
-  #include "LuaAudioBindings.hpp"
-  #include "LuaComponentBindings.hpp"
-  #include "LuaDebugBindings.hpp"
-  #include "LuaInputBindings.hpp"
-  #include "LuaMathBindings.hpp"
-  #include "LuaPhysicsBindings.hpp"
-  #include "LuaRendererBindings.hpp"
-  #include "LuaSceneBindings.hpp"
-  #include "LuaUIBindings.hpp"
+  #include "Scripting/LuaApplicationBindings.hpp"
+  #include "Scripting/LuaAssetManagerBindings.hpp"
+  #include "Scripting/LuaAudioBindings.hpp"
+  #include "Scripting/LuaComponentBindings.hpp"
+  #include "Scripting/LuaDebugBindings.hpp"
+  #include "Scripting/LuaInputBindings.hpp"
+  #include "Scripting/LuaMathBindings.hpp"
+  #include "Scripting/LuaPhysicsBindings.hpp"
+  #include "Scripting/LuaRendererBindings.hpp"
+  #include "Scripting/LuaSceneBindings.hpp"
+  #include "Scripting/LuaUIBindings.hpp"
 #endif
 
 namespace ox {

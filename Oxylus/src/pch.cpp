@@ -1,5 +1,7 @@
 #if TRACY_ENABLE
 
+#include "Oxylus.hpp"
+
 static void* ox_aligned_alloc(ox::usize size, ox::usize alignment = alignof(ox::usize)) {
   #if OX_PLATFORM_WINDOWS == 1
   return _aligned_malloc(size, alignment);

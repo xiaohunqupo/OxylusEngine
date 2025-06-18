@@ -1,8 +1,8 @@
-﻿#include "LuaUIBindings.hpp"
+﻿#include "Scripting/LuaUIBindings.hpp"
 
 #include <sol/state.hpp>
 
-#include "LuaImGuiBindings.hpp"
+#include "Scripting/LuaImGuiBindings.hpp"
 
 namespace ox::LuaBindings {
 void bind_ui(sol::state* state) {

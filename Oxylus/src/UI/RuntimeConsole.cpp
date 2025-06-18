@@ -1,10 +1,10 @@
-﻿#include "RuntimeConsole.hpp"
+﻿#include "UI/RuntimeConsole.hpp"
 
 #include <icons/IconsMaterialDesignIcons.h>
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "Core/App.hpp"
-#include "ImGuiLayer.hpp"
+#include "UI/ImGuiLayer.hpp"
 #include "Utils/CVars.hpp"
 #include "Utils/StringUtils.hpp"
 

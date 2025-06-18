@@ -1,4 +1,4 @@
-#include "Project.hpp"
+#include "Core/Project.hpp"
 
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
@@ -6,8 +6,8 @@
 #include "Core/UUID.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "Modules/ModuleUtil.hpp"
-#include "ProjectSerializer.hpp"
-#include "VFS.hpp"
+#include "Core/ProjectSerializer.hpp"
+#include "Core/VFS.hpp"
 
 namespace ox {
 struct AssetDirectoryCallbacks {

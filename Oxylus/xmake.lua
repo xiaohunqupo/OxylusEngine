@@ -3,11 +3,11 @@ target("Oxylus")
     set_languages("cxx23")
     add_rpathdirs("@executable_path")
 
-    add_includedirs("./src", { public = true })
+    add_includedirs("./include", { public = true })
+    -- add_includedirs("./src", { public = true })
     add_includedirs("./vendor", { public = true })
     add_files("./src/**.cpp")
-    add_forceincludes("pch.hpp", { public = true, force = true })
-    set_pcheader("./src/pch.hpp", { public = true, force = true })
+    -- set_pcheader("./src/pch.hpp", { public = true, force = true })
 
     add_options("profile")
     if not has_config("lua_bindings") then

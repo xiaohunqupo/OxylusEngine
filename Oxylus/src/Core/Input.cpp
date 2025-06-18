@@ -1,6 +1,6 @@
-#include "Input.hpp"
+#include "Core/Input.hpp"
 
-#include "App.hpp"
+#include "Core/App.hpp"
 
 namespace ox {
 Input* Input::_instance = nullptr;

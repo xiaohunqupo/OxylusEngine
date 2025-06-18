@@ -1,4 +1,4 @@
-﻿#include "LuaAssetManagerBindings.hpp"
+﻿#include "Scripting/LuaAssetManagerBindings.hpp"
 
 #include <sol/state.hpp>
 

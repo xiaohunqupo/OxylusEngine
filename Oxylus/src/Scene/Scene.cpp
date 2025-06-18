@@ -1,4 +1,4 @@
-#include "Scene.hpp"
+#include "Scene/Scene.hpp"
 
 #include <Core/FileSystem.hpp>
 #include <Jolt/Jolt.h>

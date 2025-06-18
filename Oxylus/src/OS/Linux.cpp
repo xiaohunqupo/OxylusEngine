@@ -6,7 +6,7 @@
 #include <sys/sysinfo.h>
 #include <unistd.h>
 
-#include "OS.hpp"
+#include "OS/OS.hpp"
 
 namespace ox {
 auto os::mem_page_size() -> u64 { return sysconf(_SC_PAGESIZE); }

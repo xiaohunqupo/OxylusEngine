@@ -1,4 +1,4 @@
-#include "Physics.hpp"
+#include "Physics/Physics.hpp"
 
 #include <cstdarg>
 
@@ -6,7 +6,7 @@
 #include "Jolt/Physics/Collision/CastResult.h"
 #include "Jolt/Physics/Collision/RayCast.h"
 #include "Jolt/RegisterTypes.h"
-#include "RayCast.hpp"
+#include "Physics/RayCast.hpp"
 #include "Utils/OxMath.hpp"
 
 namespace ox {
