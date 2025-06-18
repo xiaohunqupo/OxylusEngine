@@ -11,7 +11,7 @@
 #include "Scene/ECSModule/Core.hpp"
 
 namespace ox {
-void LuaBindings::bind_physics(const std::shared_ptr<sol::state>& state) {
+void LuaBindings::bind_physics(sol::state* state) {
   auto raycast_type = state->new_usertype<RayCast>("RayCast", sol::constructors<RayCast(glm::vec3, glm::vec3)>());
   SET_TYPE_FUNCTION(raycast_type, RayCast, get_point_on_ray);
   SET_TYPE_FUNCTION(raycast_type, RayCast, get_direction);

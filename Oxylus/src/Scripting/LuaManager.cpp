@@ -20,31 +20,31 @@ namespace ox {
 
 auto LuaManager::init() -> std::expected<void, std::string> {
   ZoneScoped;
-  m_state = std::make_shared<sol::state>();
-  m_state->open_libraries(
+  _state = std::make_unique<sol::state>();
+  _state->open_libraries(
       sol::lib::base, sol::lib::package, sol::lib::math, sol::lib::table, sol::lib::os, sol::lib::string);
 
 #ifdef OX_LUA_BINDINGS
   bind_log();
-  LuaBindings::bind_application(m_state);
-  LuaBindings::bind_math(m_state);
-  LuaBindings::bind_scene(m_state);
-  LuaBindings::bind_asset_manager(m_state);
-  LuaBindings::bind_debug_renderer(m_state);
-  LuaBindings::bind_renderer(m_state);
-  LuaBindings::bind_components(m_state);
-  LuaBindings::bind_input(m_state);
-  LuaBindings::bind_audio(m_state);
-  LuaBindings::bind_physics(m_state);
-  LuaBindings::bind_ui(m_state);
+  LuaBindings::bind_application(_state.get());
+  LuaBindings::bind_math(_state.get());
+  LuaBindings::bind_scene(_state.get());
+  LuaBindings::bind_asset_manager(_state.get());
+  LuaBindings::bind_debug_renderer(_state.get());
+  LuaBindings::bind_components(_state.get());
+  LuaBindings::bind_renderer(_state.get());
+  LuaBindings::bind_input(_state.get());
+  LuaBindings::bind_audio(_state.get());
+  LuaBindings::bind_physics(_state.get());
+  LuaBindings::bind_ui(_state.get());
 #endif
 
   return {};
 }
 
 auto LuaManager::deinit() -> std::expected<void, std::string> {
-  m_state->collect_gc();
-  m_state.reset();
+  _state->collect_gc();
+  _state.reset();
 
   return {};
 }
@@ -59,7 +59,7 @@ auto LuaManager::deinit() -> std::expected<void, std::string> {
 
 void LuaManager::bind_log() const {
   ZoneScoped;
-  auto log = m_state->create_table("Log");
+  auto log = _state->create_table("Log");
 
   SET_LOG_FUNCTIONS(log, "info", OX_LOG_INFO)
   SET_LOG_FUNCTIONS(log, "warn", OX_LOG_WARN)

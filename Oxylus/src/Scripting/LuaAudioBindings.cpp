@@ -7,7 +7,7 @@
 #include "Scene/ECSModule/Core.hpp"
 
 namespace ox::LuaBindings {
-void bind_audio(const std::shared_ptr<sol::state>& state) {
+void bind_audio(sol::state* state) {
   auto audio_source = state->new_usertype<AudioSource>("AudioSource");
 
   // #define ASC AudioSourceComponent
