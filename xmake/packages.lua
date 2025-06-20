@@ -77,6 +77,6 @@ add_requires("plf_colony v7.41")
 
 add_requires("dylib v2.2.1")
 
-add_requires("ktx-software v4.4.0")
+add_requires("ktx v4.4.0")
 
 add_requires("simdutf v6.2.0")

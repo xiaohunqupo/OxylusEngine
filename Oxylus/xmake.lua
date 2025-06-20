@@ -90,7 +90,7 @@ target("Oxylus")
         "enkits",
         "unordered_dense",
         "dylib",
-        "ktx-software",
+        "ktx",
         "simdutf",
         "plf_colony",
         "shader-slang",
