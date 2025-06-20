@@ -929,7 +929,6 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
             if (payload->get_str().empty())
               return;
             if (fs::get_file_extension(payload->get_str()) == "lua") {
-              auto* asset_man = App::get_asset_manager();
               if (auto imported_script = asset_man->import_asset(payload->str)) {
                 if (asset_man->load_script(imported_script)) {
                   if (component.script_uuid)
