@@ -14,7 +14,7 @@ add_requires("glm 1.0.1", { configs = {
     cxx_standard = "20",
 }, system = false })
 
-add_requires("flecs v4.0.4")
+add_requires("flecs v4.0.5")
 
 add_requires("fastgltf v0.8.0", { system = false, debug = is_mode("debug") })
 
