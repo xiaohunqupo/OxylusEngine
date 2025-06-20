@@ -1,9 +1,7 @@
 #pragma once
 
-#include <flecs.h>
-
 #include "Core/ESystem.hpp"
-#include "Core/LayerStack.hpp"
+#include "Core/Layer.hpp"
 #include "Core/VFS.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
@@ -14,7 +12,6 @@ int main(int argc, char** argv);
 namespace ox {
 class AssetManager;
 class Layer;
-class LayerStack;
 class ImGuiLayer;
 class ThreadManager;
 class VkContext;
@@ -85,37 +82,23 @@ enum class EngineSystems {
   Count,
 };
 
-namespace Event {
-struct DialogLoadEvent {
-  std::string path = {};
-};
-
-struct DialogSaveEvent {
-  std::string path = {};
-};
-} // namespace Event
-
 using SystemRegistry = ankerl::unordered_dense::map<EngineSystems, std::shared_ptr<ESystem>>;
 class App {
 public:
   App(const AppSpec& spec);
   virtual ~App();
 
-  flecs::world world;
-
   static App* get() { return _instance; }
   static void set_instance(App* instance);
 
   void close();
 
-  App& push_layer(Layer* layer);
-  App& push_overlay(Layer* layer);
+  App& push_layer(std::unique_ptr<Layer>&& layer);
 
   const AppSpec& get_specification() const { return app_spec; }
   const AppCommandLineArgs& get_command_line_args() const { return app_spec.command_line_args; }
 
   ImGuiLayer* get_imgui_layer() const { return imgui_layer; }
-  const std::unique_ptr<LayerStack>& get_layer_stack() const { return layer_stack; }
 
   const Window& get_window() const { return window; }
   static VkContext& get_vkcontext() { return *_instance->vk_context; }
@@ -162,8 +145,8 @@ public:
 private:
   static App* _instance;
   AppSpec app_spec = {};
+  std::vector<std::unique_ptr<Layer>> layer_stack = {};
   ImGuiLayer* imgui_layer = nullptr;
-  std::unique_ptr<LayerStack> layer_stack = nullptr;
   std::unique_ptr<VkContext> vk_context = nullptr;
   Window window = {};
   glm::vec2 swapchain_extent = {};

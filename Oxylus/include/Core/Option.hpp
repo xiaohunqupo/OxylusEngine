@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Types.hpp"
+
 namespace ox {
 constexpr static auto nullopt = std::nullopt;
 

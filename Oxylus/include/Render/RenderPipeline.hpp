@@ -1,8 +1,13 @@
 ﻿#pragma once
+#include <glm/ext/vector_uint2.hpp>
 #include <vuk/Value.hpp>
+
+#include "Core/Option.hpp"
 
 namespace ox {
 class Scene;
+class VkContext;
+
 class RenderPipeline {
 public:
   struct RenderInfo {

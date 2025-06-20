@@ -10,6 +10,7 @@
 
 #include "Asset/AssetManager.hpp"
 #include "Asset/Texture.hpp"
+#include "Core/App.hpp"
 #include "Core/VFS.hpp"
 #include "Render/Camera.hpp"
 #include "Render/DebugRenderer.hpp"

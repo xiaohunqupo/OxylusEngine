@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Types.hpp"
+
 namespace ox {
 namespace StringUtils {
 constexpr std::string escape_str(std::string_view str) {

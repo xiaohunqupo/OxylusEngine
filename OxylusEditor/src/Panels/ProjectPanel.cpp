@@ -4,6 +4,7 @@
 #include <imgui.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Project.hpp"
 #include "Core/VFS.hpp"

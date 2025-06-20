@@ -5,6 +5,7 @@
 #include <imgui.h>
 
 #include "Asset/AssetManager.hpp"
+#include "Core/App.hpp"
 #include "Core/Input.hpp"
 #include "EditorLayer.hpp"
 #include "EditorUI.hpp"
@@ -333,7 +334,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
         const bool highlight = editor_layer->scene_state == EditorLayer::SceneState::Play;
         const char8_t* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
-                                                                                               : ICON_MDI_STOP;
+                                                                                         : ICON_MDI_STOP;
         if (UI::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
           if (editor_layer->scene_state == EditorLayer::SceneState::Edit) {
             editor_layer->on_scene_play();

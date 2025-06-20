@@ -2,8 +2,7 @@
 
 #include <stdint.h>
 #include <string>
-
-#include "Oxylus.hpp"
+#include <vuk/Types.hpp>
 
 namespace ox {
 class EditorPanel {

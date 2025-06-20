@@ -59,7 +59,6 @@ namespace fs = std::filesystem;
 #include "Core/Option.hpp"
 
 #include "Utils/Log.hpp"
-#include "Utils/Profiler.hpp"
 
 #define OX_CALLSTACK std::source_location LOC
 #define OX_THISCALL OX_CALLSTACK = std::source_location::current()

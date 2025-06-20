@@ -11,6 +11,16 @@ struct Material;
 class Scene;
 class InspectorPanel : public EditorPanel {
 public:
+  struct DialogLoadEvent {
+    std::string path = {};
+  };
+
+  struct DialogSaveEvent {
+    std::string path = {};
+  };
+
+  flecs::world world;
+
   InspectorPanel();
 
   void on_render(vuk::Extent3D extent, vuk::Format format) override;

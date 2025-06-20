@@ -6,10 +6,11 @@ struct ma_engine;
 struct ma_sound;
 
 namespace ox {
-enum class AttenuationModelType { None = 0, Inverse, Linear, Exponential };
 
 class AudioEngine : public ESystem {
 public:
+  enum AttenuationModelType : u32 { None = 0, Inverse, Linear, Exponential };
+
   auto init() -> std::expected<void, std::string> override;
   auto deinit() -> std::expected<void, std::string> override;
 

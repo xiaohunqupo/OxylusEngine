@@ -7,6 +7,7 @@
 #include "Core/Layer.hpp"
 
 namespace ox {
+class VkContext;
 class ImGuiLayer : public Layer {
 public:
   std::shared_ptr<Texture> font_texture = nullptr;

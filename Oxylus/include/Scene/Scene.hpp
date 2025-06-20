@@ -1,10 +1,18 @@
 #pragma once
 
+// clang-format off
+#include <Jolt/Jolt.h>
+#include <Jolt/Core/Core.h>
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
+
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
 #include "Render/RenderPipeline.hpp"
 #include "Scene/ECSModule/Core.hpp"
 #include "Scene/SceneGPU.hpp"
+#include "Utils/Timestep.hpp"
+// clang-format on
 
 template <>
 struct ankerl::unordered_dense::hash<flecs::id> {
@@ -54,7 +62,8 @@ public:
 
   ~Scene();
 
-  auto init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
+  auto init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr)
+      -> void;
 
   auto runtime_start() -> void;
   auto runtime_stop() -> void;
@@ -67,7 +76,7 @@ public:
 
   auto create_entity(const std::string& name = "") const -> flecs::entity;
 
-  auto create_mesh_entity(const UUID& asset_uuid) -> flecs::entity;
+  auto create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flecs::entity;
   auto attach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool;
   auto detach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool;
 

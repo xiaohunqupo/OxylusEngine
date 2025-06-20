@@ -2,6 +2,7 @@
 
 #include <sol/state.hpp>
 
+#include "Core/App.hpp"
 #include "Jolt/Jolt.h"
 #include "Jolt/Physics/Collision/BroadPhase/BroadPhaseQuery.h"
 #include "Jolt/Physics/Collision/CastResult.h"

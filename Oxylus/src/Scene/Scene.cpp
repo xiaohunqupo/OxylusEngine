@@ -213,7 +213,6 @@ Scene::~Scene() {
 auto Scene::init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline)
     -> void {
   ZoneScoped;
-
   self.scene_name = name;
 
   self.component_db.import_module(self.world.import <Core>());
@@ -320,7 +319,8 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         auto* asset_man = App::get_asset_manager();
         if (auto* audio = asset_man->get_audio(ac.audio_source)) {
           auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
-          audio_engine->set_source_attenuation_model(audio->get_source(), ac.attenuation_model);
+          audio_engine->set_source_attenuation_model(
+              audio->get_source(), static_cast<AudioEngine::AttenuationModelType>(ac.attenuation_model));
           audio_engine->set_source_volume(audio->get_source(), ac.volume);
           audio_engine->set_source_pitch(audio->get_source(), ac.pitch);
           audio_engine->set_source_looping(audio->get_source(), ac.looping);
@@ -614,7 +614,7 @@ auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   return e.add<TransformComponent>().add<LayerComponent>();
 }
 
-auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
+auto Scene::create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flecs::entity {
   ZoneScoped;
 
   auto* asset_man = App::get_asset_manager();
@@ -632,12 +632,15 @@ auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
 
   auto* imported_model = asset_man->get_mesh(asset_uuid);
   auto& default_scene = imported_model->scenes[imported_model->default_scene_index];
-  auto root_entity = create_entity(world.lookup(default_scene.name.c_str()) ? std::string{} : default_scene.name);
+  auto root_entity = self.create_entity(self.world.lookup(default_scene.name.c_str()) ? std::string{}
+                                                                                      : default_scene.name);
 
-  auto visit_nodes = [&](this auto& visitor, flecs::entity& root, std::vector<usize>& node_indices) -> void {
+  auto visit_nodes = [&self, //
+                      &imported_model,
+                      &asset_uuid](this auto& visitor, flecs::entity& root, std::vector<usize>& node_indices) -> void {
     for (const auto node_index : node_indices) {
       auto& cur_node = imported_model->nodes[node_index];
-      auto node_entity = create_entity(world.lookup(cur_node.name.c_str()) ? std::string{} : cur_node.name);
+      auto node_entity = self.create_entity(self.world.lookup(cur_node.name.c_str()) ? std::string{} : cur_node.name);
 
       const auto T = glm::translate(glm::mat4(1.0f), cur_node.translation);
       const auto R = glm::mat4_cast(cur_node.rotation);

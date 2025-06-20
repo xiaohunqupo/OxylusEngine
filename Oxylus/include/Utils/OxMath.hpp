@@ -1,5 +1,7 @@
 #pragma once
 
+#include <Tracy.hpp>
+
 #include "Render/BoundingVolume.hpp"
 
 namespace JPH {

@@ -7,6 +7,7 @@
 #include <ranges>
 
 #include "Asset/AssetManager.hpp"
+#include "Core/App.hpp"
 #include "Core/Base.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"

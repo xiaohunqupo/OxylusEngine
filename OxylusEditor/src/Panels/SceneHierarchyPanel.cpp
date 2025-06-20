@@ -9,6 +9,7 @@
 #include "Asset/AssetFile.hpp"
 #include "Asset/AssetManager.hpp"
 #include "Asset/Material.hpp"
+#include "Core/App.hpp"
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
 #include "EditorUI.hpp"

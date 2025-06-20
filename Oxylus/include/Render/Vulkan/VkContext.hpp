@@ -1,6 +1,5 @@
 #pragma once
 
-#include <Render/Slang/Compiler.hpp>
 #include <VkBootstrap.h>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
@@ -8,9 +7,11 @@
 #include <vuk/runtime/vk/VkRuntime.hpp>
 
 #include "Core/Option.hpp"
+#include "Render/Slang/Compiler.hpp"
 
 namespace ox {
 struct Window;
+class TracyProfiler;
 
 class VkContext {
 public:
@@ -54,7 +55,7 @@ public:
 
   bool is_vsync() const;
 
-  auto get_max_viewport_count() const -> uint32_t  { return vkbphysical_device.properties.limits.maxViewports; }
+  auto get_max_viewport_count() const -> uint32_t { return vkbphysical_device.properties.limits.maxViewports; }
 
   auto wait(this VkContext& self) -> void;
 
@@ -94,8 +95,6 @@ public:
   template <typename T>
   [[nodiscard]]
   auto upload_staging(std::span<T> span, vuk::Buffer& dst, u64 dst_offset = 0, OX_THISCALL) -> vuk::Value<vuk::Buffer> {
-    ZoneScoped;
-
     return upload_staging(reinterpret_cast<void*>(span.data()), span.size_bytes(), dst, dst_offset, LOC);
   }
 
@@ -103,23 +102,18 @@ public:
   [[nodiscard]]
   auto upload_staging(std::span<T> span, vuk::Value<vuk::Buffer>&& dst, u64 dst_offset = 0, OX_THISCALL)
       -> vuk::Value<vuk::Buffer> {
-    ZoneScoped;
-
     return upload_staging(reinterpret_cast<void*>(span.data()), span.size_bytes(), std::move(dst), dst_offset, LOC);
   }
 
   template <typename T>
   [[nodiscard]]
   auto scratch_buffer(const T& val = {}, usize alignment = 8, OX_THISCALL) -> vuk::Value<vuk::Buffer> {
-    ZoneScoped;
-
     return scratch_buffer(&val, sizeof(T), alignment, LOC);
   }
 
   template <typename T>
   [[nodiscard]]
   auto scratch_buffer(const std::span<T>& val = {}, usize alignment = 8, OX_THISCALL) -> vuk::Value<vuk::Buffer> {
-    ZoneScoped;
     if (val.empty())
       return vuk::Value<vuk::Buffer>{};
 

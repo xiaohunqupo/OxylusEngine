@@ -1,18 +1,16 @@
 #include "Audio/AudioEngine.hpp"
 
-#include "Utils/Profiler.hpp"
-
 #define MINIAUDIO_IMPLEMENTATION
 
 #include <miniaudio.h>
 
 namespace ox {
-static ma_attenuation_model get_attenuation_model(const AttenuationModelType model) {
+static ma_attenuation_model get_attenuation_model(const AudioEngine::AttenuationModelType model) {
   switch (model) {
-    case AttenuationModelType::None       : return ma_attenuation_model_none;
-    case AttenuationModelType::Inverse    : return ma_attenuation_model_inverse;
-    case AttenuationModelType::Linear     : return ma_attenuation_model_linear;
-    case AttenuationModelType::Exponential: return ma_attenuation_model_exponential;
+    case AudioEngine::AttenuationModelType::None       : return ma_attenuation_model_none;
+    case AudioEngine::AttenuationModelType::Inverse    : return ma_attenuation_model_inverse;
+    case AudioEngine::AttenuationModelType::Linear     : return ma_attenuation_model_linear;
+    case AudioEngine::AttenuationModelType::Exponential: return ma_attenuation_model_exponential;
   }
 
   return ma_attenuation_model_none;

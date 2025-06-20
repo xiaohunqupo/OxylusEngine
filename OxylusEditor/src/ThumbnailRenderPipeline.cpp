@@ -1,5 +1,7 @@
 #include "ThumbnailRenderPipeline.hpp"
 
+#include <Tracy.hpp>
+
 #include "Core/App.hpp"
 #include "Render/Camera.hpp"
 #include "Render/Slang/Slang.hpp"

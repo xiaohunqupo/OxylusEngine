@@ -140,7 +140,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
                 const auto first_path_len = std::strlen(first_path_cstr);
                 auto path = std::string(first_path_cstr, first_path_len);
 
-                load_event_copy.emit<Event::DialogLoadEvent>({path});
+                load_event_copy.emit<DialogLoadEvent>({path});
               },
           .title = "Open material asset file...",
           .default_path = fs::current_path(),
@@ -152,7 +152,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
       if (const ImGuiPayload* imgui_payload = ImGui::AcceptDragDropPayload(PayloadData::DRAG_DROP_SOURCE)) {
         const auto* payload = PayloadData::from_payload(imgui_payload);
         if (const std::string ext = ox::fs::get_file_extension(payload->str); ext == "oxasset") {
-          load_event.emit<Event::DialogLoadEvent>({payload->str});
+          load_event.emit<DialogLoadEvent>({payload->str});
         }
       }
       ImGui::EndDragDropTarget();
@@ -182,7 +182,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
                 const auto first_path_len = std::strlen(first_path_cstr);
                 auto path = std::string(first_path_cstr, first_path_len);
 
-                load_event_copy.emit<Event::DialogSaveEvent>({path});
+                load_event_copy.emit<DialogSaveEvent>({path});
               },
           .title = "Open material asset file...",
           .default_path = fs::current_path(),
@@ -381,61 +381,64 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
         UI::end_properties();
       });
 
-  draw_component<MeshComponent>(" Mesh Component", entity, [](MeshComponent& component, flecs::entity e) {
-    UI::begin_properties();
-    auto mesh_uuid_str = component.mesh_uuid.str();
-    UI::input_text("Mesh UUID", &mesh_uuid_str, ImGuiInputTextFlags_ReadOnly);
-    UI::text("Mesh Index", std::to_string(component.mesh_index));
-    UI::property("Cast shadows", &component.cast_shadows);
-    UI::end_properties();
+  draw_component<MeshComponent>(
+      " Mesh Component", entity, [w = &this->world](MeshComponent& component, flecs::entity e) {
+        UI::begin_properties();
+        auto mesh_uuid_str = component.mesh_uuid.str();
+        UI::input_text("Mesh UUID", &mesh_uuid_str, ImGuiInputTextFlags_ReadOnly);
+        UI::text("Mesh Index", std::to_string(component.mesh_index));
+        UI::property("Cast shadows", &component.cast_shadows);
+        UI::end_properties();
 
-    auto load_event = App::get()->world.entity("mesh_material_load_event");
-    auto* asset_man = App::get_asset_manager();
-    if (auto* mesh = asset_man->get_mesh(component.mesh_uuid)) {
-      for (auto& mat_uuid : mesh->materials) {
-        static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen |
-                                                         ImGuiTreeNodeFlags_SpanAvailWidth |
-                                                         ImGuiTreeNodeFlags_AllowItemOverlap |
-                                                         ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
+        auto load_event = w->entity("mesh_material_load_event");
+        auto* asset_man = App::get_asset_manager();
+        if (auto* mesh = asset_man->get_mesh(component.mesh_uuid)) {
+          for (auto& mat_uuid : mesh->materials) {
+            static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen |
+                                                             ImGuiTreeNodeFlags_SpanAvailWidth |
+                                                             ImGuiTreeNodeFlags_AllowItemOverlap |
+                                                             ImGuiTreeNodeFlags_Framed |
+                                                             ImGuiTreeNodeFlags_FramePadding;
 
-        if (auto* material = asset_man->get_material(mat_uuid)) {
-          const auto mat_uuid_str = mat_uuid.str();
-          if (ImGui::TreeNodeEx(mat_uuid_str.c_str(), TREE_FLAGS, "%s", mat_uuid_str.c_str())) {
-            draw_material_properties(material, mat_uuid, load_event);
-            ImGui::TreePop();
+            if (auto* material = asset_man->get_material(mat_uuid)) {
+              const auto mat_uuid_str = mat_uuid.str();
+              if (ImGui::TreeNodeEx(mat_uuid_str.c_str(), TREE_FLAGS, "%s", mat_uuid_str.c_str())) {
+                draw_material_properties(material, mat_uuid, load_event);
+                ImGui::TreePop();
+              }
+            }
           }
         }
-      }
-    }
-  });
+      });
 
-  draw_component<SpriteComponent>(" Sprite Component", entity, [](SpriteComponent& component, flecs::entity e) {
-    UI::begin_properties();
-    UI::property("Layer", &component.layer);
-    UI::property("SortY", &component.sort_y);
-    UI::property("FlipX", &component.flip_x);
-    UI::end_properties();
+  draw_component<SpriteComponent>(
+      " Sprite Component", entity, [w = &this->world](SpriteComponent& component, flecs::entity e) {
+        UI::begin_properties();
+        UI::property("Layer", &component.layer);
+        UI::property("SortY", &component.sort_y);
+        UI::property("FlipX", &component.flip_x);
+        UI::end_properties();
 
-    ImGui::SeparatorText("Material");
+        ImGui::SeparatorText("Material");
 
-    auto load_event = App::get()->world.entity("sprite_material_load_event");
-    load_event.observe<Event::DialogLoadEvent>([&component](Event::DialogLoadEvent& en) {
-      auto* asset_man = App::get_asset_manager();
-      if (auto imported = asset_man->import_asset(en.path)) {
-        component.material = imported;
-        asset_man->unload_asset(component.material);
-      }
-    });
+        auto load_event = w->entity("sprite_material_load_event");
+        load_event.observe<DialogLoadEvent>([&component](DialogLoadEvent& en) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto imported = asset_man->import_asset(en.path)) {
+            component.material = imported;
+            asset_man->unload_asset(component.material);
+          }
+        });
 
-    load_event.observe<Event::DialogSaveEvent>([&component](Event::DialogSaveEvent& en) {
-      auto* asset_man = App::get_asset_manager();
-      asset_man->export_asset(component.material, en.path);
-    });
+        load_event.observe<DialogSaveEvent>([&component](DialogSaveEvent& en) {
+          auto* asset_man = App::get_asset_manager();
+          asset_man->export_asset(component.material, en.path);
+        });
 
-    if (auto* material = App::get_asset_manager()->get_material(component.material)) {
-      draw_material_properties(material, component.material, load_event);
-    }
-  });
+        if (auto* material = App::get_asset_manager()->get_material(component.material)) {
+          draw_material_properties(material, component.material, load_event);
+        }
+      });
 
   draw_component<SpriteAnimationComponent>(
       " Sprite Animation Component", entity, [](SpriteAnimationComponent& component, flecs::entity e) {
@@ -572,8 +575,9 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
           const char* attenuation_type_strings[] = {"None", "Inverse", "Linear", "Exponential"};
           int attenuation_type = static_cast<int>(component.attenuation_model);
           if (UI::property("Attenuation Model", &attenuation_type, attenuation_type_strings, 4)) {
-            component.attenuation_model = static_cast<AttenuationModelType>(attenuation_type);
-            audio_engine->set_source_attenuation_model(audio_asset->get_source(), component.attenuation_model);
+            component.attenuation_model = static_cast<AudioEngine::AttenuationModelType>(attenuation_type);
+            audio_engine->set_source_attenuation_model(
+                audio_asset->get_source(), static_cast<AudioEngine::AttenuationModelType>(component.attenuation_model));
           }
           if (UI::property("Roll Off", &component.roll_off))
             audio_engine->set_source_roll_off(audio_asset->get_source(), component.roll_off);
