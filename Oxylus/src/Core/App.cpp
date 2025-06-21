@@ -107,8 +107,8 @@ void App::set_instance(App* instance) {
 }
 
 App& App::push_layer(std::unique_ptr<Layer>&& layer) {
-  layer_stack.emplace_back(std::move(layer));
   layer->on_attach();
+  layer_stack.emplace_back(std::move(layer));
 
   return *this;
 }
