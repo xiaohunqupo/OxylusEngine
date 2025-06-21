@@ -29,6 +29,7 @@
 #include "Render/RendererConfig.hpp"
 #include "Scene/ECSModule/ComponentWrapper.hpp"
 #include "Scene/ECSModule/Core.hpp"
+#include "Scene/SceneEvents.hpp"
 #include "Scripting/LuaManager.hpp"
 #include "Utils/JsonHelpers.hpp"
 #include "Utils/JsonWriter.hpp"
@@ -224,6 +225,8 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
     self._render_pipeline = std::make_shared<EasyRenderPipeline>();
     self._render_pipeline->init(App::get_vkcontext());
   }
+
+  self.physics_events = self.world.entity("ox_physics_events");
 
   self.world.observer<TransformComponent>()
       .event(flecs::OnSet)
@@ -857,18 +860,7 @@ auto Scene::on_contact_added(const JPH::Body& body1,
                              const JPH::ContactSettings& settings) -> void {
   ZoneScoped;
 
-  {
-    ZoneNamedN(z, "LuaScripting/on_contact_added", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& c) {
-          auto* asset_man = App::get_asset_manager();
-          if (auto* asset = asset_man->get_asset(c.script_uuid)) {
-            if (auto* script = asset_man->get_script(asset->script_id)) {
-              script->on_contact_added(this, e, body1, body2, manifold, settings);
-            }
-          }
-        });
-  }
+  physics_events.emit<SceneEvents::OnContactAddedEvent>({body1, body2, manifold, settings});
 }
 
 auto Scene::on_contact_persisted(const JPH::Body& body1,
@@ -877,18 +869,25 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
                                  const JPH::ContactSettings& settings) -> void {
   ZoneScoped;
 
-  {
-    ZoneNamedN(z, "LuaScripting/on_contact_persisted", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& c) {
-          auto* asset_man = App::get_asset_manager();
-          if (auto* asset = asset_man->get_asset(c.script_uuid)) {
-            if (auto* script = asset_man->get_script(asset->script_id)) {
-              script->on_contact_persisted(this, e, body1, body2, manifold, settings);
-            }
-          }
-        });
-  }
+  physics_events.emit<SceneEvents::OnContactPersistedEvent>({body1, body2, manifold, settings});
+}
+
+auto Scene::on_contact_removed(const JPH::SubShapeIDPair& sub_shape_pair) -> void {
+  ZoneScoped;
+
+  physics_events.emit<SceneEvents::OnContactRemovedEvent>({sub_shape_pair});
+}
+
+auto Scene::on_body_activated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void {
+  ZoneScoped;
+
+  physics_events.emit<SceneEvents::OnBodyActivatedEvent>({body_id, body_user_data});
+}
+
+auto Scene::on_body_deactivated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void {
+  ZoneScoped;
+
+  physics_events.emit<SceneEvents::OnBodyDeactivatedEvent>({body_id, body_user_data});
 }
 
 auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component)

@@ -51,6 +51,8 @@ public:
   flecs::world world;
   ComponentDB component_db = {};
 
+  flecs::entity physics_events = {};
+
   bool meshes_dirty = false;
   std::vector<GPU::TransformID> dirty_transforms = {};
   SlotMap<GPU::Transforms, GPU::TransformID> transforms = {};
@@ -62,8 +64,9 @@ public:
 
   ~Scene();
 
-  auto init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr)
-      -> void;
+  auto init(this Scene& self, //
+            const std::string& name,
+            const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
 
   auto runtime_start() -> void;
   auto runtime_stop() -> void;
@@ -101,6 +104,10 @@ public:
                             const JPH::Body& body2,
                             const JPH::ContactManifold& manifold,
                             const JPH::ContactSettings& settings) -> void;
+  auto on_contact_removed(const JPH::SubShapeIDPair& sub_shape_pair) -> void;
+
+  auto on_body_activated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void;
+  auto on_body_deactivated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void;
 
   auto create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component)
       -> void;

@@ -39,22 +39,22 @@ struct AppCommandLineArgs {
     return false;
   }
 
-  std::optional<Arg> get(const u32 index) const {
+  option<Arg> get(const u32 index) const {
     try {
       return args.at(index);
     } catch ([[maybe_unused]]
              std::exception& exception) {
-      return std::nullopt;
+      return ox::nullopt;
     }
   }
 
-  std::optional<u32> get_index(const std::string_view arg) const {
+  option<u32> get_index(const std::string_view arg) const {
     for (const auto& a : args) {
       if (a.arg_str == arg) {
         return a.arg_index;
       }
     }
-    return std::nullopt;
+    return ox::nullopt;
   }
 };
 

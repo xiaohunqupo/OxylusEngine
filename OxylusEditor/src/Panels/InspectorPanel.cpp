@@ -390,7 +390,7 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
         UI::property("Cast shadows", &component.cast_shadows);
         UI::end_properties();
 
-        auto load_event = w->entity("mesh_material_load_event");
+        auto load_event = w->entity("ox_mesh_material_load_event");
         auto* asset_man = App::get_asset_manager();
         if (auto* mesh = asset_man->get_mesh(component.mesh_uuid)) {
           for (auto& mat_uuid : mesh->materials) {
