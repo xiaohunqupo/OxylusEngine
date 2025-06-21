@@ -84,7 +84,7 @@ public:
                           const JPH::ContactManifold& inManifold,
                           JPH::ContactSettings& ioSettings) override;
 
-  void OnContactRemoved([[maybe_unused]] const JPH::SubShapeIDPair& inSubShapePair) override;
+  void OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) override;
 
 private:
   ox::Scene* _scene = nullptr;

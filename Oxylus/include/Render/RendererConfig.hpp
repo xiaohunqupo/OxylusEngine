@@ -35,7 +35,7 @@ inline AutoCVar_Float cvar_gtao_final_value_power("pp.gtao_final_value_power", "
 inline AutoCVar_Float cvar_gtao_depth_mip_sampling_offset("pp.gtao_depth_mip_sampling_offset", "gtao depth mip sampling offset", 3.30f);
 
 inline AutoCVar_Int cvar_bloom_enable("pp.bloom", "use bloom", 1);
-inline AutoCVar_Float cvar_bloom_threshold("pp.bloom_threshold", "bloom threshold", 1);
+inline AutoCVar_Float cvar_bloom_threshold("pp.bloom_threshold", "bloom threshold", 2.5f);
 inline AutoCVar_Float cvar_bloom_clamp("pp.bloom_clamp", "bloom clmap", 3);
 
 inline AutoCVar_Int cvar_fxaa_enable("pp.fxaa", "use fxaa", 1);
