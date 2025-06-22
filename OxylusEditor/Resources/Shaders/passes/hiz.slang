@@ -18,7 +18,7 @@ struct ShaderParameters {
     StorageImage2D<f32> dst_mip_3;
     StorageImage2D<f32> dst_mip_4;
     StorageImage2D<f32> dst_mip_5;
-    globallycoherent StorageImage2D<f32> dst_mip_6;
+    StorageImage2D<f32> dst_mip_6;
     StorageImage2D<f32> dst_mip_7;
     StorageImage2D<f32> dst_mip_8;
     StorageImage2D<f32> dst_mip_9;

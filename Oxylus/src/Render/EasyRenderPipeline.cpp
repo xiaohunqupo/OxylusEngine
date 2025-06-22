@@ -114,15 +114,12 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   slang.create_pipeline(
       runtime, "debug", {}, {.path = shaders_dir + "/passes/debug.slang", .entry_points = {"vs_main", "fs_main"}});
 
-  slang.create_pipeline(
-      runtime, "hiz_copy", {}, {.path = shaders_dir + "/passes/copy.slang", .entry_points = {"cs_main"}});
-
   // --- PBR ---
   slang.create_pipeline(
       runtime, "brdf", dslci_01, {.path = shaders_dir + "/passes/brdf.slang", .entry_points = {"vs_main", "fs_main"}});
 
   //  ── FFX ─────────────────────────────────────────────────────────────
-  slang.create_pipeline(runtime, "hiz", {}, {.path = shaders_dir + "/passes/hiz.slang", .entry_points = {"cs_main"}});
+  slang.create_pipeline(runtime, "hiz_pipeline", {}, {.path = shaders_dir + "/passes/hiz.slang", .entry_points = {"cs_main"}});
 
   // --- PostProcess ---
   slang.create_pipeline(runtime,
@@ -628,20 +625,6 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(material_buffer),
            std::move(overdraw_attachment));
 
-    auto hiz_copy_pass = vuk::make_pass( //
-        "hiz copy",
-        [](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eComputeSampled) src, VUK_IA(vuk::eComputeRW) dst) {
-          cmd_list                       //
-              .bind_compute_pipeline("hiz_copy")
-              .bind_image(0, 0, src)
-              .bind_image(0, 1, dst)
-              .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, src->extent)
-              .dispatch_invocations_per_pixel(src);
-
-          return std::make_tuple(src, dst);
-        });
-
-    hiz_attachment = vuk::clear_image(std::move(hiz_attachment), vuk::Black<f32>);
     auto hiz_generate_pass = vuk::make_pass(
         "hiz generate",
         [](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eComputeSampled) src, VUK_IA(vuk::eComputeRW) dst) {
@@ -665,7 +648,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           };
 
           cmd_list //
-              .bind_compute_pipeline("hiz")
+              .bind_compute_pipeline("hiz_pipeline")
               .push_constants(
                   vuk::ShaderStageFlagBits::eCompute,
                   0,
@@ -685,9 +668,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           return std::make_tuple(src, dst);
         });
 
-    // std::tie(depth_attachment, hiz_attachment) = hiz_generate_pass(std::move(depth_attachment),
-    //                                                                std::move(hiz_attachment));
-    // vk_context.wait_on(std::move(hiz_attachment));
+    std::tie(depth_attachment, hiz_attachment) = hiz_generate_pass(std::move(depth_attachment),
+                                                                   std::move(hiz_attachment));
 
     auto albedo_attachment = vuk::declare_ia(
         "albedo",
