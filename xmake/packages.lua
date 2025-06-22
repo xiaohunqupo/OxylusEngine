@@ -14,7 +14,7 @@ add_requires("glm 1.0.1", { configs = {
     cxx_standard = "20",
 }, system = false })
 
-add_requires("flecs v4.0.4")
+add_requires("flecs v4.0.5")
 
 add_requires("fastgltf v0.8.0", { system = false, debug = is_mode("debug") })
 
@@ -77,6 +77,7 @@ add_requires("plf_colony v7.41")
 
 add_requires("dylib v2.2.1")
 
+add_requires("zstd v1.5.7", { system = false })
 add_requires("ktx v4.4.0", { system = false })
 
 add_requires("simdutf v6.2.0")

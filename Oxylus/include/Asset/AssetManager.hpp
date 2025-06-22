@@ -11,6 +11,7 @@
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
 #include "Scene/Scene.hpp"
+#include "Scripting/LuaSystem.hpp"
 #include "Utils/JsonWriter.hpp"
 
 namespace ox {

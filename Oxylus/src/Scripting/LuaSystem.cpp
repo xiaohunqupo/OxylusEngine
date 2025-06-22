@@ -6,8 +6,8 @@
 #include <sol/state.hpp>
 
 #include "Core/App.hpp"
-#include "Scripting/LuaManager.hpp"
 #include "Scene/Scene.hpp"
+#include "Scripting/LuaManager.hpp"
 
 namespace ox {
 LuaSystem::LuaSystem(std::string path) : file_path(std::move(path)) { init_script(file_path); }
@@ -71,14 +71,6 @@ void LuaSystem::init_script(const std::string& path) {
   if (!on_release_func->valid())
     on_release_func.reset();
 
-  on_contact_added_func = std::make_unique<sol::protected_function>((*environment)["on_contact_added"]);
-  if (!on_contact_added_func->valid())
-    on_contact_added_func.reset();
-
-  on_contact_persisted_func = std::make_unique<sol::protected_function>((*environment)["on_contact_persisted"]);
-  if (!on_contact_persisted_func->valid())
-    on_contact_persisted_func.reset();
-
   state->collect_gc();
 }
 
@@ -122,32 +114,6 @@ void LuaSystem::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (on_render_func) {
     const auto result = on_render_func->call(extent, format);
     check_result(result, "on_render");
-  }
-}
-
-auto LuaSystem::on_contact_added(Scene* scene,
-                                 flecs::entity e,
-                                 const JPH::Body& body1,
-                                 const JPH::Body& body2,
-                                 const JPH::ContactManifold& manifold,
-                                 const JPH::ContactSettings& settings) -> void {
-  ZoneScoped;
-  if (on_contact_added_func) {
-    const auto result = on_contact_added_func->call(scene, e, std::ref(body1), std::ref(body2), manifold, settings);
-    check_result(result, "on_contact_added");
-  }
-}
-
-auto LuaSystem::on_contact_persisted(Scene* scene,
-                                     flecs::entity e,
-                                     const JPH::Body& body1,
-                                     const JPH::Body& body2,
-                                     const JPH::ContactManifold& manifold,
-                                     const JPH::ContactSettings& settings) -> void {
-  ZoneScoped;
-  if (on_contact_persisted_func) {
-    const auto result = on_contact_persisted_func->call(scene, e, std::ref(body1), std::ref(body2), manifold, settings);
-    check_result(result, "on_contact_persisted");
   }
 }
 

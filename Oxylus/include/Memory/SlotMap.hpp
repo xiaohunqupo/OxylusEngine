@@ -1,7 +1,11 @@
 #pragma once
 
+#include <Tracy.hpp>
 #include <shared_mutex>
 #include <span>
+#include <vector>
+
+#include "Core/Types.hpp"
 
 namespace ox {
 // For unions and other unsafe stuff

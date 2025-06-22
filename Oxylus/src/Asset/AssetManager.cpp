@@ -4,9 +4,8 @@
 #include <vuk/Types.hpp>
 #include <vuk/vsl/Core.hpp>
 
-#include "Asset/AssetFile.hpp"
-#include "Asset/Material.hpp"
 #include "Asset/ParserGLTF.hpp"
+#include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Memory/Hasher.hpp"
 #include "Memory/Stack.hpp"

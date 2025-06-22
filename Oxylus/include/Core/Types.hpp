@@ -1,5 +1,7 @@
 #pragma once
 
+#include <cstdint>
+
 namespace ox {
 using f32 = float;
 using f64 = double;

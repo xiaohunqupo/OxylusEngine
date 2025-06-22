@@ -2,6 +2,7 @@ module tonemap;
 
 import common;
 import gpu;
+import scene;
 
 #include <passes/histogram.slang>
 
@@ -9,9 +10,12 @@ import gpu;
 Sampler sampler;
 [[vk::binding(1, 0)]]
 Image2D<f32x4> input_image;
+[[vk::binding(2, 0)]]
+Image2D<f32x4> bloom_image;
 
 struct PushConstants {
     HistogramLuminance *luminance;
+    PassConfig pass_config;
 };
 [[vk::push_constant]] PushConstants C;
 
@@ -166,6 +170,12 @@ float3 agx_tonemapping(float3 color) {
 [[shader("fragment")]]
 f32x4 fs_main(VertexOutput input) {
     f32x3 color = input_image.sample_mip(sampler, input.tex_coord, 0.0).rgb;
+
+    if (C.pass_config & PassConfig::EnableBloom) {
+        f32x3 bloom = bloom_image.sample_mip(sampler, input.tex_coord, 0.0).rgb;
+        color += bloom;
+    }
+
     const f32 exposure = C.luminance->exposure;
     color = color * (exposure + 1.0);
 

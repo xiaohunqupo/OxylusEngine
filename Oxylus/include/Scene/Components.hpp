@@ -1,10 +1,10 @@
 // clang-format off
 #ifndef ECS_REFLECT_TYPES
+#include <Tracy.hpp>
+
 #include "Audio/AudioEngine.hpp"
-#include "Core/App.hpp"
 #include "Core/UUID.hpp"
 #include "Render/Utils/RectPacker.hpp"
-#include "Scripting/LuaSystem.hpp"
 #include "Utils/OxMath.hpp"
 
 #ifndef ECS_COMPONENT_BEGIN
@@ -262,8 +262,6 @@ ECS_COMPONENT_BEGIN(RigidbodyComponent)
   glm::quat previous_rotation = glm::vec3(0.0f);
   glm::vec3 translation = glm::vec3(0.0f);
   glm::quat rotation = glm::vec3(0.0f);
-
-  JPH::Body* get_body() const { return static_cast<JPH::Body*>(runtime_body); }
 #endif
 ECS_COMPONENT_END();
 
@@ -365,7 +363,7 @@ struct CharacterControllerComponent {
 
 // Audio
 ECS_COMPONENT_BEGIN(AudioSourceComponent)
-  ECS_COMPONENT_MEMBER(attenuation_model, AttenuationModelType, AttenuationModelType::Inverse)
+  ECS_COMPONENT_MEMBER(attenuation_model, u32, AudioEngine::AttenuationModelType::Inverse)
   ECS_COMPONENT_MEMBER(volume, f32, 1.0f)
   ECS_COMPONENT_MEMBER(pitch, f32, 1.0f)
   ECS_COMPONENT_MEMBER(play_on_awake, bool, true)

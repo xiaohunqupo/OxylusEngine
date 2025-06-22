@@ -129,7 +129,7 @@ void Physics3DContactListener::OnContactPersisted(const JPH::Body& inBody1,
 void Physics3DContactListener::OnContactRemoved(const JPH::SubShapeIDPair& inSubShapePair) {
   ZoneScoped;
 
-  /* On Collision Exit */
+  _scene->on_contact_removed(inSubShapePair);
 }
 
 } // namespace ox

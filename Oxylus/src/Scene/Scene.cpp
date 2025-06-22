@@ -29,6 +29,7 @@
 #include "Render/RendererConfig.hpp"
 #include "Scene/ECSModule/ComponentWrapper.hpp"
 #include "Scene/ECSModule/Core.hpp"
+#include "Scene/SceneEvents.hpp"
 #include "Scripting/LuaManager.hpp"
 #include "Utils/JsonHelpers.hpp"
 #include "Utils/JsonWriter.hpp"
@@ -213,7 +214,6 @@ Scene::~Scene() {
 auto Scene::init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline)
     -> void {
   ZoneScoped;
-
   self.scene_name = name;
 
   self.component_db.import_module(self.world.import <Core>());
@@ -225,6 +225,8 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
     self._render_pipeline = std::make_shared<EasyRenderPipeline>();
     self._render_pipeline->init(App::get_vkcontext());
   }
+
+  self.physics_events = self.world.entity("ox_physics_events");
 
   self.world.observer<TransformComponent>()
       .event(flecs::OnSet)
@@ -320,7 +322,8 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         auto* asset_man = App::get_asset_manager();
         if (auto* audio = asset_man->get_audio(ac.audio_source)) {
           auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
-          audio_engine->set_source_attenuation_model(audio->get_source(), ac.attenuation_model);
+          audio_engine->set_source_attenuation_model(
+              audio->get_source(), static_cast<AudioEngine::AttenuationModelType>(ac.attenuation_model));
           audio_engine->set_source_volume(audio->get_source(), ac.volume);
           audio_engine->set_source_pitch(audio->get_source(), ac.pitch);
           audio_engine->set_source_looping(audio->get_source(), ac.looping);
@@ -614,7 +617,7 @@ auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   return e.add<TransformComponent>().add<LayerComponent>();
 }
 
-auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
+auto Scene::create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flecs::entity {
   ZoneScoped;
 
   auto* asset_man = App::get_asset_manager();
@@ -632,12 +635,15 @@ auto Scene::create_mesh_entity(const UUID& asset_uuid) -> flecs::entity {
 
   auto* imported_model = asset_man->get_mesh(asset_uuid);
   auto& default_scene = imported_model->scenes[imported_model->default_scene_index];
-  auto root_entity = create_entity(world.lookup(default_scene.name.c_str()) ? std::string{} : default_scene.name);
+  auto root_entity = self.create_entity(self.world.lookup(default_scene.name.c_str()) ? std::string{}
+                                                                                      : default_scene.name);
 
-  auto visit_nodes = [&](this auto& visitor, flecs::entity& root, std::vector<usize>& node_indices) -> void {
+  auto visit_nodes = [&self, //
+                      &imported_model,
+                      &asset_uuid](this auto& visitor, flecs::entity& root, std::vector<usize>& node_indices) -> void {
     for (const auto node_index : node_indices) {
       auto& cur_node = imported_model->nodes[node_index];
-      auto node_entity = create_entity(world.lookup(cur_node.name.c_str()) ? std::string{} : cur_node.name);
+      auto node_entity = self.create_entity(self.world.lookup(cur_node.name.c_str()) ? std::string{} : cur_node.name);
 
       const auto T = glm::translate(glm::mat4(1.0f), cur_node.translation);
       const auto R = glm::mat4_cast(cur_node.rotation);
@@ -854,18 +860,7 @@ auto Scene::on_contact_added(const JPH::Body& body1,
                              const JPH::ContactSettings& settings) -> void {
   ZoneScoped;
 
-  {
-    ZoneNamedN(z, "LuaScripting/on_contact_added", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& c) {
-          auto* asset_man = App::get_asset_manager();
-          if (auto* asset = asset_man->get_asset(c.script_uuid)) {
-            if (auto* script = asset_man->get_script(asset->script_id)) {
-              script->on_contact_added(this, e, body1, body2, manifold, settings);
-            }
-          }
-        });
-  }
+  physics_events.emit<SceneEvents::OnContactAddedEvent>({body1, body2, manifold, settings});
 }
 
 auto Scene::on_contact_persisted(const JPH::Body& body1,
@@ -874,18 +869,25 @@ auto Scene::on_contact_persisted(const JPH::Body& body1,
                                  const JPH::ContactSettings& settings) -> void {
   ZoneScoped;
 
-  {
-    ZoneNamedN(z, "LuaScripting/on_contact_persisted", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this, &body1, &body2, &manifold, &settings](const flecs::entity& e, const LuaScriptComponent& c) {
-          auto* asset_man = App::get_asset_manager();
-          if (auto* asset = asset_man->get_asset(c.script_uuid)) {
-            if (auto* script = asset_man->get_script(asset->script_id)) {
-              script->on_contact_persisted(this, e, body1, body2, manifold, settings);
-            }
-          }
-        });
-  }
+  physics_events.emit<SceneEvents::OnContactPersistedEvent>({body1, body2, manifold, settings});
+}
+
+auto Scene::on_contact_removed(const JPH::SubShapeIDPair& sub_shape_pair) -> void {
+  ZoneScoped;
+
+  physics_events.emit<SceneEvents::OnContactRemovedEvent>({sub_shape_pair});
+}
+
+auto Scene::on_body_activated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void {
+  ZoneScoped;
+
+  physics_events.emit<SceneEvents::OnBodyActivatedEvent>({body_id, body_user_data});
+}
+
+auto Scene::on_body_deactivated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void {
+  ZoneScoped;
+
+  physics_events.emit<SceneEvents::OnBodyDeactivatedEvent>({body_id, body_user_data});
 }
 
 auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component)

@@ -11,6 +11,7 @@
 
 #include "Render/RendererConfig.hpp"
 #include "Render/Window.hpp"
+#include "Utils/Profiler.hpp"
 
 namespace ox {
 static VkBool32 debug_callback(const VkDebugUtilsMessageSeverityFlagBitsEXT messageSeverity,

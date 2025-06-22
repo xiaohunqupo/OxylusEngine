@@ -10,6 +10,7 @@
 
 #include "Asset/AssetManager.hpp"
 #include "Asset/Texture.hpp"
+#include "Core/App.hpp"
 #include "Core/VFS.hpp"
 #include "Render/Camera.hpp"
 #include "Render/DebugRenderer.hpp"
@@ -139,6 +140,26 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
                         "tonemap_pipeline",
                         {},
                         {.path = shaders_dir + "/passes/tonemap.slang", .entry_points = {"vs_main", "fs_main"}});
+
+  slang.create_pipeline(runtime,
+                        "bloom_prefilter_pipeline",
+                        {},
+                        {.path = shaders_dir + "/passes/bloom/bloom_prefilter.slang", .entry_points = {"cs_main"}});
+
+  slang.create_pipeline(runtime,
+                        "bloom_downsample_pipeline",
+                        {},
+                        {.path = shaders_dir + "/passes/bloom/bloom_downsample.slang", .entry_points = {"cs_main"}});
+
+  slang.create_pipeline(runtime,
+                        "bloom_upsample_pipeline",
+                        {},
+                        {.path = shaders_dir + "/passes/bloom/bloom_upsample.slang", .entry_points = {"cs_main"}});
+
+  slang.create_pipeline(runtime,
+                        "fxaa_pipeline",
+                        {},
+                        {.path = shaders_dir + "/passes/fxaa/fxaa.slang", .entry_points = {"vs_main", "fs_main"}});
 
   // --- DescriptorSets ---
   this->descriptor_set_01 = runtime.create_persistent_descriptorset(allocator, dslci_01, 1);
@@ -1095,6 +1116,110 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   }
 
   if (!debugging) {
+    PassConfig pass_config_flags = PassConfig::None;
+    if (static_cast<bool>(RendererCVar::cvar_bloom_enable.get()))
+      pass_config_flags |= PassConfig::EnableBloom;
+    if (static_cast<bool>(RendererCVar::cvar_fxaa_enable.get()))
+      pass_config_flags |= PassConfig::EnableFXAA;
+
+    // --- FXAA Pass ---
+    if (pass_config_flags & PassConfig::EnableFXAA) {
+      final_attachment = vuk::make_pass("fxaa", [](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eColorWrite) out) {
+        const glm::vec2 inverse_screen_size = 1.f / glm::vec2(out->extent.width, out->extent.height);
+        cmd_list.bind_graphics_pipeline("fxaa_pipeline")
+            .bind_image(0, 0, out)
+            .set_rasterization({})
+            .set_color_blend(out, {})
+            .set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+            .set_viewport(0, vuk::Rect2D::framebuffer())
+            .set_scissor(0, vuk::Rect2D::framebuffer())
+            .bind_sampler(0, 1, vuk::LinearSamplerClamped)
+            .push_constants(vuk::ShaderStageFlagBits::eFragment, 0, PushConstants(inverse_screen_size))
+            .draw(3, 1, 0, 0);
+        return out;
+      })(final_attachment);
+    }
+
+    // --- Bloom Pass ---
+    const f32 bloom_threshold = RendererCVar::cvar_bloom_threshold.get();
+    const f32 bloom_clamp = RendererCVar::cvar_bloom_clamp.get();
+    const u32 bloom_mip_count = static_cast<u32>(RendererCVar::cvar_bloom_mips.get());
+
+    auto bloom_ia = vuk::ImageAttachment{
+        .format = vuk::Format::eB10G11R11UfloatPack32,
+        .sample_count = vuk::SampleCountFlagBits::e1,
+        .level_count = bloom_mip_count,
+        .layer_count = 1,
+    };
+
+    auto bloom_down_image = vuk::clear_image(vuk::declare_ia("bloom_down_image", bloom_ia), vuk::Black<float>);
+    bloom_down_image.same_extent_as(final_attachment);
+    bloom_down_image.same_format_as(final_attachment);
+
+    bloom_ia.level_count = bloom_mip_count - 1;
+    auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_ia), vuk::Black<float>);
+    bloom_up_image.same_extent_as(final_attachment);
+
+    if (pass_config_flags & PassConfig::EnableBloom) {
+      std::tie(final_attachment, bloom_down_image) = vuk::make_pass(
+          "bloom_prefilter",
+          [bloom_threshold,
+           bloom_clamp](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eComputeRead) src, VUK_IA(vuk::eComputeRW) out) {
+            cmd_list //
+                .bind_compute_pipeline("bloom_prefilter_pipeline")
+                .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(bloom_threshold, bloom_clamp))
+                .bind_image(0, 0, out)
+                .bind_image(0, 1, src)
+                .bind_sampler(0, 2, vuk::NearestMagLinearMinSamplerClamped)
+                .dispatch_invocations_per_pixel(src);
+
+            return std::make_tuple(src, out);
+          })(final_attachment, bloom_down_image.mip(0));
+
+      auto converge = vuk::make_pass(
+          "bloom_converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+      auto prefiltered_downsample_image = converge(bloom_down_image);
+      auto src_mip = prefiltered_downsample_image.mip(0);
+
+      for (uint32_t i = 1; i < bloom_mip_count; i++) {
+        src_mip = vuk::make_pass(
+            "bloom_downsample",
+            [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeSampled) src, VUK_IA(vuk::eComputeRW) out) {
+              command_buffer.bind_compute_pipeline("bloom_downsample_pipeline")
+                  .bind_image(0, 0, out)
+                  .bind_image(0, 1, src)
+                  .bind_sampler(0, 2, vuk::LinearMipmapNearestSamplerClamped)
+                  .dispatch_invocations_per_pixel(src);
+              return out;
+            })(src_mip, prefiltered_downsample_image.mip(i));
+      }
+
+      // Upsampling
+      // https://www.froyok.fr/blog/2021-12-ue4-custom-bloom/resources/code/bloom_down_up_demo.jpg
+
+      auto downsampled_image = converge(prefiltered_downsample_image);
+      auto upsample_src_mip = downsampled_image.mip(bloom_mip_count - 1);
+
+      for (int32_t i = (int32_t)bloom_mip_count - 2; i >= 0; i--) {
+        upsample_src_mip = vuk::make_pass( //
+            "bloom_upsample",
+            [](vuk::CommandBuffer& command_buffer,
+               VUK_IA(vuk::eComputeRW) out,
+               VUK_IA(vuk::eComputeSampled) src1,
+               VUK_IA(vuk::eComputeSampled) src2) {
+              command_buffer.bind_compute_pipeline("bloom_upsample_pipeline")
+                  .bind_image(0, 0, out)
+                  .bind_image(0, 1, src1)
+                  .bind_image(0, 2, src2)
+                  .bind_sampler(0, 3, vuk::NearestMagLinearMinSamplerClamped)
+                  .dispatch_invocations_per_pixel(out);
+
+              return out;
+            })(bloom_up_image.mip(i), upsample_src_mip, downsampled_image.mip(i));
+      }
+    }
+
+    // --- Auto Exposure Pass ---
     auto histogram_inf = this->histogram_info.value_or(GPU::HistogramInfo{});
 
     auto histogram_buffer = vk_context.alloc_transient_buffer(vuk::MemoryUsage::eGPUonly,
@@ -1126,32 +1251,37 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           "histogram average",
           [pixel_count = f32(final_attachment->extent.width * final_attachment->extent.height), histogram_inf](
               vuk::CommandBuffer& cmd_list, VUK_BA(vuk::eComputeRW) histogram, VUK_BA(vuk::eComputeRW) exposure) {
-            cmd_list.bind_compute_pipeline("histogram_average_pipeline")
-                .push_constants(
-                    vuk::ShaderStageFlagBits::eCompute,
-                    0,
-                    PushConstants(histogram->device_address,
-                                  exposure->device_address,
-                                  pixel_count,
-                                  histogram_inf.min_exposure,
-                                  histogram_inf.max_exposure - histogram_inf.min_exposure,
-                                  glm::clamp(static_cast<f32>(1.0f - glm::exp(-histogram_inf.adaptation_speed *
-                                                                              App::get()->get_timestep().get_millis())),
-                                             0.0f,
-                                             1.0f),
-                                  histogram_inf.ev100_bias))
+            auto adaptation_time = glm::clamp(
+                static_cast<f32>(
+                    1.0f - glm::exp(-histogram_inf.adaptation_speed * App::get()->get_timestep().get_millis() * 0.001)),
+                0.0f,
+                1.0f);
+
+            cmd_list //
+                .bind_compute_pipeline("histogram_average_pipeline")
+                .push_constants(vuk::ShaderStageFlagBits::eCompute,
+                                0,
+                                PushConstants(histogram->device_address,
+                                              exposure->device_address,
+                                              pixel_count,
+                                              histogram_inf.min_exposure,
+                                              histogram_inf.max_exposure - histogram_inf.min_exposure,
+                                              adaptation_time,
+                                              histogram_inf.ev100_bias))
                 .dispatch(1);
 
             return exposure;
           })(std::move(histogram_buffer), std::move(exposure_buffer_value));
     }
 
+    // --- Tonemap Pass ---
     result_attachment = vuk::make_pass(
         "tonemap",
-        [](vuk::CommandBuffer& cmd_list,
-           VUK_IA(vuk::eColorWrite) dst,
-           VUK_IA(vuk::eFragmentSampled) src,
-           VUK_BA(vuk::eFragmentRead) exposure) {
+        [pass_config_flags](vuk::CommandBuffer& cmd_list,
+                            VUK_IA(vuk::eColorWrite) dst,
+                            VUK_IA(vuk::eFragmentSampled) src,
+                            VUK_IA(vuk::eFragmentSampled) bloom_src,
+                            VUK_BA(vuk::eFragmentRead) exposure) {
           cmd_list.bind_graphics_pipeline("tonemap_pipeline")
               .set_rasterization({})
               .set_color_blend(dst, vuk::BlendPreset::eOff)
@@ -1160,11 +1290,16 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .set_scissor(0, vuk::Rect2D::framebuffer())
               .bind_sampler(0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear})
               .bind_image(0, 1, src)
-              .push_constants(vuk::ShaderStageFlagBits::eFragment, 0, exposure->device_address)
+              .bind_image(0, 2, bloom_src)
+              .push_constants(
+                  vuk::ShaderStageFlagBits::eFragment, 0, PushConstants(exposure->device_address, pass_config_flags))
               .draw(3, 1, 0, 0);
 
           return dst;
-        })(std::move(result_attachment), std::move(final_attachment), std::move(exposure_buffer_value));
+        })(std::move(result_attachment),
+           std::move(final_attachment),
+           std::move(bloom_up_image),
+           std::move(exposure_buffer_value));
   }
 
   return result_attachment;

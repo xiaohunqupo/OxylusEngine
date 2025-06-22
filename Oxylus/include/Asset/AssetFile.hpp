@@ -1,5 +1,7 @@
 #pragma once
 
+#include <vuk/Types.hpp>
+
 #include "Oxylus.hpp"
 
 namespace ox {

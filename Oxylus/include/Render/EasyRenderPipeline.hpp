@@ -11,6 +11,13 @@
 #include "Scene/SceneGPU.hpp"
 
 namespace ox {
+enum class PassConfig : u32 {
+  None = 0,
+  EnableBloom = 1 << 0,
+  EnableFXAA = 1 << 1,
+};
+consteval void enable_bitmask(PassConfig);
+
 class EasyRenderPipeline : public RenderPipeline {
 public:
   EasyRenderPipeline() = default;

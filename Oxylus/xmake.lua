@@ -7,6 +7,7 @@ target("Oxylus")
     -- add_includedirs("./src", { public = true })
     add_includedirs("./vendor", { public = true })
     add_files("./src/**.cpp")
+    add_forceincludes("Tracy.hpp")
     -- set_pcheader("./src/pch.hpp", { public = true, force = true })
 
     add_options("profile")

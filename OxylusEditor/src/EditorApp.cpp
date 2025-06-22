@@ -35,7 +35,7 @@ App* create_application(const AppCommandLineArgs& args) {
   };
 
   const auto app = new OxylusEditor(spec);
-  app->push_layer(new EditorLayer());
+  app->push_layer(std::make_unique<EditorLayer>());
 
   return app;
 }

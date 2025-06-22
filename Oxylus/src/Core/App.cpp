@@ -51,7 +51,6 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   _instance = this;
 
-  layer_stack = std::make_unique<LayerStack>();
   thread_manager = std::make_shared<ThreadManager>();
 
   if (app_spec.working_directory.empty())
@@ -95,8 +94,9 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   auto* vfs = get_system<VFS>(EngineSystems::VFS);
   vfs->mount_dir(VFS::APP_DIR, fs::absolute(app_spec.assets_path));
 
-  imgui_layer = new ImGuiLayer();
-  push_overlay(imgui_layer);
+  auto imgui = std::make_unique<ImGuiLayer>();
+  imgui_layer = imgui.get();
+  push_layer(std::move(imgui));
 }
 
 App::~App() { close(); }
@@ -106,16 +106,9 @@ void App::set_instance(App* instance) {
   get_system<Input>(EngineSystems::Input)->set_instance();
 }
 
-App& App::push_layer(Layer* layer) {
-  layer_stack->push_layer(layer);
+App& App::push_layer(std::unique_ptr<Layer>&& layer) {
   layer->on_attach();
-
-  return *this;
-}
-
-App& App::push_overlay(Layer* layer) {
-  layer_stack->push_overlay(layer);
-  layer->on_attach();
+  layer_stack.emplace_back(std::move(layer));
 
   return *this;
 }
@@ -212,7 +205,7 @@ void App::run() {
 
     {
       ZoneNamedN(z, "LayerStackUpdate", true);
-      for (auto* layer : *layer_stack.get()) {
+      for (const auto& layer : layer_stack) {
         layer->on_update(timestep);
         layer->on_render(extent, swapchain_attachment->format);
       }
@@ -237,7 +230,7 @@ void App::run() {
     FrameMark;
   }
 
-  layer_stack.reset();
+  layer_stack.clear();
 
   for (const auto& [type, system] : system_registry) {
     auto result = system->deinit();

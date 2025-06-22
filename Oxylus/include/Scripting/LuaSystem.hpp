@@ -33,19 +33,6 @@ public:
   auto on_release(Scene* scene, flecs::entity entity) -> void;
   auto on_render(vuk::Extent3D extent, vuk::Format format) -> void;
 
-  auto on_contact_added(Scene* scene,
-                        flecs::entity e,
-                        const JPH::Body& body1,
-                        const JPH::Body& body2,
-                        const JPH::ContactManifold& manifold,
-                        const JPH::ContactSettings& settings) -> void;
-  auto on_contact_persisted(Scene* scene,
-                            flecs::entity e,
-                            const JPH::Body& body1,
-                            const JPH::Body& body2,
-                            const JPH::ContactManifold& manifold,
-                            const JPH::ContactSettings& settings) -> void;
-
   auto get_path() const -> const std::string& { return file_path; }
 
 private:
@@ -58,8 +45,6 @@ private:
   std::unique_ptr<sol::protected_function> on_update_func = nullptr;
   std::unique_ptr<sol::protected_function> on_render_func = nullptr;
   std::unique_ptr<sol::protected_function> on_fixed_update_func = nullptr;
-  std::unique_ptr<sol::protected_function> on_contact_added_func = nullptr;
-  std::unique_ptr<sol::protected_function> on_contact_persisted_func = nullptr;
 
   void init_script(const std::string& path);
   void check_result(const sol::protected_function_result& result, const char* func_name);

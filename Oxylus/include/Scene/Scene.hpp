@@ -1,10 +1,18 @@
 #pragma once
 
+// clang-format off
+#include <Jolt/Jolt.h>
+#include <Jolt/Core/Core.h>
+#include <Jolt/Physics/Body/Body.h>
+#include <Jolt/Physics/Collision/ContactListener.h>
+
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
 #include "Render/RenderPipeline.hpp"
 #include "Scene/ECSModule/Core.hpp"
 #include "Scene/SceneGPU.hpp"
+#include "Utils/Timestep.hpp"
+// clang-format on
 
 template <>
 struct ankerl::unordered_dense::hash<flecs::id> {
@@ -43,6 +51,8 @@ public:
   flecs::world world;
   ComponentDB component_db = {};
 
+  flecs::entity physics_events = {};
+
   bool meshes_dirty = false;
   std::vector<GPU::TransformID> dirty_transforms = {};
   SlotMap<GPU::Transforms, GPU::TransformID> transforms = {};
@@ -54,7 +64,9 @@ public:
 
   ~Scene();
 
-  auto init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
+  auto init(this Scene& self, //
+            const std::string& name,
+            const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
 
   auto runtime_start() -> void;
   auto runtime_stop() -> void;
@@ -67,7 +79,7 @@ public:
 
   auto create_entity(const std::string& name = "") const -> flecs::entity;
 
-  auto create_mesh_entity(const UUID& asset_uuid) -> flecs::entity;
+  auto create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flecs::entity;
   auto attach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool;
   auto detach_mesh(this Scene& self, flecs::entity entity, const UUID& mesh_uuid, usize mesh_index) -> bool;
 
@@ -92,6 +104,10 @@ public:
                             const JPH::Body& body2,
                             const JPH::ContactManifold& manifold,
                             const JPH::ContactSettings& settings) -> void;
+  auto on_contact_removed(const JPH::SubShapeIDPair& sub_shape_pair) -> void;
+
+  auto on_body_activated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void;
+  auto on_body_deactivated(const JPH::BodyID& body_id, JPH::uint64 body_user_data) -> void;
 
   auto create_rigidbody(flecs::entity entity, const TransformComponent& transform, RigidbodyComponent& component)
       -> void;
