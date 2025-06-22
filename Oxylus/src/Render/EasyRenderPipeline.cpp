@@ -119,7 +119,8 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
       runtime, "brdf", dslci_01, {.path = shaders_dir + "/passes/brdf.slang", .entry_points = {"vs_main", "fs_main"}});
 
   //  ── FFX ─────────────────────────────────────────────────────────────
-  slang.create_pipeline(runtime, "hiz_pipeline", {}, {.path = shaders_dir + "/passes/hiz.slang", .entry_points = {"cs_main"}});
+  slang.create_pipeline(
+      runtime, "hiz_pipeline", {}, {.path = shaders_dir + "/passes/hiz.slang", .entry_points = {"cs_main"}});
 
   // --- PostProcess ---
   slang.create_pipeline(runtime,
@@ -449,7 +450,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              meshlet_instances_buffer_value,
              transforms_buffer_value,
              meshes_buffer_value,
-             camera_buffer) = vuk::make_pass( //
+             camera_buffer,
+             hiz_attachment) = vuk::make_pass( //
         "vis cull meshlets",
         [meshlet_instance_count](vuk::CommandBuffer& cmd_list,
                                  VUK_BA(vuk::eComputeWrite) cull_triangles_cmd,
@@ -457,7 +459,22 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                  VUK_BA(vuk::eComputeRead) meshlet_instances,
                                  VUK_BA(vuk::eComputeRead) transforms_,
                                  VUK_BA(vuk::eComputeRead) meshes,
-                                 VUK_BA(vuk::eComputeRead) camera) {
+                                 VUK_BA(vuk::eComputeRead) camera,
+                                 VUK_IA(vuk::eComputeRead) hiz) {
+          static constexpr auto sampler_min_clamp_reduction_mode = VkSamplerReductionModeCreateInfo{
+              .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
+              .pNext = nullptr,
+              .reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN,
+          };
+          auto sampler_info = vuk::SamplerCreateInfo{
+              .pNext = &sampler_min_clamp_reduction_mode,
+              .magFilter = vuk::Filter::eLinear,
+              .minFilter = vuk::Filter::eLinear,
+              .mipmapMode = vuk::SamplerMipmapMode::eNearest,
+              .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
+              .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
+          };
+
           cmd_list //
               .bind_compute_pipeline("cull_meshlets")
               .bind_buffer(0, 0, cull_triangles_cmd)
@@ -466,16 +483,24 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .bind_buffer(0, 3, meshlet_instances)
               .bind_buffer(0, 4, meshes)
               .bind_buffer(0, 5, transforms_)
+              .bind_image(0, 6, hiz)
+              .bind_sampler(0, 7, sampler_info)
               .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(meshlet_instance_count, cull_flags))
               .dispatch((meshlet_instance_count + Mesh::MAX_MESHLET_INDICES - 1) / Mesh::MAX_MESHLET_INDICES);
-          return std::make_tuple(
-              cull_triangles_cmd, visible_meshlet_instances_indices, meshlet_instances, transforms_, meshes, camera);
+          return std::make_tuple(cull_triangles_cmd,
+                                 visible_meshlet_instances_indices,
+                                 meshlet_instances,
+                                 transforms_,
+                                 meshes,
+                                 camera,
+                                 hiz);
         })(std::move(cull_triangles_cmd_buffer),
            std::move(visible_meshlet_instances_indices_buffer),
            std::move(meshlet_instances_buffer_value),
            std::move(transforms_buffer_value),
            std::move(meshes_buffer_value),
-           std::move(camera_buffer));
+           std::move(camera_buffer),
+           std::move(hiz_attachment));
 
     auto draw_command_buffer = vk_context.scratch_buffer<vuk::DrawIndexedIndirectCommand>({.instanceCount = 1});
     auto reordered_indices_buffer = vk_context.alloc_transient_buffer(
@@ -587,9 +612,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           cmd_list //
               .bind_graphics_pipeline("visbuffer_encode")
               .set_rasterization({.cullMode = vuk::CullModeFlagBits::eBack})
-              .set_depth_stencil({.depthTestEnable = true,
-                                  .depthWriteEnable = true,
-                                  .depthCompareOp = vuk::CompareOp::eGreater})
+              .set_depth_stencil(
+                  {.depthTestEnable = true, .depthWriteEnable = true, .depthCompareOp = vuk::CompareOp::eGreater})
               .set_color_blend(visbuffer, vuk::BlendPreset::eOff)
               .set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
               .set_viewport(0, vuk::Rect2D::framebuffer())
