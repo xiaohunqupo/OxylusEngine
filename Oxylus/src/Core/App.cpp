@@ -129,10 +129,7 @@ void App::run() {
     const auto app = static_cast<App*>(user_data);
     app->is_running = false;
   };
-  window_callbacks.on_mouse_pos = [](void* user_data,
-                                     const glm::vec2 position,
-                                     [[maybe_unused]]
-                                     glm::vec2 relative) {
+  window_callbacks.on_mouse_pos = [](void* user_data, const glm::vec2 position, glm::vec2 relative) {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_mouse_pos(position);
 
@@ -191,6 +188,13 @@ void App::run() {
   };
 
   while (is_running) {
+    const i32 frame_limit = RendererCVar::cvar_frame_limit.get();
+    if (frame_limit == 0) {
+      timestep.reset_max_frame_time();
+    } else if (frame_limit > 0) {
+      timestep.set_max_frame_time(static_cast<f64>(frame_limit));
+    }
+
     timestep.on_update();
 
     window.poll(window_callbacks);

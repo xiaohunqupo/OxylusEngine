@@ -3,27 +3,26 @@
 #include "Utils/Timer.hpp"
 
 namespace ox {
-Timestep::Timestep() : m_timestep(0.0), m_last_time(0.0), m_elapsed(0.0) { m_Timer = new Timer(); }
+Timestep::Timestep() : timestep(0.0), last_time(0.0), elapsed(0.0) { timer = new Timer(); }
 
-Timestep::~Timestep() { delete m_Timer; }
+Timestep::~Timestep() { delete timer; }
 
-void Timestep::on_update() {
+void Timestep::on_update(this Timestep& self) {
   ZoneScoped;
 
-  double currentTime = m_Timer->get_elapsed_msd();
-  double maxFrameTime = -1.0;
-  double dt = currentTime - m_last_time;
+  f64 current_time = self.timer->get_elapsed_msd();
+  f64 dt = current_time - self.last_time;
 
   {
     ZoneNamedN(z, "Sleep TimeStep to target fps", true);
-    while (dt < maxFrameTime) {
-      currentTime = m_Timer->get_elapsed_msd();
-      dt = currentTime - m_last_time;
+    while (dt < self.max_frame_time) {
+      current_time = self.timer->get_elapsed_msd();
+      dt = current_time - self.last_time;
     }
   }
 
-  m_timestep = currentTime - m_last_time;
-  m_last_time = currentTime;
-  m_elapsed += m_timestep;
+  self.timestep = current_time - self.last_time;
+  self.last_time = current_time;
+  self.elapsed += self.timestep;
 }
 } // namespace ox

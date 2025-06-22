@@ -1,5 +1,7 @@
 #pragma once
 
+#include "Core/Types.hpp"
+
 namespace ox {
 class Timer;
 
@@ -8,20 +10,25 @@ public:
   Timestep();
   ~Timestep();
 
-  void on_update();
-  double get_millis() const { return m_timestep; }
-  double get_elapsed_millis() const { return m_elapsed; }
+  auto on_update(this Timestep& self) -> void;
+  auto get_millis(this const Timestep& self) -> f64 { return self.timestep; }
+  auto get_elapsed_millis(this const Timestep& self) -> f64 { return self.elapsed; }
 
-  double get_seconds() const { return m_timestep * 0.001; }
-  double get_elapsed_seconds() const { return m_elapsed * 0.001; }
+  auto get_seconds(this const Timestep& self) -> f64 { return self.timestep * 0.001; }
+  auto get_elapsed_seconds(this const Timestep& self) -> f64 { return self.elapsed * 0.001; }
 
-  explicit operator float() const { return (float)m_timestep; }
+  auto get_max_frame_time(this const Timestep& self) -> f64 { return self.max_frame_time; }
+  auto set_max_frame_time(this Timestep& self, f64 value) -> void { self.max_frame_time = 1000.0 / value; }
+  auto reset_max_frame_time(this Timestep& self) -> void { self.max_frame_time = -1.0; }
+
+  explicit operator float() const { return (float)timestep; }
 
 private:
-  double m_timestep; // MilliSeconds
-  double m_last_time;
-  double m_elapsed;
+  f64 timestep = 0; // Stored as MilliSeconds
+  f64 last_time = 0;
+  f64 elapsed = 0;
+  f64 max_frame_time = -1.0;
 
-  Timer* m_Timer;
+  Timer* timer = nullptr;
 };
 } // namespace ox
