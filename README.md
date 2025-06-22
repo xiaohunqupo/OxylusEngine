@@ -1,8 +1,7 @@
 # Oxylus Engine
 ![Logo](https://i.imgur.com/4JpO3vl.png)     
 [![CI](https://img.shields.io/github/actions/workflow/status/Hatrickek/OxylusEngine/xmake.yaml?&style=for-the-badge&logo=cmake&logoColor=orange&labelColor=black)](https://github.com/Hatrickek/OxylusEngine/actions/workflows/xmake.yaml)
-![Discord](https://img.shields.io/discord/1364938544736370820?style=for-the-badge&logo=discord&logoColor=orange&label=DISCORD&labelColor=ORANGE
-)
+[![Discord](https://img.shields.io/discord/1364938544736370820?style=for-the-badge&logo=discord&logoColor=orange&label=Discord&link=https%3A%2F%2Fdiscord.gg%2FcbQDJrWszk)](https://discord.gg/cbQDJrWszk)
 ## About   
 Oxylus is a simple yet powerful data-driven game engine built in C++ with a focus on developer productivity and performance. It is free and will be open-source forever!
 
