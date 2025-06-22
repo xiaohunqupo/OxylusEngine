@@ -409,10 +409,14 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
       }
 
       ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
-      _scene->world.query<TransformComponent>().each([this](const flecs::entity e, TransformComponent) {
-        if (e.parent() == flecs::entity::null())
-          draw_entity_node(e);
-      });
+      _scene->world.query_builder<TransformComponent>()
+          .with(flecs::Disabled)
+          .optional()
+          .build()
+          .each([this](const flecs::entity e, TransformComponent) {
+            if (e.parent() == flecs::entity::null())
+              draw_entity_node(e);
+          });
       ImGui::PopStyleVar();
 
       const auto pop_item_spacing = editor_theme.popup_item_spacing;

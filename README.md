@@ -14,7 +14,7 @@ Be aware that Oxylus is still in it's early stages of development. Some importan
 - **Modular**: Modular design—use only the parts you need, swap out the rest
 - **Fast**: Optimized for speed with parallel processing where possible
 
-## Feature Highlights: 
+## Feature Highlights 
 - Modular Vulkan renderer built using [vuk](https://github.com/martty/vuk) with modern rendering features:
 	- Meshlet Rendering
 	- GI with [Brixelizer](https://gpuopen.com/fidelityfx-brixelizer/)
