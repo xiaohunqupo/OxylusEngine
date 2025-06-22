@@ -156,6 +156,11 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
                         {},
                         {.path = shaders_dir + "/passes/bloom/bloom_upsample.slang", .entry_points = {"cs_main"}});
 
+  slang.create_pipeline(runtime,
+                        "fxaa_pipeline",
+                        {},
+                        {.path = shaders_dir + "/passes/fxaa/fxaa.slang", .entry_points = {"vs_main", "fs_main"}});
+
   // --- DescriptorSets ---
   this->descriptor_set_01 = runtime.create_persistent_descriptorset(allocator, dslci_01, 1);
 
@@ -1119,6 +1124,26 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     PassConfig pass_config_flags = PassConfig::None;
     if (static_cast<bool>(RendererCVar::cvar_bloom_enable.get()))
       pass_config_flags |= PassConfig::EnableBloom;
+    if (static_cast<bool>(RendererCVar::cvar_fxaa_enable.get()))
+      pass_config_flags |= PassConfig::EnableFXAA;
+
+    // --- FXAA Pass ---
+    if (pass_config_flags & PassConfig::EnableFXAA) {
+      final_attachment = vuk::make_pass("fxaa", [](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eColorWrite) out) {
+        const glm::vec2 inverse_screen_size = 1.f / glm::vec2(out->extent.width, out->extent.height);
+        cmd_list.bind_graphics_pipeline("fxaa_pipeline")
+            .bind_image(0, 0, out)
+            .set_rasterization({})
+            .set_color_blend(out, {})
+            .set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
+            .set_viewport(0, vuk::Rect2D::framebuffer())
+            .set_scissor(0, vuk::Rect2D::framebuffer())
+            .bind_sampler(0, 1, vuk::LinearSamplerClamped)
+            .push_constants(vuk::ShaderStageFlagBits::eFragment, 0, PushConstants(inverse_screen_size))
+            .draw(3, 1, 0, 0);
+        return out;
+      })(final_attachment);
+    }
 
     // --- Bloom Pass ---
     const f32 bloom_threshold = RendererCVar::cvar_bloom_threshold.get();
