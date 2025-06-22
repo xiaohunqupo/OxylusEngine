@@ -1119,11 +1119,10 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     // --- Bloom Pass ---
     const f32 bloom_threshold = RendererCVar::cvar_bloom_threshold.get();
     const f32 bloom_clamp = RendererCVar::cvar_bloom_clamp.get();
-
-    constexpr uint32_t bloom_mip_count = 8; // TODO: maybe configurable?
+    const u32 bloom_mip_count = static_cast<u32>(RendererCVar::cvar_bloom_mips.get());
 
     auto bloom_ia = vuk::ImageAttachment{
-        .format = vuk::Format::eR16G16B16A16Sfloat,
+        .format = vuk::Format::eB10G11R11UfloatPack32,
         .sample_count = vuk::SampleCountFlagBits::e1,
         .level_count = bloom_mip_count,
         .layer_count = 1,
@@ -1131,72 +1130,75 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
     auto bloom_down_image = vuk::clear_image(vuk::declare_ia("bloom_down_image", bloom_ia), vuk::Black<float>);
     bloom_down_image.same_extent_as(final_attachment);
+    bloom_down_image.same_format_as(final_attachment);
 
     bloom_ia.level_count = bloom_mip_count - 1;
     auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_ia), vuk::Black<float>);
     bloom_up_image.same_extent_as(final_attachment);
 
-    std::tie(final_attachment, bloom_down_image) = vuk::make_pass( //
-        "bloom_prefilter",
-        [bloom_threshold,
-         bloom_clamp](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eComputeRead) src, VUK_IA(vuk::eComputeRW) out) {
-          cmd_list //
-              .bind_compute_pipeline("bloom_prefilter_pipeline")
-              .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(bloom_threshold, bloom_clamp))
-              .bind_image(0, 0, out)
-              .bind_image(0, 1, src)
-              .bind_sampler(0, 2, vuk::NearestMagLinearMinSamplerClamped)
-              .dispatch(static_cast<usize>(src->extent.width + 8 - 1) / 8,
-                        static_cast<usize>(src->extent.height + 8 - 1) / 8,
-                        1);
-
-          return std::make_tuple(src, out);
-        })(final_attachment, bloom_down_image.mip(0));
-
-    auto converge = vuk::make_pass(
-        "converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
-    auto prefiltered_downsample_image = converge(bloom_down_image);
-    auto src_mip = prefiltered_downsample_image.mip(0);
-
-    for (uint32_t i = 1; i < bloom_mip_count; i++) {
-      src_mip = vuk::make_pass(
-          "bloom_downsample",
-          [i](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeSampled) src, VUK_IA(vuk::eComputeRW) out) {
-            const auto size = glm::ivec2(src->extent.width / (1 << i), src->extent.height / (1 << i));
-
-            command_buffer.bind_compute_pipeline("bloom_downsample_pipeline")
+    if (static_cast<bool>(RendererCVar::cvar_bloom_enable.get())) {
+      std::tie(final_attachment, bloom_down_image) = vuk::make_pass( //
+          "bloom_prefilter",
+          [bloom_threshold,
+           bloom_clamp](vuk::CommandBuffer& cmd_list, VUK_IA(vuk::eComputeRead) src, VUK_IA(vuk::eComputeRW) out) {
+            cmd_list //
+                .bind_compute_pipeline("bloom_prefilter_pipeline")
+                .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(bloom_threshold, bloom_clamp))
                 .bind_image(0, 0, out)
                 .bind_image(0, 1, src)
-                .bind_sampler(0, 2, vuk::LinearMipmapNearestSamplerClamped)
-                .dispatch((size.x + 8 - 1) / 8, (size.y + 8 - 1) / 8, 1);
-            return out;
-          })(src_mip, prefiltered_downsample_image.mip(i));
-    }
+                .bind_sampler(0, 2, vuk::NearestMagLinearMinSamplerClamped)
+                .dispatch(static_cast<usize>(src->extent.width + 8 - 1) / 8,
+                          static_cast<usize>(src->extent.height + 8 - 1) / 8,
+                          1);
 
-    // Upsampling
-    // https://www.froyok.fr/blog/2021-12-ue4-custom-bloom/resources/code/bloom_down_up_demo.jpg
+            return std::make_tuple(src, out);
+          })(final_attachment, bloom_down_image.mip(0));
 
-    auto downsampled_image = converge(prefiltered_downsample_image);
-    auto upsample_src_mip = downsampled_image.mip(bloom_mip_count - 1);
+      auto converge = vuk::make_pass(
+          "converge", [](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeRW) output) { return output; });
+      auto prefiltered_downsample_image = converge(bloom_down_image);
+      auto src_mip = prefiltered_downsample_image.mip(0);
 
-    for (int32_t i = (int32_t)bloom_mip_count - 2; i >= 0; i--) {
-      upsample_src_mip = vuk::make_pass( //
-          "bloom_upsample",
-          [i](vuk::CommandBuffer& command_buffer,
-              VUK_IA(vuk::eComputeRW) out,
-              VUK_IA(vuk::eComputeSampled) src1,
-              VUK_IA(vuk::eComputeSampled) src2) {
-            const auto size = glm::ivec2(out->extent.width / (1 << i), out->extent.height / (1 << i));
+      for (uint32_t i = 1; i < bloom_mip_count; i++) {
+        src_mip = vuk::make_pass(
+            "bloom_downsample",
+            [i](vuk::CommandBuffer& command_buffer, VUK_IA(vuk::eComputeSampled) src, VUK_IA(vuk::eComputeRW) out) {
+              const auto size = glm::ivec2(src->extent.width / (1 << i), src->extent.height / (1 << i));
 
-            command_buffer.bind_compute_pipeline("bloom_upsample_pipeline")
-                .bind_image(0, 0, out)
-                .bind_image(0, 1, src1)
-                .bind_image(0, 2, src2)
-                .bind_sampler(0, 3, vuk::NearestMagLinearMinSamplerClamped)
-                .dispatch((size.x + 8 - 1) / 8, (size.y + 8 - 1) / 8, 1);
+              command_buffer.bind_compute_pipeline("bloom_downsample_pipeline")
+                  .bind_image(0, 0, out)
+                  .bind_image(0, 1, src)
+                  .bind_sampler(0, 2, vuk::LinearMipmapNearestSamplerClamped)
+                  .dispatch((size.x + 8 - 1) / 8, (size.y + 8 - 1) / 8, 1);
+              return out;
+            })(src_mip, prefiltered_downsample_image.mip(i));
+      }
 
-            return out;
-          })(bloom_up_image.mip(i), upsample_src_mip, downsampled_image.mip(i));
+      // Upsampling
+      // https://www.froyok.fr/blog/2021-12-ue4-custom-bloom/resources/code/bloom_down_up_demo.jpg
+
+      auto downsampled_image = converge(prefiltered_downsample_image);
+      auto upsample_src_mip = downsampled_image.mip(bloom_mip_count - 1);
+
+      for (int32_t i = (int32_t)bloom_mip_count - 2; i >= 0; i--) {
+        upsample_src_mip = vuk::make_pass( //
+            "bloom_upsample",
+            [i](vuk::CommandBuffer& command_buffer,
+                VUK_IA(vuk::eComputeRW) out,
+                VUK_IA(vuk::eComputeSampled) src1,
+                VUK_IA(vuk::eComputeSampled) src2) {
+              const auto size = glm::ivec2(out->extent.width / (1 << i), out->extent.height / (1 << i));
+
+              command_buffer.bind_compute_pipeline("bloom_upsample_pipeline")
+                  .bind_image(0, 0, out)
+                  .bind_image(0, 1, src1)
+                  .bind_image(0, 2, src2)
+                  .bind_sampler(0, 3, vuk::NearestMagLinearMinSamplerClamped)
+                  .dispatch((size.x + 8 - 1) / 8, (size.y + 8 - 1) / 8, 1);
+
+              return out;
+            })(bloom_up_image.mip(i), upsample_src_mip, downsampled_image.mip(i));
+      }
     }
 
     // --- Auto Exposure Pass ---
