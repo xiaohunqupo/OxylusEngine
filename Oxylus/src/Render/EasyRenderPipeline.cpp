@@ -589,7 +589,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .set_rasterization({.cullMode = vuk::CullModeFlagBits::eBack})
               .set_depth_stencil({.depthTestEnable = true,
                                   .depthWriteEnable = true,
-                                  .depthCompareOp = vuk::CompareOp::eGreaterOrEqual})
+                                  .depthCompareOp = vuk::CompareOp::eGreater})
               .set_color_blend(visbuffer, vuk::BlendPreset::eOff)
               .set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
               .set_viewport(0, vuk::Rect2D::framebuffer())
