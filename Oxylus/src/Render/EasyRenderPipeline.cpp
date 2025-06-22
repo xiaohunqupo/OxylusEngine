@@ -1116,6 +1116,10 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   }
 
   if (!debugging) {
+    PassConfig pass_config_flags = PassConfig::None;
+    if (static_cast<bool>(RendererCVar::cvar_bloom_enable.get()))
+      pass_config_flags |= PassConfig::EnableBloom;
+
     // --- Bloom Pass ---
     const f32 bloom_threshold = RendererCVar::cvar_bloom_threshold.get();
     const f32 bloom_clamp = RendererCVar::cvar_bloom_clamp.get();
@@ -1136,7 +1140,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     auto bloom_up_image = vuk::clear_image(vuk::declare_ia("bloom_up_image", bloom_ia), vuk::Black<float>);
     bloom_up_image.same_extent_as(final_attachment);
 
-    if (static_cast<bool>(RendererCVar::cvar_bloom_enable.get())) {
+    if (pass_config_flags & PassConfig::EnableBloom) {
       std::tie(final_attachment, bloom_down_image) = vuk::make_pass( //
           "bloom_prefilter",
           [bloom_threshold,
@@ -1257,11 +1261,11 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     // --- Tonemap Pass ---
     result_attachment = vuk::make_pass(
         "tonemap",
-        [](vuk::CommandBuffer& cmd_list,
-           VUK_IA(vuk::eColorWrite) dst,
-           VUK_IA(vuk::eFragmentSampled) src,
-           VUK_IA(vuk::eFragmentSampled) bloom_src,
-           VUK_BA(vuk::eFragmentRead) exposure) {
+        [pass_config_flags](vuk::CommandBuffer& cmd_list,
+                            VUK_IA(vuk::eColorWrite) dst,
+                            VUK_IA(vuk::eFragmentSampled) src,
+                            VUK_IA(vuk::eFragmentSampled) bloom_src,
+                            VUK_BA(vuk::eFragmentRead) exposure) {
           cmd_list.bind_graphics_pipeline("tonemap_pipeline")
               .set_rasterization({})
               .set_color_blend(dst, vuk::BlendPreset::eOff)
@@ -1271,7 +1275,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .bind_sampler(0, 0, {.magFilter = vuk::Filter::eLinear, .minFilter = vuk::Filter::eLinear})
               .bind_image(0, 1, src)
               .bind_image(0, 2, bloom_src)
-              .push_constants(vuk::ShaderStageFlagBits::eFragment, 0, exposure->device_address)
+              .push_constants(
+                  vuk::ShaderStageFlagBits::eFragment, 0, PushConstants(exposure->device_address, pass_config_flags))
               .draw(3, 1, 0, 0);
 
           return dst;
