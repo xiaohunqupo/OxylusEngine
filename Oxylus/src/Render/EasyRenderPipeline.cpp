@@ -122,8 +122,7 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
       runtime, "brdf", dslci_01, {.path = shaders_dir + "/passes/brdf.slang", .entry_points = {"vs_main", "fs_main"}});
 
   //  ── FFX ─────────────────────────────────────────────────────────────
-  // slang.create_pipeline(runtime, "hiz", {}, {.path = shaders_dir + "/passes/hiz.slang", .entry_points =
-  // {"cs_main"}});
+  slang.create_pipeline(runtime, "hiz", {}, {.path = shaders_dir + "/passes/hiz.slang", .entry_points = {"cs_main"}});
 
   // --- PostProcess ---
   slang.create_pipeline(runtime,
