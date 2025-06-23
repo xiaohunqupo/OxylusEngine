@@ -7,6 +7,8 @@
 #include "Core/Keycodes.hpp"
 
 namespace ox {
+struct Window;
+
 class Input : public ESystem {
 public:
   enum class CursorState { Disabled = 0x00034003, Normal = 0x00034001, Hidden = 0x00034002 };
@@ -26,14 +28,20 @@ public:
   static bool get_key_pressed(const KeyCode key) { return _instance->input_data.key_pressed[int(key)]; }
   static bool get_key_released(const KeyCode key) { return _instance->input_data.key_released[int(key)]; }
   static bool get_key_held(const KeyCode key) { return _instance->input_data.key_held[int(key)]; }
+
+  /// Mouse
   static bool get_mouse_clicked(const MouseCode key) { return _instance->input_data.mouse_clicked[int(key)]; }
   static bool get_mouse_held(const MouseCode key) { return _instance->input_data.mouse_held[int(key)]; }
   // TODO: get_mouse_released()
-
-  /// Mouse
   static glm::vec2 get_mouse_position();
   static glm::vec2 get_mouse_position_rel();
-  static void set_mouse_position(float x, float y);
+
+  static void set_mouse_position_global(float x, float y);
+  static void set_mouse_position_window(const Window& window, glm::vec2 position);
+
+  static bool get_relative_mouse_mode_window(const Window& window);
+  static void set_relative_mouse_mode_window(const Window& window, bool enabled);
+
   static float get_mouse_offset_x();
   static float get_mouse_offset_y();
   static float get_mouse_scroll_offset_y();

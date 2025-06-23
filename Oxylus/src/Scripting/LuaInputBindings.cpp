@@ -18,7 +18,7 @@ void bind_input(sol::state* state) {
   SET_TYPE_FUNCTION(input, Input, get_mouse_held);
   SET_TYPE_FUNCTION(input, Input, get_mouse_scroll_offset_y);
   SET_TYPE_FUNCTION(input, Input, get_mouse_position);
-  SET_TYPE_FUNCTION(input, Input, set_mouse_position);
+  SET_TYPE_FUNCTION(input, Input, set_mouse_position_global);
 
   const std::initializer_list<std::pair<sol::string_view, Input::CursorState>> cursor_states = {
       {"Disabled", Input::CursorState::Disabled},

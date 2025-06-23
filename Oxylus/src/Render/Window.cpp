@@ -290,9 +290,4 @@ void* Window::get_handle() const { return impl->handle; }
 float Window::get_content_scale() const { return impl->content_scale; }
 
 float Window::get_refresh_rate() const { return impl->refresh_rate; }
-
-void Window::set_mouse_position(const glm::vec2 position) const {
-  ZoneScoped;
-  SDL_WarpMouseInWindow(impl->handle, position.x, position.y);
-}
 } // namespace ox

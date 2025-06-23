@@ -42,6 +42,8 @@ public:
 
   static void text(std::string_view label, std::string_view value, const char* tooltip = nullptr);
 
+  static void help_marker(const char* desc);
+
   // --- Properties ---
 
   // Bool
@@ -132,7 +134,8 @@ public:
       else
         modified = ImGui::ColorEdit3(id_buffer, glm::value_ptr(value));
     } else {
-      modified = ImGui::DragScalarN(id_buffer, ImGuiDataType_Float, glm::value_ptr(value), component_count, delta, &min, &max);
+      modified = ImGui::DragScalarN(
+          id_buffer, ImGuiDataType_Float, glm::value_ptr(value), component_count, delta, &min, &max);
     }
     end_property_grid();
     return modified;

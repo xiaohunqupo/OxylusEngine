@@ -14,6 +14,7 @@
 #include "Core/Project.hpp"
 #include "EditorTheme.hpp"
 #include "EditorUI.hpp"
+#include "Panels/AssetManagerPanel.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/EditorSettingsPanel.hpp"
 #include "Panels/InspectorPanel.hpp"
@@ -61,6 +62,7 @@ void EditorLayer::on_attach() {
   add_panel<RendererSettingsPanel>();
   add_panel<ProjectPanel>();
   add_panel<StatisticsPanel>();
+  add_panel<AssetManagerPanel>();
 
   const auto& viewport = viewport_panels.emplace_back(std::make_unique<ViewportPanel>());
   viewport->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
@@ -225,6 +227,7 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
 
         if (ImGui::BeginMenu("Assets")) {
           if (ImGui::MenuItem("Asset Manager")) {
+            get_panel<AssetManagerPanel>()->visible = true;
           }
           UI::tooltip_hover("WIP");
           ImGui::EndMenu();

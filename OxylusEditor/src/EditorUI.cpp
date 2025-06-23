@@ -128,6 +128,16 @@ void UI::text(std::string_view label, std::string_view value, const char* toolti
   end_property_grid();
 }
 
+void UI::help_marker(const char* desc) {
+  ImGui::TextDisabled("(?)");
+  if (ImGui::BeginItemTooltip()) {
+    ImGui::PushTextWrapPos(ImGui::GetFontSize() * 35.0f);
+    ImGui::TextUnformatted(desc);
+    ImGui::PopTextWrapPos();
+    ImGui::EndTooltip();
+  }
+}
+
 bool UI::property(const char* label, bool* flag, const char* tooltip) {
   begin_property_grid(label, tooltip);
   push_frame_style();
