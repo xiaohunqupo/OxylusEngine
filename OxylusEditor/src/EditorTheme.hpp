@@ -49,7 +49,7 @@ public:
   inline static ImVec2 ui_frame_padding;
   inline static ImVec2 popup_item_spacing;
 
-  ankerl::unordered_dense::map<size_t, const char8_t*> component_icon_map = {};
+  ankerl::unordered_dense::map<size_t, const char*> component_icon_map = {};
 
   void init(this EditorTheme& self);
 

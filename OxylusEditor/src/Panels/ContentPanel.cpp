@@ -64,7 +64,7 @@ static const ankerl::unordered_dense::map<FileType, ImVec4> TYPE_COLORS = {
     {FileType::Script, {0.0f, 16.0f, 121.0f, 1.00f}},
 };
 
-static const ankerl::unordered_dense::map<FileType, const char8_t*> FILE_TYPES_TO_ICON = {
+static const ankerl::unordered_dense::map<FileType, const char*> FILE_TYPES_TO_ICON = {
     {FileType::Unknown, ICON_MDI_FILE},
     {FileType::Directory, ICON_MDI_FOLDER},
     {FileType::Meta, ICON_MDI_FILE_DOCUMENT},
@@ -198,7 +198,7 @@ std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std:
 
     auto name = fs::get_name_with_extension(filepath);
 
-    const char8_t* folderIcon = ICON_MDI_FILE;
+    const char* folderIcon = ICON_MDI_FILE;
     if (entryIsFile) {
       auto fileType = FileType::Unknown;
       const auto& fileTypeIt = FILE_TYPES.find(entryPath.extension().string());
@@ -214,7 +214,7 @@ std::pair<bool, uint32_t> ContentPanel::directory_tree_view_recursive(const std:
 
     ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Text, editor_theme.asset_icon_color);
-    ImGui::TextUnformatted(StringUtils::from_char8_t(folderIcon));
+    ImGui::TextUnformatted(folderIcon);
     ImGui::PopStyleColor();
     ImGui::SameLine();
     ImGui::TextUnformatted(name.data());
@@ -316,7 +316,7 @@ void ContentPanel::invalidate() {
 }
 
 void ContentPanel::render_header() {
-  if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_COGS)))
+  if (ImGui::Button(ICON_MDI_COGS))
     ImGui::OpenPopup("SettingsPopup");
   if (ImGui::BeginPopup("SettingsPopup")) {
     UI::begin_properties(ImGuiTableFlags_SizingStretchSame);
@@ -338,7 +338,7 @@ void ContentPanel::render_header() {
   if (!m_filter.IsActive()) {
     ImGui::SameLine();
     ImGui::SetCursorPosX(cursorPosX + ImGui::GetFontSize() * 0.5f);
-    ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
+    ImGui::TextUnformatted(ICON_MDI_MAGNIFY " Search...");
   }
 
   ImGui::Spacing();
@@ -355,7 +355,7 @@ void ContentPanel::render_header() {
       ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
     }
 
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_ARROW_LEFT_CIRCLE_OUTLINE))) {
+    if (ImGui::Button(ICON_MDI_ARROW_LEFT_CIRCLE_OUTLINE)) {
       _back_stack.push(_current_directory);
       update_directory_entries(_current_directory.parent_path());
     }
@@ -379,7 +379,7 @@ void ContentPanel::render_header() {
       ImGui::PushStyleVar(ImGuiStyleVar_Alpha, ImGui::GetStyle().Alpha * 0.5f);
     }
 
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_ARROW_RIGHT_CIRCLE_OUTLINE))) {
+    if (ImGui::Button(ICON_MDI_ARROW_RIGHT_CIRCLE_OUTLINE)) {
       const auto& top = _back_stack.top();
       update_directory_entries(top);
       _back_stack.pop();
@@ -393,7 +393,7 @@ void ContentPanel::render_header() {
 
   ImGui::SameLine();
 
-  ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_FOLDER));
+  ImGui::TextUnformatted(ICON_MDI_FOLDER);
 
   ImGui::PushStyleVar(ImGuiStyleVar_FrameBorderSize, 0.0f);
   ImGui::PushStyleColor(ImGuiCol_Button, {0.0f, 0.0f, 0.0f, 0.0f});
@@ -453,10 +453,10 @@ void ContentPanel::render_side_view() {
       update_directory_entries(_assets_directory);
       selection_mask = 0;
     }
-    const char8_t* folderIcon = opened ? ICON_MDI_FOLDER_OPEN : ICON_MDI_FOLDER;
+    const char* folderIcon = opened ? ICON_MDI_FOLDER_OPEN : ICON_MDI_FOLDER;
     ImGui::SameLine();
     ImGui::PushStyleColor(ImGuiCol_Text, editor_theme.asset_icon_color);
-    ImGui::TextUnformatted(StringUtils::from_char8_t(folderIcon));
+    ImGui::TextUnformatted(folderIcon);
     ImGui::PopStyleColor();
     ImGui::SameLine();
     ImGui::TextUnformatted("Assets");
@@ -669,7 +669,7 @@ void ContentPanel::render_body(bool grid) {
             file_type = file_type_it->second;
           }
           ImGui::PushFontSize(thumb_image_size);
-          ImGui::TextUnformatted(StringUtils::from_char8_t(FILE_TYPES_TO_ICON.at(file_type)));
+          ImGui::TextUnformatted(FILE_TYPES_TO_ICON.at(file_type));
           ImGui::PopFontSize();
         }
 
@@ -730,7 +730,7 @@ void ContentPanel::render_body(bool grid) {
           if (file_type_it != FILE_TYPES.end()) {
             file_type = file_type_it->second;
           }
-          ImGui::TextUnformatted(StringUtils::from_char8_t(FILE_TYPES_TO_ICON.at(file_type)));
+          ImGui::TextUnformatted(FILE_TYPES_TO_ICON.at(file_type));
         }
         ImGui::SameLine();
 

@@ -3,6 +3,7 @@ target("OxylusEditor")
     set_languages("cxx23")
 
     add_includedirs("./src")
+    add_includedirs("./vendor", { public = true })
     add_files("./src/**.cpp")
 
     add_deps("Oxylus")

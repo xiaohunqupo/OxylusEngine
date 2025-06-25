@@ -83,7 +83,7 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
   const bool opened = ImGui::TreeNodeEx(reinterpret_cast<void*>(entity.raw_id()),
                                         flags,
                                         "%s %s",
-                                        StringUtils::from_char8_t(ICON_MDI_CUBE_OUTLINE),
+                                        ICON_MDI_CUBE_OUTLINE,
                                         entity.name().c_str());
 
   if (highlight)
@@ -363,10 +363,10 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
 
     const float filter_cursor_pos_x = ImGui::GetCursorPosX();
     _filter.Draw("###HierarchyFilter",
-                 ImGui::GetContentRegionAvail().x - (UI::get_icon_button_size(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
+                 ImGui::GetContentRegionAvail().x - (ImGui::CalcTextSize(ICON_MDI_PLUS, "").x + 2.0f * padding.x));
     ImGui::SameLine();
 
-    if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PLUS)))
+    if (ImGui::Button(ICON_MDI_PLUS))
       ImGui::OpenPopup("SceneHierarchyContextWindow");
 
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(6.0f, 8.0f));
@@ -380,7 +380,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
     if (!_filter.IsActive()) {
       ImGui::SameLine();
       ImGui::SetCursorPosX(filter_cursor_pos_x + ImGui::GetFontSize() * 0.5f);
-      ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_MAGNIFY " Search..."));
+      ImGui::TextUnformatted(ICON_MDI_MAGNIFY " Search...");
     }
 
     const ImVec2 cursor_pos = ImGui::GetCursorPos();
@@ -392,8 +392,7 @@ auto SceneHierarchyPanel::on_render(vuk::Extent3D extent, vuk::Format format) ->
     if (ImGui::BeginTable("HierarchyTable", 3, table_flags)) {
       ImGui::TableSetupColumn("Label", ImGuiTableColumnFlags_NoHide | ImGuiTableColumnFlags_NoClip);
       ImGui::TableSetupColumn("Type", ImGuiTableColumnFlags_WidthFixed, line_height * 3.0f);
-      ImGui::TableSetupColumn(
-          StringUtils::from_char8_t("  " ICON_MDI_EYE_OUTLINE), ImGuiTableColumnFlags_WidthFixed, line_height * 2.0f);
+      ImGui::TableSetupColumn("  " ICON_MDI_EYE_OUTLINE, ImGuiTableColumnFlags_WidthFixed, line_height * 2.0f);
 
       ImGui::TableSetupScrollFreeze(0, 1);
 

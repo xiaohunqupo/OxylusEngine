@@ -47,15 +47,15 @@ static void draw_asset_table_columns(const Asset& asset) {
 
   {
     ImGui::TableSetColumnIndex(3);
-    if (asset.is_loaded())
+    if (!asset.is_loaded())
       ImGui::Text("Invalid ID");
     else
-      ImGui::Text("%lu", static_cast<u64>(asset.texture_id));
+      ImGui::Text("%llu", static_cast<u64>(asset.texture_id));
   }
 
   {
     ImGui::TableSetColumnIndex(4);
-    ImGui::Text("%lu", static_cast<u64>(asset.ref_count));
+    ImGui::Text("%llu", static_cast<u64>(asset.ref_count));
   }
 }
 
@@ -144,9 +144,13 @@ void AssetManagerPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
 
   on_begin();
 
-  UI::button("Expand All");
+  i32 open_action = -1;
+
+  if (UI::button("Expand All"))
+    open_action = 1;
   ImGui::SameLine();
-  UI::button("Collapse All");
+  if (UI::button("Collapse All"))
+    open_action = 0;
 
   constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_SpanAvailWidth | ImGuiTreeNodeFlags_AllowItemOverlap |
                                             ImGuiTreeNodeFlags_Framed | ImGuiTreeNodeFlags_FramePadding;
@@ -157,13 +161,36 @@ void AssetManagerPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
 
   UI::help_marker("\"Invalid ID\" means asset is not loaded yet or has been unloaded.");
 
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Texture Assets", "textures_table", texture_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
+
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Mesh Assets", "meshes_table", mesh_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
+
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Material Assets", "materials_table", material_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
+
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Scene Assets", "scenes_table", scene_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
+
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Audio Assets", "audio_table", audio_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
+
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Script Assets", "script_table", script_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
+
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Shader Assets", "shader_table", shader_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
+
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   draw_asset_table("Font Assets", "font_table", font_assets, TREE_FLAGS, TABLE_COLUMNS_COUNT, TABLE_FLAGS);
 
   on_end();

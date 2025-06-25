@@ -23,7 +23,7 @@
 
 namespace ox {
 template <typename T>
-void show_component_gizmo(const char8_t* icon,
+void show_component_gizmo(const char* icon,
                           const std::string& name,
                           const float width,
                           const float height,
@@ -46,7 +46,7 @@ void show_component_gizmo(const char8_t* icon,
 
         constexpr auto icon_size = 48.f;
         ImGui::PushFontSize(icon_size);
-        if (ImGui::Button(StringUtils::from_char8_t(icon), {50.f, 50.f})) {
+        if (ImGui::Button(icon, {50.f, 50.f})) {
           auto& editor_context = EditorLayer::get()->get_context();
           editor_context.reset();
           editor_context.entity = entity;
@@ -85,7 +85,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     ImGui::PopStyleVar();
 
     if (ImGui::BeginMenuBar()) {
-      if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_COGS))) {
+      if (ImGui::MenuItem(ICON_MDI_COGS)) {
         viewport_settings_popup = true;
       }
       ImGui::EndMenuBar();
@@ -242,8 +242,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
         const ImVec2 dragger_cursor_pos = ImGui::GetCursorPos();
         ImGui::SetCursorPosX(dragger_cursor_pos.x + frame_padding.x);
-        ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_DOTS_HORIZONTAL));
-        ImVec2 dragger_size = ImGui::CalcTextSize(StringUtils::from_char8_t(ICON_MDI_DOTS_HORIZONTAL));
+        ImGui::TextUnformatted(ICON_MDI_DOTS_HORIZONTAL);
+        ImVec2 dragger_size = ImGui::CalcTextSize(ICON_MDI_DOTS_HORIZONTAL);
         dragger_size.x *= 2.0f;
         ImGui::SetCursorPos(dragger_cursor_pos);
         ImGui::InvisibleButton("GizmoDragger", dragger_size);
@@ -256,54 +256,29 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         last_mouse_position = mouse_pos;
 
         constexpr float alpha = 0.6f;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW),
-                              _gizmo_type == ImGuizmo::TRANSLATE,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_AXIS_ARROW, _gizmo_type == ImGuizmo::TRANSLATE, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::TRANSLATE;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D),
-                              _gizmo_type == ImGuizmo::ROTATE,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_ROTATE_3D, _gizmo_type == ImGuizmo::ROTATE, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::ROTATE;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND),
-                              _gizmo_type == ImGuizmo::SCALE,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_ARROW_EXPAND, _gizmo_type == ImGuizmo::SCALE, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::SCALE;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE),
-                              _gizmo_type == ImGuizmo::BOUNDS,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_VECTOR_SQUARE, _gizmo_type == ImGuizmo::BOUNDS, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::BOUNDS;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL),
-                              _gizmo_type == ImGuizmo::UNIVERSAL,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_ARROW_EXPAND_ALL, _gizmo_type == ImGuizmo::UNIVERSAL, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::UNIVERSAL;
-        if (UI::toggle_button(_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
-                                                             : StringUtils::from_char8_t(ICON_MDI_EARTH_OFF),
+        if (UI::toggle_button(_gizmo_mode == ImGuizmo::WORLD ? ICON_MDI_EARTH : ICON_MDI_EARTH_OFF,
                               _gizmo_mode == ImGuizmo::WORLD,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_mode = _gizmo_mode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID),
-                              RendererCVar::cvar_draw_grid.get(),
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_GRID, RendererCVar::cvar_draw_grid.get(), button_size, alpha, alpha))
           RendererCVar::cvar_draw_grid.toggle();
 
         if (editor_camera.has<CameraComponent>()) {
           auto* cam = editor_camera.get_mut<CameraComponent>();
           UI::push_id();
-          if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
+          if (UI::toggle_button(ICON_MDI_CAMERA,
                                 cam->projection == CameraComponent::Projection::Orthographic,
                                 button_size,
                                 alpha,
@@ -333,9 +308,9 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
 
         const bool highlight = editor_layer->scene_state == EditorLayer::SceneState::Play;
-        const char8_t* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
+        const char* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
                                                                                          : ICON_MDI_STOP;
-        if (UI::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
+        if (UI::toggle_button(icon, highlight, button_size)) {
           if (editor_layer->scene_state == EditorLayer::SceneState::Edit) {
             editor_layer->on_scene_play();
             editor_camera.disable();
@@ -345,12 +320,12 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         }
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.4f));
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PAUSE), button_size)) {
+        if (ImGui::Button(ICON_MDI_PAUSE, button_size)) {
           if (editor_layer->scene_state == EditorLayer::SceneState::Play)
             editor_layer->on_scene_stop();
         }
         ImGui::SameLine();
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_STEP_FORWARD), button_size)) {
+        if (ImGui::Button(ICON_MDI_STEP_FORWARD, button_size)) {
           editor_layer->on_scene_simulate();
         }
         ImGui::PopStyleColor();

@@ -32,8 +32,6 @@ public:
 
   static void tooltip_hover(const char* text);
 
-  static ImVec2 get_icon_button_size(const char8_t* icon, const char* label);
-
   static void center_next_window();
 
   static void spacing(const uint32_t count);
@@ -192,7 +190,7 @@ public:
                            const ImVec4& tint_col = ImVec4(1, 1, 1, 1),
                            const ImVec4& bg_col = ImVec4(0, 0, 0, 0));
 
-  static bool icon_button(const char8_t* icon, const char* label, ImVec4 icon_color = {0.537f, 0.753f, 0.286f, 1.0f});
+  static bool icon_button(const char* icon, const char* label, ImVec4 icon_color = {0.537f, 0.753f, 0.286f, 1.0f});
 
   static void clipped_text(const ImVec2& pos_min,
                            const ImVec2& pos_max,

@@ -95,17 +95,6 @@ void UI::tooltip_hover(const char* text) {
   }
 }
 
-ImVec2 UI::get_icon_button_size(const char8_t* icon, const char* label) {
-  const float line_height = ImGui::GetTextLineHeight();
-  const ImVec2 padding = ImGui::GetStyle().FramePadding;
-
-  float width = ImGui::CalcTextSize(StringUtils::from_char8_t(icon)).x;
-  width += ImGui::CalcTextSize(label).x;
-  width += padding.x * 2.0f;
-
-  return {width, line_height + padding.y * 2.0f};
-}
-
 void UI::center_next_window() {
   const auto center = ImGui::GetMainViewport()->GetCenter();
   ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
@@ -510,13 +499,13 @@ bool UI::image_button(const char* id,
   return ImGui::ImageButton(id, App::get()->get_imgui_layer()->add_image(texture), size, uv0, uv1, bg_col, tint_col);
 }
 
-bool UI::icon_button(const char8_t* icon, const char* label, const ImVec4 icon_color) {
+bool UI::icon_button(const char* icon, const char* label, const ImVec4 icon_color) {
   ImGui::PushID(label);
 
   const float line_height = ImGui::GetTextLineHeight();
   const ImVec2 padding = ImGui::GetStyle().FramePadding;
 
-  float width = ImGui::CalcTextSize(StringUtils::from_char8_t(icon)).x;
+  float width = ImGui::CalcTextSize(icon).x;
   width += ImGui::CalcTextSize(label).x;
   width += padding.x * 2.0f;
   float height = line_height + padding.y * 2.0f;
@@ -526,7 +515,7 @@ bool UI::icon_button(const char8_t* icon, const char* label, const ImVec4 icon_c
   ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, {0, 0});
   ImGui::SameLine();
   ImGui::SetCursorPosX(cursor_pos_x);
-  ImGui::TextColored(icon_color, "%s", StringUtils::from_char8_t(icon));
+  ImGui::TextColored(icon_color, "%s", icon);
   ImGui::SameLine();
   ImGui::TextUnformatted(label);
   ImGui::PopStyleVar();

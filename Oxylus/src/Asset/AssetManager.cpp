@@ -569,6 +569,9 @@ auto AssetManager::load_asset(const UUID& uuid) -> bool {
     case AssetType::Audio: {
       return this->load_audio(uuid);
     }
+    case AssetType::Script: {
+      return this->load_script(uuid);
+    }
     default:;
   }
 
@@ -594,6 +597,10 @@ auto AssetManager::unload_asset(const UUID& uuid) -> bool {
     }
     case AssetType::Script: {
       return this->unload_script(uuid);
+      break;
+    }
+    case AssetType::Material: {
+      return this->unload_material(uuid);
       break;
     }
     default:;
@@ -953,6 +960,8 @@ auto AssetManager::unload_mesh(const UUID& uuid) -> bool {
   mesh_map.destroy_slot(asset->mesh_id);
   asset->mesh_id = MeshID::Invalid;
 
+  OX_LOG_TRACE("Unloaded mesh {}", uuid.str());
+
   return true;
 }
 
@@ -991,10 +1000,10 @@ auto AssetManager::unload_texture(const UUID& uuid) -> bool {
     return false;
   }
 
-  OX_LOG_TRACE("Unloaded texture {}.", uuid.str());
-
   texture_map.destroy_slot(asset->texture_id);
   asset->texture_id = TextureID::Invalid;
+
+  OX_LOG_TRACE("Unloaded texture {}", uuid.str());
 
   return true;
 }
@@ -1110,6 +1119,8 @@ auto AssetManager::unload_material(const UUID& uuid) -> bool {
   material_map.destroy_slot(asset->material_id);
   asset->material_id = MaterialID::Invalid;
 
+  OX_LOG_INFO("Unloaded material {}", uuid.str());
+
   return true;
 }
 
@@ -1142,6 +1153,8 @@ auto AssetManager::unload_scene(const UUID& uuid) -> bool {
   scene_map.destroy_slot(asset->scene_id);
   asset->scene_id = SceneID::Invalid;
 
+  OX_LOG_INFO("Unloaded scene {}", uuid.str());
+
   return true;
 }
 
@@ -1160,7 +1173,7 @@ auto AssetManager::load_audio(const UUID& uuid) -> bool {
   audio.load(asset->path);
   asset->audio_id = audio_map.create_slot(std::move(audio));
 
-  OX_LOG_INFO("Loaded audio {} {}.", asset->uuid.str(), SlotMap_decode_id(asset->audio_id).index);
+  OX_LOG_INFO("Loaded audio {}", uuid.str());
 
   return true;
 }
@@ -1177,10 +1190,10 @@ auto AssetManager::unload_audio(const UUID& uuid) -> bool {
   OX_CHECK_NULL(audio);
   audio->unload();
 
-  OX_LOG_INFO("Unloaded audio {}.", uuid.str());
-
   audio_map.destroy_slot(asset->audio_id);
   asset->audio_id = AudioID::Invalid;
+
+  OX_LOG_INFO("Unloaded audio {}.", uuid.str());
 
   return true;
 }

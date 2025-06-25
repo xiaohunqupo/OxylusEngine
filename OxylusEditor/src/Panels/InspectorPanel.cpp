@@ -12,12 +12,29 @@
 #include "EditorTheme.hpp"
 #include "EditorUI.hpp"
 #include "Render/ParticleSystem.hpp"
+#include "Scene/ECSModule/ComponentWrapper.hpp"
 #include "Scene/ECSModule/Core.hpp"
 #include "Utils/ColorUtils.hpp"
 #include "Utils/PayloadData.hpp"
 #include "Utils/StringUtils.hpp"
 
 namespace ox {
+static f32 degree_helper(const char* id, f32 value) {
+  f32 in_degrees = glm::degrees(value);
+  f32 in_radians = value;
+
+  if (ImGui::BeginPopupContextItem(id)) {
+    UI::begin_properties();
+    if (UI::property("Set in degrees", &in_degrees)) {
+      in_radians = glm::radians(in_degrees);
+    }
+    UI::end_properties();
+    ImGui::EndPopup();
+  }
+
+  return in_radians;
+}
+
 InspectorPanel::InspectorPanel() : EditorPanel("Inspector", ICON_MDI_INFORMATION, true), _scene(nullptr) {}
 
 void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
@@ -60,58 +77,6 @@ void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   on_end();
 }
 
-template <typename T, typename UIFunction>
-void draw_component(const char* name, flecs::entity entity, UIFunction ui_function, const bool removable = true) {
-  if (!entity.has<T>())
-    return;
-  auto* component = entity.get_mut<T>();
-  if (!component) {
-    return;
-  }
-  static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
-                                                   ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed |
-                                                   ImGuiTreeNodeFlags_FramePadding;
-
-  auto& editor_theme = EditorLayer::get()->editor_theme;
-
-  const float line_height = editor_theme.regular_font_size + GImGui->Style.FramePadding.y * 2.0f;
-
-  ImGui::SetCursorPosY(ImGui::GetCursorPosY() + line_height * 0.25f);
-
-  const auto id = typeid(T).hash_code();
-  OX_ASSERT(editor_theme.component_icon_map.contains(id));
-  std::string name_str = StringUtils::from_char8_t(editor_theme.component_icon_map[id]);
-  name_str = name_str.append(name);
-  const bool open = ImGui::TreeNodeEx(reinterpret_cast<void*>(id), TREE_FLAGS, "%s", name_str.c_str());
-
-  bool remove_component = false;
-  if (removable) {
-    ImGui::PushID(static_cast<int>(id));
-
-    const float frame_height = ImGui::GetFrameHeight();
-    ImGui::SameLine(ImGui::GetContentRegionMax().x - frame_height * 1.2f);
-    if (UI::button(StringUtils::from_char8_t(ICON_MDI_SETTINGS), ImVec2{frame_height * 1.2f, frame_height}))
-      ImGui::OpenPopup("ComponentSettings");
-
-    if (ImGui::BeginPopup("ComponentSettings")) {
-      if (ImGui::MenuItem("Remove Component"))
-        remove_component = true;
-
-      ImGui::EndPopup();
-    }
-
-    ImGui::PopID();
-  }
-
-  if (open) {
-    ui_function(*component, entity);
-    ImGui::TreePop();
-  }
-
-  if (remove_component)
-    entity.remove<T>();
-}
-
 void InspectorPanel::draw_material_properties(Material* material, const UUID& material_uuid, flecs::entity load_event) {
   if (material_uuid) {
     const auto& window = App::get()->get_window();
@@ -121,7 +86,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
     auto uuid_str = fmt::format("UUID: {}", material_uuid.str());
     ImGui::TextUnformatted(uuid_str.c_str());
 
-    auto load_str = fmt::format("{} Load", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
+    auto load_str = fmt::format("{} Load", ICON_MDI_FILE_UPLOAD);
 
     const float x = ImGui::GetContentRegionAvail().x / 2;
     const float y = ImGui::GetFrameHeight();
@@ -166,7 +131,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
 
     ImGui::SameLine();
 
-    auto save_str = fmt::format("{} Save", StringUtils::from_char8_t(ICON_MDI_FILE_DOWNLOAD));
+    auto save_str = fmt::format("{} Save", ICON_MDI_FILE_DOWNLOAD);
     if (UI::button(save_str.c_str(), {x, y})) {
       FileDialogFilter dialog_filters[] = {{.name = "Asset (.oxasset)", .pattern = "oxasset"}};
       window.show_dialog({
@@ -248,83 +213,9 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
   }
 }
 
-template <typename T>
-static void draw_particle_over_lifetime_module(const std::string_view module_name,
-                                               OverLifetimeModule<T>& property_module,
-                                               bool color = false,
-                                               bool rotation = false) {
-  static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
-                                                   ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed |
-                                                   ImGuiTreeNodeFlags_FramePadding;
+void InspectorPanel::draw_components(flecs::entity entity) {
+  ZoneScoped;
 
-  if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
-    UI::begin_properties();
-    UI::texture_property("Enabled", &property_module.enabled);
-
-    if (rotation) {
-      T degrees = glm::degrees(property_module.start);
-      if (UI::property_vector("Start", degrees))
-        property_module.start = glm::radians(degrees);
-
-      degrees = glm::degrees(property_module.end);
-      if (UI::property_vector("End", degrees))
-        property_module.end = glm::radians(degrees);
-    } else {
-      UI::property_vector("Start", property_module.start, color);
-      UI::property_vector("End", property_module.end, color);
-    }
-
-    UI::end_properties();
-
-    ImGui::TreePop();
-  }
-}
-
-template <typename T>
-static void draw_particle_by_speed_module(const std::string_view module_name,
-                                          BySpeedModule<T>& property_module,
-                                          bool color = false,
-                                          bool rotation = false) {
-  static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen | ImGuiTreeNodeFlags_SpanAvailWidth |
-                                                   ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed |
-                                                   ImGuiTreeNodeFlags_FramePadding;
-
-  if (ImGui::TreeNodeEx(module_name.data(), TREE_FLAGS, "%s", module_name.data())) {
-    UI::begin_properties();
-    UI::texture_property("Enabled", &property_module.enabled);
-
-    if (rotation) {
-      T degrees = glm::degrees(property_module.start);
-      if (UI::property_vector("Start", degrees))
-        property_module.start = glm::radians(degrees);
-
-      degrees = glm::degrees(property_module.end);
-      if (UI::property_vector("End", degrees))
-        property_module.end = glm::radians(degrees);
-    } else {
-      UI::property_vector("Start", property_module.start, color);
-      UI::property_vector("End", property_module.end, color);
-    }
-
-    UI::texture_property("Min Speed", &property_module.min_speed);
-    UI::texture_property("Max Speed", &property_module.max_speed);
-    UI::end_properties();
-    ImGui::TreePop();
-  }
-}
-
-template <typename Component>
-void draw_add_component(const flecs::entity entity, const char* name) {
-  if (ImGui::MenuItem(name)) {
-    if (entity.has<Component>())
-      OX_LOG_WARN("Entity already has same component!");
-    else
-      entity.add<Component>();
-    ImGui::CloseCurrentPopup();
-  }
-}
-
-void InspectorPanel::draw_components(const flecs::entity entity) {
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.9f);
   std::string new_name = entity.name().c_str();
   if (_rename_entity)
@@ -337,356 +228,206 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
   ImGui::PopItemWidth();
   ImGui::SameLine();
 
-  if (UI::button(StringUtils::from_char8_t(ICON_MDI_PLUS))) {
+  if (UI::button(ICON_MDI_PLUS)) {
     ImGui::OpenPopup("Add Component");
   }
+
+  const auto components = _scene->component_db.get_components();
+
   if (ImGui::BeginPopup("Add Component")) {
-    // TODO: Use flecs reflections for easy iteration over components.
-    draw_add_component<MeshComponent>(entity, "Mesh Renderer");
-    draw_add_component<AudioSourceComponent>(entity, "Audio Source");
-    draw_add_component<AudioListenerComponent>(entity, "Audio Listener");
-    draw_add_component<LightComponent>(entity, "Light");
-    draw_add_component<ParticleSystemComponent>(entity, "Particle System");
-    draw_add_component<CameraComponent>(entity, "Camera");
-    draw_add_component<RigidbodyComponent>(entity, "Rigidbody");
-    draw_add_component<BoxColliderComponent>(entity, "Box Collider");
-    draw_add_component<SphereColliderComponent>(entity, "Sphere Collider");
-    draw_add_component<CapsuleColliderComponent>(entity, "Capsule Collider");
-    draw_add_component<TaperedCapsuleColliderComponent>(entity, "Tapered Capsule Collider");
-    draw_add_component<CylinderColliderComponent>(entity, "Cylinder Collider");
-    draw_add_component<MeshColliderComponent>(entity, "Mesh Collider");
-    draw_add_component<CharacterControllerComponent>(entity, "Character Controller");
-    draw_add_component<LuaScriptComponent>(entity, "Lua Script Component");
-    draw_add_component<SpriteComponent>(entity, "Sprite Component");
-    draw_add_component<SpriteAnimationComponent>(entity, "Sprite Animation Component");
-    draw_add_component<AtmosphereComponent>(entity, "Atmosphere Component");
-    draw_add_component<AutoExposureComponent>(entity, "Auto Exposure Component");
+    for (auto& component : components) {
+      auto component_entity = component.entity();
+      auto component_name = component_entity.name();
+
+      if (ImGui::MenuItem(component_name)) {
+        if (entity.has(component))
+          OX_LOG_WARN("Entity already has same component!");
+        else
+          entity.add(component);
+        ImGui::CloseCurrentPopup();
+      }
+    }
     ImGui::EndPopup();
   }
 
-  draw_component<TransformComponent>(
-      " Transform Component", entity, [](TransformComponent& component, flecs::entity e) {
-        UI::begin_properties(ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV);
-        if (UI::draw_vec3_control("Translation", component.position)) {
-          e.modified<TransformComponent>();
-        }
-        glm::vec3 rotation = glm::degrees(component.rotation);
-        if (UI::draw_vec3_control("Rotation", rotation)) {
-          component.rotation = glm::radians(rotation);
-          e.modified<TransformComponent>();
-        }
-        if (UI::draw_vec3_control("Scale", component.scale, nullptr, 1.0f)) {
-          e.modified<TransformComponent>();
-        }
+  for (auto& component : components) {
+    if (!entity.has(component))
+      continue;
+    auto* entity_component = entity.get_mut(component);
+    if (!entity_component) {
+      continue;
+    }
+    static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen |
+                                                     ImGuiTreeNodeFlags_SpanAvailWidth |
+                                                     ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed |
+                                                     ImGuiTreeNodeFlags_FramePadding;
+
+    auto& editor_theme = EditorLayer::get()->editor_theme;
+
+    const float line_height = editor_theme.regular_font_size + GImGui->Style.FramePadding.y * 2.0f;
+
+    ImGui::SetCursorPosY(ImGui::GetCursorPosY() + line_height * 0.25f);
+
+    auto component_entity = component.entity();
+    auto component_name = component_entity.name();
+
+    const auto id = 0; // typeid(T).hash_code();
+    const auto icon_available = editor_theme.component_icon_map.contains(id);
+    std::string name_str = icon_available ? editor_theme.component_icon_map[id] : ICON_MDI_APPLICATION_IMPORT;
+    name_str = name_str.append(component_name);
+    const bool open = ImGui::TreeNodeEx(name_str.c_str(), TREE_FLAGS, "%s", name_str.c_str());
+
+    bool remove_component = false;
+
+    ImGui::PushID(name_str.c_str());
+    const float frame_height = ImGui::GetFrameHeight();
+    ImGui::SameLine(ImGui::GetContentRegionMax().x - frame_height * 1.2f);
+    if (UI::button(ICON_MDI_COG, ImVec2{frame_height * 1.2f, frame_height}))
+      ImGui::OpenPopup("ComponentSettings");
+
+    if (ImGui::BeginPopup("ComponentSettings")) {
+      if (ImGui::MenuItem("Remove Component"))
+        remove_component = true;
+
+      ImGui::EndPopup();
+    }
+    ImGui::PopID();
+
+    if (open) {
+      ECS::ComponentWrapper component_wrapped(entity, component);
+
+      component_wrapped.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+        ImGuiTableFlags properties_flags = UI::default_properties_flags;
+
+        // Special case for Transform Component
+        const auto is_transform_component = component_name == "TransformComponent";
+        if (is_transform_component)
+          properties_flags = ImGuiTableFlags_SizingFixedFit | ImGuiTableFlags_BordersInnerV;
+
+        UI::begin_properties(properties_flags);
+
+        std::visit(ox::match{
+                       [](const auto&) {},
+                       [&](bool* v) { UI::property(member_name.data(), v); },
+                       [&](u16* v) { UI::property(member_name.data(), v); },
+                       [&](f32* v) {
+                         UI::property(member_name.data(), v);
+                         *v = degree_helper(member_name.data(), *v);
+                       },
+                       [&](i32* v) { UI::property(member_name.data(), v); },
+                       [&](u32* v) { UI::property(member_name.data(), v); },
+                       [&](i64* v) { UI::property(member_name.data(), v); },
+                       [&](u64* v) { UI::property(member_name.data(), v); },
+                       [&](glm::vec2* v) { UI::property_vector(member_name.data(), *v); },
+                       [&](glm::vec3* v) {
+                         if (is_transform_component) {
+                           // Display rotation field of transform component as degrees instead of radians
+                           if (member_name == "rotation") {
+                             glm::vec3 rotation = glm::degrees(*v);
+                             if (UI::draw_vec3_control(member_name.data(), rotation)) {
+                               *v = glm::radians(rotation);
+                               entity.modified(component);
+                             }
+                           } else {
+                             if (UI::draw_vec3_control(member_name.data(), *v))
+                               entity.modified(component);
+                           }
+                         } else {
+                           UI::property_vector(member_name.data(), *v);
+                         }
+                       },
+                       [&](glm::vec4* v) {
+                         if (UI::property_vector(member_name.data(), *v))
+                           entity.modified(component);
+                       },
+                       [&](glm::quat* v) { /* noop */ },
+                       [&](glm::mat4* v) { /* noop */ },
+                       [&](std::string* v) { UI::input_text(member_name.data(), v); },
+                       [&](UUID* uuid) {
+                         auto uuid_str = uuid->str();
+                         UI::input_text(member_name.data(), &uuid_str, ImGuiInputTextFlags_ReadOnly);
+
+                         UI::end_properties();
+
+                         auto* asset_man = App::get_asset_manager();
+
+                         UI::button(ICON_MDI_CIRCLE_DOUBLE);
+                         ImGui::SameLine();
+
+                         const float x = ImGui::GetContentRegionAvail().x;
+                         const float y = ImGui::GetFrameHeight();
+                         const auto btn = fmt::format("{} Drop an asset file", ICON_MDI_FILE_UPLOAD);
+                         if (UI::button(btn.c_str(), {x, y})) {
+                         }
+                         if (ImGui::BeginDragDropTarget()) {
+                           if (const ImGuiPayload* imgui_payload = ImGui::AcceptDragDropPayload(
+                                   PayloadData::DRAG_DROP_SOURCE)) {
+                             const auto payload = PayloadData::from_payload(imgui_payload);
+                             if (payload->get_str().empty())
+                               return;
+                             if (auto imported_asset = asset_man->import_asset(payload->str)) {
+                               if (auto* existing_asset = asset_man->get_asset(*uuid)) {
+                                 asset_man->unload_asset(existing_asset->uuid);
+                               }
+                               if (asset_man->load_asset(imported_asset)) {
+                                 *uuid = imported_asset;
+                               }
+                             }
+                           }
+                           ImGui::EndDragDropTarget();
+                         }
+
+                         if (auto* asset = asset_man->get_asset(*uuid)) {
+                           switch (asset->type) {
+                             case AssetType::Shader: {
+                               draw_shader_asset(uuid, asset);
+                               break;
+                             }
+                             case AssetType::Mesh: {
+                               draw_mesh_asset(uuid, asset);
+                               break;
+                             }
+                             case AssetType::Texture: {
+                               draw_texture_asset(uuid, asset);
+                               break;
+                             }
+                             case AssetType::Material: {
+                               draw_material_asset(uuid, asset);
+                               break;
+                             }
+                             case AssetType::Font: {
+                               draw_font_asset(uuid, asset);
+                               break;
+                             }
+                             case AssetType::Scene: {
+                               draw_scene_asset(uuid, asset);
+                               break;
+                             }
+                             case AssetType::Audio: {
+                               draw_audio_asset(uuid, asset);
+                               break;
+                             }
+                             case AssetType::Script: {
+                               draw_script_asset(uuid, asset);
+                               break;
+                             }
+                           }
+                         }
+
+                         UI::begin_properties();
+                       },
+                   },
+                   member);
+
         UI::end_properties();
       });
-
-  draw_component<MeshComponent>(
-      " Mesh Component", entity, [w = &this->world](MeshComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        auto mesh_uuid_str = component.mesh_uuid.str();
-        UI::input_text("Mesh UUID", &mesh_uuid_str, ImGuiInputTextFlags_ReadOnly);
-        UI::text("Mesh Index", std::to_string(component.mesh_index));
-        UI::property("Cast shadows", &component.cast_shadows);
-        UI::end_properties();
-
-        auto load_event = w->entity("ox_mesh_material_load_event");
-        auto* asset_man = App::get_asset_manager();
-        if (auto* mesh = asset_man->get_mesh(component.mesh_uuid)) {
-          for (auto& mat_uuid : mesh->materials) {
-            static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen |
-                                                             ImGuiTreeNodeFlags_SpanAvailWidth |
-                                                             ImGuiTreeNodeFlags_AllowItemOverlap |
-                                                             ImGuiTreeNodeFlags_Framed |
-                                                             ImGuiTreeNodeFlags_FramePadding;
-
-            if (auto* material = asset_man->get_material(mat_uuid)) {
-              const auto mat_uuid_str = mat_uuid.str();
-              if (ImGui::TreeNodeEx(mat_uuid_str.c_str(), TREE_FLAGS, "%s", mat_uuid_str.c_str())) {
-                draw_material_properties(material, mat_uuid, load_event);
-                ImGui::TreePop();
-              }
-            }
-          }
-        }
-      });
-
-  draw_component<SpriteComponent>(
-      " Sprite Component", entity, [w = &this->world](SpriteComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("Layer", &component.layer);
-        UI::property("SortY", &component.sort_y);
-        UI::property("FlipX", &component.flip_x);
-        UI::end_properties();
-
-        ImGui::SeparatorText("Material");
-
-        auto load_event = w->entity("sprite_material_load_event");
-        load_event.observe<DialogLoadEvent>([&component](DialogLoadEvent& en) {
-          auto* asset_man = App::get_asset_manager();
-          if (auto imported = asset_man->import_asset(en.path)) {
-            component.material = imported;
-            asset_man->unload_asset(component.material);
-          }
-        });
-
-        load_event.observe<DialogSaveEvent>([&component](DialogSaveEvent& en) {
-          auto* asset_man = App::get_asset_manager();
-          asset_man->export_asset(component.material, en.path);
-        });
-
-        if (auto* material = App::get_asset_manager()->get_material(component.material)) {
-          draw_material_properties(material, component.material, load_event);
-        }
-      });
-
-  draw_component<SpriteAnimationComponent>(
-      " Sprite Animation Component", entity, [](SpriteAnimationComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        if (UI::property("Number of frames", &component.num_frames))
-          component.reset();
-        if (UI::property("Loop", &component.loop))
-          component.reset();
-        if (UI::property("Inverted", &component.inverted))
-          component.reset();
-        if (UI::property("Frames per second", &component.fps))
-          component.reset();
-        if (UI::property("Columns", &component.columns))
-          component.reset();
-        if (UI::draw_vec2_control("Frame size", component.frame_size))
-          component.reset();
-        const float x = ImGui::GetContentRegionAvail().x;
-        const float y = ImGui::GetFrameHeight();
-        ImGui::Spacing();
-        if (UI::button("Auto", {x, y})) {
-          if (const auto* sc = e.get<SpriteComponent>()) {
-            auto asset_man = App::get_asset_manager();
-            if (const auto* material = asset_man->get_material(sc->material)) {
-              if (const auto* texture = asset_man->get_texture(material->albedo_texture)) {
-                component.set_frame_size(texture->get_extent().width, texture->get_extent().height);
-              }
-            }
-          }
-        }
-        UI::end_properties();
-      });
-
-  draw_component<AutoExposureComponent>(
-      " Auto Exposure Component", entity, [](AutoExposureComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("Min Exposure", &component.min_exposure);
-        UI::property("Max Exposure", &component.max_exposure);
-        UI::property("Adaptation Speed", &component.adaptation_speed);
-        UI::property("EV100 Bias", &component.ev100_bias);
-        UI::end_properties();
-      });
-
-  draw_component<AudioSourceComponent>(
-      " Audio Source Component", entity, [](AudioSourceComponent& component, flecs::entity e) {
-        auto* asset_man = App::get_asset_manager();
-        auto* asset = asset_man->get_asset(component.audio_source);
-
-        const std::string filepath = (asset && asset->is_loaded())
-                                         ? asset->path
-                                         : fmt::format("{} Drop an audio file",
-                                                       StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
-
-        const float x = ImGui::GetContentRegionAvail().x;
-        const float y = ImGui::GetFrameHeight();
-        if (UI::button(filepath.c_str(), {x, y})) {
-          const auto& window = App::get()->get_window();
-          FileDialogFilter dialog_filters[] = {{.name = "Audio file(.mp3, .wav, .flac)", .pattern = "mp3;wav;flac"}};
-          window.show_dialog({
-              .kind = DialogKind::OpenFile,
-              .user_data = &component,
-              .callback =
-                  [](void* user_data, const c8* const* files, i32) {
-                    auto* comp = static_cast<AudioSourceComponent*>(user_data);
-
-                    if (!files || !*files) {
-                      return;
-                    }
-
-                    const auto first_path_cstr = *files;
-                    const auto first_path_len = std::strlen(first_path_cstr);
-                    auto path = ::fs::path(std::string(first_path_cstr, first_path_len));
-                    if (const std::string ext = path.extension().string();
-                        ext == ".mp3" || ext == ".wav" || ext == ".flac") {
-                      auto* am = App::get_asset_manager();
-                      comp->audio_source = am->create_asset(AssetType::Audio, path.string());
-                      am->load_asset(comp->audio_source);
-                    }
-                  },
-              .title = "Open audio file...",
-              .default_path = fs::current_path(),
-              .filters = dialog_filters,
-              .multi_select = false,
-          });
-        }
-        if (ImGui::BeginDragDropTarget()) {
-          if (const ImGuiPayload* imgui_payload = ImGui::AcceptDragDropPayload(PayloadData::DRAG_DROP_SOURCE)) {
-            const auto payload = PayloadData::from_payload(imgui_payload);
-            const auto payload_str = payload->get_str();
-            if (payload_str.empty())
-              return;
-            if (fs::get_file_extension(payload_str) == "oxasset") {
-              if (auto imported = asset_man->import_asset(payload_str)) {
-                component.audio_source = imported;
-                asset_man->unload_asset(component.audio_source);
-              }
-            }
-          }
-          ImGui::EndDragDropTarget();
-        }
-        ImGui::Spacing();
-
-        auto* audio_asset = asset_man->get_audio(component.audio_source);
-        if (!audio_asset)
-          return;
-
-        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
-
-        UI::begin_properties();
-        if (UI::property("Volume Multiplier", &component.volume))
-          audio_engine->set_source_volume(audio_asset->get_source(), component.volume);
-        if (UI::property("Pitch Multiplier", &component.pitch))
-          audio_engine->set_source_pitch(audio_asset->get_source(), component.pitch);
-        if (UI::property("Looping", &component.looping))
-          audio_engine->set_source_looping(audio_asset->get_source(), component.looping);
-        UI::property("Play On Awake", &component.play_on_awake);
-        UI::end_properties();
-
-        ImGui::Spacing();
-        if (UI::button(StringUtils::from_char8_t(ICON_MDI_PLAY "Play ")))
-          audio_engine->play_source(audio_asset->get_source());
-        ImGui::SameLine();
-        if (UI::button(StringUtils::from_char8_t(ICON_MDI_PAUSE "Pause ")))
-          audio_engine->pause_source(audio_asset->get_source());
-        ImGui::SameLine();
-        if (UI::button(StringUtils::from_char8_t(ICON_MDI_STOP "Stop ")))
-          audio_engine->stop_source(audio_asset->get_source());
-        ImGui::Spacing();
-
-        UI::begin_properties();
-        UI::property("Spatialization", &component.spatialization);
-
-        if (component.spatialization) {
-          ImGui::Indent();
-          const char* attenuation_type_strings[] = {"None", "Inverse", "Linear", "Exponential"};
-          int attenuation_type = static_cast<int>(component.attenuation_model);
-          if (UI::property("Attenuation Model", &attenuation_type, attenuation_type_strings, 4)) {
-            component.attenuation_model = static_cast<AudioEngine::AttenuationModelType>(attenuation_type);
-            audio_engine->set_source_attenuation_model(
-                audio_asset->get_source(), static_cast<AudioEngine::AttenuationModelType>(component.attenuation_model));
-          }
-          if (UI::property("Roll Off", &component.roll_off))
-            audio_engine->set_source_roll_off(audio_asset->get_source(), component.roll_off);
-          if (UI::property("Min Gain", &component.min_gain))
-            audio_engine->set_source_min_gain(audio_asset->get_source(), component.min_gain);
-          if (UI::property("Max Gain", &component.max_gain))
-            audio_engine->set_source_max_gain(audio_asset->get_source(), component.max_gain);
-          if (UI::property("Min Distance", &component.min_distance))
-            audio_engine->set_source_min_distance(audio_asset->get_source(), component.min_distance);
-          if (UI::property("Max Distance", &component.max_distance))
-            audio_engine->set_source_max_distance(audio_asset->get_source(), component.max_distance);
-          float degrees = glm::degrees(component.cone_inner_angle);
-          if (UI::property("Cone Inner Angle", &degrees))
-            component.cone_inner_angle = glm::radians(degrees);
-          degrees = glm::degrees(component.cone_outer_angle);
-          if (UI::property("Cone Outer Angle", &degrees))
-            component.cone_outer_angle = glm::radians(degrees);
-          UI::property("Cone Outer Gain", &component.cone_outer_gain);
-          UI::property("Doppler Factor", &component.doppler_factor);
-          audio_engine->set_source_cone(audio_asset->get_source(),
-                                        component.cone_inner_angle,
-                                        component.cone_outer_angle,
-                                        component.cone_outer_gain);
-          ImGui::Unindent();
-        }
-        UI::end_properties();
-      });
-
-  draw_component<AudioListenerComponent>(
-      " Audio Listener Component", entity, [](AudioListenerComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("Active", &component.active);
-        float degrees = glm::degrees(component.cone_inner_angle);
-        if (UI::property("Cone Inner Angle", &degrees))
-          component.cone_inner_angle = glm::radians(degrees);
-        degrees = glm::degrees(component.cone_outer_angle);
-        if (UI::property("Cone Outer Angle", &degrees))
-          component.cone_outer_angle = glm::radians(degrees);
-        UI::property("Cone Outer Gain", &component.cone_outer_gain);
-
-        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
-        audio_engine->set_listener_cone(component.listener_index,
-                                        component.cone_inner_angle,
-                                        component.cone_outer_angle,
-                                        component.cone_outer_gain);
-        UI::end_properties();
-      });
-
-  draw_component<LightComponent>(" Light Component", entity, [](LightComponent& component, flecs::entity e) {
-    UI::begin_properties();
-    const char* light_type_strings[] = {"Directional", "Point", "Spot"};
-    int light_type = component.type;
-    if (UI::property("Light Type", &light_type, light_type_strings, 3))
-      component.type = static_cast<LightComponent::LightType>(light_type);
-
-    if (UI::property("Color Temperature Mode", &component.color_temperature_mode) && component.color_temperature_mode) {
-      ColorUtils::TempratureToColor(component.temperature, component.color);
+      ImGui::TreePop();
     }
 
-    if (component.color_temperature_mode) {
-      if (UI::property<u32>("Temperature (K)", &component.temperature, 1000, 40000))
-        ColorUtils::TempratureToColor(component.temperature, component.color);
-    } else {
-      UI::property_vector("Color", component.color, true);
-    }
-
-    UI::property("Intensity", &component.intensity, 0.0f, 100.0f);
-
-    if (component.type != LightComponent::Directional) {
-      UI::property("Range", &component.range, 0.0f, 100.0f);
-      UI::property("Radius", &component.radius, 0.0f, 100.0f);
-      UI::property("Length", &component.length, 0.0f, 100.0f);
-    }
-
-    if (component.type == LightComponent::Spot) {
-      UI::property("Outer Cone Angle", &component.outer_cone_angle, 0.0f, 100.0f);
-      UI::property("Inner Cone Angle", &component.inner_cone_angle, 0.0f, 100.0f);
-    }
-
-    UI::property("Cast Shadows", &component.cast_shadows);
-
-    const ankerl::unordered_dense::map<u32, int> res_map = {{0, 0}, {512, 1}, {1024, 2}, {2048, 3}};
-    const ankerl::unordered_dense::map<int, u32> id_map = {{0, 0}, {1, 512}, {2, 1024}, {3, 2048}};
-
-    const char* res_strings[] = {"Auto", "512", "1024", "2048"};
-    int idx = res_map.at(component.shadow_map_res);
-    if (UI::property("Shadow Resolution", &idx, res_strings, 4)) {
-      component.shadow_map_res = id_map.at(idx);
-    }
-    UI::end_properties();
-  });
-
-  draw_component<AtmosphereComponent>(
-      " Atmosphere Component", entity, [](AtmosphereComponent& component, flecs::entity e) {
-        UI::begin_properties();
-
-        UI::property_vector("Rayleigh Scattering", component.rayleigh_scattering, false);
-        UI::property("Rayleigh Density", &component.rayleigh_density, 0.0f, 10.0f);
-        UI::property_vector("Mie Scattering", component.mie_scattering, false);
-        UI::property("Mie Density", &component.mie_density, 0.0f, 2.0f);
-        UI::property("Mie Extinction", &component.mie_extinction, 0.0f, 5.0f);
-        UI::property("Mie Asymmetry", &component.mie_asymmetry, 0.0f, 5.0f);
-        UI::property_vector("Ozone Absorption", component.ozone_absorption, false);
-        UI::property("Ozone Height", &component.ozone_height, 0.0f, 30.0f);
-        UI::property("Ozone Thickness", &component.ozone_thickness, 0.0f, 20.0f);
-        UI::property("Aerial Perspective Start KM", &component.aerial_perspective_start_km, 0.0f, 100.0f);
-
-        UI::end_properties();
-      });
+    if (remove_component)
+      entity.remove(component);
+  }
+#if 0
 
   draw_component<RigidbodyComponent>(
       " Rigidbody Component", entity, [](RigidbodyComponent& component, flecs::entity e) {
@@ -755,252 +496,6 @@ void InspectorPanel::draw_components(const flecs::entity entity) {
         UI::end_properties();
       });
 
-  draw_component<BoxColliderComponent>(" Box Collider", entity, [](BoxColliderComponent& component, flecs::entity e) {
-    UI::begin_properties();
-    UI::property_vector("Size", component.size);
-    UI::property_vector("Offset", component.offset);
-    UI::property("Density", &component.density);
-    UI::property("Friction", &component.friction, 0.0f, 1.0f);
-    UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-    UI::end_properties();
-
-    component.density = glm::max(component.density, 0.001f);
-  });
-
-  draw_component<SphereColliderComponent>(
-      " Sphere Collider", entity, [](SphereColliderComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("Radius", &component.radius);
-        UI::property_vector("Offset", component.offset);
-        UI::property("Density", &component.density);
-        UI::property("Friction", &component.friction, 0.0f, 1.0f);
-        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        UI::end_properties();
-
-        component.density = glm::max(component.density, 0.001f);
-      });
-
-  draw_component<CapsuleColliderComponent>(
-      " Capsule Collider", entity, [](CapsuleColliderComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("Height", &component.height);
-        UI::property("Radius", &component.radius);
-        UI::property_vector("Offset", component.offset);
-        UI::property("Density", &component.density);
-        UI::property("Friction", &component.friction, 0.0f, 1.0f);
-        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        UI::end_properties();
-
-        component.density = glm::max(component.density, 0.001f);
-      });
-
-  draw_component<TaperedCapsuleColliderComponent>(
-      " Tapered Capsule Collider", entity, [](TaperedCapsuleColliderComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("Height", &component.height);
-        UI::property("Top Radius", &component.top_radius);
-        UI::property("Bottom Radius", &component.bottom_radius);
-        UI::property_vector("Offset", component.offset);
-        UI::property("Density", &component.density);
-        UI::property("Friction", &component.friction, 0.0f, 1.0f);
-        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        UI::end_properties();
-
-        component.density = glm::max(component.density, 0.001f);
-      });
-
-  draw_component<CylinderColliderComponent>(
-      " Cylinder Collider", entity, [](CylinderColliderComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("Height", &component.height);
-        UI::property("Radius", &component.radius);
-        UI::property_vector("Offset", component.offset);
-        UI::property("Density", &component.density);
-        UI::property("Friction", &component.friction, 0.0f, 1.0f);
-        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        UI::end_properties();
-
-        component.density = glm::max(component.density, 0.001f);
-      });
-
-  draw_component<MeshColliderComponent>(
-      " Mesh Collider", entity, [](MeshColliderComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property_vector("Offset", component.offset);
-        UI::property("Friction", &component.friction, 0.0f, 1.0f);
-        UI::property("Restitution", &component.restitution, 0.0f, 1.0f);
-        UI::end_properties();
-      });
-
-  draw_component<CharacterControllerComponent>(
-      " Character Controller", entity, [](CharacterControllerComponent& component, flecs::entity e) {
-        UI::begin_properties();
-        UI::property("CharacterHeightStanding", &component.character_height_standing);
-        UI::property("CharacterRadiusStanding", &component.character_radius_standing);
-        UI::property("CharacterHeightCrouching", &component.character_height_crouching);
-        UI::property("CharacterRadiusCrouching", &component.character_radius_crouching);
-
-        // Movement
-        UI::property("ControlMovementDuringJump", &component.control_movement_during_jump);
-        UI::property("JumpForce", &component.jump_force);
-
-        UI::property("Friction", &component.friction, 0.0f, 1.0f);
-        UI::property("CollisionTolerance", &component.collision_tolerance);
-        UI::end_properties();
-      });
-
-  draw_component<CameraComponent>("Camera Component", entity, [](CameraComponent& component, flecs::entity e) {
-    const auto is_perspective = component.projection == CameraComponent::Projection::Perspective;
-    UI::begin_properties();
-
-    const char* proj_strs[] = {"Perspective", "Orthographic"};
-    int proj = static_cast<int>(component.projection);
-    if (UI::property("Projection", &proj, proj_strs, 2))
-      component.projection = static_cast<CameraComponent::Projection>(proj);
-
-    if (is_perspective) {
-      UI::property("FOV", &component.fov);
-      UI::property("Near Clip", &component.near_clip);
-      UI::property("Far Clip", &component.far_clip);
-    } else {
-      UI::property("Zoom", &component.zoom);
-    }
-
-    UI::end_properties();
-  });
-
-  draw_component<LuaScriptComponent>(
-      "Lua Script Component", entity, [](LuaScriptComponent& component, flecs::entity e) {
-        auto* asset_man = App::get_asset_manager();
-
-        if (auto* script = asset_man->get_script(component.script_uuid)) {
-          auto script_path = script->get_path();
-          UI::begin_properties(ImGuiTableFlags_SizingFixedFit);
-          UI::text("File Name:", fs::get_file_name(script_path));
-          UI::input_text("Path:", &script_path, ImGuiInputTextFlags_ReadOnly);
-          UI::end_properties();
-          auto rld_str = fmt::format("{} Reload", StringUtils::from_char8_t(ICON_MDI_REFRESH));
-          if (UI::button(rld_str.c_str()))
-            script->reload();
-          ImGui::SameLine();
-          auto rmv_str = fmt::format("{} Remove", StringUtils::from_char8_t(ICON_MDI_TRASH_CAN));
-          if (UI::button(rmv_str.c_str())) {
-            if (component.script_uuid)
-              asset_man->unload_asset(component.script_uuid);
-            component.script_uuid = UUID(nullptr);
-          }
-        }
-
-        const float x = ImGui::GetContentRegionAvail().x;
-        const float y = ImGui::GetFrameHeight();
-        const auto btn = fmt::format("{} Drop a script file", StringUtils::from_char8_t(ICON_MDI_FILE_UPLOAD));
-        if (UI::button(btn.c_str(), {x, y})) {
-          const auto& window = App::get()->get_window();
-          FileDialogFilter dialog_filters[] = {{.name = "Lua file(.lua)", .pattern = "lua"}};
-          window.show_dialog({
-              .kind = DialogKind::OpenFile,
-              .user_data = &component,
-              .callback =
-                  [](void* user_data, const c8* const* files, i32) {
-                    auto* user_data_comp = static_cast<LuaScriptComponent*>(user_data);
-                    if (!files || !*files) {
-                      return;
-                    }
-
-                    const auto first_path_cstr = *files;
-                    const auto first_path_len = std::strlen(first_path_cstr);
-                    const auto p_str = std::string(first_path_cstr, first_path_len);
-                    if (fs::get_file_extension(p_str) == "lua") {
-                      auto* am = App::get_asset_manager();
-                      if (UUID imported_script = am->import_asset(p_str)) {
-                        if (am->load_script(imported_script)) {
-                          if (user_data_comp->script_uuid)
-                            am->unload_asset(user_data_comp->script_uuid);
-                          user_data_comp->script_uuid = imported_script;
-                        }
-                      }
-                    }
-                  },
-              .title = "Open lua file...",
-              .default_path = fs::current_path(),
-              .filters = dialog_filters,
-              .multi_select = false,
-          });
-        }
-        if (ImGui::BeginDragDropTarget()) {
-          if (const ImGuiPayload* imgui_payload = ImGui::AcceptDragDropPayload(PayloadData::DRAG_DROP_SOURCE)) {
-            const auto payload = PayloadData::from_payload(imgui_payload);
-            if (payload->get_str().empty())
-              return;
-            if (fs::get_file_extension(payload->get_str()) == "lua") {
-              if (auto imported_script = asset_man->import_asset(payload->str)) {
-                if (asset_man->load_script(imported_script)) {
-                  if (component.script_uuid)
-                    asset_man->unload_asset(component.script_uuid);
-                  component.script_uuid = imported_script;
-                }
-              }
-            }
-          }
-          ImGui::EndDragDropTarget();
-        }
-      });
-
-#if 0
-  draw_component<ParticleSystemComponent>(
-      "Particle System Component", entity, [](const ParticleSystemComponent& component, flecs::entity e) {
-    auto& props = component.system->get_properties();
-
-    ImGui::Text("Active Particles Count: %u", component.system->get_active_particle_count());
-    ImGui::BeginDisabled(props.looping);
-    if (UI::button(StringUtils::from_char8_t(ICON_MDI_PLAY)))
-      component.system->play();
-    ImGui::SameLine();
-    if (UI::button(StringUtils::from_char8_t(ICON_MDI_STOP)))
-      component.system->stop();
-    ImGui::EndDisabled();
-
-    ImGui::Separator();
-
-    UI::begin_properties();
-    UI::texture_property("Duration", &props.duration);
-    if (UI::texture_property("Looping", &props.looping)) {
-      if (props.looping)
-        component.system->play();
-    }
-    UI::texture_property("Start Delay", &props.start_delay);
-    UI::texture_property("Start Lifetime", &props.start_lifetime);
-    UI::property_vector("Start Velocity", props.start_velocity);
-    UI::property_vector("Start Color", props.start_color, true);
-    UI::property_vector("Start Size", props.start_size);
-    UI::property_vector("Start Rotation", props.start_rotation);
-    UI::texture_property("Gravity Modifier", &props.gravity_modifier);
-    UI::texture_property("Simulation Speed", &props.simulation_speed);
-    UI::texture_property("Play On Awake", &props.play_on_awake);
-    UI::texture_property("Max Particles", &props.max_particles);
-    UI::end_properties();
-
-    ImGui::Separator();
-
-    UI::begin_properties();
-    UI::texture_property("Rate Over Time", &props.rate_over_time);
-    UI::texture_property("Rate Over Distance", &props.rate_over_distance);
-    UI::texture_property("Burst Count", &props.burst_count);
-    UI::texture_property("Burst Time", &props.burst_time);
-    UI::property_vector("Position Start", props.position_start);
-    UI::property_vector("Position End", props.position_end);
-    // OxUI::Property("Texture", props.Texture); //TODO:
-    UI::end_properties();
-
-    draw_particle_over_lifetime_module("Velocity Over Lifetime", props.velocity_over_lifetime);
-    draw_particle_over_lifetime_module("Force Over Lifetime", props.force_over_lifetime);
-    draw_particle_over_lifetime_module("Color Over Lifetime", props.color_over_lifetime, true);
-    draw_particle_by_speed_module("Color By Speed", props.color_by_speed, true);
-    draw_particle_over_lifetime_module("Size Over Lifetime", props.size_over_lifetime);
-    draw_particle_by_speed_module("Size By Speed", props.size_by_speed);
-    draw_particle_over_lifetime_module("Rotation Over Lifetime", props.rotation_over_lifetime, false, true);
-    draw_particle_by_speed_module("Rotation By Speed", props.rotation_by_speed, false, true);
-});
 #endif
 }
 
@@ -1017,5 +512,109 @@ void InspectorPanel::draw_asset_info(Asset* asset) {
   UI::input_text("Asset UUID", &uuid_str, ImGuiInputTextFlags_ReadOnly);
   UI::input_text("Asset Path", &asset->path, ImGuiInputTextFlags_ReadOnly);
   UI::end_properties();
+}
+
+void InspectorPanel::draw_shader_asset(UUID* uuid, Asset* asset) {}
+
+void InspectorPanel::draw_mesh_asset(UUID* uuid, Asset* asset) {
+  ZoneScoped;
+
+  auto load_event = _scene->world.entity("ox_mesh_material_load_event");
+  auto* asset_man = App::get_asset_manager();
+  if (auto* mesh = asset_man->get_mesh(*uuid)) {
+    for (auto& mat_uuid : mesh->materials) {
+      static constexpr ImGuiTreeNodeFlags TREE_FLAGS = ImGuiTreeNodeFlags_DefaultOpen |
+                                                       ImGuiTreeNodeFlags_SpanAvailWidth |
+                                                       ImGuiTreeNodeFlags_AllowItemOverlap | ImGuiTreeNodeFlags_Framed |
+                                                       ImGuiTreeNodeFlags_FramePadding;
+
+      if (auto* material = asset_man->get_material(mat_uuid)) {
+        const auto mat_uuid_str = mat_uuid.str();
+        if (ImGui::TreeNodeEx(mat_uuid_str.c_str(), TREE_FLAGS, "%s", mat_uuid_str.c_str())) {
+          draw_material_properties(material, mat_uuid, load_event);
+          ImGui::TreePop();
+        }
+      }
+    }
+  }
+}
+
+void InspectorPanel::draw_texture_asset(UUID* uuid, Asset* asset) {}
+
+void InspectorPanel::draw_material_asset(UUID* uuid, Asset* asset) {
+  ZoneScoped;
+
+  ImGui::SeparatorText("Material");
+
+  auto load_event = _scene->world.entity("sprite_material_load_event");
+  load_event.observe<DialogLoadEvent>([uuid](DialogLoadEvent& en) {
+    auto* asset_man = App::get_asset_manager();
+    if (auto imported = asset_man->import_asset(en.path)) {
+      *uuid = imported;
+      asset_man->unload_asset(*uuid);
+    }
+  });
+
+  load_event.observe<DialogSaveEvent>([uuid](DialogSaveEvent& en) {
+    auto* asset_man = App::get_asset_manager();
+    asset_man->export_asset(*uuid, en.path);
+  });
+
+  if (auto* material = App::get_asset_manager()->get_material(*uuid)) {
+    draw_material_properties(material, *uuid, load_event);
+  }
+}
+
+void InspectorPanel::draw_font_asset(UUID* uuid, Asset* asset) {}
+
+void InspectorPanel::draw_scene_asset(UUID* uuid, Asset* asset) {}
+
+void InspectorPanel::draw_audio_asset(UUID* uuid, Asset* asset) {
+  ZoneScoped;
+
+  auto* asset_man = App::get_asset_manager();
+
+  auto* audio_asset = asset_man->get_audio(*uuid);
+  if (!audio_asset)
+    return;
+
+  auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
+
+  ImGui::Spacing();
+  if (UI::button(ICON_MDI_PLAY "Play "))
+    audio_engine->play_source(audio_asset->get_source());
+  ImGui::SameLine();
+  if (UI::button(ICON_MDI_PAUSE "Pause "))
+    audio_engine->pause_source(audio_asset->get_source());
+  ImGui::SameLine();
+  if (UI::button(ICON_MDI_STOP "Stop "))
+    audio_engine->stop_source(audio_asset->get_source());
+  ImGui::Spacing();
+}
+
+void InspectorPanel::draw_script_asset(UUID* uuid, Asset* asset) {
+  ZoneScoped;
+
+  auto* asset_man = App::get_asset_manager();
+
+  auto* script_asset = asset_man->get_script(*uuid);
+  if (!script_asset)
+    return;
+
+  auto script_path = script_asset->get_path();
+  UI::begin_properties(ImGuiTableFlags_SizingFixedFit);
+  UI::text("File Name:", fs::get_file_name(script_path));
+  UI::input_text("Path:", &script_path, ImGuiInputTextFlags_ReadOnly);
+  UI::end_properties();
+  auto rld_str = fmt::format("{} Reload", ICON_MDI_REFRESH);
+  if (UI::button(rld_str.c_str()))
+    script_asset->reload();
+  ImGui::SameLine();
+  auto rmv_str = fmt::format("{} Remove", ICON_MDI_TRASH_CAN);
+  if (UI::button(rmv_str.c_str())) {
+    if (uuid)
+      asset_man->unload_asset(*uuid);
+    *uuid = UUID(nullptr);
+  }
 }
 } // namespace ox

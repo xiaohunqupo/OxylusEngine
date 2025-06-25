@@ -67,6 +67,7 @@ auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
       std::visit(ox::match{
                      [](const auto&) {},
                      [&](bool* v) { member_json = *v; },
+                     [&](u16* v) { member_json = *v; },
                      [&](f32* v) { member_json = *v; },
                      [&](i32* v) { member_json = *v; },
                      [&](u32* v) { member_json = *v; },
@@ -146,6 +147,7 @@ auto json_to_entity(Scene& self, //
       std::visit(ox::match{
                      [](const auto&) {},
                      [&](bool* v) { *v = static_cast<bool>(member_json.get_bool().value_unsafe()); },
+                     [&](u16* v) { *v = static_cast<u16>(member_json.get_uint64().value_unsafe()); },
                      [&](f32* v) { *v = static_cast<f32>(member_json.get_double().value_unsafe()); },
                      [&](i32* v) { *v = static_cast<i32>(member_json.get_int64().value_unsafe()); },
                      [&](u32* v) { *v = static_cast<u32>(member_json.get_uint64().value_unsafe()); },
@@ -273,7 +275,6 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
   self.world.observer<TransformComponent, SpriteComponent>()
       .event(flecs::OnSet)
       .event(flecs::OnAdd)
-      .event(flecs::OnRemove)
       .each([&self](flecs::iter& it, usize i, TransformComponent&, SpriteComponent& sprite) {
         auto entity = it.entity(i);
         // Set sprite rect
@@ -281,6 +282,71 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
           if (auto* transform = self.get_entity_transform(*id)) {
             sprite.rect = AABB(glm::vec3(-0.5, -0.5, -0.5), glm::vec3(0.5, 0.5, 0.5));
             sprite.rect = sprite.rect.get_transformed(transform->world);
+          }
+        }
+      });
+
+  self.world.observer<SpriteComponent>()
+      .event(flecs::OnRemove) //
+      .each([](flecs::iter& it, usize i, SpriteComponent& c) {
+        auto* asset_man = App::get_asset_manager();
+        if (auto* material_asset = asset_man->get_asset(c.material)) {
+          asset_man->unload_asset(material_asset->uuid);
+        }
+      });
+
+  self.world.observer<AudioListenerComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .each([](flecs::iter& it, usize i, AudioListenerComponent& c) {
+        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
+        audio_engine->set_listener_cone(c.listener_index, c.cone_inner_angle, c.cone_outer_angle, c.cone_outer_gain);
+      });
+
+  self.world.observer<AudioSourceComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .event(flecs::OnRemove)
+      .each([](flecs::iter& it, usize i, AudioSourceComponent& c) {
+        auto* asset_man = App::get_asset_manager();
+        auto* audio_asset = asset_man->get_audio(c.audio_source);
+        if (!audio_asset)
+          return;
+
+        if (it.event() == flecs::OnRemove) {
+          asset_man->unload_asset(c.audio_source);
+          return;
+        }
+
+        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
+        audio_engine->set_source_volume(audio_asset->get_source(), c.volume);
+        audio_engine->set_source_pitch(audio_asset->get_source(), c.pitch);
+        audio_engine->set_source_looping(audio_asset->get_source(), c.looping);
+        audio_engine->set_source_attenuation_model(audio_asset->get_source(),
+                                                   static_cast<AudioEngine::AttenuationModelType>(c.attenuation_model));
+        audio_engine->set_source_roll_off(audio_asset->get_source(), c.roll_off);
+        audio_engine->set_source_min_gain(audio_asset->get_source(), c.min_gain);
+        audio_engine->set_source_max_gain(audio_asset->get_source(), c.max_gain);
+        audio_engine->set_source_min_distance(audio_asset->get_source(), c.min_distance);
+        audio_engine->set_source_max_distance(audio_asset->get_source(), c.max_distance);
+        audio_engine->set_source_cone(
+            audio_asset->get_source(), c.cone_inner_angle, c.cone_outer_angle, c.cone_outer_gain);
+      });
+
+  self.world.observer<SpriteAnimationComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .each([](flecs::iter& it, usize i, SpriteAnimationComponent& c) { c.reset(); });
+
+  self.world.observer<LuaScriptComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .event(flecs::OnRemove)
+      .each([](flecs::iter& it, usize i, LuaScriptComponent& c) {
+        if (it.event() == flecs::OnRemove) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* script_asset = asset_man->get_asset(c.script_uuid)) {
+            asset_man->unload_asset(script_asset->uuid);
           }
         }
       });
@@ -661,7 +727,7 @@ auto Scene::create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flec
 
       if (cur_node.mesh_index.has_value()) {
         node_entity.set<MeshComponent>(
-            {.mesh_uuid = asset_uuid, .mesh_index = static_cast<u32>(cur_node.mesh_index.value())});
+            {.mesh_index = static_cast<u32>(cur_node.mesh_index.value()), .mesh_uuid = asset_uuid});
       }
 
       node_entity.child_of(root);

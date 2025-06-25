@@ -4,11 +4,8 @@ target("Oxylus")
     add_rpathdirs("@executable_path")
 
     add_includedirs("./include", { public = true })
-    -- add_includedirs("./src", { public = true })
-    add_includedirs("./vendor", { public = true })
     add_files("./src/**.cpp")
     add_forceincludes("Tracy.hpp")
-    -- set_pcheader("./src/pch.hpp", { public = true, force = true })
 
     add_options("profile")
     if not has_config("lua_bindings") then
