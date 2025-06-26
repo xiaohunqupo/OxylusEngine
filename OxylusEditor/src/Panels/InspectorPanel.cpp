@@ -208,7 +208,7 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
 
   if (dirty) {
     auto* asset_man = App::get_asset_manager();
-    if (auto* asset = asset_man->get_asset(material_uuid))
+    if (const auto* asset = asset_man->get_asset(material_uuid))
       asset_man->set_material_dirty(asset->material_id);
   }
 }
@@ -271,10 +271,8 @@ void InspectorPanel::draw_components(flecs::entity entity) {
     auto component_entity = component.entity();
     auto component_name = component_entity.name();
 
-    const auto id = 0; // typeid(T).hash_code();
-    const auto icon_available = editor_theme.component_icon_map.contains(id);
-    std::string name_str = icon_available ? editor_theme.component_icon_map[id] : ICON_MDI_APPLICATION_IMPORT;
-    name_str = name_str.append(component_name);
+    std::string name_str = ICON_MDI_VIEW_GRID;
+    name_str = name_str.append(" ").append(component_name);
     const bool open = ImGui::TreeNodeEx(name_str.c_str(), TREE_FLAGS, "%s", name_str.c_str());
 
     bool remove_component = false;
@@ -344,9 +342,12 @@ void InspectorPanel::draw_components(flecs::entity entity) {
                        [&](glm::mat4* v) { /* noop */ },
                        [&](std::string* v) { UI::input_text(member_name.data(), v); },
                        [&](UUID* uuid) {
+                         UI::end_properties();
+
+                         ImGui::Separator();
+                         UI::begin_properties();
                          auto uuid_str = uuid->str();
                          UI::input_text(member_name.data(), &uuid_str, ImGuiInputTextFlags_ReadOnly);
-
                          UI::end_properties();
 
                          auto* asset_man = App::get_asset_manager();
@@ -376,6 +377,8 @@ void InspectorPanel::draw_components(flecs::entity entity) {
                            }
                            ImGui::EndDragDropTarget();
                          }
+                         ImGui::Spacing();
+                         ImGui::Separator();
 
                          if (auto* asset = asset_man->get_asset(*uuid)) {
                            switch (asset->type) {

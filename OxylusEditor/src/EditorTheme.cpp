@@ -145,6 +145,8 @@ void EditorTheme::apply_theme(bool dark) {
     colors[ImGuiCol_NavWindowingHighlight] = ImVec4(1.00f, 1.00f, 1.00f, 0.70f);
     colors[ImGuiCol_NavWindowingDimBg] = ImVec4(0.80f, 0.80f, 0.80f, 0.20f);
 
+    colors[ImGuiCol_Separator] = ImVec4(0.235f, 0.220f, 0.212f, 1.000f);
+
     header_selected_color = ImVec4(1.00f, 0.56f, 0.00f, 0.50f);
     header_hovered_color = lighten(colors[ImGuiCol_HeaderActive], 0.1f);
     window_bg_alternative_color = ImVec4(0.1f, 0.1f, 0.1f, 1.0f);
