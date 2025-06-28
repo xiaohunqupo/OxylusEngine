@@ -19,7 +19,7 @@ static void draw_asset_table_columns(const Asset& asset) {
     ImGui::TableSetColumnIndex(0);
     ImGui::PushID(uuid_str.c_str());
     ImGui::SmallButton("..");
-    if (ImGui::BeginPopupContextItem()) {
+    if (ImGui::BeginPopupContextItem(0, ImGuiPopupFlags_MouseButtonLeft)) {
       if (ImGui::Button("Load")) {
         asset_man->load_asset(asset.uuid);
       }

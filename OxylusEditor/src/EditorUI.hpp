@@ -32,7 +32,7 @@ public:
 
   static void tooltip_hover(const char* text);
 
-  static void center_next_window();
+  static void center_next_window(ImGuiCond_ condition = ImGuiCond_Always);
 
   static void spacing(const uint32_t count);
 

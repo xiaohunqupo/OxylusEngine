@@ -19,9 +19,9 @@ static ImVec4 get_color(const loguru::Verbosity verb) {
 
 static const char* get_level_icon(const loguru::Verbosity level) {
   switch (level) {
-    case loguru::Verbosity_INFO   : return "I";
-    case loguru::Verbosity_WARNING: return "W";
-    case loguru::Verbosity_ERROR  : return "E";
+    case loguru::Verbosity_INFO   : return "[I]";
+    case loguru::Verbosity_WARNING: return "[W]";
+    case loguru::Verbosity_ERROR  : return "[E]";
     default                       :;
   }
 

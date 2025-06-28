@@ -95,9 +95,9 @@ void UI::tooltip_hover(const char* text) {
   }
 }
 
-void UI::center_next_window() {
+void UI::center_next_window(ImGuiCond_ condition) {
   const auto center = ImGui::GetMainViewport()->GetCenter();
-  ImGui::SetNextWindowPos(center, ImGuiCond_Always, ImVec2(0.5f, 0.5f));
+  ImGui::SetNextWindowPos(center, condition, ImVec2(0.5f, 0.5f));
 }
 
 void UI::spacing(uint32_t count) {

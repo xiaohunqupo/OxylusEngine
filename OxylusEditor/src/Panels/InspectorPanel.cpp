@@ -5,18 +5,15 @@
 #include <imgui_internal.h>
 #include <misc/cpp/imgui_stdlib.h>
 
+#include "Asset/AssetFile.hpp"
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "EditorLayer.hpp"
 #include "EditorTheme.hpp"
 #include "EditorUI.hpp"
-#include "Render/ParticleSystem.hpp"
 #include "Scene/ECSModule/ComponentWrapper.hpp"
-#include "Scene/ECSModule/Core.hpp"
-#include "Utils/ColorUtils.hpp"
 #include "Utils/PayloadData.hpp"
-#include "Utils/StringUtils.hpp"
 
 namespace ox {
 static f32 degree_helper(const char* id, f32 value) {
@@ -304,123 +301,247 @@ void InspectorPanel::draw_components(flecs::entity entity) {
 
         UI::begin_properties(properties_flags);
 
-        std::visit(ox::match{
-                       [](const auto&) {},
-                       [&](bool* v) { UI::property(member_name.data(), v); },
-                       [&](u16* v) { UI::property(member_name.data(), v); },
-                       [&](f32* v) {
-                         UI::property(member_name.data(), v);
-                         *v = degree_helper(member_name.data(), *v);
-                       },
-                       [&](i32* v) { UI::property(member_name.data(), v); },
-                       [&](u32* v) { UI::property(member_name.data(), v); },
-                       [&](i64* v) { UI::property(member_name.data(), v); },
-                       [&](u64* v) { UI::property(member_name.data(), v); },
-                       [&](glm::vec2* v) { UI::property_vector(member_name.data(), *v); },
-                       [&](glm::vec3* v) {
-                         if (is_transform_component) {
-                           // Display rotation field of transform component as degrees instead of radians
-                           if (member_name == "rotation") {
-                             glm::vec3 rotation = glm::degrees(*v);
-                             if (UI::draw_vec3_control(member_name.data(), rotation)) {
-                               *v = glm::radians(rotation);
-                               entity.modified(component);
-                             }
-                           } else {
-                             if (UI::draw_vec3_control(member_name.data(), *v))
-                               entity.modified(component);
-                           }
-                         } else {
-                           UI::property_vector(member_name.data(), *v);
-                         }
-                       },
-                       [&](glm::vec4* v) {
-                         if (UI::property_vector(member_name.data(), *v))
-                           entity.modified(component);
-                       },
-                       [&](glm::quat* v) { /* noop */ },
-                       [&](glm::mat4* v) { /* noop */ },
-                       [&](std::string* v) { UI::input_text(member_name.data(), v); },
-                       [&](UUID* uuid) {
-                         UI::end_properties();
+        std::visit(
+            ox::match{
+                [](const auto&) {},
+                [&](bool* v) { UI::property(member_name.data(), v); },
+                [&](u16* v) { UI::property(member_name.data(), v); },
+                [&](f32* v) {
+                  UI::property(member_name.data(), v);
+                  *v = degree_helper(member_name.data(), *v);
+                },
+                [&](i32* v) { UI::property(member_name.data(), v); },
+                [&](u32* v) { UI::property(member_name.data(), v); },
+                [&](i64* v) { UI::property(member_name.data(), v); },
+                [&](u64* v) { UI::property(member_name.data(), v); },
+                [&](glm::vec2* v) { UI::property_vector(member_name.data(), *v); },
+                [&](glm::vec3* v) {
+                  if (is_transform_component) {
+                    // Display rotation field of transform component as degrees instead of radians
+                    if (member_name == "rotation") {
+                      glm::vec3 rotation = glm::degrees(*v);
+                      if (UI::draw_vec3_control(member_name.data(), rotation)) {
+                        *v = glm::radians(rotation);
+                        entity.modified(component);
+                      }
+                    } else {
+                      if (UI::draw_vec3_control(member_name.data(), *v))
+                        entity.modified(component);
+                    }
+                  } else {
+                    UI::property_vector(member_name.data(), *v);
+                  }
+                },
+                [&](glm::vec4* v) {
+                  if (UI::property_vector(member_name.data(), *v))
+                    entity.modified(component);
+                },
+                [&](glm::quat* v) { /* noop */ },
+                [&](glm::mat4* v) { /* noop */ },
+                [&](std::string* v) { UI::input_text(member_name.data(), v); },
+                [&](UUID* uuid) {
+                  UI::end_properties();
 
-                         ImGui::Separator();
-                         UI::begin_properties();
-                         auto uuid_str = uuid->str();
-                         UI::input_text(member_name.data(), &uuid_str, ImGuiInputTextFlags_ReadOnly);
-                         UI::end_properties();
+                  ImGui::Separator();
+                  UI::begin_properties();
+                  auto uuid_str = uuid->str();
+                  UI::input_text(member_name.data(), &uuid_str, ImGuiInputTextFlags_ReadOnly);
+                  UI::end_properties();
 
-                         auto* asset_man = App::get_asset_manager();
+                  auto* asset_man = App::get_asset_manager();
 
-                         UI::button(ICON_MDI_CIRCLE_DOUBLE);
-                         ImGui::SameLine();
+                  static bool draw_asset_picker = false;
+                  if (UI::button(ICON_MDI_CIRCLE_DOUBLE)) {
+                    draw_asset_picker = !draw_asset_picker;
+                  }
 
-                         const float x = ImGui::GetContentRegionAvail().x;
-                         const float y = ImGui::GetFrameHeight();
-                         const auto btn = fmt::format("{} Drop an asset file", ICON_MDI_FILE_UPLOAD);
-                         if (UI::button(btn.c_str(), {x, y})) {
-                         }
-                         if (ImGui::BeginDragDropTarget()) {
-                           if (const ImGuiPayload* imgui_payload = ImGui::AcceptDragDropPayload(
-                                   PayloadData::DRAG_DROP_SOURCE)) {
-                             const auto payload = PayloadData::from_payload(imgui_payload);
-                             if (payload->get_str().empty())
-                               return;
-                             if (auto imported_asset = asset_man->import_asset(payload->str)) {
-                               if (auto* existing_asset = asset_man->get_asset(*uuid)) {
-                                 asset_man->unload_asset(existing_asset->uuid);
-                               }
-                               if (asset_man->load_asset(imported_asset)) {
-                                 *uuid = imported_asset;
-                               }
-                             }
-                           }
-                           ImGui::EndDragDropTarget();
-                         }
-                         ImGui::Spacing();
-                         ImGui::Separator();
+                  if (draw_asset_picker) {
+                    ImGui::SetNextWindowSize(
+                        ImVec2(ImGui::GetMainViewport()->Size.x / 2, ImGui::GetMainViewport()->Size.y / 2),
+                        ImGuiCond_Appearing);
+                    UI::center_next_window(ImGuiCond_Appearing);
+                    if (ImGui::Begin("Asset Picker", &draw_asset_picker)) {
+                      static ankerl::unordered_dense::map<AssetType, bool> asset_type_flags = {
+                          {AssetType::Shader, true},
+                          {AssetType::Texture, true},
+                          {AssetType::Material, true},
+                          {AssetType::Font, true},
+                          {AssetType::Scene, true},
+                          {AssetType::Audio, true},
+                          {AssetType::Script, true},
+                      };
 
-                         if (auto* asset = asset_man->get_asset(*uuid)) {
-                           switch (asset->type) {
-                             case AssetType::Shader: {
-                               draw_shader_asset(uuid, asset);
-                               break;
-                             }
-                             case AssetType::Mesh: {
-                               draw_mesh_asset(uuid, asset);
-                               break;
-                             }
-                             case AssetType::Texture: {
-                               draw_texture_asset(uuid, asset);
-                               break;
-                             }
-                             case AssetType::Material: {
-                               draw_material_asset(uuid, asset);
-                               break;
-                             }
-                             case AssetType::Font: {
-                               draw_font_asset(uuid, asset);
-                               break;
-                             }
-                             case AssetType::Scene: {
-                               draw_scene_asset(uuid, asset);
-                               break;
-                             }
-                             case AssetType::Audio: {
-                               draw_audio_asset(uuid, asset);
-                               break;
-                             }
-                             case AssetType::Script: {
-                               draw_script_asset(uuid, asset);
-                               break;
-                             }
-                           }
-                         }
+                      ImGui::Text("Imported Assets");
 
-                         UI::begin_properties();
-                       },
-                   },
-                   member);
+                      if (ImGui::Button(ICON_MDI_FILTER)) {
+                        ImGui::OpenPopup("asset_picker_filter");
+                      }
+                      if (ImGui::BeginPopup("asset_picker_filter")) {
+                        if (ImGui::Button("Select All")) {
+                          for (auto&& [type, flag] : asset_type_flags) {
+                            flag = true;
+                          }
+                        }
+
+                        ImGui::SameLine();
+
+                        if (ImGui::Button("Deselect All")) {
+                          for (auto&& [type, flag] : asset_type_flags) {
+                            flag = false;
+                          }
+                        }
+
+                        UI::begin_properties();
+
+                        for (auto&& [type, flag] : asset_type_flags) {
+                          UI::property(asset_man->to_asset_type_sv(type).data(), &flag);
+                        }
+
+                        UI::end_properties();
+                        ImGui::EndPopup();
+                      }
+
+                      ImGui::SameLine();
+
+                      static ImGuiTextFilter filter = {};
+                      const float filter_cursor_pos_x = ImGui::GetCursorPosX();
+                      filter.Draw("##asset_filter",
+                                  ImGui::GetContentRegionAvail().x - (ImGui::CalcTextSize(ICON_MDI_PLUS, "").x +
+                                                                      2.0f * ImGui::GetStyle().FramePadding.x));
+                      if (!filter.IsActive()) {
+                        ImGui::SameLine();
+                        ImGui::SetCursorPosX(filter_cursor_pos_x + ImGui::GetFontSize() * 0.5f);
+                        ImGui::TextUnformatted(ICON_MDI_MAGNIFY " Search...");
+                      }
+
+                      constexpr ImGuiTableFlags TABLE_FLAGS = ImGuiTableFlags_Resizable | ImGuiTableFlags_Hideable |
+                                                              ImGuiTableFlags_Borders |
+                                                              ImGuiTableFlags_SizingStretchProp;
+
+                      if (ImGui::BeginChild("##assets_table_window")) {
+                        if (ImGui::BeginTable("#assets_table", 3, TABLE_FLAGS)) {
+                          const auto& registry = asset_man->registry();
+                          for (auto& [_, asset] : registry) {
+                            const auto uuid_str = asset.uuid.str();
+                            const auto file_name = fs::get_name_with_extension(asset.path);
+                            const auto asset_type = asset_man->to_asset_type_sv(asset.type);
+                            // NOTE: We don't allow mesh assets to be loaded this way yet(or ever).
+                            if (asset.type == AssetType::Mesh) {
+                              continue;
+                            }
+                            if (!asset_type_flags[asset.type]) {
+                              continue;
+                            }
+                            if (!file_name.empty() && !filter.PassFilter(file_name.c_str())) {
+                              continue;
+                            }
+
+                            ImGui::TableNextRow(ImGuiTableRowFlags_None);
+
+                            ImGui::TableSetColumnIndex(0);
+                            ImGui::PushID(uuid_str.c_str());
+                            constexpr ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_SpanAllColumns |
+                                                                              ImGuiSelectableFlags_AllowOverlap |
+                                                                              ImGuiSelectableFlags_AllowDoubleClick;
+                            if (ImGui::Selectable(asset_type.data(), false, selectable_flags, ImVec2(0.f, 20.f))) {
+                              draw_asset_picker = false;
+                              // NOTE: Don't allow the existing asset to be swapped with a different type of asset.
+                              auto* existing_asset = asset_man->get_asset(*uuid);
+                              if ((!existing_asset || existing_asset->type == asset.type) &&
+                                  asset_man->load_asset(asset.uuid)) {
+                                if (*uuid) {
+                                  asset_man->unload_asset(*uuid);
+                                }
+                                *uuid = asset.uuid;
+                              }
+                            }
+                            ImGui::PopID();
+
+                            ImGui::TableSetColumnIndex(1);
+                            ImGui::TextUnformatted(file_name.c_str());
+
+                            ImGui::TableSetColumnIndex(2);
+                            ImGui::TextUnformatted(uuid_str.c_str());
+                          }
+                          ImGui::EndTable();
+                        }
+                      }
+                      ImGui::EndChild();
+                    }
+                    ImGui::End();
+                  }
+
+                  ImGui::SameLine();
+
+                  const float x = ImGui::GetContentRegionAvail().x;
+                  const float y = ImGui::GetFrameHeight();
+                  const auto btn = fmt::format("{} Drop an asset file", ICON_MDI_FILE_UPLOAD);
+                  if (UI::button(btn.c_str(), {x, y})) {
+                  }
+                  if (ImGui::BeginDragDropTarget()) {
+                    if (const ImGuiPayload* imgui_payload = ImGui::AcceptDragDropPayload(
+                            PayloadData::DRAG_DROP_SOURCE)) {
+                      const auto payload = PayloadData::from_payload(imgui_payload);
+                      if (payload->get_str().empty())
+                        return;
+                      if (auto imported_asset = asset_man->import_asset(payload->str)) {
+                        if (auto* existing_asset = asset_man->get_asset(*uuid)) {
+                          asset_man->unload_asset(existing_asset->uuid);
+                        }
+                        if (asset_man->load_asset(imported_asset)) {
+                          *uuid = imported_asset;
+                        }
+                      }
+                    }
+                    ImGui::EndDragDropTarget();
+                  }
+                  ImGui::Spacing();
+                  ImGui::Separator();
+
+                  if (auto* asset = asset_man->get_asset(*uuid)) {
+                    switch (asset->type) {
+                      case ox::AssetType::None: {
+                        break;
+                      }
+                      case AssetType::Shader: {
+                        draw_shader_asset(uuid, asset);
+                        break;
+                      }
+                      case AssetType::Mesh: {
+                        draw_mesh_asset(uuid, asset);
+                        break;
+                      }
+                      case AssetType::Texture: {
+                        draw_texture_asset(uuid, asset);
+                        break;
+                      }
+                      case AssetType::Material: {
+                        draw_material_asset(uuid, asset);
+                        break;
+                      }
+                      case AssetType::Font: {
+                        draw_font_asset(uuid, asset);
+                        break;
+                      }
+                      case AssetType::Scene: {
+                        draw_scene_asset(uuid, asset);
+                        break;
+                      }
+                      case AssetType::Audio: {
+                        draw_audio_asset(uuid, asset);
+                        break;
+                      }
+                      case AssetType::Script: {
+                        draw_script_asset(uuid, asset);
+                        break;
+                      }
+                    }
+                  }
+
+                  UI::begin_properties();
+                },
+            },
+            member);
 
         UI::end_properties();
       });
