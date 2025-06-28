@@ -283,7 +283,8 @@ void InspectorPanel::draw_components(flecs::entity entity) {
     if (ImGui::BeginPopup("ComponentSettings")) {
       if (ImGui::MenuItem("Remove Component"))
         remove_component = true;
-
+      if (ImGui::MenuItem("Reset Component"))
+        entity.remove(component).add(component);
       ImGui::EndPopup();
     }
     ImGui::PopID();
