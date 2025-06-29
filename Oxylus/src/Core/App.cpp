@@ -245,13 +245,14 @@ void App::run() {
 
   {
     ZoneNamedN(z, "SystemRegistryDeinit", true);
-    for (const auto& [type, system] : system_registry) {
+    for (auto& [type, system] : system_registry) {
       auto result = system->deinit();
       if (!result) {
         OX_LOG_ERROR("{} System failed to deinitalize: {}", engine_system_to_sv(type), result.error());
       } else {
         OX_LOG_INFO("{} System deinitialized.", engine_system_to_sv(type));
       }
+      system.reset();
     }
 
     system_registry.clear();

@@ -161,7 +161,15 @@ auto end_asset_meta(JsonWriter& writer, const std::string& path) -> bool {
 
 auto AssetManager::init() -> std::expected<void, std::string> { return {}; }
 
-auto AssetManager::deinit() -> std::expected<void, std::string> { return {}; }
+auto AssetManager::deinit() -> std::expected<void, std::string> {
+  ZoneScoped;
+
+  for (auto& [uuid, asset] : asset_registry) {
+    delete_asset(uuid);
+  }
+
+  return {};
+}
 
 auto AssetManager::registry() const -> const AssetRegistry& { return asset_registry; }
 
