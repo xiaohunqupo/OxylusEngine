@@ -422,8 +422,8 @@ void InspectorPanel::draw_components(flecs::entity entity) {
                       if (ImGui::BeginChild("##assets_table_window")) {
                         if (ImGui::BeginTable("#assets_table", 3, TABLE_FLAGS)) {
                           const auto& registry = asset_man->registry();
-                          for (auto& [_, asset] : registry) {
-                            const auto uuid_str = asset.uuid.str();
+                          for (const auto& asset : registry | std::views::values) {
+                            const auto asset_uuid_str = asset.uuid.str();
                             const auto file_name = fs::get_name_with_extension(asset.path);
                             const auto asset_type = asset_man->to_asset_type_sv(asset.type);
                             // NOTE: We don't allow mesh assets to be loaded this way yet(or ever).
@@ -440,7 +440,7 @@ void InspectorPanel::draw_components(flecs::entity entity) {
                             ImGui::TableNextRow(ImGuiTableRowFlags_None);
 
                             ImGui::TableSetColumnIndex(0);
-                            ImGui::PushID(uuid_str.c_str());
+                            ImGui::PushID(asset_uuid_str.c_str());
                             constexpr ImGuiSelectableFlags selectable_flags = ImGuiSelectableFlags_SpanAllColumns |
                                                                               ImGuiSelectableFlags_AllowOverlap |
                                                                               ImGuiSelectableFlags_AllowDoubleClick;
@@ -448,7 +448,8 @@ void InspectorPanel::draw_components(flecs::entity entity) {
                               draw_asset_picker = false;
                               // NOTE: Don't allow the existing asset to be swapped with a different type of asset.
                               auto* existing_asset = asset_man->get_asset(*uuid);
-                              if ((!existing_asset || existing_asset->type == asset.type) &&
+                              if (asset.uuid != *uuid && //
+                                  (!existing_asset || existing_asset->type == asset.type) &&
                                   asset_man->load_asset(asset.uuid)) {
                                 if (*uuid) {
                                   asset_man->unload_asset(*uuid);
