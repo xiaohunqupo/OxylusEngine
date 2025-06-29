@@ -422,18 +422,18 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           "meshlet_instances_buffer", *this->meshlet_instances_buffer, vuk::Access::eNone);
     }
 
-    const auto square_extent = vuk::Extent3D{
-        .width = std::bit_floor(render_info.extent.width),
-        .height = std::bit_floor(render_info.extent.height),
+    const auto hiz_extent = vuk::Extent3D{
+        .width = (depth_ia.extent.width + 63_u32) & ~63_u32,
+        .height = (depth_ia.extent.height + 63_u32) & ~63_u32,
         .depth = 1,
     };
 
-    if (this->hiz_view.get_extent() != square_extent) {
+    if (this->hiz_view.get_extent() != hiz_extent) {
       if (this->hiz_view) {
         this->hiz_view.destroy();
       }
 
-      this->hiz_view.create({}, {.preset = Preset::eSTT2D, .format = vuk::Format::eR32Sfloat, .extent = square_extent});
+      this->hiz_view.create({}, {.preset = Preset::eSTT2D, .format = vuk::Format::eR32Sfloat, .extent = hiz_extent});
       this->hiz_view.set_name("hiz");
     }
     auto hiz_attachment = this->hiz_view.acquire("hiz", vuk::eNone);
@@ -666,6 +666,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           auto sampler_info = vuk::SamplerCreateInfo{
               .pNext = &sampler_min_clamp_reduction_mode,
               .minFilter = vuk::Filter::eLinear,
+              .mipmapMode = vuk::SamplerMipmapMode::eNearest,
               .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
               .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
           };
