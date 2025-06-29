@@ -1216,7 +1216,7 @@ auto AssetManager::load_script(const UUID& uuid) -> bool {
   if (asset->is_loaded())
     return true;
 
-  asset->script_id = script_map.create_slot(std::make_unique<LuaSystem>(asset->path));
+  asset->script_id = script_map.create_slot(std::make_unique<LuaSystem>());
   auto* system = script_map.slot(asset->script_id);
   system->get()->load(asset->path);
 

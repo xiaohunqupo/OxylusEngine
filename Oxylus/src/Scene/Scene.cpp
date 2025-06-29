@@ -342,11 +342,16 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
       .event(flecs::OnSet)
       .event(flecs::OnAdd)
       .event(flecs::OnRemove)
-      .each([](flecs::iter& it, usize i, LuaScriptComponent& c) {
-        if (it.event() == flecs::OnRemove) {
+      .each([scene = &self](flecs::iter& it, usize i, LuaScriptComponent& c) {
+        if (it.event() == flecs::OnAdd || it.event() == flecs::OnSet) {
           auto* asset_man = App::get_asset_manager();
-          if (auto* script_asset = asset_man->get_asset(c.script_uuid)) {
-            asset_man->unload_asset(script_asset->uuid);
+          if (auto* script_asset = asset_man->get_script(c.script_uuid)) {
+            script_asset->on_add(scene, it.entity(i));
+          }
+        } else if (it.event() == flecs::OnRemove) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* script_asset = asset_man->get_script(c.script_uuid)) {
+            script_asset->on_remove(scene, it.entity(i));
           }
         }
       });
@@ -364,7 +369,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
           script->bind_globals(&self, it.entity(i), it.delta_time());
-          script->on_update(it.delta_time());
+          script->on_scene_update(it.delta_time());
         }
       });
 
@@ -414,7 +419,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
       .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
-          script->on_fixed_update(it.delta_time());
+          script->on_scene_fixed_update(it.delta_time());
         }
       });
 
@@ -563,13 +568,12 @@ auto Scene::runtime_start() -> void {
 
   // Scripting
   {
-    ZoneNamedN(z, "LuaScripting/on_init", true);
+    ZoneNamedN(z, "LuaScripting/on_scene_start", true);
     world.query_builder<const LuaScriptComponent>().build().each(
         [this](const flecs::entity& e, const LuaScriptComponent& c) {
           auto* asset_man = App::get_asset_manager();
           if (auto* script = asset_man->get_script(c.script_uuid)) {
-            script->reload();
-            script->on_init(this, e);
+            script->on_scene_start(this, e);
           }
         });
   }
@@ -611,12 +615,12 @@ auto Scene::runtime_stop() -> void {
 
   // Scripting
   {
-    ZoneNamedN(z, "LuaScripting/on_release", true);
+    ZoneNamedN(z, "LuaScripting/on_scene_deinit", true);
     world.query_builder<const LuaScriptComponent>().build().each(
         [this](const flecs::entity& e, const LuaScriptComponent& c) {
           auto* asset_man = App::get_asset_manager();
           if (auto* script = asset_man->get_script(c.script_uuid)) {
-            script->on_release(this, e);
+            script->on_scene_stop(this, e);
           }
         });
   }
@@ -660,7 +664,7 @@ void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
     world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
       auto* asset_man = App::get_asset_manager();
       if (auto* script = asset_man->get_script(c.script_uuid)) {
-        script->on_render(extent, format);
+        script->on_scene_render(extent, format);
       }
     });
   }
@@ -745,11 +749,9 @@ auto Scene::create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flec
 auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Scene> {
   ZoneScoped;
 
-  // Copies the world but not the renderer. Imports component db from start.
+  // Copies the world but not the renderer.
 
   std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->_render_pipeline);
-
-  new_scene->component_db.import_module(new_scene->world.import <Core>());
 
   JsonWriter writer{};
   writer.begin_obj();
