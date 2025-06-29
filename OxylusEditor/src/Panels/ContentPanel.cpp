@@ -318,6 +318,11 @@ void ContentPanel::invalidate() {
 void ContentPanel::render_header() {
   if (ImGui::Button(ICON_MDI_COGS))
     ImGui::OpenPopup("SettingsPopup");
+  ImGui::SameLine();
+  if (ImGui::Button(ICON_MDI_REFRESH)) {
+    refresh();
+  }
+
   if (ImGui::BeginPopup("SettingsPopup")) {
     UI::begin_properties(ImGuiTableFlags_SizingStretchSame);
     UI::property("Thumbnail Size",
@@ -686,8 +691,7 @@ void ContentPanel::render_body(bool grid) {
         const ImVec2 rect_size = ImGui::GetItemRectSize();
         const ImRect clip_rect = ImRect(
             {rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
-            {rect_min.x + rect_size.x,
-             rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font_size * 2.0f});
+            {rect_min.x + rect_size.x, rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font_size * 2.0f});
         ImGui::PushFontSize(14.f);
         UI::clipped_text(
             clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
