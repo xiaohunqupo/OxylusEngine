@@ -121,7 +121,7 @@ auto LuaSystem::reset_functions(this LuaSystem& self) -> void {
 auto LuaSystem::bind_globals(this const LuaSystem& self, Scene* scene, flecs::entity entity, f32 delta_time) -> void {
   (*self.environment)["scene"] = scene;
   (*self.environment)["world"] = std::ref(scene->world);
-  (*self.environment)["this"] = entity;
+  (*self.environment)["entity"] = entity;
   (*self.environment)["delta_time"] = delta_time;
 }
 

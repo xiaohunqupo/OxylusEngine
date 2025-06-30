@@ -346,6 +346,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         if (it.event() == flecs::OnAdd || it.event() == flecs::OnSet) {
           auto* asset_man = App::get_asset_manager();
           if (auto* script_asset = asset_man->get_script(c.script_uuid)) {
+            script_asset->bind_globals(scene, it.entity(i), it.delta_time());
             script_asset->on_add(scene, it.entity(i));
           }
         } else if (it.event() == flecs::OnRemove) {
@@ -368,7 +369,6 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
       .each([&self](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
-          script->bind_globals(&self, it.entity(i), it.delta_time());
           script->on_scene_update(it.delta_time());
         }
       });
