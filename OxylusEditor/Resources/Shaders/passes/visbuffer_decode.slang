@@ -3,7 +3,7 @@ module visbuffer_decode;
 import common;
 import gpu;
 import scene;
-import passes.visbuffer;
+import visbuffer;
 
 #include <fullscreen.slang>
 

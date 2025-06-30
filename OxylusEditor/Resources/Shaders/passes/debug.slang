@@ -2,43 +2,29 @@ module debug;
 
 import gpu;
 import scene;
-import passes.visbuffer;
+import visbuffer;
 
 #include <fullscreen.slang>
 
-[[vk::binding(0, 0)]]
-Sampler linear_repeat_sampler;
+struct ShaderParameters {
+    Sampler linear_repeat_sampler;
+    Image2D<u32> visbuffer_data;
+    Image2D<f32> depth_image;
+    Image2D<u32> overdraw;
+    Image2D<f32x4> albedo_image;
+    Image2D<f32x4> normal_image;
+    Image2D<f32x3> emissive_image;
+    Image2D<f32x3> metallic_roughness_occlusion_image;
+    Image2D<f32> hiz_image;
 
-[[vk::binding(1, 0)]]
-Image2D<u32> visbuffer_data;
-
-[[vk::binding(2, 0)]]
-Image2D<f32> depth_image;
-
-[[vk::binding(3, 0)]]
-Image2D<u32> overdraw;
-
-[[vk::binding(4, 0)]]
-Image2D<f32x4> albedo_image;
-
-[[vk::binding(5, 0)]]
-Image2D<f32x4> normal_image;
-
-[[vk::binding(6, 0)]]
-Image2D<f32x3> emissive_image;
-
-[[vk::binding(7, 0)]]
-Image2D<f32x3> metallic_roughness_occlusion_image;
-
-[[vk::binding(8, 0)]]
-ConstantBuffer<Camera, ScalarDataLayout> camera;
-
-[[vk::binding(9, 0)]]
-StructuredBuffer<u32, ScalarDataLayout> visible_meshlet_instances_indices;
+    ConstantBuffer<Camera> camera;
+    StructuredBuffer<u32> visible_meshlet_instances_indices;
+    StructuredBuffer<MeshletInstance> meshlet_instances;
+    StructuredBuffer<Mesh> meshes;
+    StructuredBuffer<Transform> transforms;
+};
 
 struct PushConstants {
-    DebugView debug_view;
-    f32 heatmap_scale;
 };
 [[vk::push_constant]] PushConstants C;
 
@@ -66,48 +52,56 @@ func inferno(f32 t) -> f32x3 {
 }
 
 [[shader("fragment")]]
-func fs_main(VertexOutput input) -> f32x4 {
-    const u32 texel = visbuffer_data.load(u32x2(input.position.xy));
+func fs_main(
+    VertexOutput input,
+    uniform ShaderParameters params,
+    uniform DebugView debug_view,
+    uniform f32 heatmap_scale
+) -> f32x4 {
+    const u32 texel = params.visbuffer_data.load(u32x2(input.position.xy));
     if (texel == ~0u) {
         discard;
     }
 
     f32x3 color = f32x3(0.0, 0.0, 0.0);
     const let vis_data = VisBufferData(texel);
-    switch (C.debug_view) {
+    switch (debug_view) {
         case DebugView::Triangles: {
             const u32 h = hash(vis_data.triangle_index);
             color = f32x3(f32(h & 255), f32((h >> 8) & 255), f32((h >> 16) & 255)) / 255.0;
         } break;
         case DebugView::Meshlets: {
-            const u32 h = hash(visible_meshlet_instances_indices[vis_data.meshlet_instance_index]);
+            const u32 h = hash(params.visible_meshlet_instances_indices[vis_data.meshlet_instance_index]);
             color = f32x3(f32(h & 255), f32((h >> 8) & 255), f32((h >> 16) & 255)) / 255.0;
         } break;
         case DebugView::Overdraw: {
-            const f32 draw_scale = clamp(C.heatmap_scale, 0.0, 100.0) / 100.0;
-            const f32 draw_count = f32(overdraw.load(u32x2(input.position.xy)));
+            const f32 draw_scale = clamp(heatmap_scale, 0.0, 100.0) / 100.0;
+            const f32 draw_count = f32(params.overdraw.load(u32x2(input.position.xy)));
             const f32 heat = 1.0 - exp2(-draw_count * draw_scale);
             color = inferno(heat);
         } break;
         case DebugView::Albedo: {
-            color = albedo_image.sample_mip(linear_repeat_sampler, input.tex_coord, 0).rgb;
+            color = params.albedo_image.sample_mip(params.linear_repeat_sampler, input.tex_coord, 0).rgb;
         } break;
         case DebugView::Normal: {
-            const f32x4 sampled_normal = normal_image.load(u32x2(input.position.xy));
+            const f32x4 sampled_normal = params.normal_image.load(u32x2(input.position.xy));
             f32x3 mapped_normal = com::oct_to_vec3(sampled_normal.xy);
             color = mapped_normal * 0.5 + 0.5;
         } break;
         case DebugView::Emissive: {
-            color = emissive_image.load(u32x2(input.position.xy)).rgb;
+            color = params.emissive_image.load(u32x2(input.position.xy)).rgb;
         } break;
         case DebugView::Metallic: {
-            color = metallic_roughness_occlusion_image.load(u32x2(input.position.xy)).rrr;
+            color = params.metallic_roughness_occlusion_image.load(u32x2(input.position.xy)).rrr;
         } break;
         case DebugView::Roughness: {
-            color = metallic_roughness_occlusion_image.load(u32x2(input.position.xy)).ggg;
+            color = params.metallic_roughness_occlusion_image.load(u32x2(input.position.xy)).ggg;
         } break;
         case DebugView::Occlusion: {
-            color = metallic_roughness_occlusion_image.load(u32x2(input.position.xy)).bbb;
+            color = params.metallic_roughness_occlusion_image.load(u32x2(input.position.xy)).bbb;
+        } break;
+        case DebugView::HiZ: {
+
         } break;
         default:;
     }

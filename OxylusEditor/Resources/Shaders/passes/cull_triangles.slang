@@ -3,8 +3,7 @@ module cull_triangles;
 import common;
 import gpu;
 import scene;
-
-import passes.visbuffer;
+import visbuffer;
 
 struct ShaderParameters {
     RWStructuredBuffer<DrawIndexedIndirectCommand> draw_cmd;

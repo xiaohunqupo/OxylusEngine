@@ -730,6 +730,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              camera_buffer,
              visible_meshlet_instances_indices_buffer,
              meshlet_instances_buffer_value,
+             meshes_buffer_value,
              transforms_buffer_value,
              material_buffer,
              visbuffer_data_attachment) = vuk::make_pass( //
@@ -774,6 +775,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                  camera,
                                  visible_meshlet_instances_indices,
                                  meshlet_instances,
+                                 meshes,
                                  transforms_,
                                  materials,
                                  visbuffer);
@@ -875,8 +877,12 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               VUK_IA(vuk::eFragmentSampled) normal,
               VUK_IA(vuk::eFragmentSampled) emissive,
               VUK_IA(vuk::eFragmentSampled) metallic_roughness_occlusion,
+              VUK_IA(vuk::eFragmentSampled) hiz,
               VUK_BA(vuk::eFragmentRead) camera,
-              VUK_BA(vuk::eFragmentRead) visible_meshlet_instances_indices) {
+              VUK_BA(vuk::eFragmentRead) visible_meshlet_instances_indices,
+              VUK_BA(vuk::eFragmentRead) meshlet_instances,
+              VUK_BA(vuk::eFragmentRead) meshes,
+              VUK_BA(vuk::eFragmentRead) transforms_) {
             auto linear_repeat_sampler = vuk::SamplerCreateInfo{
                 .magFilter = vuk::Filter::eLinear,
                 .minFilter = vuk::Filter::eLinear,
@@ -899,8 +905,12 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                 .bind_image(0, 5, normal)
                 .bind_image(0, 6, emissive)
                 .bind_image(0, 7, metallic_roughness_occlusion)
+                .bind_image(0, 8, hiz)
                 .bind_buffer(0, 8, camera)
                 .bind_buffer(0, 9, visible_meshlet_instances_indices)
+                .bind_buffer(0, 10, meshlet_instances)
+                .bind_buffer(0, 11, meshes)
+                .bind_buffer(0, 12, transforms_)
                 .push_constants(vuk::ShaderStageFlagBits::eFragment,
                                 0,
                                 PushConstants(std::to_underlying(debug_view), debug_heatmap_scale))
@@ -915,8 +925,12 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              std::move(normal_attachment),
              std::move(emissive_attachment),
              std::move(metallic_roughness_occlusion_attachment),
+             std::move(hiz_attachment),
              std::move(camera_buffer),
-             std::move(visible_meshlet_instances_indices_buffer));
+             std::move(visible_meshlet_instances_indices_buffer),
+             std::move(meshlet_instances_buffer_value),
+             std::move(meshes_buffer_value),
+             std::move(transforms_buffer_value));
     }
   }
 
