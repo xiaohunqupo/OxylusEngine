@@ -788,17 +788,17 @@ auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Sce
 }
 
 auto Scene::get_world_transform(const flecs::entity entity) const -> glm::mat4 {
-  const auto* tc = entity.get<TransformComponent>();
+  const auto& tc = entity.get<TransformComponent>();
   const auto parent = entity.parent();
   const glm::mat4 parent_transform = parent != flecs::entity::null() ? get_world_transform(parent) : glm::mat4(1.0f);
-  return parent_transform * glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) *
-         glm::scale(glm::mat4(1.0f), tc->scale);
+  return parent_transform * glm::translate(glm::mat4(1.0f), tc.position) * glm::toMat4(glm::quat(tc.rotation)) *
+         glm::scale(glm::mat4(1.0f), tc.scale);
 }
 
 auto Scene::get_local_transform(flecs::entity entity) const -> glm::mat4 {
-  const auto* tc = entity.get<TransformComponent>();
-  return glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) *
-         glm::scale(glm::mat4(1.0f), tc->scale);
+  const auto& tc = entity.get<TransformComponent>();
+  return glm::translate(glm::mat4(1.0f), tc.position) * glm::toMat4(glm::quat(tc.rotation)) *
+         glm::scale(glm::mat4(1.0f), tc.scale);
 }
 
 auto Scene::set_dirty(this Scene& self, flecs::entity entity) -> void {
@@ -981,7 +981,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
 
   const auto entity_name = std::string(entity.name());
 
-  if (const auto* bc = entity.get<BoxColliderComponent>()) {
+  if (const auto* bc = entity.try_get<BoxColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), bc->friction, bc->restitution);
 
     glm::vec3 scale = bc->size;
@@ -992,7 +992,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {bc->offset.x, bc->offset.y, bc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* sc = entity.get<SphereColliderComponent>()) {
+  if (const auto* sc = entity.try_get<SphereColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), sc->friction, sc->restitution);
 
     float radius = 2.0f * sc->radius * max_scale_component;
@@ -1003,7 +1003,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {sc->offset.x, sc->offset.y, sc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* cc = entity.get<CapsuleColliderComponent>()) {
+  if (const auto* cc = entity.try_get<CapsuleColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc->friction, cc->restitution);
 
     float radius = 2.0f * cc->radius * max_scale_component;
@@ -1014,7 +1014,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* tcc = entity.get<TaperedCapsuleColliderComponent>()) {
+  if (const auto* tcc = entity.try_get<TaperedCapsuleColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), tcc->friction, tcc->restitution);
 
     float top_radius = 2.0f * tcc->top_radius * max_scale_component;
@@ -1027,7 +1027,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {tcc->offset.x, tcc->offset.y, tcc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* cc = entity.get<CylinderColliderComponent>()) {
+  if (const auto* cc = entity.try_get<CylinderColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc->friction, cc->restitution);
 
     float radius = 2.0f * cc->radius * max_scale_component;
@@ -1039,7 +1039,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
   }
 
 #if TODO
-  (const auto* mc = entity.get<MeshColliderComponent>()) {
+  (const auto* mc = entity.try_get<MeshColliderComponent>()) {
     if (const auto* mesh_component = entity.get<MeshComponent>()) {
       const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), mc->friction, mc->restitution);
 
@@ -1090,7 +1090,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
   auto rotation = glm::quat(transform.rotation);
 
   u8 layer_index = 1; // Default Layer
-  if (auto layer_component = entity.get<LayerComponent>()) {
+  if (const auto* layer_component = entity.try_get<LayerComponent>()) {
     const auto collision_mask_it = physics->layer_collision_mask.find(layer_component->layer);
     if (collision_mask_it != physics->layer_collision_mask.end())
       layer_index = collision_mask_it->second.index;

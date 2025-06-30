@@ -39,7 +39,7 @@ struct ComponentWrapper {
       return;
     }
 
-    struct_data = component_entity.get<flecs::Struct>();
+    struct_data = component_entity.try_get<flecs::Struct>();
     member_count = ecs_vec_count(&struct_data->members);
     members = static_cast<ecs_member_t*>(ecs_vec_first(&struct_data->members));
     members_data = static_cast<u8*>(holder_.get_mut(comp_id_));

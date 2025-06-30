@@ -169,7 +169,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
       if (editor_layer->scene_state == EditorLayer::SceneState::Edit)
         editor_camera.enable();
 
-      const auto& cam = *editor_camera.get<CameraComponent>();
+      const auto& cam = editor_camera.get<CameraComponent>();
       auto projection = cam.get_projection_matrix();
       projection[1][1] *= -1;
       glm::mat4 view_proj = projection * cam.get_view_matrix();
@@ -276,14 +276,14 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
           RendererCVar::cvar_draw_grid.toggle();
 
         if (editor_camera.has<CameraComponent>()) {
-          auto* cam = editor_camera.get_mut<CameraComponent>();
+          auto& cam = editor_camera.get_mut<CameraComponent>();
           UI::push_id();
           if (UI::toggle_button(ICON_MDI_CAMERA,
-                                cam->projection == CameraComponent::Projection::Orthographic,
+                                cam.projection == CameraComponent::Projection::Orthographic,
                                 button_size,
                                 alpha,
                                 alpha))
-            cam->projection = cam->projection == CameraComponent::Projection::Orthographic
+            cam.projection = cam.projection == CameraComponent::Projection::Orthographic
                                   ? CameraComponent::Projection::Perspective
                                   : CameraComponent::Projection::Orthographic;
         }
@@ -357,14 +357,14 @@ void ViewportPanel::on_update() {
     return;
   }
 
-  auto* cam = editor_camera.get_mut<CameraComponent>();
-  auto* tc = editor_camera.get_mut<TransformComponent>();
-  const glm::vec3& position = cam->position;
-  const glm::vec2 yaw_pitch = glm::vec2(cam->yaw, cam->pitch);
+  auto& cam = editor_camera.get_mut<CameraComponent>();
+  auto& tc = editor_camera.get_mut<TransformComponent>();
+  const glm::vec3& position = cam.position;
+  const glm::vec2 yaw_pitch = glm::vec2(cam.yaw, cam.pitch);
   glm::vec3 final_position = position;
   glm::vec2 final_yaw_pitch = yaw_pitch;
 
-  const auto is_ortho = cam->projection == CameraComponent::Projection::Orthographic;
+  const auto is_ortho = cam.projection == CameraComponent::Projection::Orthographic;
   if (is_ortho) {
     final_position = {0.0f, 0.0f, 0.0f};
     final_yaw_pitch = {glm::radians(-90.f), 0.f};
@@ -376,9 +376,9 @@ void ViewportPanel::on_update() {
     auto& editor_context = EditorLayer::get()->get_context();
     editor_context.entity.and_then([&cam](flecs::entity& e) {
       const auto entity_tc = e.get<TransformComponent>();
-      auto final_pos = entity_tc->position + cam->forward;
-      final_pos += -5.0f * cam->forward * glm::vec3(1.0f);
-      cam->position = final_pos;
+      auto final_pos = entity_tc.position + cam.forward;
+      final_pos += -5.0f * cam.forward * glm::vec3(1.0f);
+      cam.position = final_pos;
       return std::optional<std::monostate>{};
     });
   }
@@ -396,13 +396,13 @@ void ViewportPanel::on_update() {
     const float max_move_speed = EditorCVar::cvar_camera_speed.get() *
                                  (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
     if (Input::get_key_held(KeyCode::W))
-      final_position += cam->forward * max_move_speed;
+      final_position += cam.forward * max_move_speed;
     else if (Input::get_key_held(KeyCode::S))
-      final_position -= cam->forward * max_move_speed;
+      final_position -= cam.forward * max_move_speed;
     if (Input::get_key_held(KeyCode::D))
-      final_position += cam->right * max_move_speed;
+      final_position += cam.right * max_move_speed;
     else if (Input::get_key_held(KeyCode::A))
-      final_position -= cam->right * max_move_speed;
+      final_position -= cam.right * max_move_speed;
 
     if (Input::get_key_held(KeyCode::Q)) {
       final_position.y -= max_move_speed;
@@ -420,8 +420,8 @@ void ViewportPanel::on_update() {
     if (Input::get_mouse_moved()) {
       const float max_move_speed = EditorCVar::cvar_camera_speed.get() *
                                    (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
-      final_position += cam->forward * change.y * max_move_speed;
-      final_position += cam->right * change.x * max_move_speed;
+      final_position += cam.forward * change.y * max_move_speed;
+      final_position += cam.right * change.x * max_move_speed;
     }
   } else {
     window.set_cursor(WindowCursor::Arrow);
@@ -440,11 +440,11 @@ void ViewportPanel::on_update() {
                                                        1000.0f,
                                                        static_cast<float>(App::get_timestep().get_seconds()));
 
-  tc->position = EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position;
-  tc->rotation.x = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y;
-  tc->rotation.y = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x;
+  tc.position = EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position;
+  tc.rotation.x = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y;
+  tc.rotation.y = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x;
 
-  cam->zoom = static_cast<float>(EditorCVar::cvar_camera_zoom.get());
+  cam.zoom = static_cast<float>(EditorCVar::cvar_camera_zoom.get());
 }
 
 void ViewportPanel::draw_performance_overlay() {
@@ -482,7 +482,7 @@ void ViewportPanel::draw_gizmos() {
   if (selected_entity == flecs::entity::null() || !editor_camera.has<CameraComponent>() || _gizmo_type == -1)
     return;
 
-  if (auto* tc = selected_entity.get_mut<TransformComponent>()) {
+  if (auto* tc = selected_entity.try_get_mut<TransformComponent>()) {
     ImGuizmo::SetOrthographic(false);
     ImGuizmo::SetDrawlist();
     ImGuizmo::SetRect(_viewport_bounds[0].x,
@@ -490,7 +490,7 @@ void ViewportPanel::draw_gizmos() {
                       _viewport_bounds[1].x - _viewport_bounds[0].x,
                       _viewport_bounds[1].y - _viewport_bounds[0].y);
 
-    const auto& cam = *editor_camera.get<CameraComponent>();
+    const auto& cam = editor_camera.get<CameraComponent>();
 
     auto camera_projection = cam.get_projection_matrix();
     camera_projection[1][1] *= -1;

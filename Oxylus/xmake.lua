@@ -21,6 +21,7 @@ target("Oxylus")
         add_defines("VC_EXTRALEAN", { force = true, public = true  })
         add_defines("NOMINMAX", { force = true, public = true  })
         add_defines("_WIN32", { force = true, public = true  })
+        add_defines("_CRT_SECURE_NO_WARNINGS", { force = true, public = true  })
 
         remove_files("./src/OS/Linux*")
 
@@ -72,7 +73,7 @@ target("Oxylus")
         "imgui",
         "imguizmo-lr",
         "glm",
-        "flecs",
+        "flecs-ox",
         "fastgltf",
         "meshoptimizer",
         "fmt",

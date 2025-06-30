@@ -1382,19 +1382,18 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
               sund.intensity = lc.intensity;
             }
 
-            if (e.has<AtmosphereComponent>()) {
-              const auto& atmos_info = *e.get<AtmosphereComponent>();
+            if (const auto* atmos_info = e.try_get<AtmosphereComponent>()) {
               auto& atmos = atmosphere_data.emplace();
-              atmos.rayleigh_scatter = atmos_info.rayleigh_scattering * 1e-3f;
-              atmos.rayleigh_density = atmos_info.rayleigh_density;
-              atmos.mie_scatter = atmos_info.mie_scattering * 1e-3f;
-              atmos.mie_density = atmos_info.mie_density;
-              atmos.mie_extinction = atmos_info.mie_extinction * 1e-3f;
-              atmos.mie_asymmetry = atmos_info.mie_asymmetry;
-              atmos.ozone_absorption = atmos_info.ozone_absorption * 1e-3f;
-              atmos.ozone_height = atmos_info.ozone_height;
-              atmos.ozone_thickness = atmos_info.ozone_thickness;
-              atmos.aerial_perspective_start_km = atmos_info.aerial_perspective_start_km;
+              atmos.rayleigh_scatter = atmos_info->rayleigh_scattering * 1e-3f;
+              atmos.rayleigh_density = atmos_info->rayleigh_density;
+              atmos.mie_scatter = atmos_info->mie_scattering * 1e-3f;
+              atmos.mie_density = atmos_info->mie_density;
+              atmos.mie_extinction = atmos_info->mie_extinction * 1e-3f;
+              atmos.mie_asymmetry = atmos_info->mie_asymmetry;
+              atmos.ozone_absorption = atmos_info->ozone_absorption * 1e-3f;
+              atmos.ozone_height = atmos_info->ozone_height;
+              atmos.ozone_thickness = atmos_info->ozone_thickness;
+              atmos.aerial_perspective_start_km = atmos_info->aerial_perspective_start_km;
 
               f32 eye_altitude = cam.position.y * GPU::CAMERA_SCALE_UNIT;
               eye_altitude += atmos.planet_radius + GPU::PLANET_RADIUS_OFFSET;

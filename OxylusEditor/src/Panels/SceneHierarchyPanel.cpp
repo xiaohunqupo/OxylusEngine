@@ -259,13 +259,13 @@ void SceneHierarchyPanel::draw_context_menu() {
 
     if (ImGui::MenuItem("Sprite")) {
       to_select = _scene->create_entity().add<SpriteComponent>();
-      to_select.get_mut<SpriteComponent>()->material = asset_man->create_asset(AssetType::Material, {});
-      asset_man->load_material(to_select.get_mut<SpriteComponent>()->material, Material{});
+      to_select.get_mut<SpriteComponent>().material = asset_man->create_asset(AssetType::Material, {});
+      asset_man->load_material(to_select.get_mut<SpriteComponent>().material, Material{});
     }
 
     if (ImGui::MenuItem("Camera")) {
       to_select = _scene->create_entity("Camera");
-      to_select.add<CameraComponent>().get_mut<TransformComponent>()->rotation.y = glm::radians(-90.f);
+      to_select.add<CameraComponent>().get_mut<TransformComponent>().rotation.y = glm::radians(-90.f);
     }
 
     if (ImGui::MenuItem("Lua Script")) {
