@@ -59,8 +59,8 @@ public:
   ankerl::unordered_dense::map<flecs::entity, GPU::TransformID> entity_transforms_map = {};
   ankerl::unordered_dense::map<std::pair<UUID, usize>, std::vector<GPU::TransformID>> rendering_meshes_map = {};
 
-  explicit Scene(const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr);
-  explicit Scene(const std::string& name);
+  explicit Scene(const std::string& name = "Untitled");
+  explicit Scene(const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline);
 
   ~Scene();
 

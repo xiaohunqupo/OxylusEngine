@@ -199,7 +199,9 @@ auto ComponentDB::is_component_known(this ComponentDB& self, flecs::id component
 
 auto ComponentDB::get_components(this ComponentDB& self) -> std::span<flecs::id> { return self.components; }
 
-Scene::Scene(const std::shared_ptr<RenderPipeline>& render_pipeline) { this->init("Untitled", render_pipeline); }
+Scene::Scene(const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline) {
+  this->init(name, render_pipeline);
+}
 
 Scene::Scene(const std::string& name) { init(name); }
 
@@ -366,7 +368,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   self.world.system<const LuaScriptComponent>("LuaScriptsUpdate")
       .kind(flecs::PreUpdate)
-      .each([&self](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
+      .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
           script->on_scene_update(it.delta_time());
@@ -751,7 +753,7 @@ auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Sce
 
   // Copies the world but not the renderer.
 
-  std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->_render_pipeline);
+  std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->scene_name, src_scene->_render_pipeline);
 
   JsonWriter writer{};
   writer.begin_obj();
