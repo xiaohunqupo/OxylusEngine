@@ -336,7 +336,7 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
       OX_LOG_WARN("Could not load {0} - not a scene file", path.filename().string());
     return false;
   }
-  const auto new_scene = std::make_shared<Scene>();
+  const auto new_scene = std::make_shared<Scene>(editor_scene->get_render_pipeline());
   if (new_scene->load_from_file(path.string())) {
     editor_scene = new_scene;
     set_editor_context(new_scene);
