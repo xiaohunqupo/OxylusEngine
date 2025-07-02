@@ -136,7 +136,6 @@ func cs_main(
     u32 active_triangle_index = 0;
     if (local_index < meshlet.triangle_count) {
         triangle_passed = test_triangle(params.camera, mesh, meshlet, local_index, cull_flags);
-        //triangle_passed = true;
         if (triangle_passed) {
             active_triangle_index = com::atomic_add(triangles_passed_shared, 1, com::memory_order_relaxed);
         }

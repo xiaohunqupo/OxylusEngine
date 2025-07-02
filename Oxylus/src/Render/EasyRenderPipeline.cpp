@@ -906,11 +906,11 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                 .bind_image(0, 6, emissive)
                 .bind_image(0, 7, metallic_roughness_occlusion)
                 .bind_image(0, 8, hiz)
-                .bind_buffer(0, 8, camera)
-                .bind_buffer(0, 9, visible_meshlet_instances_indices)
-                .bind_buffer(0, 10, meshlet_instances)
-                .bind_buffer(0, 11, meshes)
-                .bind_buffer(0, 12, transforms_)
+                .bind_buffer(0, 9, camera)
+                .bind_buffer(0, 10, visible_meshlet_instances_indices)
+                .bind_buffer(0, 11, meshlet_instances)
+                .bind_buffer(0, 12, meshes)
+                .bind_buffer(0, 13, transforms_)
                 .push_constants(vuk::ShaderStageFlagBits::eFragment,
                                 0,
                                 PushConstants(std::to_underlying(debug_view), debug_heatmap_scale))

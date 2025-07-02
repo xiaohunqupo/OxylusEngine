@@ -66,11 +66,10 @@ func test_occlusion(
     
         let uv = ((f32x2(min_texel) + f32x2(max_texel)) * 0.5f) / hzb_size;
         let d = params.hiz_image.sample_mip(params.hiz_sampler, uv, mip);
-        //return aabb.aabb_max.z <= d;
-        return true;
+        return aabb.aabb_max.z <= d;
     }
 
-    return false;
+    return true;
 }
 
 #ifndef CULLING_MESHLET_COUNT
@@ -102,15 +101,16 @@ func cs_main(
     let aabb_extent = aabb_max - aabb_min;
     let aabb_center = (aabb_min + aabb_max) * 0.5;
 
-    let mvp = mul(params.camera.previous_projection_view, transform.world);
+    let cur_mvp = mul(params.camera.projection_view, transform.world);
     var meshlet_passed = true;
     // Frustum culling
     if (cull_flags & CullFlags::MeshletFrustum) {
-        meshlet_passed = test_frustum(mvp, aabb_center, aabb_extent);
+        meshlet_passed = test_frustum(cur_mvp, aabb_center, aabb_extent);
     }
 
     if (meshlet_passed) {
-       meshlet_passed = test_occlusion(params, mvp, aabb_center, aabb_extent);
+        let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
+        meshlet_passed = test_occlusion(params, prev_mvp, aabb_center, aabb_extent);
     }
 
     if (meshlet_passed) {

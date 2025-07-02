@@ -3,12 +3,6 @@ module cull;
 import common;
 import scene;
 
-public func test_aabb_vs_plane(f32x3 center, f32x3 extent, f32x4 plane) -> bool {
-    const f32x3 normal = plane.xyz;
-    const f32 radius = dot(extent, abs(normal));
-    return (dot(normal, center) - plane.w) >= -radius;
-}
-
 public func normalize_plane(f32x4 p) -> f32x4 {
     return p / length(p.xyz);
 }

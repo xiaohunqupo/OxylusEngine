@@ -24,10 +24,6 @@ struct ShaderParameters {
     StructuredBuffer<Transform> transforms;
 };
 
-struct PushConstants {
-};
-[[vk::push_constant]] PushConstants C;
-
 func hash(uint a) -> u32 {
     a = (a + 0x7ed55d16) + (a << 12);
     a = (a ^ 0xc761c23c) ^ (a >> 19);
