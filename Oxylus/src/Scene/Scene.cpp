@@ -537,32 +537,32 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
       });
 }
 
-auto Scene::runtime_start() -> void {
+auto Scene::runtime_start(this Scene& self) -> void {
   ZoneScoped;
 
-  running = true;
+  self.running = true;
 
   // Physics
   {
     ZoneNamedN(z, "Physics Start", true);
-    body_activation_listener_3d = new Physics3DBodyActivationListener();
-    contact_listener_3d = new Physics3DContactListener(this);
+    self.body_activation_listener_3d = new Physics3DBodyActivationListener();
+    self.contact_listener_3d = new Physics3DContactListener(&self);
     const auto physics_system = App::get_system<Physics>(EngineSystems::Physics)->get_physics_system();
-    physics_system->SetBodyActivationListener(body_activation_listener_3d);
-    physics_system->SetContactListener(contact_listener_3d);
+    physics_system->SetBodyActivationListener(self.body_activation_listener_3d);
+    physics_system->SetContactListener(self.contact_listener_3d);
 
     // Rigidbodies
-    world.query_builder<const TransformComponent, RigidbodyComponent>().build().each(
-        [this](flecs::entity e, const TransformComponent& tc, RigidbodyComponent& rb) {
+    self.world.query_builder<const TransformComponent, RigidbodyComponent>().build().each(
+        [&self](flecs::entity e, const TransformComponent& tc, RigidbodyComponent& rb) {
           rb.previous_translation = rb.translation = tc.position;
           rb.previous_rotation = rb.rotation = tc.rotation;
-          create_rigidbody(e, tc, rb);
+          self.create_rigidbody(e, tc, rb);
         });
 
     // Characters
-    world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
-        [this](const TransformComponent& tc, CharacterControllerComponent& ch) {
-          create_character_controller(tc, ch);
+    self.world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
+        [&self](const TransformComponent& tc, CharacterControllerComponent& ch) {
+          self.create_character_controller(tc, ch);
         });
 
     physics_system->OptimizeBroadPhase();
@@ -571,26 +571,26 @@ auto Scene::runtime_start() -> void {
   // Scripting
   {
     ZoneNamedN(z, "LuaScripting/on_scene_start", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& c) {
+    self.world.query_builder<const LuaScriptComponent>().build().each(
+        [&self](const flecs::entity& e, const LuaScriptComponent& c) {
           auto* asset_man = App::get_asset_manager();
           if (auto* script = asset_man->get_script(c.script_uuid)) {
-            script->on_scene_start(this, e);
+            script->on_scene_start(&self, e);
           }
         });
   }
 }
 
-auto Scene::runtime_stop() -> void {
+auto Scene::runtime_stop(this Scene& self) -> void {
   ZoneScoped;
 
-  running = false;
+  self.running = false;
 
   // Physics
   {
     ZoneNamedN(z, "Physics Stop", true);
     const auto physics = App::get_system<Physics>(EngineSystems::Physics);
-    world.query_builder<RigidbodyComponent>().build().each(
+    self.world.query_builder<RigidbodyComponent>().build().each(
         [physics](const flecs::entity& e, const RigidbodyComponent& rb) {
           if (rb.runtime_body) {
             JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
@@ -599,7 +599,7 @@ auto Scene::runtime_stop() -> void {
             body_interface.DestroyBody(body->GetID());
           }
         });
-    world.query_builder<CharacterControllerComponent>().build().each(
+    self.world.query_builder<CharacterControllerComponent>().build().each(
         [physics](const flecs::entity& e, CharacterControllerComponent& ch) {
           if (ch.character) {
             JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
@@ -609,33 +609,33 @@ auto Scene::runtime_stop() -> void {
           }
         });
 
-    delete body_activation_listener_3d;
-    delete contact_listener_3d;
-    body_activation_listener_3d = nullptr;
-    contact_listener_3d = nullptr;
+    delete self.body_activation_listener_3d;
+    delete self.contact_listener_3d;
+    self.body_activation_listener_3d = nullptr;
+    self.contact_listener_3d = nullptr;
   }
 
   // Scripting
   {
     ZoneNamedN(z, "LuaScripting/on_scene_deinit", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& c) {
+    self.world.query_builder<const LuaScriptComponent>().build().each(
+        [&self](const flecs::entity& e, const LuaScriptComponent& c) {
           auto* asset_man = App::get_asset_manager();
           if (auto* script = asset_man->get_script(c.script_uuid)) {
-            script->on_scene_stop(this, e);
+            script->on_scene_stop(&self, e);
           }
         });
   }
 }
 
-auto Scene::runtime_update(const Timestep& delta_time) -> void {
+auto Scene::runtime_update(this Scene& self, const Timestep& delta_time) -> void {
   ZoneScoped;
 
   // TODO: Pass our delta_time?
-  world.progress();
+  self.world.progress();
 
-  _render_pipeline->on_update(this);
-  this->dirty_transforms.clear();
+  self._render_pipeline->on_update(&self);
+  self.dirty_transforms.clear();
 
   if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
     auto physics = App::get_system<Physics>(EngineSystems::Physics);

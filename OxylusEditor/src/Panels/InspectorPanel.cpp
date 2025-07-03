@@ -268,8 +268,7 @@ void InspectorPanel::draw_components(flecs::entity entity) {
     auto component_entity = component.entity();
     auto component_name = component_entity.name();
 
-    std::string name_str = ICON_MDI_VIEW_GRID;
-    name_str = name_str.append(" ").append(component_name);
+    std::string name_str = fmt::format("{} {}:{}", ICON_MDI_VIEW_GRID, component_name.c_str(), (u64)component_entity.id());
     const bool open = ImGui::TreeNodeEx(name_str.c_str(), TREE_FLAGS, "%s", name_str.c_str());
 
     bool remove_component = false;

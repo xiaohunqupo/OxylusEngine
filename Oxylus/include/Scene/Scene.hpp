@@ -68,9 +68,9 @@ public:
             const std::string& name,
             const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
 
-  auto runtime_start() -> void;
-  auto runtime_stop() -> void;
-  auto runtime_update(const Timestep& delta_time) -> void;
+  auto runtime_start(this Scene& self) -> void;
+  auto runtime_stop(this Scene& self) -> void;
+  auto runtime_update(this Scene& self, const Timestep& delta_time) -> void;
 
   auto disable_phases(const std::vector<flecs::entity_t>& phases) -> void;
   auto enable_all_phases() -> void;

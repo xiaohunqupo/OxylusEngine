@@ -128,7 +128,7 @@ void bind_input(sol::state* state) {
       {"KPAdd", KeyCode::KPAdd},
       {"KPEqual", KeyCode::KPEqual},
   };
-  state->new_enum<KeyCode, true>("Key", key_items);
+  state->new_enum<KeyCode, true>("KeyCode", key_items);
 
   const std::initializer_list<std::pair<sol::string_view, MouseCode>> mouse_items = {
       {"Left", MouseCode::ButtonLeft},
