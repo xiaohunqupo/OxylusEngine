@@ -44,32 +44,30 @@ func test_occlusion(
     f32x3 aabb_center,
     f32x3 aabb_extent
 ) -> bool {
-    /*
     if (let ndc_aabb = project_aabb(mvp, params.camera.near_clip, aabb_center, aabb_extent)) {
-        MeshletBounds aabb = ndc_aabb;
+        ScreenAabb aabb = ndc_aabb;
         let scale = params.camera.resolution * 0.5f;
-        aabb.aabb_min.xy = aabb.aabb_min.xy * scale;
-        aabb.aabb_max.xy = aabb.aabb_max.xy * scale;
+        aabb.min.xy = aabb.min.xy * scale;
+        aabb.max.xy = aabb.max.xy * scale;
 
         let hzb_size = 1 << firstbithigh(u32x2(params.camera.resolution) - 1);
 
-        let min_texel = u32x2(max(aabb.aabb_min.xy, 0.f));
-        let max_texel = u32x2(min(aabb.aabb_max.xy, hzb_size - 1.f));
+        let min_texel = u32x2(max(aabb.min.xy, 0.f));
+        let max_texel = u32x2(min(aabb.max.xy, hzb_size - 1.f));
         let size = max_texel - min_texel + 1;
         let max_size = max(size.x, size.y);
-    
+
         var mip = firstbithigh(max_size - 1) - 1;
         let smin = min_texel >> mip;
         let smax = max_texel >> mip;
         if (any(smax - smin > 1)) {
             mip += 1;
         }
-    
+
         let uv = ((f32x2(min_texel) + f32x2(max_texel)) * 0.5f) / hzb_size;
         let d = params.hiz_image.sample_mip(params.hiz_sampler, uv, mip);
-        return aabb.aabb_max.z <= d;
+        return aabb.max.z <= d;
     }
-    */
 
     return true;
 }
@@ -112,7 +110,7 @@ func cs_main(
 
     if (meshlet_passed) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
-        //meshlet_passed = test_occlusion(params, prev_mvp, aabb_center, aabb_extent);
+        meshlet_passed = test_occlusion(params, prev_mvp, aabb_center, aabb_extent);
     }
 
     if (meshlet_passed) {

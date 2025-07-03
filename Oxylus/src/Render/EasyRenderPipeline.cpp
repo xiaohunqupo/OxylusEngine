@@ -1373,19 +1373,21 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
       .inv_view = cam.get_inv_view_matrix(),
       .projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
       .inv_projection_view = cam.get_inverse_projection_view(),
-      .previous_projection = cam.get_projection_matrix(),
-      .previous_inv_projection = cam.get_inv_projection_matrix(),
-      .previous_view = cam.get_view_matrix(),
-      .previous_inv_view = cam.get_inv_view_matrix(),
-      .previous_projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
-      .previous_inv_projection_view = cam.get_inverse_projection_view(),
+      .previous_projection = this->previous_camera_data.previous_projection,
+      .previous_inv_projection = this->previous_camera_data.previous_inv_projection,
+      .previous_view = this->previous_camera_data.previous_view,
+      .previous_inv_view = this->previous_camera_data.previous_inv_view,
+      .previous_projection_view = this->previous_camera_data.previous_projection_view,
+      .previous_inv_projection_view = this->previous_camera_data.previous_inv_projection_view,
       .temporalaa_jitter = cam.jitter,
-      .temporalaa_jitter_prev = cam.jitter_prev,
+      .temporalaa_jitter_prev = this->previous_camera_data.temporalaa_jitter_prev,
       .near_clip = cam.near_clip,
       .far_clip = cam.far_clip,
       .fov = cam.fov,
       .output_index = 0,
   };
+
+  this->previous_camera_data = this->camera_data;
 
   math::calc_frustum_planes(camera_data.projection_view, camera_data.frustum_planes);
 
