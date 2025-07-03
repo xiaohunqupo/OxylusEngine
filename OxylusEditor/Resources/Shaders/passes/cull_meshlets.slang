@@ -41,35 +41,35 @@ func test_frustum(in f32x4x4 mvp, in f32x3 aabb_center, in f32x3 aabb_extent) ->
 func test_occlusion(
     in ShaderParameters params,
     in f32x4x4 mvp,
-    f32x3 aabb_center,
+    f32x3 aabb_min,
     f32x3 aabb_extent
 ) -> bool {
-    if (let ndc_aabb = project_aabb(mvp, params.camera.near_clip, aabb_center, aabb_extent)) {
-        ScreenAabb aabb = ndc_aabb;
-        let scale = params.camera.resolution * 0.5f;
-        aabb.min.xy = aabb.min.xy * scale;
-        aabb.max.xy = aabb.max.xy * scale;
-
-        let hzb_size = 1 << firstbithigh(u32x2(params.camera.resolution) - 1);
-
-        let min_texel = u32x2(max(aabb.min.xy, 0.f));
-        let max_texel = u32x2(min(aabb.max.xy, hzb_size - 1.f));
-        let size = max_texel - min_texel + 1;
+    if (let ret = project_aabb(mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
+        ScreenAabb screen_aabb = ret;
+        let hiz_size = ceil(params.camera.resolution * 0.5);
+        let aabb_min = screen_aabb.min.xy * hiz_size;
+        let aabb_max = screen_aabb.max.xy * hiz_size;
+    
+        let min_texel = u32x2(max(aabb_min, f32x2(0.0)));
+        let max_texel = u32x2(min(aabb_max, hiz_size - 1.0));
+        let size = max_texel - min_texel;
         let max_size = max(size.x, size.y);
+        var mip = max(firstbithigh(max_size) + 1, 2) - 2;
 
-        var mip = firstbithigh(max_size - 1) - 1;
-        let smin = min_texel >> mip;
-        let smax = max_texel >> mip;
-        if (any(smax - smin > 1)) {
+        if (any((max_texel >> u32x2(mip)) > (min_texel >> u32x2(mip)) + 3)) {
             mip += 1;
         }
 
-        let uv = ((f32x2(min_texel) + f32x2(max_texel)) * 0.5f) / hzb_size;
+        let smin = min_texel >> u32x2(mip);
+        let smax = max_texel >> u32x2(mip);
+    
+        let uv = ((f32x2(smin) + f32x2(smax)) * 0.5f) / hiz_size;
         let d = params.hiz_image.sample_mip(params.hiz_sampler, uv, mip);
-        return aabb.max.z <= d;
+        //return screen_aabb.max.z <= d;
+        return true;
     }
 
-    return true;
+    return false;
 }
 
 #ifndef CULLING_MESHLET_COUNT
@@ -110,7 +110,7 @@ func cs_main(
 
     if (meshlet_passed) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
-        meshlet_passed = test_occlusion(params, prev_mvp, aabb_center, aabb_extent);
+        meshlet_passed = !test_occlusion(params, prev_mvp, aabb_min, aabb_extent);
     }
 
     if (meshlet_passed) {

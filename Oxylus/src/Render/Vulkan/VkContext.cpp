@@ -117,7 +117,7 @@ auto VkContext::handle_resize(u32 width, u32 height) -> void {
     suspend = true;
   } else {
     swapchain = make_swapchain(
-        *superframe_allocator, vkb_device, swapchain->surface, std::move(swapchain), present_mode, num_inflight_frames);
+        *superframe_allocator, vkb_device, surface, std::move(swapchain), present_mode, num_inflight_frames);
   }
 }
 
@@ -333,7 +333,11 @@ auto VkContext::end_frame(this VkContext& self, vuk::Value<vuk::ImageAttachment>
 
   auto entire_thing = vuk::enqueue_presentation(std::move(target_));
   vuk::ProfilingCallbacks cbs = self.tracy_profiler->setup_vuk_callback();
+  try {
   entire_thing.submit(*self.frame_allocator, self.compiler, {.graph_label = {}, .callbacks = cbs});
+  } catch (vuk::Exception &) {
+    // TODO: Actually handle this
+  }
 
   self.current_frame = (self.current_frame + 1) % self.num_inflight_frames;
   self.num_frames = self.runtime->get_frame_count();

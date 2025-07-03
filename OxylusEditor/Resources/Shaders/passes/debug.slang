@@ -113,24 +113,24 @@ func fs_main(
             var max_depth = 0.0;
             if (let ret = project_aabb(mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
                 ScreenAabb screen_aabb = ret;
-                let scale = params.camera.resolution * 0.5f;
-                screen_aabb.min.xy = screen_aabb.min.xy * scale;
-                screen_aabb.max.xy = screen_aabb.max.xy * scale;
-    
-                let hzb_size = 1 << firstbithigh(u32x2(params.camera.resolution) - 1);
-
-                let min_texel = u32x2(max(screen_aabb.min.xy, 0.f));
-                let max_texel = u32x2(min(screen_aabb.max.xy, hzb_size - 1.f));
-                let size = max_texel - min_texel + 1;
+                let hiz_size = ceil(params.camera.resolution * 0.5);
+                let aabb_min = screen_aabb.min.xy * hiz_size;
+                let aabb_max = screen_aabb.max.xy * hiz_size;
+            
+                let min_texel = u32x2(max(aabb_min, f32x2(0.0)));
+                let max_texel = u32x2(min(aabb_max, hiz_size - 1.0));
+                let size = max_texel - min_texel;
                 let max_size = max(size.x, size.y);
-            
-                var mip = firstbithigh(max_size - 1) - 1;
-                let smin = min_texel >> mip;
-                let smax = max_texel >> mip;
-                if (any(smax - smin > 1))
+                var mip = max(firstbithigh(max_size) + 1, 2) - 2;
+        
+                if (any((max_texel >> u32x2(mip)) > (min_texel >> u32x2(mip)) + 3)) {
                     mip += 1;
-            
-                color = f32x3(asfloat(mip));
+                }
+        
+                let smin = min_texel >> u32x2(mip);
+                let smax = max_texel >> u32x2(mip);
+
+                color = f32x3(smin, mip);
             }
         } break;
         default:;
