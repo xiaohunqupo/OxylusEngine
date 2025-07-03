@@ -7,7 +7,6 @@
   #include "Scripting/LuaAssetManagerBindings.hpp"
   #include "Scripting/LuaAudioBindings.hpp"
   #include "Scripting/LuaDebugBindings.hpp"
-  #include "Scripting/LuaFlecsBindings.hpp"
   #include "Scripting/LuaInputBindings.hpp"
   #include "Scripting/LuaMathBindings.hpp"
   #include "Scripting/LuaPhysicsBindings.hpp"
@@ -26,7 +25,6 @@ auto LuaManager::init() -> std::expected<void, std::string> {
 
 #ifdef OX_LUA_BINDINGS
   bind_log();
-  LuaBindings::bind_flecs(_state.get());
   LuaBindings::bind_application(_state.get());
   LuaBindings::bind_math(_state.get());
   LuaBindings::bind_scene(_state.get());
