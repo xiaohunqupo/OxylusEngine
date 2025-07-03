@@ -350,7 +350,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   const auto final_attachment_ia = vuk::ImageAttachment{
       .usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
       .extent = render_info.extent,
-      .format = vuk::Format::eR16G16B16A16Sfloat,
+      .format = vuk::Format::eB10G11R11UfloatPack32,
       .sample_count = vuk::Samples::e1,
       .level_count = 1,
       .layer_count = 1,
@@ -864,7 +864,18 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                              std::move(emissive_attachment),
                                              std::move(metallic_roughness_occlusion_attachment));
     } else {
-      std::tie(final_attachment, depth_attachment, camera_buffer) = vuk::make_pass(
+      const auto debug_attachment_ia = vuk::ImageAttachment{
+          .usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
+          .extent = render_info.extent,
+          .format = vuk::Format::eR16G16B16A16Sfloat,
+          .sample_count = vuk::Samples::e1,
+          .level_count = 1,
+          .layer_count = 1,
+      };
+      auto debug_attachment = vuk::clear_image(vuk::declare_ia("debug_attachment", debug_attachment_ia),
+                                               vuk::Black<float>);
+
+      std::tie(debug_attachment, depth_attachment, camera_buffer) = vuk::make_pass(
           "debug pass",
           [debug_view,
            debug_heatmap_scale]( //
@@ -917,7 +928,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                 .draw(3, 1, 0, 0);
 
             return std::make_tuple(dst, depth, camera);
-          })(std::move(final_attachment),
+          })(std::move(debug_attachment),
              std::move(visbuffer_data_attachment),
              std::move(depth_attachment),
              std::move(overdraw_attachment),
@@ -931,6 +942,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              std::move(meshlet_instances_buffer_value),
              std::move(meshes_buffer_value),
              std::move(transforms_buffer_value));
+
+      return debug_attachment; // Early return debug attachment
     }
   }
 
