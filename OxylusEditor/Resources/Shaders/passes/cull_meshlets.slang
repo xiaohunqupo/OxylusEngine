@@ -44,6 +44,7 @@ func test_occlusion(
     f32x3 aabb_center,
     f32x3 aabb_extent
 ) -> bool {
+    /*
     if (let ndc_aabb = project_aabb(mvp, params.camera.near_clip, aabb_center, aabb_extent)) {
         MeshletBounds aabb = ndc_aabb;
         let scale = params.camera.resolution * 0.5f;
@@ -68,6 +69,7 @@ func test_occlusion(
         let d = params.hiz_image.sample_mip(params.hiz_sampler, uv, mip);
         return aabb.aabb_max.z <= d;
     }
+    */
 
     return true;
 }
@@ -110,7 +112,7 @@ func cs_main(
 
     if (meshlet_passed) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
-        meshlet_passed = test_occlusion(params, prev_mvp, aabb_center, aabb_extent);
+        //meshlet_passed = test_occlusion(params, prev_mvp, aabb_center, aabb_extent);
     }
 
     if (meshlet_passed) {

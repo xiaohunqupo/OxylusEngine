@@ -3,6 +3,7 @@ module debug;
 import gpu;
 import scene;
 import visbuffer;
+import cull;
 
 #include <fullscreen.slang>
 
@@ -54,33 +55,33 @@ func fs_main(
     uniform DebugView debug_view,
     uniform f32 heatmap_scale
 ) -> f32x4 {
-    const u32 texel = params.visbuffer_data.load(u32x2(input.position.xy));
+    let texel = params.visbuffer_data.load(u32x2(input.position.xy));
     if (texel == ~0u) {
         discard;
     }
 
-    f32x3 color = f32x3(0.0, 0.0, 0.0);
-    const let vis_data = VisBufferData(texel);
+    var color = f32x3(0.0, 0.0, 0.0);
+    let vis_data = VisBufferData(texel);
     switch (debug_view) {
         case DebugView::Triangles: {
-            const u32 h = hash(vis_data.triangle_index);
+            let h = hash(vis_data.triangle_index);
             color = f32x3(f32(h & 255), f32((h >> 8) & 255), f32((h >> 16) & 255)) / 255.0;
         } break;
         case DebugView::Meshlets: {
-            const u32 h = hash(params.visible_meshlet_instances_indices[vis_data.meshlet_instance_index]);
+            let h = hash(params.visible_meshlet_instances_indices[vis_data.meshlet_instance_index]);
             color = f32x3(f32(h & 255), f32((h >> 8) & 255), f32((h >> 16) & 255)) / 255.0;
         } break;
         case DebugView::Overdraw: {
-            const f32 draw_scale = clamp(heatmap_scale, 0.0, 100.0) / 100.0;
-            const f32 draw_count = f32(params.overdraw.load(u32x2(input.position.xy)));
-            const f32 heat = 1.0 - exp2(-draw_count * draw_scale);
+            let draw_scale = clamp(heatmap_scale, 0.0, 100.0) / 100.0;
+            let draw_count = f32(params.overdraw.load(u32x2(input.position.xy)));
+            let heat = 1.0 - exp2(-draw_count * draw_scale);
             color = inferno(heat);
         } break;
         case DebugView::Albedo: {
             color = params.albedo_image.sample_mip(params.linear_repeat_sampler, input.tex_coord, 0).rgb;
         } break;
         case DebugView::Normal: {
-            const f32x4 sampled_normal = params.normal_image.load(u32x2(input.position.xy));
+            let sampled_normal = params.normal_image.load(u32x2(input.position.xy));
             f32x3 mapped_normal = com::oct_to_vec3(sampled_normal.xy);
             color = mapped_normal * 0.5 + 0.5;
         } break;
@@ -97,7 +98,40 @@ func fs_main(
             color = params.metallic_roughness_occlusion_image.load(u32x2(input.position.xy)).bbb;
         } break;
         case DebugView::HiZ: {
+            let meshlet_instance_index = params.visible_meshlet_instances_indices[vis_data.meshlet_instance_index];
+            let meshlet_instance = params.meshlet_instances[meshlet_instance_index];
+            let mesh = params.meshes[meshlet_instance.mesh_index];
+            let meshlet_index = meshlet_instance.meshlet_index;
+            let meshlet = mesh.meshlets[meshlet_index];
+            let transform = params.transforms[meshlet_instance.transform_index];
+            let bounds = mesh.meshlet_bounds[meshlet_index];
+            let aabb_min = transform.to_world_position(bounds.aabb_min).xyz;
+            let aabb_max = transform.to_world_position(bounds.aabb_max).xyz;
+            let aabb_extent = aabb_max - aabb_min;
 
+            let mvp = mul(params.camera.projection_view, transform.world);
+            var max_depth = 0.0;
+            if (let ret = project_aabb(mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
+                ScreenAabb screen_aabb = ret;
+                let scale = params.camera.resolution * 0.5f;
+                screen_aabb.min.xy = screen_aabb.min.xy * scale;
+                screen_aabb.max.xy = screen_aabb.max.xy * scale;
+    
+                let hzb_size = 1 << firstbithigh(u32x2(params.camera.resolution) - 1);
+
+                let min_texel = u32x2(max(screen_aabb.min.xy, 0.f));
+                let max_texel = u32x2(min(screen_aabb.max.xy, hzb_size - 1.f));
+                let size = max_texel - min_texel + 1;
+                let max_size = max(size.x, size.y);
+            
+                var mip = firstbithigh(max_size - 1) - 1;
+                let smin = min_texel >> mip;
+                let smax = max_texel >> mip;
+                if (any(smax - smin > 1))
+                    mip += 1;
+            
+                color = f32x3(asfloat(mip));
+            }
         } break;
         default:;
     }
