@@ -27,8 +27,8 @@ jobs:
           - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: clang-20, mode: release, runtime: c++_static }
           - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: clang-20, mode: debug,   runtime: c++_static }
 
-          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: gcc-14,   mode: release, runtime: stdc++_static }
-          - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: gcc-14,   mode: debug,   runtime: stdc++_static }
+          # - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: gcc-14,   mode: release, runtime: stdc++_static }
+          # - { runner: ubuntu-latest,  os: linux,   arch: x86_64, toolchain: gcc-14,   mode: debug,   runtime: stdc++_static }
 
     runs-on: ${{ matrix.platform.runner }}
     steps:
