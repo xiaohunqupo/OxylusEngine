@@ -23,6 +23,12 @@
 #include "Utils/Profiler.hpp"
 
 namespace ox {
+static constexpr auto sampler_min_clamp_reduction_mode = VkSamplerReductionModeCreateInfo{
+    .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
+    .pNext = nullptr,
+    .reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN,
+};
+
 auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   if (initalized)
     return;
@@ -162,15 +168,13 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   this->descriptor_set_01 = runtime.create_persistent_descriptorset(allocator, dslci_01, 1);
 
   // --- Samplers ---
-  auto hiz_sampler_ci = vuk::SamplerCreateInfo{
-      .magFilter = vuk::Filter::eNearest,
-      .minFilter = vuk::Filter::eNearest,
+  static constexpr auto hiz_sampler_ci = vuk::SamplerCreateInfo{
+      .pNext = &sampler_min_clamp_reduction_mode,
+      .magFilter = vuk::Filter::eLinear,
+      .minFilter = vuk::Filter::eLinear,
       .mipmapMode = vuk::SamplerMipmapMode::eNearest,
       .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
       .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
-      .addressModeW = vuk::SamplerAddressMode::eClampToEdge,
-      .minLod = 0.0f,
-      .maxLod = 16.0f,
   };
 
   const vuk::Sampler linear_sampler_clamped = runtime.acquire_sampler(vuk::LinearSamplerClamped,
@@ -460,12 +464,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                              VUK_BA(vuk::eComputeRead) meshes,
                                              VUK_BA(vuk::eComputeRead) camera,
                                              VUK_IA(vuk::eComputeRead) hiz) {
-          static constexpr auto sampler_min_clamp_reduction_mode = VkSamplerReductionModeCreateInfo{
-              .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
-              .pNext = nullptr,
-              .reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN,
-          };
-          auto sampler_info = vuk::SamplerCreateInfo{
+          static constexpr auto hiz_sampler_ci = vuk::SamplerCreateInfo{
               .pNext = &sampler_min_clamp_reduction_mode,
               .magFilter = vuk::Filter::eLinear,
               .minFilter = vuk::Filter::eLinear,
@@ -483,7 +482,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .bind_buffer(0, 4, meshes)
               .bind_buffer(0, 5, transforms_)
               .bind_image(0, 6, hiz)
-              .bind_sampler(0, 7, sampler_info)
+              .bind_sampler(0, 7, hiz_sampler_ci)
               .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(meshlet_instance_count, cull_flags))
               .dispatch((meshlet_instance_count + Mesh::MAX_MESHLET_INDICES - 1) / Mesh::MAX_MESHLET_INDICES);
           return std::make_tuple(cull_triangles_cmd,
@@ -901,6 +900,15 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                 .addressModeV = vuk::SamplerAddressMode::eRepeat,
             };
 
+            static constexpr auto hiz_sampler_ci = vuk::SamplerCreateInfo{
+                .pNext = &sampler_min_clamp_reduction_mode,
+                .magFilter = vuk::Filter::eLinear,
+                .minFilter = vuk::Filter::eLinear,
+                .mipmapMode = vuk::SamplerMipmapMode::eNearest,
+                .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
+                .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
+            };
+
             cmd_list //
                 .bind_graphics_pipeline("debug")
                 .set_rasterization({})
@@ -909,19 +917,20 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                 .set_viewport(0, vuk::Rect2D::framebuffer())
                 .set_scissor(0, vuk::Rect2D::framebuffer())
                 .bind_sampler(0, 0, linear_repeat_sampler)
-                .bind_image(0, 1, visbuffer)
-                .bind_image(0, 2, depth)
-                .bind_image(0, 3, overdraw)
-                .bind_image(0, 4, albedo)
-                .bind_image(0, 5, normal)
-                .bind_image(0, 6, emissive)
-                .bind_image(0, 7, metallic_roughness_occlusion)
-                .bind_image(0, 8, hiz)
-                .bind_buffer(0, 9, camera)
-                .bind_buffer(0, 10, visible_meshlet_instances_indices)
-                .bind_buffer(0, 11, meshlet_instances)
-                .bind_buffer(0, 12, meshes)
-                .bind_buffer(0, 13, transforms_)
+                .bind_sampler(0, 1, hiz_sampler_ci)
+                .bind_image(0, 2, visbuffer)
+                .bind_image(0, 3, depth)
+                .bind_image(0, 4, overdraw)
+                .bind_image(0, 5, albedo)
+                .bind_image(0, 6, normal)
+                .bind_image(0, 7, emissive)
+                .bind_image(0, 8, metallic_roughness_occlusion)
+                .bind_image(0, 9, hiz)
+                .bind_buffer(0, 10, camera)
+                .bind_buffer(0, 11, visible_meshlet_instances_indices)
+                .bind_buffer(0, 12, meshlet_instances)
+                .bind_buffer(0, 13, meshes)
+                .bind_buffer(0, 14, transforms_)
                 .push_constants(vuk::ShaderStageFlagBits::eFragment,
                                 0,
                                 PushConstants(std::to_underlying(debug_view), debug_heatmap_scale))

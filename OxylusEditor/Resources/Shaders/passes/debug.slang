@@ -9,6 +9,7 @@ import cull;
 
 struct ShaderParameters {
     Sampler linear_repeat_sampler;
+    Sampler hiz_sampler;
     Image2D<u32> visbuffer_data;
     Image2D<f32> depth_image;
     Image2D<u32> overdraw;
@@ -113,7 +114,7 @@ func fs_main(
             var max_depth = 0.0;
             if (let ret = project_aabb(mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
                 ScreenAabb screen_aabb = ret;
-                let hiz_size = ceil(params.camera.resolution * 0.5);
+                let hiz_size = u32x2(ceil(params.camera.resolution * 0.5));
                 let aabb_min = screen_aabb.min.xy * hiz_size;
                 let aabb_max = screen_aabb.max.xy * hiz_size;
             
@@ -126,11 +127,15 @@ func fs_main(
                 if (any((max_texel >> u32x2(mip)) > (min_texel >> u32x2(mip)) + 3)) {
                     mip += 1;
                 }
-        
+
                 let smin = min_texel >> u32x2(mip);
                 let smax = max_texel >> u32x2(mip);
+                let uv0 = f32x2(smin) / (hiz_size >> mip);
+                let uv1 = f32x2(smax) / (hiz_size >> mip);
+                let center_uv = 0.5 * (uv0 + uv1);
+                let d = params.hiz_image.sample_mip(params.hiz_sampler, center_uv, mip);
 
-                color = f32x3(smin, mip);
+                color = f32x3(screen_aabb.max.z, d, mip);
             }
         } break;
         default:;

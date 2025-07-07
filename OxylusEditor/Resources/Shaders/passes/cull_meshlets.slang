@@ -46,7 +46,7 @@ func test_occlusion(
 ) -> bool {
     if (let ret = project_aabb(mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
         ScreenAabb screen_aabb = ret;
-        let hiz_size = ceil(params.camera.resolution * 0.5);
+        let hiz_size = u32x2(ceil(params.camera.resolution * 0.5));
         let aabb_min = screen_aabb.min.xy * hiz_size;
         let aabb_max = screen_aabb.max.xy * hiz_size;
     
@@ -62,11 +62,11 @@ func test_occlusion(
 
         let smin = min_texel >> u32x2(mip);
         let smax = max_texel >> u32x2(mip);
-    
-        let uv = ((f32x2(smin) + f32x2(smax)) * 0.5f) / hiz_size;
-        let d = params.hiz_image.sample_mip(params.hiz_sampler, uv, mip);
-        //return screen_aabb.max.z <= d;
-        return true;
+        let uv0 = f32x2(smin) / (hiz_size >> mip);
+        let uv1 = f32x2(smax) / (hiz_size >> mip);
+        let center_uv = 0.5 * (uv0 + uv1);
+        let d = params.hiz_image.sample_mip(params.hiz_sampler, center_uv, mip);
+        return screen_aabb.max.z <= d;
     }
 
     return false;
@@ -110,7 +110,7 @@ func cs_main(
 
     if (meshlet_passed) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
-        meshlet_passed = !test_occlusion(params, prev_mvp, aabb_min, aabb_extent);
+        meshlet_passed = test_occlusion(params, prev_mvp, aabb_min, aabb_extent);
     }
 
     if (meshlet_passed) {
