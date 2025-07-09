@@ -44,6 +44,7 @@ Be aware that Oxylus is still in it's early stages of development. Some importan
 Windows, Linux and Mac (with MoltenVK) is supported.
 
 ### Requirements
+- [Xmake](https://xmake.io)
 - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home).
 - A compiler that supports C++23.   
 ### Steps
