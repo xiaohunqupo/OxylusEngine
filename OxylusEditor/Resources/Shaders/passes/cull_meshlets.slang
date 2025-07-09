@@ -103,12 +103,11 @@ func cs_main(
 
     let cur_mvp = mul(params.camera.projection_view, transform.world);
     var visible = true;
-    // Frustum culling
     if (cull_flags & CullFlags::MeshletFrustum) {
         visible = test_frustum(cur_mvp, aabb_center, aabb_extent);
     }
 
-    if (visible && cull_flags & CullFlags::OcclusionCulling) {
+    if (visible && (cull_flags & CullFlags::OcclusionCulling)) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
         visible = test_occlusion(params, prev_mvp, aabb_min, aabb_extent);
     }

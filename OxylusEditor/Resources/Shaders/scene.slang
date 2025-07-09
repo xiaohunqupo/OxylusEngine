@@ -33,6 +33,7 @@ public enum CullFlags : u32 {
     TriangleBackFace,
     MicroTriangles,
     OcclusionCulling,
+    TriangleCulling,
 };
 
 public enum MaterialFlag : u32 {

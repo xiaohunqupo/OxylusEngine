@@ -31,8 +31,9 @@ enum class CullFlags : u32 {
   TriangleBackFace = 1 << 1,
   MicroTriangles = 1 << 2,
   OcclusionCulling = 1 << 3,
+  TriangleCulling = 1 << 4,
 
-  All = MeshletFrustum | TriangleBackFace | MicroTriangles | OcclusionCulling,
+  All = MeshletFrustum | TriangleBackFace | MicroTriangles | OcclusionCulling | TriangleCulling,
 };
 consteval void enable_bitmask(CullFlags);
 

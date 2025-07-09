@@ -132,10 +132,12 @@ func cs_main(
 
     com::control_barrier(com::memory_order_acq_rel);
 
-    bool triangle_passed = false;
+    bool triangle_passed = true;
     u32 active_triangle_index = 0;
     if (local_index < meshlet.triangle_count) {
-        triangle_passed = test_triangle(params.camera, mesh, meshlet, local_index, cull_flags);
+        if (cull_flags & CullFlags::TriangleCulling) {
+            triangle_passed = test_triangle(params.camera, mesh, meshlet, local_index, cull_flags);
+        }
         if (triangle_passed) {
             active_triangle_index = com::atomic_add(triangles_passed_shared, 1, com::memory_order_relaxed);
         }

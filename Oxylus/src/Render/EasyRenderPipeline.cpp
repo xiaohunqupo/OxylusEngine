@@ -390,11 +390,14 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
   // --- 3D Pass ---
   if (!this->gpu_meshes.empty() && !this->gpu_meshlet_instances.empty()) {
     auto cull_flags = GPU::CullFlags::MicroTriangles | GPU::CullFlags::TriangleBackFace;
-    if (RendererCVar::cvar_culling_frustum.get()) {
+    if (static_cast<bool>(RendererCVar::cvar_culling_frustum.get())) {
       cull_flags |= GPU::CullFlags::MeshletFrustum;
     }
-    if (RendererCVar::cvar_culling_occlusion.get()) {
+    if (static_cast<bool>(RendererCVar::cvar_culling_occlusion.get())) {
       cull_flags |= GPU::CullFlags::OcclusionCulling;
+    }
+    if (static_cast<bool>(RendererCVar::cvar_culling_triangle.get())) {
+      cull_flags |= GPU::CullFlags::TriangleCulling;
     }
 
     buffer_size = this->meshes_buffer ? this->meshes_buffer->size : 0;
