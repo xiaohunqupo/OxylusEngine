@@ -132,7 +132,7 @@ func cs_main(
 
     com::control_barrier(com::memory_order_acq_rel);
 
-    bool triangle_passed = true;
+    bool triangle_passed = false;
     u32 active_triangle_index = 0;
     if (local_index < meshlet.triangle_count) {
         if (cull_flags & CullFlags::TriangleCulling) {
