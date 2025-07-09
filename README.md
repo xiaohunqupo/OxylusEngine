@@ -51,8 +51,13 @@ Windows, Linux and Mac (with MoltenVK) is supported.
   - `xmake f --toolchain=clang --runtimes=c++_static -m debug`
 	- Change `--toolchain=` for the toolchain you want to use. 
 	- Pick a mode `-m debug, release, dist`
+	- Optionals:
+      - `--lua_bindings` Compile lua bindings (`true` by default)
+      - `--profile` Enable tracy profiler (`false` by default)
 - To build the project run:
 	- `xmake build`
-- Before running the built executable make sure to copy required binaries in `/build/lib` to executable directory created by this command:
+- To run the editor with xmake run:
+  - `xmake r OxylusEditor`
+- Or to manually run it make sure to copy required binaries in `/build/bin` to executable directory created by this command:
 	- `xmake install -o ./build`
 
