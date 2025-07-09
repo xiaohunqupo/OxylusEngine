@@ -7,21 +7,10 @@
 #include "Panels/ContentPanel.hpp"
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/ViewportPanel.hpp"
-#include "Render/Window.hpp"
 #include "UI/RuntimeConsole.hpp"
-#include "Utils/Archive.hpp"
 #include "Utils/EditorConfig.hpp"
 
 namespace ox {
-enum class HistoryOp : uint32_t {
-  Translator,    // translator interaction
-  Selection,     // selection changed
-  Add,           // entity added
-  Delete,        // entity removed
-  ComponentData, // generic component data changed
-  None
-};
-
 class EditorLayer : public Layer {
 public:
   enum class SceneState { Edit = 0, Play = 1, Simulate = 2 };
@@ -88,11 +77,8 @@ public:
   void set_scene_state(SceneState state);
   void set_docking_layout(EditorLayout layout);
 
-  Archive& advance_history();
-
 private:
-  // Project
-  void save_project(const std::string& path);
+  static EditorLayer* instance;
 
   // Scene
   std::string last_save_scene_path{};
@@ -104,11 +90,14 @@ private:
 
   // Context
   EditorContext editor_context = {};
-  std::vector<Archive> history;
-  int historyPos = -1;
 
   std::shared_ptr<Scene> editor_scene;
   std::shared_ptr<Scene> active_scene;
-  static EditorLayer* instance;
+
+  // Project
+  void save_project(const std::string& path);
+
+  void undo();
+  void redo();
 };
 } // namespace ox

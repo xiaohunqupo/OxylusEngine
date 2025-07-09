@@ -338,9 +338,6 @@ auto SceneHierarchyPanel::on_update() -> void {
   }
 
   if (_deleted_entity != flecs::entity::null()) {
-    auto& arch = EditorLayer::get()->advance_history();
-    arch << static_cast<uint32_t>(HistoryOp::Delete);
-
     if (_selected_entity.get().id() == _deleted_entity.id())
       _selected_entity.reset();
 
