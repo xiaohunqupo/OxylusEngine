@@ -32,6 +32,7 @@ public enum CullFlags : u32 {
     MeshletFrustum,
     TriangleBackFace,
     MicroTriangles,
+    OcclusionCulling,
 };
 
 public enum MaterialFlag : u32 {

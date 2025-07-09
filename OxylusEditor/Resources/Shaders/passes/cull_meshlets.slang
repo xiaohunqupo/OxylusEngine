@@ -102,18 +102,18 @@ func cs_main(
     let aabb_center = (aabb_min + aabb_max) * 0.5;
 
     let cur_mvp = mul(params.camera.projection_view, transform.world);
-    var meshlet_passed = true;
+    var visible = true;
     // Frustum culling
     if (cull_flags & CullFlags::MeshletFrustum) {
-        meshlet_passed = test_frustum(cur_mvp, aabb_center, aabb_extent);
+        visible = test_frustum(cur_mvp, aabb_center, aabb_extent);
     }
 
-    if (meshlet_passed) {
+    if (visible && cull_flags & CullFlags::OcclusionCulling) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
-        meshlet_passed = test_occlusion(params, prev_mvp, aabb_min, aabb_extent);
+        visible = test_occlusion(params, prev_mvp, aabb_min, aabb_extent);
     }
 
-    if (meshlet_passed) {
+    if (visible) {
         let index = com::atomic_add(params.cull_triangles_cmd[0].x, 1, com::memory_order_relaxed);
         params.visible_meshlet_instances_indices[index] = meshlet_instance_index;
     }

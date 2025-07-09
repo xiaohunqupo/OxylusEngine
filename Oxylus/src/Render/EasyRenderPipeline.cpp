@@ -124,7 +124,7 @@ auto EasyRenderPipeline::init(VkContext& vk_context) -> void {
   slang.create_pipeline(
       runtime, "brdf", dslci_01, {.path = shaders_dir + "/passes/brdf.slang", .entry_points = {"vs_main", "fs_main"}});
 
-  //  ── FFX ─────────────────────────────────────────────────────────────
+  //  --- FFX ---
   slang.create_pipeline(
       runtime, "hiz_pipeline", {}, {.path = shaders_dir + "/passes/hiz.slang", .entry_points = {"cs_main"}});
 
@@ -389,7 +389,13 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
   // --- 3D Pass ---
   if (!this->gpu_meshes.empty() && !this->gpu_meshlet_instances.empty()) {
-    const auto cull_flags = static_cast<GPU::CullFlags>(RendererCVar::cvar_cull_flags.get()); // FIXME: Unsafe!
+    auto cull_flags = GPU::CullFlags::MicroTriangles | GPU::CullFlags::TriangleBackFace;
+    if (RendererCVar::cvar_culling_frustum.get()) {
+      cull_flags |= GPU::CullFlags::MeshletFrustum;
+    }
+    if (RendererCVar::cvar_culling_occlusion.get()) {
+      cull_flags |= GPU::CullFlags::OcclusionCulling;
+    }
 
     buffer_size = this->meshes_buffer ? this->meshes_buffer->size : 0;
     if (ox::size_bytes(this->gpu_meshes) > buffer_size) {
