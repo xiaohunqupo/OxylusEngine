@@ -12,61 +12,99 @@ public:
   virtual ~Command() = default;
   virtual auto execute() -> void = 0;
   virtual auto undo() -> void = 0;
-  virtual auto get_id() const -> u64 = 0;
+  virtual auto get_id() const -> std::string_view = 0;
   virtual auto can_merge(const Command& other) const -> bool { return false; }
   virtual auto merge(std::unique_ptr<Command> other) -> std::unique_ptr<Command> { return nullptr; }
 };
 
 class LambdaCommand : public Command {
 public:
-  LambdaCommand(std::function<void()> execute,
-                std::function<void()> undo,
-                const usize loc = std::source_location::current().line())
-      : _execute_func(std::move(execute)),
-        _undo_func(std::move(undo)),
-        _id(loc) {}
+  LambdaCommand(std::function<void()> execute, std::function<void()> undo, std::string id)
+      : execute_func_(std::move(execute)),
+        undo_func_(std::move(undo)),
+        id_(id) {}
 
-  auto execute() -> void override { _execute_func(); }
-  auto undo() -> void override { _undo_func(); }
-  auto get_id() const -> u64 override { return _id; }
+  auto execute() -> void override { execute_func_(); }
+  auto undo() -> void override { undo_func_(); }
+  auto get_id() const -> std::string_view override { return id_; }
 
 private:
-  std::function<void()> _execute_func;
-  std::function<void()> _undo_func;
-  u64 _id;
+  std::function<void()> execute_func_;
+  std::function<void()> undo_func_;
+  std::string id_;
 };
 
 class CommandGroup : public Command {
 public:
-  explicit CommandGroup(const usize loc = std::source_location::current().line()) : _id(loc) {}
+  explicit CommandGroup(const std::string id) : id_(id) {}
 
   template <typename T, typename... Args>
   auto add_command(Args&&... args) -> void {
-    _commands.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
+    commands_.emplace_back(std::make_unique<T>(std::forward<Args>(args)...));
   }
 
-  auto add_command(std::unique_ptr<Command> command) -> void { _commands.emplace_back(std::move(command)); }
+  auto add_command(std::unique_ptr<Command> command) -> void { commands_.emplace_back(std::move(command)); }
 
   auto execute() -> void override {
-    for (auto& cmd : _commands) {
+    for (auto& cmd : commands_) {
       cmd->execute();
     }
   }
 
   auto undo() -> void override {
-    for (auto it = _commands.rbegin(); it != _commands.rend(); ++it) {
+    for (auto it = commands_.rbegin(); it != commands_.rend(); ++it) {
       (*it)->undo();
     }
   }
 
-  auto get_id() const -> u64 override { return _id; }
+  auto get_id() const -> std::string_view override { return id_; }
 
-  auto empty() const -> bool { return _commands.empty(); }
-  auto size() const -> usize { return _commands.size(); }
+  auto empty() const -> bool { return commands_.empty(); }
+  auto size() const -> usize { return commands_.size(); }
 
 private:
-  std::vector<std::unique_ptr<Command>> _commands;
-  u64 _id;
+  std::vector<std::unique_ptr<Command>> commands_;
+  std::string id_;
+};
+
+template <typename T>
+class PropertyChangeCommand : public Command {
+public:
+  PropertyChangeCommand(T* target,
+                        T old_val,
+                        T new_val,
+                        std::string id)
+      : target_(target),
+        old_value_(old_val),
+        new_value_(new_val),
+        id_(id) {}
+
+  auto execute() -> void override { *target_ = new_value_; }
+  auto undo() -> void override { *target_ = old_value_; }
+
+  auto get_id() const -> std::string_view override { return id_; }
+
+  auto can_merge(const Command& other) const -> bool override {
+    if (auto* other_cmd = dynamic_cast<const PropertyChangeCommand<T>*>(&other)) {
+      return target_ == other_cmd->target_ && get_id() == other_cmd->get_id();
+    }
+    return false;
+  }
+
+  auto merge(std::unique_ptr<Command> other) -> std::unique_ptr<Command> override {
+    if (auto other_cmd = dynamic_cast<PropertyChangeCommand<T>*>(other.get())) {
+      auto merged = std::make_unique<PropertyChangeCommand<T>>(target_, old_value_, other_cmd->new_value_, id_);
+      other.release();
+      return merged;
+    }
+    return nullptr;
+  }
+
+private:
+  T* target_;
+  T old_value_;
+  T new_value_;
+  std::string id_;
 };
 
 class UndoRedoSystem {
@@ -74,10 +112,10 @@ public:
   explicit UndoRedoSystem(size_t max_history = 100,
                           bool merge_enabled = true,
                           std::chrono::milliseconds merge_timeout = std::chrono::milliseconds(500))
-      : _max_history_size(max_history),
-        _merge_enabled(merge_enabled),
-        _merge_timeout(merge_timeout),
-        _last_command_time(std::chrono::steady_clock::now()) {}
+      : max_history_size_(max_history),
+        merge_enabled_(merge_enabled),
+        merge_timeout_(merge_timeout),
+        last_command_time_(std::chrono::steady_clock::now()) {}
 
   template <typename T, typename... Args>
   auto execute_command(this UndoRedoSystem& self, Args&&... args) -> UndoRedoSystem& {
@@ -87,12 +125,12 @@ public:
   }
 
   auto execute_command(this UndoRedoSystem& self, std::unique_ptr<Command> command) -> UndoRedoSystem& {
-    if (self._merge_enabled && !self._undo_stack.empty()) {
+    if (self.merge_enabled_ && !self.undo_stack_.empty()) {
       auto now = std::chrono::steady_clock::now();
-      if (now - self._last_command_time < self._merge_timeout && self._undo_stack.back()->can_merge(*command)) {
-        if (auto merged = self._undo_stack.back()->merge(std::move(command))) {
-          self._undo_stack.back() = std::move(merged);
-          self._last_command_time = now;
+      if (now - self.last_command_time_ < self.merge_timeout_ && self.undo_stack_.back()->can_merge(*command)) {
+        if (auto merged = self.undo_stack_.back()->merge(std::move(command))) {
+          self.undo_stack_.back() = std::move(merged);
+          self.last_command_time_ = now;
           return self;
         }
       }
@@ -102,15 +140,15 @@ public:
 
     command->execute();
 
-    self._undo_stack.emplace_back(std::move(command));
+    self.undo_stack_.emplace_back(std::move(command));
 
-    self._redo_stack.clear();
+    self.redo_stack_.clear();
 
-    if (self._undo_stack.size() > self._max_history_size) {
-      self._undo_stack.erase(self._undo_stack.begin());
+    if (self.undo_stack_.size() > self.max_history_size_) {
+      self.undo_stack_.erase(self.undo_stack_.begin());
     }
 
-    self._last_command_time = std::chrono::steady_clock::now();
+    self.last_command_time_ = std::chrono::steady_clock::now();
 
     return self;
   }
@@ -118,14 +156,14 @@ public:
   auto execute_lambda(this UndoRedoSystem& self,
                       std::function<void()> execute,
                       std::function<void()> undo,
-                      const usize loc = std::source_location::current().line()) -> UndoRedoSystem& {
-    self.execute_command(std::make_unique<LambdaCommand>(std::move(execute), std::move(undo), loc));
+                      std::string id) -> UndoRedoSystem& {
+    self.execute_command(std::make_unique<LambdaCommand>(std::move(execute), std::move(undo), std::move(id)));
     return self;
   }
 
-  auto begin_group(this UndoRedoSystem&, const usize loc = std::source_location::current().line())
+  auto begin_group(this UndoRedoSystem&, std::string id)
       -> std::unique_ptr<CommandGroup> {
-    return std::make_unique<CommandGroup>(loc);
+    return std::make_unique<CommandGroup>(std::move(id));
   }
 
   auto execute_group(this UndoRedoSystem& self, std::unique_ptr<CommandGroup> group) -> UndoRedoSystem& {
@@ -136,103 +174,67 @@ public:
   }
 
   auto undo(this UndoRedoSystem& self) -> bool {
-    if (self._undo_stack.empty())
+    if (self.undo_stack_.empty())
       return false;
 
-    auto command = std::move(self._undo_stack.back());
-    self._undo_stack.pop_back();
+    auto command = std::move(self.undo_stack_.back());
+    self.undo_stack_.pop_back();
 
     command->undo();
-    self._redo_stack.emplace_back(std::move(command));
+    OX_LOG_INFO("Undo: {}", command->get_id());
+    self.redo_stack_.emplace_back(std::move(command));
 
     return true;
   }
 
   auto redo(this UndoRedoSystem& self) -> bool {
-    if (self._redo_stack.empty())
+    if (self.redo_stack_.empty())
       return false;
 
-    auto command = std::move(self._redo_stack.back());
-    self._redo_stack.pop_back();
+    auto command = std::move(self.redo_stack_.back());
+    self.redo_stack_.pop_back();
 
     command->execute();
-    self._undo_stack.emplace_back(std::move(command));
+    OX_LOG_INFO("Redo: {}", command->get_id());
+    self.undo_stack_.emplace_back(std::move(command));
 
     return true;
   }
 
-  auto can_undo(this const UndoRedoSystem& self) -> bool { return !self._undo_stack.empty(); }
-  auto can_redo(this const UndoRedoSystem& self) -> bool { return !self._redo_stack.empty(); }
+  auto can_undo(this const UndoRedoSystem& self) -> bool { return !self.undo_stack_.empty(); }
+  auto can_redo(this const UndoRedoSystem& self) -> bool { return !self.redo_stack_.empty(); }
 
-  auto get_undo_count(this const UndoRedoSystem& self) -> usize { return self._undo_stack.size(); }
-  auto get_redo_count(this const UndoRedoSystem& self) -> usize { return self._redo_stack.size(); }
+  auto get_undo_count(this const UndoRedoSystem& self) -> usize { return self.undo_stack_.size(); }
+  auto get_redo_count(this const UndoRedoSystem& self) -> usize { return self.redo_stack_.size(); }
 
   auto clear(this UndoRedoSystem& self) -> void {
-    self._undo_stack.clear();
-    self._redo_stack.clear();
+    self.undo_stack_.clear();
+    self.redo_stack_.clear();
   }
 
-  auto get_merge_timeout(this const UndoRedoSystem& self) -> std::chrono::milliseconds { return self._merge_timeout; }
+  auto get_merge_timeout(this const UndoRedoSystem& self) -> std::chrono::milliseconds { return self.merge_timeout_; }
   auto set_merge_enabled(this UndoRedoSystem& self, bool enabled) -> UndoRedoSystem& {
-    self._merge_enabled = enabled;
+    self.merge_enabled_ = enabled;
     return self;
   }
   auto set_merge_timeout(this UndoRedoSystem& self, std::chrono::milliseconds timeout) -> UndoRedoSystem& {
-    self._merge_timeout = timeout;
+    self.merge_timeout_ = timeout;
     return self;
   }
   auto set_max_history_size(this UndoRedoSystem& self, usize size) -> UndoRedoSystem& {
-    self._max_history_size = size;
-    while (self._undo_stack.size() > self._max_history_size) {
-      self._undo_stack.erase(self._undo_stack.begin());
+    self.max_history_size_ = size;
+    while (self.undo_stack_.size() > self.max_history_size_) {
+      self.undo_stack_.erase(self.undo_stack_.begin());
     }
     return self;
   }
 
 private:
-  std::vector<std::unique_ptr<Command>> _undo_stack;
-  std::vector<std::unique_ptr<Command>> _redo_stack;
-  usize _max_history_size;
-  bool _merge_enabled;
-  std::chrono::milliseconds _merge_timeout;
-  std::chrono::steady_clock::time_point _last_command_time;
-};
-
-template <typename T>
-class PropertyChangeCommand : public Command {
-public:
-  PropertyChangeCommand(T* target, T old_val, T new_val, const usize loc = std::source_location::current().line())
-      : _target(target),
-        _old_value(old_val),
-        _new_value(new_val),
-        _id(loc) {}
-
-  auto execute() -> void override { *_target = _new_value; }
-
-  auto undo() -> void override { *_target = _old_value; }
-
-  auto get_id() const -> u64 override { return _id; }
-
-  auto can_merge(const Command& other) const -> bool override {
-    if (auto* other_cmd = dynamic_cast<const PropertyChangeCommand<T>*>(&other)) {
-      return _target == other_cmd->_target && _id == other_cmd->_id;
-    }
-    return false;
-  }
-
-  auto merge(std::unique_ptr<Command> other) -> std::unique_ptr<Command> override {
-    if (auto other_cmd = dynamic_cast<PropertyChangeCommand<T>*>(other.get())) {
-      auto merged = std::make_unique<PropertyChangeCommand<T>>(_target, _old_value, other_cmd->_new_value, _id);
-      other.release();
-      return merged;
-    }
-    return nullptr;
-  }
-
-private:
-  T* _target;
-  T _old_value;
-  T _new_value;
-  u64 _id;
+  std::vector<std::unique_ptr<Command>> undo_stack_;
+  std::vector<std::unique_ptr<Command>> redo_stack_;
+  usize max_history_size_;
+  bool merge_enabled_;
+  std::chrono::milliseconds merge_timeout_;
+  std::chrono::steady_clock::time_point last_command_time_;
 };
 } // namespace ox
