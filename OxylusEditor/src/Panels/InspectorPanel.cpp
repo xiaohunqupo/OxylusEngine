@@ -213,6 +213,9 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
 void InspectorPanel::draw_components(flecs::entity entity) {
   ZoneScoped;
 
+  if (!entity)
+    return;
+
   auto& undo_redo_system = EditorLayer::get()->undo_redo_system;
 
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.9f);

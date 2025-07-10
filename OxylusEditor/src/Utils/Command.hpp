@@ -1,8 +1,10 @@
 #pragma once
 
+#include <Utils/JsonWriter.hpp>
 #include <chrono>
 #include <functional>
 #include <memory>
+#include <simdjson.h>
 #include <string>
 #include <vector>
 
@@ -70,10 +72,7 @@ private:
 template <typename T>
 class PropertyChangeCommand : public Command {
 public:
-  PropertyChangeCommand(T* target,
-                        T old_val,
-                        T new_val,
-                        std::string id)
+  PropertyChangeCommand(T* target, T old_val, T new_val, std::string id)
       : target_(target),
         old_value_(old_val),
         new_value_(new_val),
@@ -104,6 +103,59 @@ private:
   T* target_;
   T old_value_;
   T new_value_;
+  std::string id_;
+};
+
+class EntityDeleteCommand : public Command {
+public:
+  EntityDeleteCommand(Scene* scene, flecs::entity entity, std::string entity_name, std::string id)
+      : scene_(scene),
+        entity_(entity),
+        entity_name_(entity_name),
+        id_(id) {}
+
+  auto serialize_entity(flecs::entity entity) -> void {
+    JsonWriter writer{};
+    writer.begin_obj();
+    writer["entities"].begin_array();
+    Scene::entity_to_json(writer, entity);
+    writer.end_array();
+    writer.end_obj();
+    serialized_entity_ = writer.stream.str();
+  }
+
+  auto execute() -> void override {
+    serialize_entity(entity_);
+    entity_.destruct();
+  }
+
+  auto undo() -> void override {
+    auto content = simdjson::padded_string(serialized_entity_);
+    simdjson::ondemand::parser parser;
+    auto doc = parser.iterate(content);
+    auto entities_array = doc["entities"];
+    std::vector<UUID> requested_assets = {};
+    for (auto entity_json : entities_array.get_array()) {
+      entity_ = Scene::json_to_entity(*scene_, //
+                                      flecs::entity::null(),
+                                      entity_json.value_unsafe(),
+                                      requested_assets)
+                    .first;
+    }
+  }
+
+  auto get_id() const -> std::string_view override { return id_; }
+  auto get_entity() const -> flecs::entity { return entity_; }
+
+  auto can_merge(const Command& other) const -> bool override { return false; }
+
+  auto merge(std::unique_ptr<Command> other) -> std::unique_ptr<Command> override { return nullptr; }
+
+private:
+  Scene* scene_;
+  flecs::entity entity_;
+  std::string serialized_entity_;
+  std::string entity_name_;
   std::string id_;
 };
 
@@ -153,16 +205,14 @@ public:
     return self;
   }
 
-  auto execute_lambda(this UndoRedoSystem& self,
-                      std::function<void()> execute,
-                      std::function<void()> undo,
-                      std::string id) -> UndoRedoSystem& {
+  auto
+  execute_lambda(this UndoRedoSystem& self, std::function<void()> execute, std::function<void()> undo, std::string id)
+      -> UndoRedoSystem& {
     self.execute_command(std::make_unique<LambdaCommand>(std::move(execute), std::move(undo), std::move(id)));
     return self;
   }
 
-  auto begin_group(this UndoRedoSystem&, std::string id)
-      -> std::unique_ptr<CommandGroup> {
+  auto begin_group(this UndoRedoSystem&, std::string id) -> std::unique_ptr<CommandGroup> {
     return std::make_unique<CommandGroup>(std::move(id));
   }
 
@@ -203,6 +253,14 @@ public:
 
   auto can_undo(this const UndoRedoSystem& self) -> bool { return !self.undo_stack_.empty(); }
   auto can_redo(this const UndoRedoSystem& self) -> bool { return !self.redo_stack_.empty(); }
+
+  auto get_undo_stack(this const UndoRedoSystem& self) -> const std::vector<std::unique_ptr<Command>>& {
+    return self.undo_stack_;
+  }
+
+  auto get_redo_stack(this const UndoRedoSystem& self) -> const std::vector<std::unique_ptr<Command>>& {
+    return self.redo_stack_;
+  }
 
   auto get_undo_count(this const UndoRedoSystem& self) -> usize { return self.undo_stack_.size(); }
   auto get_redo_count(this const UndoRedoSystem& self) -> usize { return self.redo_stack_.size(); }
