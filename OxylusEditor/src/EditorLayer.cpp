@@ -19,6 +19,7 @@
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
 #include "Utils/CVars.hpp"
+#include "Utils/Command.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/EmbeddedBanner.hpp"
 #include "Utils/ImGuiScoped.hpp"
@@ -33,6 +34,8 @@ EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
 void EditorLayer::on_attach() {
   ZoneScoped;
+
+  undo_redo_system = std::make_unique<UndoRedoSystem>();
 
   editor_theme.init();
 
@@ -473,11 +476,11 @@ void EditorLayer::set_docking_layout(EditorLayout layout) {
 
 void EditorLayer::undo() {
   ZoneScoped;
-  OX_LOG_INFO("Undo");
+  undo_redo_system->undo();
 }
 
 void EditorLayer::redo() {
   ZoneScoped;
-  OX_LOG_INFO("redo");
+  undo_redo_system->redo();
 }
 } // namespace ox

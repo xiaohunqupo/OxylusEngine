@@ -8,6 +8,7 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/ViewportPanel.hpp"
 #include "UI/RuntimeConsole.hpp"
+#include "Utils/Command.hpp"
 #include "Utils/EditorConfig.hpp"
 
 namespace ox {
@@ -45,6 +46,8 @@ public:
   // Layout
   ImGuiID dockspace_id;
   EditorLayout current_layout = EditorLayout::Classic;
+
+  std::unique_ptr<UndoRedoSystem> undo_redo_system = nullptr;
 
   EditorLayer();
   ~EditorLayer() override = default;
@@ -94,7 +97,6 @@ private:
   std::shared_ptr<Scene> editor_scene;
   std::shared_ptr<Scene> active_scene;
 
-  // Project
   void save_project(const std::string& path);
 
   void undo();
