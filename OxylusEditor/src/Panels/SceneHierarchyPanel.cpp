@@ -12,10 +12,8 @@
 #include "Core/App.hpp"
 #include "Core/VFS.hpp"
 #include "EditorLayer.hpp"
-#include "EditorUI.hpp"
 #include "Scene/ECSModule/Core.hpp"
 #include "Utils/ImGuiScoped.hpp"
-#include "Utils/StringUtils.hpp"
 
 namespace ox {
 static flecs::entity clone_entity(flecs::entity entity) {
@@ -239,8 +237,6 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
 
 void SceneHierarchyPanel::draw_context_menu() {
   ZoneScoped;
-
-  auto& undo_redo_system = EditorLayer::get()->undo_redo_system;
 
   const bool has_context = _selected_entity.get() != flecs::entity::null();
 

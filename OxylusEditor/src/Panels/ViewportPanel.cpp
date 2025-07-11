@@ -18,8 +18,6 @@
 #include "Utils/EditorConfig.hpp"
 #include "Utils/OxMath.hpp"
 #include "Utils/PayloadData.hpp"
-#include "Utils/StringUtils.hpp"
-#include "Utils/Timestep.hpp"
 
 namespace ox {
 template <typename T>
