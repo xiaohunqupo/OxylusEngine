@@ -192,6 +192,16 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
+          ImGui::BeginDisabled(undo_redo_system->get_undo_count() < 1);
+          if (ImGui::MenuItem("Undo")) {
+            undo();
+          }
+          ImGui::EndDisabled();
+          ImGui::BeginDisabled(undo_redo_system->get_redo_count() < 1);
+          if (ImGui::MenuItem("Redo")) {
+            redo();
+          }
+          ImGui::EndDisabled();
           if (ImGui::MenuItem("Settings")) {
             get_panel<EditorSettingsPanel>()->visible = true;
           }
@@ -277,7 +287,7 @@ void EditorLayer::editor_shortcuts() {
   if (Input::get_key_held(KeyCode::LeftControl)) {
     if (Input::get_key_pressed(KeyCode::Z)) {
       undo();
-    } 
+    }
     if (Input::get_key_pressed(KeyCode::Y)) {
       redo();
     }

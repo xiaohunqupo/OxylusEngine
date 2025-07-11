@@ -279,6 +279,7 @@ public:
     self.merge_timeout_ = timeout;
     return self;
   }
+  auto get_max_history_size(this const UndoRedoSystem& self) -> usize { return self.max_history_size_; }
   auto set_max_history_size(this UndoRedoSystem& self, usize size) -> UndoRedoSystem& {
     self.max_history_size_ = size;
     while (self.undo_stack_.size() > self.max_history_size_) {
