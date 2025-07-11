@@ -80,11 +80,8 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
   if (prefab_color_applied)
     ImGui::PushStyleColor(ImGuiCol_Text, header_selected_color);
 
-  const bool opened = ImGui::TreeNodeEx(reinterpret_cast<void*>(entity.raw_id()),
-                                        flags,
-                                        "%s %s",
-                                        ICON_MDI_CUBE_OUTLINE,
-                                        entity.name().c_str());
+  const bool opened = ImGui::TreeNodeEx(
+      reinterpret_cast<void*>(entity.raw_id()), flags, "%s %s", ICON_MDI_CUBE_OUTLINE, entity.name().c_str());
 
   if (highlight)
     ImGui::PopStyleColor(2);
@@ -241,6 +238,10 @@ auto SceneHierarchyPanel::draw_entity_node(flecs::entity entity,
 }
 
 void SceneHierarchyPanel::draw_context_menu() {
+  ZoneScoped;
+
+  auto& undo_redo_system = EditorLayer::get()->undo_redo_system;
+
   const bool has_context = _selected_entity.get() != flecs::entity::null();
 
   auto* vfs = App::get_system<VFS>(EngineSystems::VFS);
@@ -251,33 +252,43 @@ void SceneHierarchyPanel::draw_context_menu() {
   ImGuiScoped::StyleVar styleVar1(ImGuiStyleVar_ItemInnerSpacing, {0, 5});
   ImGuiScoped::StyleVar styleVar2(ImGuiStyleVar_ItemSpacing, {1, 5});
   if (ImGui::BeginMenu("Create")) {
-    if (ImGui::MenuItem("Empty Entity")) {
-      to_select = _scene->create_entity();
+    const auto get_name = [&s = _scene](std::string prefix) -> std::string {
+      u32 index = 0;
+      std::string new_entity_name = prefix;
+      while (s->world.lookup(new_entity_name.data())) {
+        index += 1;
+        new_entity_name = fmt::format("{}_{}", prefix, index);
+      }
+      return new_entity_name;
+    };
+
+    if (ImGui::MenuItem("New Entity")) {
+      to_select = _scene->create_entity(get_name("entity"));
     }
 
     auto* asset_man = App::get_asset_manager();
 
     if (ImGui::MenuItem("Sprite")) {
-      to_select = _scene->create_entity().add<SpriteComponent>();
+      to_select = _scene->create_entity(get_name("sprite")).add<SpriteComponent>();
       to_select.get_mut<SpriteComponent>().material = asset_man->create_asset(AssetType::Material, {});
       asset_man->load_material(to_select.get_mut<SpriteComponent>().material, Material{});
     }
 
     if (ImGui::MenuItem("Camera")) {
-      to_select = _scene->create_entity("Camera");
+      to_select = _scene->create_entity(get_name("camera"));
       to_select.add<CameraComponent>().get_mut<TransformComponent>().rotation.y = glm::radians(-90.f);
     }
 
     if (ImGui::MenuItem("Lua Script")) {
-      to_select = _scene->create_entity().add<LuaScriptComponent>();
+      to_select = _scene->create_entity(get_name("lua_script")).add<LuaScriptComponent>();
     }
 
     if (ImGui::BeginMenu("Light")) {
       if (ImGui::MenuItem("Light")) {
-        to_select = _scene->create_entity().add<LightComponent>();
+        to_select = _scene->create_entity(get_name("light")).add<LightComponent>();
       }
       if (ImGui::MenuItem("Sun")) {
-        to_select = _scene->create_entity()
+        to_select = _scene->create_entity("sun")
                         .set<LightComponent>(LightComponent{.type = LightComponent::Directional, .intensity = 10.f})
                         .add<AtmosphereComponent>();
       }
@@ -286,11 +297,11 @@ void SceneHierarchyPanel::draw_context_menu() {
 
     if (ImGui::BeginMenu("Audio")) {
       if (ImGui::MenuItem("Audio Source")) {
-        to_select = _scene->create_entity().add<AudioSourceComponent>();
+        to_select = _scene->create_entity(get_name("audio_source")).add<AudioSourceComponent>();
         ImGui::CloseCurrentPopup();
       }
       if (ImGui::MenuItem("Audio Listener")) {
-        to_select = _scene->create_entity("AudioListener").add<AudioListenerComponent>();
+        to_select = _scene->create_entity(get_name("audio_listener")).add<AudioListenerComponent>();
         ImGui::CloseCurrentPopup();
       }
       ImGui::EndMenu();
@@ -298,7 +309,7 @@ void SceneHierarchyPanel::draw_context_menu() {
 
     if (ImGui::BeginMenu("Effects")) {
       if (ImGui::MenuItem("Particle System")) {
-        to_select = _scene->create_entity("Particle System").add<ParticleSystemComponent>();
+        to_select = _scene->create_entity(get_name("particle_system")).add<ParticleSystemComponent>();
       }
       ImGui::EndMenu();
     }
@@ -317,6 +328,7 @@ void SceneHierarchyPanel::draw_context_menu() {
 auto SceneHierarchyPanel::on_update() -> void {
   auto* editor_layer = EditorLayer::get();
   auto& editor_context = editor_layer->get_context();
+  auto& undo_redo_system = editor_layer->undo_redo_system;
 
   if (editor_context.type == EditorContext::Type::Entity) {
     if (editor_context.entity.has_value())
@@ -329,23 +341,17 @@ auto SceneHierarchyPanel::on_update() -> void {
     }
     if (ImGui::IsKeyPressed(ImGuiKey_Delete) &&
         (_table_hovered || editor_layer->viewport_panels[0]->is_viewport_hovered)) {
-      _selected_entity.get().destruct();
-      _selected_entity.reset();
+      _deleted_entity = _selected_entity.get();
     }
     if (ImGui::IsKeyPressed(ImGuiKey_F2)) {
       _renaming_entity = _selected_entity.get();
     }
   }
 
-  if (_deleted_entity != flecs::entity::null()) {
-    auto& arch = EditorLayer::get()->advance_history();
-    arch << static_cast<uint32_t>(HistoryOp::Delete);
-
-    if (_selected_entity.get().id() == _deleted_entity.id())
-      _selected_entity.reset();
-
-    _deleted_entity.destruct();
-    _deleted_entity = flecs::entity::null();
+  if (_deleted_entity) {
+    auto command_id = fmt::format("delete entity {}", _deleted_entity.name().c_str());
+    undo_redo_system->execute_command<EntityDeleteCommand>(_scene.get(), _deleted_entity, "", command_id);
+    _selected_entity.reset();
   }
 }
 

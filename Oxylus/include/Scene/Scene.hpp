@@ -5,6 +5,7 @@
 #include <Jolt/Core/Core.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
+#include <simdjson.h>
 
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
@@ -31,6 +32,7 @@ struct ankerl::unordered_dense::hash<flecs::entity> {
 };
 
 namespace ox {
+struct JsonWriter;
 class Physics3DContactListener;
 class Physics3DBodyActivationListener;
 
@@ -115,6 +117,12 @@ public:
       -> void;
 
   auto get_render_pipeline() -> std::shared_ptr<RenderPipeline> { return _render_pipeline; }
+
+  static auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void;
+  static auto json_to_entity(Scene& self, //
+                             flecs::entity root,
+                             simdjson::ondemand::value& json,
+                             std::vector<UUID>& requested_assets) -> std::pair<flecs::entity, bool>;
 
   auto save_to_file(this const Scene& self, std::string path) -> bool;
   auto load_from_file(this Scene& self, const std::string& path) -> bool;

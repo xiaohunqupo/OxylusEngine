@@ -36,7 +36,7 @@
 #include "Utils/Timestep.hpp"
 
 namespace ox {
-auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
+auto Scene::entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
   ZoneScoped;
 
   writer.begin_obj();
@@ -94,10 +94,10 @@ auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
   writer.end_obj();
 }
 
-auto json_to_entity(Scene& self, //
-                    flecs::entity root,
-                    simdjson::ondemand::value& json,
-                    std::vector<UUID>& requested_assets) -> bool {
+auto Scene::json_to_entity(Scene& self,
+                           flecs::entity root,
+                           simdjson::ondemand::value& json,
+                           std::vector<UUID>& requested_assets) -> std::pair<flecs::entity, bool> {
   ZoneScoped;
   memory::ScopedStack stack;
 
@@ -106,7 +106,7 @@ auto json_to_entity(Scene& self, //
   auto entity_name_json = json["name"];
   if (entity_name_json.error()) {
     OX_LOG_ERROR("Entities must have names!");
-    return false;
+    return {{}, false};
   }
 
   auto e = self.create_entity(std::string(entity_name_json.get_string().value_unsafe()));
@@ -124,14 +124,14 @@ auto json_to_entity(Scene& self, //
     auto component_name_json = component_json["name"];
     if (component_name_json.error()) {
       OX_LOG_ERROR("Entity '{}' has corrupt components JSON array.", e.name().c_str());
-      return false;
+      return {{}, false};
     }
 
     const auto* component_name = stack.null_terminate_cstr(component_name_json.get_string().value_unsafe());
     auto component_id = world.lookup(component_name);
     if (!component_id) {
       OX_LOG_ERROR("Entity '{}' has invalid component named '{}'!", e.name().c_str(), component_name);
-      return false;
+      return {{}, false};
     }
 
     OX_CHECK_EQ(self.component_db.is_component_known(component_id), true);
@@ -176,12 +176,12 @@ auto json_to_entity(Scene& self, //
       continue;
     }
 
-    if (!json_to_entity(self, e, children.value_unsafe(), requested_assets)) {
-      return false;
+    if (!json_to_entity(self, e, children.value_unsafe(), requested_assets).second) {
+      return {{}, false};
     }
   }
 
-  return true;
+  return {e, true};
 }
 
 auto ComponentDB::import_module(this ComponentDB& self, flecs::entity module) -> void {
@@ -777,7 +777,7 @@ auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Sce
 
   std::vector<UUID> requested_assets = {};
   for (auto entity_json : entities_array.get_array()) {
-    if (!json_to_entity(*new_scene, flecs::entity::null(), entity_json.value_unsafe(), requested_assets)) {
+    if (!json_to_entity(*new_scene, flecs::entity::null(), entity_json.value_unsafe(), requested_assets).second) {
       return nullptr;
     }
   }
@@ -1220,7 +1220,7 @@ auto Scene::load_from_file(this Scene& self, const std::string& path) -> bool {
 
   std::vector<UUID> requested_assets = {};
   for (auto entity_json : entities_array.get_array()) {
-    if (!json_to_entity(self, flecs::entity::null(), entity_json.value_unsafe(), requested_assets)) {
+    if (!json_to_entity(self, flecs::entity::null(), entity_json.value_unsafe(), requested_assets).second) {
       return false;
     }
   }

@@ -4,15 +4,10 @@
 #include <imgui_internal.h>
 // #include <imspinner.h>
 #include <flecs.h>
-#include <ranges>
 
-#include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
-#include "Core/Base.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
-#include "Core/Project.hpp"
-#include "EditorTheme.hpp"
 #include "EditorUI.hpp"
 #include "Panels/AssetManagerPanel.hpp"
 #include "Panels/ContentPanel.hpp"
@@ -23,8 +18,8 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
-#include "UI/ImGuiLayer.hpp"
 #include "Utils/CVars.hpp"
+#include "Utils/Command.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/EmbeddedBanner.hpp"
 #include "Utils/ImGuiScoped.hpp"
@@ -39,6 +34,8 @@ EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
 void EditorLayer::on_attach() {
   ZoneScoped;
+
+  undo_redo_system = std::make_unique<UndoRedoSystem>();
 
   editor_theme.init();
 
@@ -278,6 +275,12 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
 
 void EditorLayer::editor_shortcuts() {
   if (Input::get_key_held(KeyCode::LeftControl)) {
+    if (Input::get_key_pressed(KeyCode::Z)) {
+      undo();
+    } 
+    if (Input::get_key_pressed(KeyCode::Y)) {
+      redo();
+    }
     if (Input::get_key_pressed(KeyCode::N)) {
       new_scene();
     }
@@ -348,7 +351,7 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
 
 void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   ZoneScoped;
-  const auto sun = scene->create_entity("Sun");
+  const auto sun = scene->create_entity("sun");
   sun.get_mut<TransformComponent>().rotation.x = glm::radians(90.f);
   sun.get_mut<TransformComponent>().rotation.y = glm::radians(45.f);
   sun.set<LightComponent>({.type = LightComponent::LightType::Directional, .intensity = 10.f});
@@ -471,16 +474,13 @@ void EditorLayer::set_docking_layout(EditorLayout layout) {
   ImGui::DockBuilderFinish(dockspace_id);
 }
 
-Archive& EditorLayer::advance_history() {
-  historyPos++;
+void EditorLayer::undo() {
+  ZoneScoped;
+  undo_redo_system->undo();
+}
 
-  while (static_cast<int>(history.size()) > historyPos) {
-    history.pop_back();
-  }
-
-  history.emplace_back();
-  history.back().set_read_mode_and_reset_pos(false);
-
-  return history.back();
+void EditorLayer::redo() {
+  ZoneScoped;
+  undo_redo_system->redo();
 }
 } // namespace ox

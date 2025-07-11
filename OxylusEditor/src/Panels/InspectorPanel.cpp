@@ -213,6 +213,11 @@ void InspectorPanel::draw_material_properties(Material* material, const UUID& ma
 void InspectorPanel::draw_components(flecs::entity entity) {
   ZoneScoped;
 
+  if (!entity)
+    return;
+
+  auto& undo_redo_system = EditorLayer::get()->undo_redo_system;
+
   ImGui::PushItemWidth(ImGui::GetWindowWidth() * 0.9f);
   std::string new_name = entity.name().c_str();
   if (_rename_entity)
@@ -268,7 +273,8 @@ void InspectorPanel::draw_components(flecs::entity entity) {
     auto component_entity = component.entity();
     auto component_name = component_entity.name();
 
-    std::string name_str = fmt::format("{} {}:{}", ICON_MDI_VIEW_GRID, component_name.c_str(), (u64)component_entity.id());
+    std::string name_str = fmt::format(
+        "{} {}:{}", ICON_MDI_VIEW_GRID, component_name.c_str(), (u64)component_entity.id());
     const bool open = ImGui::TreeNodeEx(name_str.c_str(), TREE_FLAGS, "%s", name_str.c_str());
 
     bool remove_component = false;
@@ -304,41 +310,95 @@ void InspectorPanel::draw_components(flecs::entity entity) {
         std::visit(
             ox::match{
                 [](const auto&) {},
-                [&](bool* v) { UI::property(member_name.data(), v); },
-                [&](u16* v) { UI::property(member_name.data(), v); },
+                [&](bool* v) {
+                  bool old_v = *v;
+                  if (UI::property(member_name.data(), v)) {
+                    undo_redo_system //
+                        ->set_merge_enabled(false)
+                        .execute_command<PropertyChangeCommand<bool>>(v, old_v, *v, member_name.data())
+                        .set_merge_enabled(true);
+                  }
+                },
+                [&](u16* v) {
+                  u16 old_v = *v;
+                  if (UI::property(member_name.data(), v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<u16>>(v, old_v, *v, member_name.data());
+                },
                 [&](f32* v) {
-                  UI::property(member_name.data(), v);
+                  f32 old_v = *v;
+                  if (UI::property(member_name.data(), v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<f32>>(v, old_v, *v, member_name.data());
                   *v = degree_helper(member_name.data(), *v);
                 },
-                [&](i32* v) { UI::property(member_name.data(), v); },
-                [&](u32* v) { UI::property(member_name.data(), v); },
-                [&](i64* v) { UI::property(member_name.data(), v); },
-                [&](u64* v) { UI::property(member_name.data(), v); },
-                [&](glm::vec2* v) { UI::property_vector(member_name.data(), *v); },
+                [&](i32* v) {
+                  i32 old_v = *v;
+                  if (UI::property(member_name.data(), v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<i32>>(v, old_v, *v, member_name.data());
+                },
+                [&](u32* v) {
+                  u32 old_v = *v;
+                  if (UI::property(member_name.data(), v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<u32>>(v, old_v, *v, member_name.data());
+                },
+                [&](i64* v) {
+                  i64 old_v = *v;
+                  if (UI::property(member_name.data(), v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<i64>>(v, old_v, *v, member_name.data());
+                },
+                [&](u64* v) {
+                  u64 old_v = *v;
+                  if (UI::property(member_name.data(), v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<u64>>(v, old_v, *v, member_name.data());
+                },
+                [&](glm::vec2* v) {
+                  glm::vec2 old_v = *v;
+                  if (UI::property_vector(member_name.data(), *v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<glm::vec2>>(
+                        v, old_v, *v, member_name.data());
+                },
                 [&](glm::vec3* v) {
                   if (is_transform_component) {
                     // Display rotation field of transform component as degrees instead of radians
                     if (member_name == "rotation") {
+                      glm::vec3 old_v = *v;
                       glm::vec3 rotation = glm::degrees(*v);
                       if (UI::draw_vec3_control(member_name.data(), rotation)) {
                         *v = glm::radians(rotation);
+                        undo_redo_system->execute_command<PropertyChangeCommand<glm::vec3>>(
+                            v, old_v, *v, member_name.data());
                         entity.modified(component);
                       }
                     } else {
-                      if (UI::draw_vec3_control(member_name.data(), *v))
+                      glm::vec3 old_v = *v;
+                      if (UI::draw_vec3_control(member_name.data(), *v)) {
+                        undo_redo_system->execute_command<PropertyChangeCommand<glm::vec3>>(
+                            v, old_v, *v, member_name.data());
                         entity.modified(component);
+                      }
                     }
                   } else {
-                    UI::property_vector(member_name.data(), *v);
+                    glm::vec3 old_v = *v;
+                    if (UI::property_vector(member_name.data(), *v))
+                      undo_redo_system->execute_command<PropertyChangeCommand<glm::vec3>>(
+                          v, old_v, *v, member_name.data());
                   }
                 },
                 [&](glm::vec4* v) {
-                  if (UI::property_vector(member_name.data(), *v))
+                  glm::vec4 old_v = *v;
+                  if (UI::property_vector(member_name.data(), *v)) {
+                    undo_redo_system->execute_command<PropertyChangeCommand<glm::vec4>>(
+                        v, old_v, *v, member_name.data());
                     entity.modified(component);
+                  }
                 },
                 [&](glm::quat* v) { /* noop */ },
                 [&](glm::mat4* v) { /* noop */ },
-                [&](std::string* v) { UI::input_text(member_name.data(), v); },
+                [&](std::string* v) {
+                  std::string old_v = *v;
+                  if (UI::input_text(member_name.data(), v))
+                    undo_redo_system->execute_command<PropertyChangeCommand<std::string>>(
+                        v, old_v, *v, member_name.data());
+                },
                 [&](UUID* uuid) {
                   UI::end_properties();
 
