@@ -673,9 +673,9 @@ void ContentPanel::render_body(bool grid) {
           if (file_type_it != FILE_TYPES.end()) {
             file_type = file_type_it->second;
           }
-          ImGui::PushFontSize(thumb_image_size);
+          ImGui::PushFont(nullptr, thumb_image_size);
           ImGui::TextUnformatted(FILE_TYPES_TO_ICON.at(file_type));
-          ImGui::PopFontSize();
+          ImGui::PopFont();
         }
 
         // Type Color frame
@@ -692,10 +692,10 @@ void ContentPanel::render_body(bool grid) {
         const ImRect clip_rect = ImRect(
             {rect_min.x + padding * 1.0f, rect_min.y + padding * 2.0f},
             {rect_min.x + rect_size.x, rect_min.y + scaled_thumbnail_size_x - editor_theme.regular_font_size * 2.0f});
-        ImGui::PushFontSize(14.f);
+        ImGui::PushFont(nullptr, 14.f);
         UI::clipped_text(
             clip_rect.Min, clip_rect.Max, filename, nullptr, nullptr, {0, 0}, nullptr, clip_rect.GetSize().x);
-        ImGui::PopFontSize();
+        ImGui::PopFont();
 
         if (!is_dir) {
           constexpr auto y_pos_pad = 10.f;
@@ -703,9 +703,9 @@ void ContentPanel::render_body(bool grid) {
               {cursor_pos.x + padding * 2.0f,
                cursor_pos.y + background_thumbnail_size.y - editor_theme.small_font_size * 2.0f + y_pos_pad});
           ImGui::BeginDisabled();
-          ImGui::PushFontSize(editor_theme.small_font_size);
+          ImGui::PushFont(nullptr, editor_theme.small_font_size);
           ImGui::TextUnformatted(file.file_type_string.data());
-          ImGui::PopFontSize();
+          ImGui::PopFont();
           ImGui::EndDisabled();
         }
       } else {

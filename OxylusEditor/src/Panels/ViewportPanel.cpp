@@ -45,14 +45,14 @@ void show_component_gizmo(const char* icon,
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
         constexpr auto icon_size = 48.f;
-        ImGui::PushFontSize(icon_size);
+        ImGui::PushFont(nullptr, icon_size);
         if (ImGui::Button(icon, {50.f, 50.f})) {
           auto& editor_context = EditorLayer::get()->get_context();
           editor_context.reset();
           editor_context.entity = entity;
           editor_context.type = EditorContext::Type::Entity;
         }
-        ImGui::PopFontSize();
+        ImGui::PopFont();
 
         ImGui::PopStyleColor(2);
 
