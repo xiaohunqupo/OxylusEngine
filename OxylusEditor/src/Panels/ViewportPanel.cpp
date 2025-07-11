@@ -282,8 +282,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
                                 alpha,
                                 alpha))
             cam.projection = cam.projection == CameraComponent::Projection::Orthographic
-                                  ? CameraComponent::Projection::Perspective
-                                  : CameraComponent::Projection::Orthographic;
+                                 ? CameraComponent::Projection::Perspective
+                                 : CameraComponent::Projection::Orthographic;
         }
         UI::pop_id();
 
@@ -306,8 +306,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
 
         const bool highlight = editor_layer->scene_state == EditorLayer::SceneState::Play;
-        const char* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
-                                                                                         : ICON_MDI_STOP;
+        const char* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY : ICON_MDI_STOP;
         if (UI::toggle_button(icon, highlight, button_size)) {
           if (editor_layer->scene_state == EditorLayer::SceneState::Edit) {
             editor_layer->on_scene_play();
@@ -455,7 +454,10 @@ void ViewportPanel::draw_performance_overlay() {
 }
 
 void ViewportPanel::draw_gizmos() {
-  auto& editor_context = EditorLayer::get()->get_context();
+  auto* editor_layer = EditorLayer::get();
+  auto& editor_context = editor_layer->get_context();
+  auto& undo_redo_system = editor_layer->undo_redo_system;
+
   const flecs::entity selected_entity = editor_context.entity.value_or(flecs::entity::null());
 
   if (Input::get_key_held(KeyCode::LeftControl)) {
@@ -529,6 +531,10 @@ void ViewportPanel::draw_gizmos() {
         const glm::vec3 delta_rotation = rotation - tc->rotation;
         tc->rotation += delta_rotation;
         tc->scale = scale;
+
+        auto old_tc = *tc;
+        undo_redo_system->execute_command<PropertyChangeCommand<TransformComponent>>(
+            tc, old_tc, *tc, "gizmo transform");
 
         selected_entity.modified<TransformComponent>();
       }
