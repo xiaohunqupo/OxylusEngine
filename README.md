@@ -10,9 +10,10 @@ Be aware that Oxylus is still in it's early stages of development. Some importan
 ## Design Goals
 - **Powerful**: Full support for both 2D and 3D development
 - **Intuitive**: Beginner-friendly yet endlessly adaptable for power users
-- **Data-Driven**: Built on an Entity Component System (ECS) for efficient data handling
-- **Modular**: Modular design—use only the parts you need, swap out the rest
+- **Data-Driven**: Built on a "true" Entity Component System (ECS) for efficient data handling
+- **Modular**: Use only the parts you need, swap out the rest
 - **Fast**: Optimized for speed with parallel processing where possible
+- **Code-First**: The editor is optional, build entire games programmatically or use the editor as a productivity aid
 
 ## Feature Highlights 
 - Modular Vulkan renderer built using [vuk](https://github.com/martty/vuk) with modern rendering features:

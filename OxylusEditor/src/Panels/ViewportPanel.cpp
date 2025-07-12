@@ -64,27 +64,25 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
   draw_performance_overlay();
 
   constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar;
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0, 0});
 
   if (on_begin(flags)) {
     bool viewport_settings_popup = false;
     ImVec2 start_cursor_pos = ImGui::GetCursorPos();
 
+    auto& style = ImGui::GetStyle();
+
     auto* editor_layer = EditorLayer::get();
 
     auto& editor_theme = editor_layer->editor_theme;
-    const auto popup_item_spacing = editor_theme.popup_item_spacing;
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, popup_item_spacing);
-    if (ImGui::BeginPopupContextItem("RightClick")) {
-      if (ImGui::MenuItem("Fullscreen"))
-        fullscreen_viewport = !fullscreen_viewport;
-      ImGui::EndPopup();
-    }
-    ImGui::PopStyleVar();
 
     if (ImGui::BeginMenuBar()) {
-      if (ImGui::MenuItem(ICON_MDI_COGS)) {
+      if (ImGui::MenuItem(ICON_MDI_COG)) {
         viewport_settings_popup = true;
+      }
+      auto button_width = ImGui::CalcTextSize(ICON_MDI_ARROW_EXPAND_ALL, nullptr, true);
+      ImGui::SetCursorPosX(_viewport_panel_size.x - button_width.x - (style.ItemInnerSpacing.x * 2.f));
+      if (ImGui::MenuItem(ICON_MDI_ARROW_EXPAND_ALL)) {
+        fullscreen_viewport = !fullscreen_viewport;
       }
       ImGui::EndMenuBar();
     }
@@ -92,7 +90,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     if (viewport_settings_popup)
       ImGui::OpenPopup("ViewportSettings");
 
-    ImGui::SetNextWindowSize({300.f, 0.f});
     if (ImGui::BeginPopup("ViewportSettings")) {
       UI::begin_properties();
       UI::property("VSync", (bool*)RendererCVar::cvar_vsync.get_ptr());
@@ -332,7 +329,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
       ImGui::EndGroup();
     }
 
-    ImGui::PopStyleVar();
     on_end();
   }
 }

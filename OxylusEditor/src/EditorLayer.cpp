@@ -28,8 +28,6 @@
 namespace ox {
 EditorLayer* EditorLayer::instance = nullptr;
 
-static ViewportPanel* fullscreen_viewport_panel = nullptr;
-
 EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
 void EditorLayer::on_attach() {
@@ -84,14 +82,6 @@ void EditorLayer::on_detach() {
 
 void EditorLayer::on_update(const Timestep& delta_time) {
   active_project->check_module();
-
-  for (const auto& panel : viewport_panels) {
-    if (panel->fullscreen_viewport) {
-      fullscreen_viewport_panel = panel.get();
-      break;
-    }
-    fullscreen_viewport_panel = nullptr;
-  }
 
   for (const auto& panel : editor_panels | std::views::values) {
     if (!panel->visible)
@@ -193,12 +183,12 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
         }
         if (ImGui::BeginMenu("Edit")) {
           ImGui::BeginDisabled(undo_redo_system->get_undo_count() < 1);
-          if (ImGui::MenuItem("Undo")) {
+          if (ImGui::MenuItem("Undo", "Ctrl + Z")) {
             undo();
           }
           ImGui::EndDisabled();
           ImGui::BeginDisabled(undo_redo_system->get_redo_count() < 1);
-          if (ImGui::MenuItem("Redo")) {
+          if (ImGui::MenuItem("Redo", "Ctrl + Y")) {
             redo();
           }
           ImGui::EndDisabled();
@@ -263,12 +253,25 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
     }
     ImGui::PopStyleVar();
 
-    for (const auto& panel : viewport_panels)
-      panel->on_render(extent, format);
+    ViewportPanel* fullscreen_viewport_panel = nullptr;
+    for (const auto& panel : viewport_panels) {
+      if (panel->fullscreen_viewport) {
+        fullscreen_viewport_panel = panel.get();
+        break;
+      }
+      fullscreen_viewport_panel = nullptr;
+    }
 
-    for (const auto& panel : editor_panels | std::views::values) {
-      if (panel->visible)
+    if (fullscreen_viewport_panel != nullptr) {
+      fullscreen_viewport_panel->on_render(extent, format);
+    } else {
+      for (const auto& panel : viewport_panels)
         panel->on_render(extent, format);
+
+      for (const auto& panel : editor_panels | std::views::values) {
+        if (panel->visible)
+          panel->on_render(extent, format);
+      }
     }
 
     runtime_console.on_imgui_render();

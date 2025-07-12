@@ -316,7 +316,7 @@ void ContentPanel::invalidate() {
 }
 
 void ContentPanel::render_header() {
-  if (ImGui::Button(ICON_MDI_COGS))
+  if (ImGui::Button(ICON_MDI_COG))
     ImGui::OpenPopup("SettingsPopup");
   ImGui::SameLine();
   if (ImGui::Button(ICON_MDI_REFRESH)) {
