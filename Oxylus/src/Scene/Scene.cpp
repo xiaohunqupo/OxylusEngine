@@ -366,7 +366,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   // --- Main Systems ---
 
-  self.world.system<const LuaScriptComponent>("LuaScriptsUpdate")
+  self.world.system<const LuaScriptComponent>("lua_update")
       .kind(flecs::PreUpdate)
       .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
@@ -375,7 +375,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         }
       });
 
-  self.world.system<const TransformComponent, AudioListenerComponent>("AudioListenerUpdate")
+  self.world.system<const TransformComponent, AudioListenerComponent>("audio_listener_update")
       .kind(flecs::PreUpdate)
       .each([&self](const flecs::entity& e, const TransformComponent& tc, AudioListenerComponent& ac) {
         if (ac.active) {
@@ -389,7 +389,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         }
       });
 
-  self.world.system<const TransformComponent, AudioSourceComponent>("AudioSourceUpdate")
+  self.world.system<const TransformComponent, AudioSourceComponent>("audio_source_update")
       .kind(flecs::PreUpdate)
       .each([](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
         auto* asset_man = App::get_asset_manager();
@@ -414,10 +414,23 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   // --- Physics Systems ---
 
-  // TODO: Interpolation for rigibodies.
+  // TODOs(hatrickek):
+  // Interpolation for rigibodies.
 
-  self.world.system<const LuaScriptComponent>()
+  const auto physics_tick_source = self.world.timer().interval(self.physics_interval);
+
+  self.world
+      .system("physics_step") //
       .kind(flecs::OnUpdate)
+      .tick_source(physics_tick_source)
+      .run([](flecs::iter& it) {
+        auto* physics = App::get_system<Physics>(EngineSystems::Physics);
+        physics->step(it.delta_time());
+      });
+
+  self.world.system<const LuaScriptComponent>("lua_fixed_update")
+      .kind(flecs::OnUpdate)
+      .tick_source(physics_tick_source)
       .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
@@ -425,9 +438,10 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         }
       });
 
-  self.world.system<TransformComponent, RigidbodyComponent>()
+  self.world.system<TransformComponent, RigidbodyComponent>("rigidbody_update")
       .kind(flecs::OnUpdate)
-      .each([](TransformComponent& tc, RigidbodyComponent& rb) {
+      .tick_source(physics_tick_source)
+      .each([](flecs::entity e, TransformComponent& tc, RigidbodyComponent& rb) {
         if (!rb.runtime_body)
           return;
 
@@ -449,8 +463,9 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         tc.rotation = glm::eulerAngles(rb.rotation);
       });
 
-  self.world.system<TransformComponent, CharacterControllerComponent>()
+  self.world.system<TransformComponent, CharacterControllerComponent>("character_controller_update")
       .kind(flecs::OnUpdate)
+      .tick_source(physics_tick_source)
       .each([](TransformComponent& tc, CharacterControllerComponent& ch) {
         auto* character = reinterpret_cast<JPH::Character*>(ch.character);
         character->PostSimulation(ch.collision_tolerance);
@@ -467,7 +482,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   // -- Renderer Systems ---
 
-  self.world.system<const TransformComponent, CameraComponent>("CameraUpdate")
+  self.world.system<const TransformComponent, CameraComponent>("camera_update")
       .kind(flecs::PostUpdate)
       .each([](const TransformComponent& tc, CameraComponent& cc) {
         const auto screen_extent = App::get()->get_swapchain_extent();
@@ -477,11 +492,11 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         Camera::update(cc, screen_extent);
       });
 
-  self.world.system<const TransformComponent, MeshComponent>("MeshesUpdate")
+  self.world.system<const TransformComponent, MeshComponent>("meshes_update")
       .kind(flecs::PostUpdate)
       .each([](const TransformComponent& tc, MeshComponent& mc) {});
 
-  self.world.system<SpriteComponent>("SpritesUpdate")
+  self.world.system<SpriteComponent>("sprite_update")
       .kind(flecs::PostUpdate)
       .each([](const flecs::entity entity, SpriteComponent& sprite) {
         if (RendererCVar::cvar_draw_bounding_boxes.get()) {
@@ -489,7 +504,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         }
       });
 
-  self.world.system<SpriteComponent, SpriteAnimationComponent>("SpriteAnimationsUpdate")
+  self.world.system<SpriteComponent, SpriteAnimationComponent>("sprite_animation_update")
       .kind(flecs::PostUpdate)
       .each([](flecs::iter& it, size_t, SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
         const auto asset_manager = App::get_system<AssetManager>(EngineSystems::AssetManager);
@@ -588,7 +603,7 @@ auto Scene::runtime_stop(this Scene& self) -> void {
 
   // Physics
   {
-    ZoneNamedN(z, "Physics Stop", true);
+    ZoneNamedN(z, "physics_stop", true);
     const auto physics = App::get_system<Physics>(EngineSystems::Physics);
     self.world.query_builder<RigidbodyComponent>().build().each(
         [physics](const flecs::entity& e, const RigidbodyComponent& rb) {

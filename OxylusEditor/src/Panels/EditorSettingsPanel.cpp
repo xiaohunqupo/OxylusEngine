@@ -11,7 +11,6 @@ EditorSettingsPanel::EditorSettingsPanel() : EditorPanel("Editor Settings", ICON
 
 void EditorSettingsPanel::on_render(vuk::Extent3D, vuk::Format) {
   auto* editor_layer = EditorLayer::get();
-  auto& editor_theme = editor_layer->editor_theme;
   auto& undo_redo_system = editor_layer->undo_redo_system;
 
   constexpr ImGuiWindowFlags window_flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_NoDocking;
