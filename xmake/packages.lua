@@ -36,10 +36,8 @@ add_requires("vuk 2025.06.15", { configs = {
 
 add_requires("shader-slang v2025.10.4", { system = false })
 
-add_requires("libsdl3", { configs = {
-    wayland = false,
-    x11 = true,
-} })
+-- handled by system package (also nix)
+add_requires("libsdl3")
 
 add_requires("toml++ v3.4.0")
 

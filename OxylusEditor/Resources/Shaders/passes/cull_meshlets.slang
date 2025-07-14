@@ -38,40 +38,6 @@ func test_frustum(in f32x4x4 mvp, in f32x3 aabb_center, in f32x3 aabb_extent) ->
     return true;
 }
 
-func test_occlusion(
-    in ShaderParameters params,
-    in f32x4x4 mvp,
-    f32x3 aabb_min,
-    f32x3 aabb_extent
-) -> bool {
-    if (let ret = project_aabb(mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
-        ScreenAabb screen_aabb = ret;
-        let hiz_size = u32x2(ceil(params.camera.resolution * 0.5));
-        let aabb_min = screen_aabb.min.xy * hiz_size;
-        let aabb_max = screen_aabb.max.xy * hiz_size;
-    
-        let min_texel = u32x2(max(aabb_min, f32x2(0.0)));
-        let max_texel = u32x2(min(aabb_max, hiz_size - 1.0));
-        let size = max_texel - min_texel;
-        let max_size = max(size.x, size.y);
-        var mip = max(firstbithigh(max_size) + 1, 2) - 2;
-
-        if (any((max_texel >> u32x2(mip)) > (min_texel >> u32x2(mip)) + 3)) {
-            mip += 1;
-        }
-
-        let smin = min_texel >> u32x2(mip);
-        let smax = max_texel >> u32x2(mip);
-        let uv0 = f32x2(smin) / (hiz_size >> mip);
-        let uv1 = f32x2(smax) / (hiz_size >> mip);
-        let center_uv = 0.5 * (uv0 + uv1);
-        let d = params.hiz_image.sample_mip(params.hiz_sampler, center_uv, mip);
-        return screen_aabb.max.z <= d;
-    }
-
-    return false;
-}
-
 #ifndef CULLING_MESHLET_COUNT
     #define CULLING_MESHLET_COUNT 64
 #endif
@@ -99,17 +65,23 @@ func cs_main(
     let aabb_min = bounds.aabb_min;
     let aabb_max = bounds.aabb_max;
     let aabb_extent = aabb_max - aabb_min;
-    let aabb_center = (aabb_min + aabb_max) * 0.5;
 
-    let cur_mvp = mul(params.camera.projection_view, transform.world);
     var visible = true;
     if (cull_flags & CullFlags::MeshletFrustum) {
+        let cur_mvp = mul(params.camera.projection_view, transform.world);
+        let aabb_center = (aabb_min + aabb_max) * 0.5;
         visible = test_frustum(cur_mvp, aabb_center, aabb_extent);
     }
 
     if (visible && (cull_flags & CullFlags::OcclusionCulling)) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
-        visible = test_occlusion(params, prev_mvp, aabb_min, aabb_extent);
+        if (let ret = project_aabb(prev_mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
+            ScreenAabb screen_aabb = ret;
+            let scale = params.camera.resolution;
+            screen_aabb.min.xy = screen_aabb.min.xy * scale;
+            screen_aabb.max.xy = screen_aabb.max.xy * scale;
+            visible = !test_occlusion(params.hiz_image, params.hiz_sampler, params.camera.resolution, screen_aabb);
+        }
     }
 
     if (visible) {

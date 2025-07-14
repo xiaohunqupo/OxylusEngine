@@ -2,6 +2,7 @@ module cull;
 
 import common;
 import scene;
+import gpu;
 
 public func normalize_plane(f32x4 p) -> f32x4 {
     return p / length(p.xyz);
@@ -13,6 +14,7 @@ public struct ScreenAabb {
 }
 
 // https://zeux.io/2023/01/12/approximate-projected-bounds
+// returns the AABB in UV space!!! not clip space
 public func project_aabb(f32x4x4 mvp, f32 near, f32x3 aabb_min, f32x3 aabb_extent) -> Optional<ScreenAabb> {
     let SX = mul(mvp, f32x4(aabb_extent.x, 0.0, 0.0, 0.0));
     let SY = mul(mvp, f32x4(0.0, aabb_extent.y, 0.0, 0.0));
@@ -27,23 +29,53 @@ public func project_aabb(f32x4x4 mvp, f32 near, f32x3 aabb_min, f32x3 aabb_exten
     let P6 = P4 + SY;
     let P7 = P6 + SZ;
 
-    if (max(max(max(max(max(max(max(P0.z, P1.z), P2.z), P3.z), P4.z), P5.z), P6.z), P7.z) < near) {
+    let depth = min(P0, min(P1, min(P2, min(P3, min(P4, min(P5, min(P6, P7))))))).w;
+    if (depth < near) {
         return none;
     }
 
-    let vmin = min(
-        min(min(P0.xyz / P0.w, P1.xyz / P1.w), min(P2.xyz / P2.w, P3.xyz / P3.w)),
-        min(min(P4.xyz / P4.w, P5.xyz / P5.w), min(P6.xyz / P6.w, P7.xyz / P7.w))
-    );
-    let vmax = max(
-        max(max(P0.xyz / P0.w, P1.xyz / P1.w), max(P2.xyz / P2.w, P3.xyz / P3.w)),
-        max(max(P4.xyz / P4.w, P5.xyz / P5.w), max(P6.xyz / P6.w, P7.xyz / P7.w))
-    );
+    let DP0 = P0.xyz / P0.w;
+    let DP1 = P1.xyz / P1.w;
+    let DP2 = P2.xyz / P2.w;
+    let DP3 = P3.xyz / P3.w;
+    let DP4 = P4.xyz / P4.w;
+    let DP5 = P5.xyz / P5.w;
+    let DP6 = P6.xyz / P6.w;
+    let DP7 = P7.xyz / P7.w;
+    let vmin = min(DP0, min(DP1, min(DP2, min(DP3, min(DP4, min(DP5, min(DP6, DP7)))))));
+    let vmax = max(DP0, max(DP1, max(DP2, max(DP3, max(DP4, max(DP5, max(DP6, DP7)))))));
 
     var vaabb = f32x4(vmin.xy, vmax.xy);
-    vaabb = vaabb.xwzy * f32x4(0.5, -0.5, 0.5, -0.5) + 0.5;
-
+    // clip to uv space
+    //vaabb = vaabb.xwzy * f32x4(0.5, -0.5, 0.5, -0.5) + 0.5;
+    vaabb = vaabb * 0.5 + 0.5;
     ScreenAabb ret = { f32x3(vaabb.xy, vmin.z), f32x3(vaabb.zw, vmax.z) };
     return ret;
 }
 
+public func test_occlusion(
+    in Image2D<f32> hiz_image,
+    in Sampler hiz_sampler,
+    in f32x2 resolution,
+    in ScreenAabb screen_aabb,
+) -> bool {
+    var hiz_size = u32x2(0.0);
+    var hiz_levels = 0;
+    hiz_image.GetDimensions(0, hiz_size.x, hiz_size.y, hiz_levels);
+
+    let min_texel = u32x2(max(screen_aabb.min.xy, 0.0));
+    let max_texel = u32x2(min(screen_aabb.max.xy, f32x2(hiz_size) - 1.0));
+    let size = max_texel - min_texel + 1u;
+    let max_size = max(size.x, size.y);
+    var mip = firstbithigh(max_size - 1);
+
+    let smin = min_texel >> mip;
+    let smax = max_texel >> mip;
+    if (any(smax - smin > 1)) {
+        mip += 1;
+    }
+
+    var uv = ((f32x2(min_texel) + f32x2(max_texel)) * 0.5) / f32x2(hiz_size);
+    let d = hiz_image.sample_mip(hiz_sampler, uv, mip);
+    return screen_aabb.max.z <= d;
+}

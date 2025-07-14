@@ -105,38 +105,35 @@ func fs_main(
             let meshlet_index = meshlet_instance.meshlet_index;
             let meshlet = mesh.meshlets[meshlet_index];
             let transform = params.transforms[meshlet_instance.transform_index];
-            let bounds = mesh.meshlet_bounds[meshlet_index];
-            let aabb_min = transform.to_world_position(bounds.aabb_min).xyz;
-            let aabb_max = transform.to_world_position(bounds.aabb_max).xyz;
-            let aabb_extent = aabb_max - aabb_min;
+            let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
 
-            let mvp = mul(params.camera.projection_view, transform.world);
-            var max_depth = 0.0;
-            if (let ret = project_aabb(mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
+            let bounds = mesh.meshlet_bounds[meshlet_index];
+            let aabb_extent = bounds.aabb_max - bounds.aabb_min;
+
+            if (let ret = project_aabb(prev_mvp, params.camera.near_clip, bounds.aabb_min, aabb_extent)) {
                 ScreenAabb screen_aabb = ret;
-                let hiz_size = u32x2(ceil(params.camera.resolution * 0.5));
-                let aabb_min = screen_aabb.min.xy * hiz_size;
-                let aabb_max = screen_aabb.max.xy * hiz_size;
-            
-                let min_texel = u32x2(max(aabb_min, f32x2(0.0)));
-                let max_texel = u32x2(min(aabb_max, hiz_size - 1.0));
-                let size = max_texel - min_texel;
+                let hiz_size = params.camera.resolution;
+                screen_aabb.min.xy *= hiz_size;
+                screen_aabb.max.xy *= hiz_size;
+
+                let min_texel = u32x2(max(screen_aabb.min.xy, 0.0));
+                let max_texel = u32x2(min(screen_aabb.max.xy, hiz_size - 1.0));
+                let size = max_texel - min_texel + 1u;
                 let max_size = max(size.x, size.y);
-                var mip = max(firstbithigh(max_size) + 1, 2) - 2;
-        
-                if (any((max_texel >> u32x2(mip)) > (min_texel >> u32x2(mip)) + 3)) {
+                var mip = firstbithigh(max_size - 1);
+
+                let smin = min_texel >> mip;
+                let smax = max_texel >> mip;
+                if (any(smax - smin > 1)) {
                     mip += 1;
                 }
 
-                let smin = min_texel >> u32x2(mip);
-                let smax = max_texel >> u32x2(mip);
-                let uv0 = f32x2(smin) / (hiz_size >> mip);
-                let uv1 = f32x2(smax) / (hiz_size >> mip);
-                let center_uv = 0.5 * (uv0 + uv1);
-                let d = params.hiz_image.sample_mip(params.hiz_sampler, center_uv, mip);
-
-                color = f32x3(screen_aabb.max.z, d, mip);
+                // 0.619, 0.499 = 0.99414
+                var uv = ((f32x2(min_texel) + f32x2(max_texel)) * 0.5) / f32x2(hiz_size);
+                let d = params.hiz_image.sample_mip(params.hiz_sampler, uv, mip);            
+                return f32x4(uv, d, mip);
             }
+    
         } break;
         default:;
     }

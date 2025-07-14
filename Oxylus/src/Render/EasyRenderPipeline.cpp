@@ -449,7 +449,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
       this->hiz_view.create({}, {.preset = Preset::eSTT2D, .format = vuk::Format::eR32Sfloat, .extent = hiz_extent});
       this->hiz_view.set_name("hiz");
     }
-    auto hiz_attachment = this->hiz_view.acquire("hiz", vuk::eNone);
+    auto hiz_attachment = this->hiz_view.acquire("hiz", vuk::eComputeRead);
 
     const auto meshlet_instance_count = static_cast<u32>(this->gpu_meshlet_instances.size());
 
@@ -473,7 +473,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                              VUK_BA(vuk::eComputeRead) meshes,
                                              VUK_BA(vuk::eComputeRead) camera,
                                              VUK_IA(vuk::eComputeRead) hiz) {
-          static constexpr auto hiz_sampler_ci = vuk::SamplerCreateInfo{
+          auto hiz_sampler_ci = vuk::SamplerCreateInfo{
               .pNext = &sampler_min_clamp_reduction_mode,
               .magFilter = vuk::Filter::eLinear,
               .minFilter = vuk::Filter::eLinear,
@@ -481,6 +481,8 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .addressModeU = vuk::SamplerAddressMode::eClampToEdge,
               .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
           };
+
+          cmd_list.image_barrier(hiz, vuk::eNone, vuk::eComputeRW, 0, hiz->level_count);
 
           cmd_list //
               .bind_compute_pipeline("cull_meshlets")
@@ -513,8 +515,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
     auto reordered_indices_buffer = vk_context.alloc_transient_buffer(
         vuk::MemoryUsage::eGPUonly, meshlet_instance_count * Mesh::MAX_MESHLET_PRIMITIVES * 3 * sizeof(u32));
 
-    std::tie(hiz_attachment,
-             draw_command_buffer,
+    std::tie(draw_command_buffer,
              visible_meshlet_instances_indices_buffer,
              reordered_indices_buffer,
              meshlet_instances_buffer_value,
@@ -523,7 +524,6 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              camera_buffer) = vuk::make_pass( //
         "vis cull triangles",
         [cull_flags](vuk::CommandBuffer& cmd_list,
-                     VUK_IA(vuk::eComputeRead) hiz,
                      VUK_BA(vuk::eIndirectRead) cull_triangles_cmd,
                      VUK_BA(vuk::eComputeWrite) draw_indexed_cmd,
                      VUK_BA(vuk::eComputeRead) visible_meshlet_instances_indices,
@@ -543,16 +543,14 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .bind_buffer(0, 6, transforms_)
               .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, cull_flags)
               .dispatch_indirect(cull_triangles_cmd);
-          return std::make_tuple(hiz,
-                                 draw_indexed_cmd,
+          return std::make_tuple(draw_indexed_cmd,
                                  visible_meshlet_instances_indices,
                                  reordered_indices,
                                  meshlet_instances,
                                  transforms_,
                                  meshes,
                                  camera);
-        })(std::move(hiz_attachment),
-           std::move(cull_triangles_cmd_buffer),
+        })(std::move(cull_triangles_cmd_buffer),
            std::move(draw_command_buffer),
            std::move(visible_meshlet_instances_indices_buffer),
            std::move(reordered_indices_buffer),
@@ -666,11 +664,6 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           auto dispatch_x = (extent.width + 63) >> 6;
           auto dispatch_y = (extent.height + 63) >> 6;
 
-          static constexpr auto sampler_min_clamp_reduction_mode = VkSamplerReductionModeCreateInfo{
-              .sType = VK_STRUCTURE_TYPE_SAMPLER_REDUCTION_MODE_CREATE_INFO,
-              .pNext = nullptr,
-              .reductionMode = VK_SAMPLER_REDUCTION_MODE_MIN,
-          };
           auto sampler_info = vuk::SamplerCreateInfo{
               .pNext = &sampler_min_clamp_reduction_mode,
               .minFilter = vuk::Filter::eLinear,
@@ -1391,12 +1384,12 @@ auto EasyRenderPipeline::on_update(ox::Scene* scene) -> void {
       .inv_view = cam.get_inv_view_matrix(),
       .projection_view = cam.get_projection_matrix() * cam.get_view_matrix(),
       .inv_projection_view = cam.get_inverse_projection_view(),
-      .previous_projection = this->previous_camera_data.previous_projection,
-      .previous_inv_projection = this->previous_camera_data.previous_inv_projection,
-      .previous_view = this->previous_camera_data.previous_view,
-      .previous_inv_view = this->previous_camera_data.previous_inv_view,
-      .previous_projection_view = this->previous_camera_data.previous_projection_view,
-      .previous_inv_projection_view = this->previous_camera_data.previous_inv_projection_view,
+      .previous_projection = this->previous_camera_data.projection,
+      .previous_inv_projection = this->previous_camera_data.inv_projection,
+      .previous_view = this->previous_camera_data.view,
+      .previous_inv_view = this->previous_camera_data.inv_view,
+      .previous_projection_view = this->previous_camera_data.projection_view,
+      .previous_inv_projection_view = this->previous_camera_data.inv_projection_view,
       .temporalaa_jitter = cam.jitter,
       .temporalaa_jitter_prev = this->previous_camera_data.temporalaa_jitter_prev,
       .near_clip = cam.near_clip,
