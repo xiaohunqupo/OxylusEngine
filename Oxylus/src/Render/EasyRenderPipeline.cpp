@@ -441,6 +441,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
         .depth = 1,
     };
 
+    auto hiz_attachment = vuk::Value<vuk::ImageAttachment>{};
     if (this->hiz_view.get_extent() != hiz_extent) {
       if (this->hiz_view) {
         this->hiz_view.destroy();
@@ -448,8 +449,12 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
       this->hiz_view.create({}, {.preset = Preset::eSTT2D, .format = vuk::Format::eR32Sfloat, .extent = hiz_extent});
       this->hiz_view.set_name("hiz");
+
+      hiz_attachment = this->hiz_view.acquire("hiz", vuk::eNone);
+      hiz_attachment = vuk::clear_image(std::move(hiz_attachment), vuk::DepthOne);
+    } else {
+      hiz_attachment = this->hiz_view.acquire("hiz", vuk::eComputeRW);
     }
-    auto hiz_attachment = this->hiz_view.acquire("hiz", vuk::eComputeRead);
 
     const auto meshlet_instance_count = static_cast<u32>(this->gpu_meshlet_instances.size());
 
