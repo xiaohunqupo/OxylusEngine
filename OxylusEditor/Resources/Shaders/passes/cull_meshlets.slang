@@ -75,12 +75,8 @@ func cs_main(
 
     if (visible && (cull_flags & CullFlags::OcclusionCulling)) {
         let prev_mvp = mul(params.camera.previous_projection_view, transform.world);
-        if (let ret = project_aabb(prev_mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
-            ScreenAabb screen_aabb = ret;
-            let scale = params.camera.resolution;
-            screen_aabb.min.xy = screen_aabb.min.xy * scale;
-            screen_aabb.max.xy = screen_aabb.max.xy * scale;
-            visible = !test_occlusion(params.hiz_image, params.hiz_sampler, params.camera.resolution, screen_aabb);
+        if (let screen_aabb = project_aabb(prev_mvp, params.camera.near_clip, aabb_min, aabb_extent)) {
+            visible = !test_occlusion(params.hiz_image, params.hiz_sampler, screen_aabb);
         }
     }
 

@@ -79,26 +79,28 @@ func project_sphere(f32x3 center, f32 radius, f32 near, f32 P00, f32 P11) -> Opt
 public func test_occlusion(
     in Image2D<f32> hiz_image,
     in Sampler hiz_sampler,
-    in f32x2 resolution,
-    in ScreenAabb screen_aabb,
+    in ScreenAabb screen_aabb
 ) -> bool {
     var hiz_size = u32x2(0.0);
     var hiz_levels = 0;
+    // TODO: Replace this with push constants
     hiz_image.GetDimensions(0, hiz_size.x, hiz_size.y, hiz_levels);
 
-    let min_texel = u32x2(max(screen_aabb.min.xy, 0.0));
-    let max_texel = u32x2(min(screen_aabb.max.xy, f32x2(hiz_size) - 1.0));
-    let size = max_texel - min_texel + 1u;
-    let max_size = max(size.x, size.y);
-    var mip = firstbithigh(max_size - 1);
+    let min_uv = screen_aabb.min.xy;
+    let max_uv = screen_aabb.max.xy;
+    let min_texel = u32x2(clamp(min_uv * f32x2(hiz_size), 0.0, hiz_size - 1.0));
+    let max_texel = u32x2(clamp(max_uv * f32x2(hiz_size), 0.0, hiz_size - 1.0));
 
+    let size = max_texel - min_texel + 1;
+    let max_size = max(size.x, size.y);
+    var mip = firstbithigh(max_size - 1) - 1;
     let smin = min_texel >> mip;
     let smax = max_texel >> mip;
     if (any(smax - smin > 1)) {
         mip += 1;
     }
 
-    var uv = ((f32x2(min_texel) + f32x2(max_texel)) * 0.5) / f32x2(hiz_size);
+    var uv = (min_uv + max_uv) * 0.5;
     let d = hiz_image.sample_mip(hiz_sampler, uv, mip);
     return screen_aabb.max.z <= d;
 }
