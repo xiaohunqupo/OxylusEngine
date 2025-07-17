@@ -16,7 +16,7 @@ struct PushConstants {
 };
 
 [[shader("compute")]]
-[[numthreads(8, 8, 1)]]
+[[numthreads(16, 16, 1)]]
 func cs_main(u32x3 thread_id : SV_DispatchThreadID, 
             uniform ParameterBlock<ShaderParameters> params, 
             uniform PushConstants pc) {
