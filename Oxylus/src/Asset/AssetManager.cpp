@@ -884,12 +884,6 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
             meshlet_bb_max = glm::max(meshlet_bb_max, tri_pos);
           }
 
-          // SB computation
-          auto cur_meshlet_bounds = meshopt_computeMeshletBounds( //
-              &meshlet_indices[vertex_offset],
-              &local_triangle_indices[triangle_offset + raw_meshlet.triangle_offset],
-              meshlet.triangle_count, );
-
           meshlet.vertex_offset = static_cast<u32>(vertex_offset);
           meshlet.index_offset = static_cast<u32>(index_offset + raw_meshlet.vertex_offset);
           meshlet.triangle_offset = static_cast<u32>(triangle_offset + raw_meshlet.triangle_offset);

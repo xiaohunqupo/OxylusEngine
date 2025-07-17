@@ -27,6 +27,12 @@ import gpu;
 [[vk::binding(14)]] StorageImage2D<f32> dst_mip_11;
 [[vk::binding(15)]] StorageImage2D<f32> dst_mip_12;
 
+[[vk::constant_id(0)]] constexpr u32 is_pot = 0;
+[[vk::constant_id(1)]] constexpr u32 src_width = 0;
+[[vk::constant_id(2)]] constexpr u32 src_height = 0;
+constexpr static u32x2 src_extent = u32x2(src_width, src_height);
+constexpr static f32x2 inv_src_extent = 1.0 / f32x2(src_extent);
+
 struct PushConstants {
     u32 mip_count;
     u32 work_group_count;
@@ -89,11 +95,7 @@ func store_2x2(u32x2 p, u32 mip, f32x4 v) -> void {
 }
 
 func load(u32x2 texel) -> f32 {
-    u32x2 extent;
-    i32 _;
-    src_image.GetDimensions(0, extent.x, extent.y, _);
-    let inv_extent = 1.0 / f32x2(extent);
-    f32x2 uv = f32x2(texel) * inv_extent + inv_extent;
+    f32x2 uv = f32x2(texel) * inv_src_extent + inv_src_extent;
     return src_image.sample_mip(sampler, uv, 0);
 }
 
@@ -113,11 +115,19 @@ func load_4x4(u32x2 p) -> f32x4x4 {
     return f32x4x4(x, y, z, w);
 }
 
+func load_mid(u32x2 texel) -> f32 {
+    if (is_pot == 0) {
+        texel = min(texel, src_extent >> 6);
+    }
+
+    return dst_mip_6.load(texel, MemoryScope.QueueFamily);
+}
+
 func load_mid_2x2(u32x2 p) -> f32x4 {
-    let x = dst_mip_6.load(p + i32x2(0, 0), MemoryScope.QueueFamily);
-    let y = dst_mip_6.load(p + i32x2(1, 0), MemoryScope.QueueFamily);
-    let z = dst_mip_6.load(p + i32x2(0, 1), MemoryScope.QueueFamily);
-    let w = dst_mip_6.load(p + i32x2(1, 1), MemoryScope.QueueFamily);
+    let x = load_mid(p + i32x2(0, 0));
+    let y = load_mid(p + i32x2(1, 0));
+    let z = load_mid(p + i32x2(0, 1));
+    let w = load_mid(p + i32x2(1, 1));
     return f32x4(x, y, z, w);
 }
 

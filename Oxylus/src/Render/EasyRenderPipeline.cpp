@@ -677,11 +677,14 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .addressModeV = vuk::SamplerAddressMode::eClampToEdge,
           };
 
-          cmd_list //
+          // clang-format off
+          cmd_list
               .bind_compute_pipeline("hiz_pipeline")
-              .push_constants(vuk::ShaderStageFlagBits::eCompute,
-                              0,
-                              PushConstants(mip_count, dispatch_x * dispatch_y, glm::mat2(1.0f)));
+              .push_constants(vuk::ShaderStageFlagBits::eCompute, 0, PushConstants(mip_count, dispatch_x * dispatch_y, glm::mat2(1.0f)))
+              .specialize_constants(0, extent.width == extent.height && (extent.width & (extent.width - 1)) == 0 ? 1u : 0u)
+              .specialize_constants(1, extent.width)
+              .specialize_constants(2, extent.height);
+          // clang-format on
 
           *cmd_list.scratch_buffer<u32>(0, 0) = 0;
           cmd_list.bind_sampler(0, 1, sampler_info);
