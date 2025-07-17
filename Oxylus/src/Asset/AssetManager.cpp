@@ -843,11 +843,14 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
       {
         ZoneNamedN(z2, "Build Meshlets", true);
         // Worst case count
-        auto max_meshlets = meshopt_buildMeshletsBound(
-            raw_indices.size(), Mesh::MAX_MESHLET_INDICES, Mesh::MAX_MESHLET_PRIMITIVES);
+        auto max_meshlets = meshopt_buildMeshletsBound( //
+            raw_indices.size(),
+            Mesh::MAX_MESHLET_INDICES,
+            Mesh::MAX_MESHLET_PRIMITIVES);
         auto raw_meshlets = std::vector<meshopt_Meshlet>(max_meshlets);
         meshlet_indices.resize(max_meshlets * Mesh::MAX_MESHLET_INDICES);
         local_triangle_indices.resize(max_meshlets * Mesh::MAX_MESHLET_PRIMITIVES * 3);
+
         auto meshlet_count = meshopt_buildMeshlets( //
             raw_meshlets.data(),
             meshlet_indices.data(),
@@ -871,6 +874,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
 
         for (const auto& [raw_meshlet, meshlet, meshlet_aabb] :
              std::views::zip(raw_meshlets, meshlets, meshlet_bounds)) {
+          // AABB computation
           auto meshlet_bb_min = glm::vec3(std::numeric_limits<f32>::max());
           auto meshlet_bb_max = glm::vec3(std::numeric_limits<f32>::lowest());
           for (u32 i = 0; i < raw_meshlet.triangle_count * 3; i++) {
@@ -879,6 +883,12 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
             meshlet_bb_min = glm::min(meshlet_bb_min, tri_pos);
             meshlet_bb_max = glm::max(meshlet_bb_max, tri_pos);
           }
+
+          // SB computation
+          auto cur_meshlet_bounds = meshopt_computeMeshletBounds( //
+              &meshlet_indices[vertex_offset],
+              &local_triangle_indices[triangle_offset + raw_meshlet.triangle_offset],
+              meshlet.triangle_count, );
 
           meshlet.vertex_offset = static_cast<u32>(vertex_offset);
           meshlet.index_offset = static_cast<u32>(index_offset + raw_meshlet.vertex_offset);

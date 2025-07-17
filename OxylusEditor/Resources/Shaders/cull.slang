@@ -53,6 +53,29 @@ public func project_aabb(f32x4x4 mvp, f32 near, f32x3 aabb_min, f32x3 aabb_exten
     return ret;
 }
 
+func project_sphere(f32x3 center, f32 radius, f32 near, f32 P00, f32 P11) -> Optional<ScreenAabb> {
+    if (center.z < radius + near) {
+        return none;
+    }
+
+    let cr = center * radius;
+    let czr2 = center.z * center.z - radius * radius;
+
+    let vx = sqrt(center.x * center.x + czr2);
+    let minx = (vx * center.x - cr.z) / (vx * center.z + cr.x);
+    let maxx = (vx * center.x + cr.z) / (vx * center.z - cr.x);
+
+    let vy = sqrt(center.y * center.y + czr2);
+    let miny = (vy * center.y - cr.z) / (vy * center.z + cr.y);
+    let maxy = (vy * center.y + cr.z) / (vy * center.z - cr.y);
+
+    var vaabb = f32x4(minx * P00, miny * P11, maxx * P00, maxy * P11);
+    //vaabb = vaabb.xwzy * f32x4(0.5f, -0.5f, 0.5f, -0.5f) + f32x4(0.5f); // clip space -> uv space
+    vaabb = vaabb * 0.5 + 0.5;
+    ScreenAabb ret = { f32x3(vaabb.xy, 0.0), f32x3(vaabb.zw, 0.0) };
+    return ret;
+}
+
 public func test_occlusion(
     in Image2D<f32> hiz_image,
     in Sampler hiz_sampler,
