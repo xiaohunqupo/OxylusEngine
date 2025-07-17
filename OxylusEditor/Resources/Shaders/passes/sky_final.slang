@@ -53,7 +53,7 @@ f32x4 fs_main(VertexOutput input) : SV_TARGET {
     f32x3 clip_pos = world_pos.xyz / world_pos.w;
     f32x3 camera_pos = params.camera.position.xyz;
 
-    if (depth != 1.0) {
+    if (depth != 0.0) {
         f32x3 camera_relative_pos = (clip_pos - camera_pos) * CAMERA_SCALE_UNIT;
         return sample_aerial_perspective(
             params.atmosphere, params.sky_aerial_perspective_lut, material_samplers[1], input.tex_coord, camera_relative_pos);

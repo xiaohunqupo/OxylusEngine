@@ -376,7 +376,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
       .level_count = 1,
       .layer_count = 1,
   };
-  auto depth_attachment = vuk::clear_image(vuk::declare_ia("depth_image", depth_ia), vuk::DepthOne);
+  auto depth_attachment = vuk::clear_image(vuk::declare_ia("depth_image", depth_ia), vuk::DepthZero);
 
   auto sky_transmittance_lut_attachment = sky_transmittance_lut_view.acquire("sky_transmittance_lut",
                                                                              vuk::Access::eComputeSampled);
@@ -451,7 +451,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
       this->hiz_view.set_name("hiz");
 
       hiz_attachment = this->hiz_view.acquire("hiz", vuk::eNone);
-      hiz_attachment = vuk::clear_image(std::move(hiz_attachment), vuk::DepthOne);
+      hiz_attachment = vuk::clear_image(std::move(hiz_attachment), vuk::DepthZero);
     } else {
       hiz_attachment = this->hiz_view.acquire("hiz", vuk::eComputeRW);
     }
@@ -622,8 +622,9 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
           cmd_list //
               .bind_graphics_pipeline("visbuffer_encode")
               .set_rasterization({.cullMode = vuk::CullModeFlagBits::eBack})
-              .set_depth_stencil(
-                  {.depthTestEnable = true, .depthWriteEnable = true, .depthCompareOp = vuk::CompareOp::eLessOrEqual})
+              .set_depth_stencil({.depthTestEnable = true,
+                                  .depthWriteEnable = true,
+                                  .depthCompareOp = vuk::CompareOp::eGreaterOrEqual})
               .set_color_blend(visbuffer, vuk::BlendPreset::eOff)
               .set_dynamic_state(vuk::DynamicStateFlagBits::eViewport | vuk::DynamicStateFlagBits::eScissor)
               .set_viewport(0, vuk::Rect2D::framebuffer())
