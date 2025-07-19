@@ -15,6 +15,7 @@ void bind_scene(sol::state* state) {
   SET_TYPE_FUNCTION(scene_type, Scene, runtime_start);
   SET_TYPE_FUNCTION(scene_type, Scene, runtime_stop);
   SET_TYPE_FUNCTION(scene_type, Scene, runtime_update);
+  SET_TYPE_FUNCTION(scene_type, Scene, create_entity);
   SET_TYPE_FUNCTION(scene_type, Scene, create_mesh_entity);
   SET_TYPE_FUNCTION(scene_type, Scene, save_to_file);
   SET_TYPE_FUNCTION(scene_type, Scene, load_from_file);
