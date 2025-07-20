@@ -6,13 +6,13 @@ import gpu;
 import passes.bloom.bloom;
 
 struct ShaderParameters {
-  StorageImage2D<f32x4, ImageFormat::RGBA16F> result_image;
+  StorageImage2D<f32x4, ImageFormat::R11F_G11F_B10F> result_image;
   Image2D<f32x4> source_image;
   SamplerState sampler;
 };
 
 [[shader("compute")]]
-[[numthreads(8, 8, 1)]]
+[[numthreads(16, 16, 1)]]
 func cs_main(u32x3 thread_id : SV_DispatchThreadID, uniform ParameterBlock<ShaderParameters> params) {
   u32x2 img_coords = u32x2(thread_id.xy);
 

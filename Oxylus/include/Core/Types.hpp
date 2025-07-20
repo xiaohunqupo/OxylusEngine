@@ -1,5 +1,6 @@
 #pragma once
 
+#include <cstddef>
 #include <cstdint>
 
 namespace ox {
@@ -84,8 +85,8 @@ constexpr usize count_of(T (&)[N]) {
 
 template <typename T>
 concept Container = requires(T& t) {
-  { t.begin() } -> std::same_as<typename T::iterator>;
-  { t.end() } -> std::same_as<typename T::iterator>;
+  { t.begin() };
+  { t.end() };
 };
 
 template <Container T>

@@ -41,12 +41,10 @@ add_requires("vuk 2025.06.15", { configs = {
     debug_allocations = false,
 }, debug = is_mode("debug") })
 
-add_requires("shader-slang v2025.10.4", { system = false })
+add_requires("shader-slang v2025.12.1", { system = false })
 
-add_requires("libsdl3", { configs = {
-    wayland = false,
-    x11 = true,
-} })
+-- handled by system package (also nix)
+add_requires("libsdl3")
 
 add_requires("toml++ v3.4.0")
 
@@ -84,6 +82,7 @@ add_requires("plf_colony v7.41")
 
 add_requires("dylib v2.2.1")
 
-add_requires("ktx-software v4.4.0")
+add_requires("zstd v1.5.7", { system = false })
+add_requires("ktx v4.4.0", { system = false })
 
 add_requires("simdutf v6.2.0")

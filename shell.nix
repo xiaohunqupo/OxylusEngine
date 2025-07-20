@@ -31,11 +31,7 @@ in pkgs.mkShell.override {
     pkgs-unstable.meshoptimizer
 
     # for SDL3
-    (pkgs-unstable.sdl3.override {
-      waylandSupport = false;
-      openglSupport = false;
-      testSupport = false;
-    })
+    pkgs-unstable.sdl3
   ];
 
   shellHook = ''
