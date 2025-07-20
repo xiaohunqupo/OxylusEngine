@@ -76,6 +76,19 @@ Core::Core(flecs::world& world) {
 
   auto flecs_table = state->create_named_table("flecs");
 
+  // Phases
+  flecs_table.set("OnStart", EcsOnStart);
+  flecs_table.set("PreFrame", EcsPreFrame);
+  flecs_table.set("OnLoad", EcsOnLoad);
+  flecs_table.set("PostLoad", EcsPostLoad);
+  flecs_table.set("PreUpdate", EcsPreUpdate);
+  flecs_table.set("OnUpdate", EcsOnUpdate);
+  flecs_table.set("OnValidate", EcsOnValidate);
+  flecs_table.set("PostUpdate", EcsPostUpdate);
+  flecs_table.set("PreStore", EcsPreStore);
+  flecs_table.set("OnStore", EcsOnStore);
+  flecs_table.set("PostFrame", EcsPostFrame);
+
   // --- entity_t ---
   auto id_type = flecs_table.new_usertype<flecs::entity_t>("entity_t");
 
@@ -84,7 +97,58 @@ Core::Core(flecs::world& world) {
       "world",
 
       "entity",
-      [](flecs::world& w, const std::string& name) -> flecs::entity { return w.entity(name.c_str()); });
+      [](flecs::world* w, const std::string& name) -> flecs::entity { return w->entity(name.c_str()); },
+
+      "system",
+      [](flecs::world* world,
+         const std::string& name,
+         sol::table components,
+         sol::table dependencies,
+         sol::function callback) -> ecs_entity_t {
+        std::vector<ecs_entity_t> component_ids = {};
+        components.for_each([&](sol::object key, sol::object value) {
+          sol::table component_table = value.as<sol::table>();
+          component_ids.emplace_back(component_table["component_id"].get<ecs_entity_t>());
+        });
+
+        std::vector<ecs_id_t> dependency_ids = {};
+        dependencies.for_each([&](sol::object key, sol::object value) {
+          ecs_entity_t dep = value.as<ecs_entity_t>();
+          dependency_ids.emplace_back(ecs_dependson(dep));
+        });
+
+        ecs_system_desc_t system_desc = {};
+
+        ecs_entity_desc_t entity_desc = {};
+        entity_desc.name = name.c_str();
+        entity_desc.add = dependency_ids.data();
+
+        system_desc.entity = ecs_entity_init(world->world_, &entity_desc);
+
+        system_desc.callback_ctx = new std::shared_ptr<sol::function>(new sol::function(callback));
+        system_desc.callback_ctx_free = [](void* ctx) {
+          delete reinterpret_cast<std::shared_ptr<sol::function>*>(ctx);
+        };
+        system_desc.callback = [](ecs_iter_t* it) {
+          auto lua_callback = reinterpret_cast<std::shared_ptr<sol::function>*>(it->callback_ctx);
+
+          OX_CHECK_NULL(lua_callback);
+
+          auto result = (**lua_callback)(it);
+          if (!result.valid()) {
+            sol::error err = result;
+            OX_LOG_ERROR("Lua lambda function error: {}", err.what());
+          }
+        };
+
+        for (usize i = 0; i < component_ids.size(); i++) {
+          system_desc.query.terms[i].id = component_ids[i];
+        }
+
+        auto sys = ecs_system_init(world->world_, &system_desc);
+
+        return sys;
+      });
 
   // --- entity ---
   auto entity_type = state->new_usertype<flecs::entity>(
@@ -95,7 +159,7 @@ Core::Core(flecs::world& world) {
 
       "add",
       [](flecs::entity* e, sol::table component_table, sol::optional<sol::table> values = {}) {
-        auto component = component_table.get<flecs::entity>("component_id");
+        auto component = component_table.get<ecs_entity_t>("component_id");
         e->add(component);
 
         auto* ptr = e->try_get_mut(component);
@@ -142,13 +206,13 @@ Core::Core(flecs::world& world) {
 
       "has",
       [](flecs::entity* e, sol::table component_table) -> bool {
-        auto component = component_table.get<flecs::entity>("component_id");
+        auto component = component_table.get<ecs_entity_t>("component_id");
         return e->has(component);
       },
 
       "get",
       [state](flecs::entity* e, sol::table component_table) -> sol::optional<sol::table> {
-        auto comp = component_table.get<flecs::entity>("component_id");
+        auto comp = component_table.get<ecs_entity_t>("component_id");
         if (!e->has(comp))
           return sol::nullopt;
 
@@ -158,7 +222,8 @@ Core::Core(flecs::world& world) {
 
         sol::table result = state->create_table();
 
-        ECS::ComponentWrapper component_wrapped(*e, comp);
+        auto f_id = flecs::id(e->world(), comp);
+        ECS::ComponentWrapper component_wrapped(*e, f_id);
 
         component_wrapped.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
           std::visit(ox::match{
@@ -191,9 +256,17 @@ Core::Core(flecs::world& world) {
       "set",
       [](flecs::entity* e, sol::table component_data) { return e; });
 
-  // --- define ---
-  auto define_table = state->create_named_table("Component");
-  define_table["define"] = [state](Scene* scene, const std::string& name, sol::table properties) -> sol::table {
+  // --- Components ---
+  auto components_table = state->create_named_table("Component");
+  components_table["lookup"] = [state](Scene* scene, const std::string& name) -> sol::table {
+    auto component = scene->world.component(name.c_str());
+    sol::table component_table = state->create_table();
+    component_table["component_id"] = ecs_entity_t(component);
+
+    (*state)[name] = component_table;
+    return component_table;
+  };
+  components_table["define"] = [state](Scene* scene, const std::string& name, sol::table properties) -> sol::table {
     scene->defer_function([state, properties, name](Scene* scene) {
       auto component = scene->world.component(name.c_str());
 
@@ -265,7 +338,7 @@ Core::Core(flecs::world& world) {
     auto component = scene->world.component(name.c_str());
 
     sol::table component_table = state->create_table();
-    component_table["component_id"] = flecs::entity(component);
+    component_table["component_id"] = ecs_entity_t(component);
 
     (*state)[name] = component_table;
     return component_table;
