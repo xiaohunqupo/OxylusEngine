@@ -10,7 +10,6 @@ import visbuffer;
 struct ShaderParameters {
     Image2D<u32> visbuffer;
     ConstantBuffer<Camera> camera;
-    StructuredBuffer<u32> visible_meshlet_instances_indices;
     StructuredBuffer<MeshletInstance> meshlet_instances;
     StructuredBuffer<Mesh> meshes;
     StructuredBuffer<Transform> transforms;
@@ -97,8 +96,7 @@ func fs_main(VertexOutput input) -> FragmentOutput {
     FragmentOutput output = {};
 
     const let vis = VisBufferData(texel);
-    const u32 meshlet_instance_index = params.visible_meshlet_instances_indices[vis.meshlet_instance_index];
-    const MeshletInstance meshlet_instance = params.meshlet_instances[meshlet_instance_index];
+    const MeshletInstance meshlet_instance = params.meshlet_instances[vis.meshlet_instance_index];
     const Mesh mesh = params.meshes[meshlet_instance.mesh_index];
     const Transform transform = params.transforms[meshlet_instance.transform_index];
     const Material material = params.materials[meshlet_instance.material_index];

@@ -564,12 +564,12 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(meshes_buffer_value),
            std::move(camera_buffer));
 
-    auto visbuffer_data_attachment = vuk::declare_ia(
+    auto visbuffer_attachment = vuk::declare_ia(
         "visbuffer data",
         {.usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
          .format = vuk::Format::eR32Uint,
          .sample_count = vuk::Samples::e1});
-    visbuffer_data_attachment.same_shape_as(final_attachment);
+    visbuffer_attachment.same_shape_as(final_attachment);
 
     auto overdraw_attachment = vuk::declare_ia(
         "overdraw",
@@ -578,25 +578,25 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
          .sample_count = vuk::Samples::e1});
     overdraw_attachment.same_shape_as(final_attachment);
 
-    std::tie(visbuffer_data_attachment, overdraw_attachment) = vuk::make_pass(
+    std::tie(visbuffer_attachment, overdraw_attachment) = vuk::make_pass(
         "vis clear",
         []( //
             vuk::CommandBuffer& cmd_list,
-            VUK_IA(vuk::eComputeWrite) visbuffer_data,
+            VUK_IA(vuk::eComputeWrite) visbuffer,
             VUK_IA(vuk::eComputeWrite) overdraw) {
           cmd_list //
               .bind_compute_pipeline("visbuffer_clear")
-              .bind_image(0, 0, visbuffer_data)
+              .bind_image(0, 0, visbuffer)
               .bind_image(0, 1, overdraw)
               .push_constants(vuk::ShaderStageFlagBits::eCompute,
                               0,
-                              PushConstants(glm::uvec2(visbuffer_data->extent.width, visbuffer_data->extent.height)))
-              .dispatch_invocations_per_pixel(visbuffer_data);
+                              PushConstants(glm::uvec2(visbuffer->extent.width, visbuffer->extent.height)))
+              .dispatch_invocations_per_pixel(visbuffer);
 
-          return std::make_tuple(visbuffer_data, overdraw);
-        })(std::move(visbuffer_data_attachment), std::move(overdraw_attachment));
+          return std::make_tuple(visbuffer, overdraw);
+        })(std::move(visbuffer_attachment), std::move(overdraw_attachment));
 
-    std::tie(visbuffer_data_attachment,
+    std::tie(visbuffer_attachment,
              depth_attachment,
              camera_buffer,
              visible_meshlet_instances_indices_buffer,
@@ -650,7 +650,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                  overdraw);
         })(std::move(draw_command_buffer),
            std::move(reordered_indices_buffer),
-           std::move(visbuffer_data_attachment),
+           std::move(visbuffer_attachment),
            std::move(depth_attachment),
            std::move(camera_buffer),
            std::move(visible_meshlet_instances_indices_buffer),
@@ -705,7 +705,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
         {.usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
          .format = vuk::Format::eR8G8B8A8Srgb,
          .sample_count = vuk::Samples::e1});
-    albedo_attachment.same_shape_as(visbuffer_data_attachment);
+    albedo_attachment.same_shape_as(visbuffer_attachment);
     albedo_attachment = vuk::clear_image(std::move(albedo_attachment), vuk::Black<f32>);
 
     auto normal_attachment = vuk::declare_ia(
@@ -713,7 +713,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
         {.usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
          .format = vuk::Format::eR16G16B16A16Sfloat,
          .sample_count = vuk::Samples::e1});
-    normal_attachment.same_shape_as(visbuffer_data_attachment);
+    normal_attachment.same_shape_as(visbuffer_attachment);
     normal_attachment = vuk::clear_image(std::move(normal_attachment), vuk::Black<f32>);
 
     auto emissive_attachment = vuk::declare_ia(
@@ -721,7 +721,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
         {.usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
          .format = vuk::Format::eB10G11R11UfloatPack32,
          .sample_count = vuk::Samples::e1});
-    emissive_attachment.same_shape_as(visbuffer_data_attachment);
+    emissive_attachment.same_shape_as(visbuffer_attachment);
     emissive_attachment = vuk::clear_image(std::move(emissive_attachment), vuk::Black<f32>);
 
     auto metallic_roughness_occlusion_attachment = vuk::declare_ia(
@@ -729,7 +729,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
         {.usage = vuk::ImageUsageFlagBits::eSampled | vuk::ImageUsageFlagBits::eColorAttachment,
          .format = vuk::Format::eR8G8B8A8Unorm,
          .sample_count = vuk::Samples::e1});
-    metallic_roughness_occlusion_attachment.same_shape_as(visbuffer_data_attachment);
+    metallic_roughness_occlusion_attachment.same_shape_as(visbuffer_attachment);
     metallic_roughness_occlusion_attachment = vuk::clear_image(std::move(metallic_roughness_occlusion_attachment),
                                                                vuk::Black<f32>);
 
@@ -738,12 +738,11 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
              emissive_attachment,
              metallic_roughness_occlusion_attachment,
              camera_buffer,
-             visible_meshlet_instances_indices_buffer,
              meshlet_instances_buffer_value,
              meshes_buffer_value,
              transforms_buffer_value,
              material_buffer,
-             visbuffer_data_attachment) = vuk::make_pass( //
+             visbuffer_attachment) = vuk::make_pass( //
         "vis decode",
         [&descriptor_set = *this->descriptor_set_01](vuk::CommandBuffer& cmd_list,
                                                      VUK_IA(vuk::eColorWrite) albedo,
@@ -751,7 +750,6 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                                      VUK_IA(vuk::eColorWrite) emissive,
                                                      VUK_IA(vuk::eColorWrite) metallic_roughness_occlusion,
                                                      VUK_BA(vuk::eFragmentRead) camera,
-                                                     VUK_BA(vuk::eFragmentRead) visible_meshlet_instances_indices,
                                                      VUK_BA(vuk::eFragmentRead) meshlet_instances,
                                                      VUK_BA(vuk::eFragmentRead) meshes,
                                                      VUK_BA(vuk::eFragmentRead) transforms_,
@@ -770,11 +768,10 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
               .set_scissor(0, vuk::Rect2D::framebuffer())
               .bind_image(0, 0, visbuffer)
               .bind_buffer(0, 1, camera)
-              .bind_buffer(0, 2, visible_meshlet_instances_indices)
-              .bind_buffer(0, 3, meshlet_instances)
-              .bind_buffer(0, 4, meshes)
-              .bind_buffer(0, 5, transforms_)
-              .bind_buffer(0, 6, materials)
+              .bind_buffer(0, 2, meshlet_instances)
+              .bind_buffer(0, 3, meshes)
+              .bind_buffer(0, 4, transforms_)
+              .bind_buffer(0, 5, materials)
               .bind_persistent(1, descriptor_set)
               .draw(3, 1, 0, 1);
 
@@ -783,7 +780,6 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
                                  emissive,
                                  metallic_roughness_occlusion,
                                  camera,
-                                 visible_meshlet_instances_indices,
                                  meshlet_instances,
                                  meshes,
                                  transforms_,
@@ -794,12 +790,11 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
            std::move(emissive_attachment),
            std::move(metallic_roughness_occlusion_attachment),
            std::move(camera_buffer),
-           std::move(visible_meshlet_instances_indices_buffer),
            std::move(meshlet_instances_buffer_value),
            std::move(meshes_buffer_value),
            std::move(transforms_buffer_value),
            std::move(material_buffer),
-           std::move(visbuffer_data_attachment));
+           std::move(visbuffer_attachment));
 
     if (!debugging && atmosphere.has_value() && sun.has_value()) {
       // --- BRDF ---
@@ -949,7 +944,7 @@ auto EasyRenderPipeline::on_render(VkContext& vk_context, const RenderInfo& rend
 
             return std::make_tuple(dst, depth, camera);
           })(std::move(debug_attachment),
-             std::move(visbuffer_data_attachment),
+             std::move(visbuffer_attachment),
              std::move(depth_attachment),
              std::move(overdraw_attachment),
              std::move(albedo_attachment),
