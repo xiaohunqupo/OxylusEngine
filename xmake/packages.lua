@@ -41,7 +41,7 @@ add_requires("vuk 2025.06.15", { configs = {
     debug_allocations = false,
 }, debug = is_mode("debug") })
 
-add_requires("shader-slang v2025.10.4", { system = false })
+add_requires("shader-slang v2025.12.1", { system = false })
 
 -- handled by system package (also nix)
 add_requires("libsdl3")
