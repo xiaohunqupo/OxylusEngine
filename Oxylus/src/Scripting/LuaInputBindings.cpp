@@ -18,7 +18,7 @@ void bind_input(sol::state* state) {
   SET_TYPE_FUNCTION(input, Input, get_mouse_held);
   SET_TYPE_FUNCTION(input, Input, get_mouse_scroll_offset_y);
   SET_TYPE_FUNCTION(input, Input, get_mouse_position);
-  SET_TYPE_FUNCTION(input, Input, set_mouse_position);
+  SET_TYPE_FUNCTION(input, Input, set_mouse_position_global);
 
   const std::initializer_list<std::pair<sol::string_view, Input::CursorState>> cursor_states = {
       {"Disabled", Input::CursorState::Disabled},
@@ -128,7 +128,7 @@ void bind_input(sol::state* state) {
       {"KPAdd", KeyCode::KPAdd},
       {"KPEqual", KeyCode::KPEqual},
   };
-  state->new_enum<KeyCode, true>("Key", key_items);
+  state->new_enum<KeyCode, true>("KeyCode", key_items);
 
   const std::initializer_list<std::pair<sol::string_view, MouseCode>> mouse_items = {
       {"Left", MouseCode::ButtonLeft},

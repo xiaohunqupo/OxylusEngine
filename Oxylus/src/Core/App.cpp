@@ -129,10 +129,7 @@ void App::run() {
     const auto app = static_cast<App*>(user_data);
     app->is_running = false;
   };
-  window_callbacks.on_mouse_pos = [](void* user_data,
-                                     const glm::vec2 position,
-                                     [[maybe_unused]]
-                                     glm::vec2 relative) {
+  window_callbacks.on_mouse_pos = [](void* user_data, const glm::vec2 position, glm::vec2 relative) {
     const auto* app = static_cast<App*>(user_data);
     app->imgui_layer->on_mouse_pos(position);
 
@@ -191,6 +188,13 @@ void App::run() {
   };
 
   while (is_running) {
+    const i32 frame_limit = RendererCVar::cvar_frame_limit.get();
+    if (frame_limit > 0) {
+      timestep.set_max_frame_time(1000.0 / static_cast<f64>(frame_limit));
+    } else {
+      timestep.reset_max_frame_time();
+    }
+
     timestep.on_update();
 
     window.poll(window_callbacks);
@@ -241,13 +245,14 @@ void App::run() {
 
   {
     ZoneNamedN(z, "SystemRegistryDeinit", true);
-    for (const auto& [type, system] : system_registry) {
+    for (auto& [type, system] : system_registry) {
       auto result = system->deinit();
       if (!result) {
         OX_LOG_ERROR("{} System failed to deinitalize: {}", engine_system_to_sv(type), result.error());
       } else {
         OX_LOG_INFO("{} System deinitialized.", engine_system_to_sv(type));
       }
+      system.reset();
     }
 
     system_registry.clear();

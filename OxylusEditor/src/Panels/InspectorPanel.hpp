@@ -28,10 +28,21 @@ public:
   static void draw_material_properties(Material* material, const UUID& material_uuid, flecs::entity load_event);
 
 private:
+  Scene* _scene;
+  bool _rename_entity = false;
+
   void draw_components(flecs::entity entity);
   void draw_asset_info(Asset* asset);
 
-  Scene* _scene;
-  bool _rename_entity = false;
+  void draw_shader_asset(UUID* uuid, Asset* asset);
+  void draw_mesh_asset(UUID* uuid, Asset* asset);
+  void draw_texture_asset(UUID* uuid, Asset* asset);
+  void draw_material_asset(UUID* uuid, Asset* asset);
+  void draw_font_asset(UUID* uuid, Asset* asset);
+  void draw_scene_asset(UUID* uuid, Asset* asset);
+  void draw_audio_asset(UUID* uuid, Asset* asset);
+  void draw_script_asset(UUID* uuid, Asset* asset);
+
+
 };
 } // namespace ox

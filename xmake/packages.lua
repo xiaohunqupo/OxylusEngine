@@ -2,19 +2,22 @@ add_requires("stb 2024.06.01")
 
 add_requires("miniaudio 0.11.22")
 
-add_requires("imgui d896eab16620f80e3cae9b164eb62f71b47f6e45", { configs = {
+add_requires("imgui 44aa9a4b3a6f27d09a4eb5770d095cbd376dfc4b", { configs = {
     wchar32 = true,
     debug = is_mode("debug")
 } })
 
-add_requires("imguizmo-lr v1.91.8-docking")
+add_requires("imguizmo 1.91.3+wip")
+add_requireconfs("imgui", "imguizmo.imgui", {
+    override = true, version = "v1.92.1-docking",
+})
 
 add_requires("glm 1.0.1", { configs = {
     header_only = true,
     cxx_standard = "20",
 }, system = false })
 
-add_requires("flecs v4.0.5")
+add_requires("flecs-ox v4.1.0")
 
 add_requires("fastgltf v0.8.0", { system = false, debug = is_mode("debug") })
 

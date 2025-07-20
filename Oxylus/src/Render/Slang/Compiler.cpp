@@ -85,7 +85,6 @@ struct SlangVirtualFS : ISlangFileSystem {
     if (!result.empty()) {
       *outBlob = new SlangBlob(std::vector<u8>{result.data(), (result.data() + result.size())});
 
-      OX_LOG_INFO("New shader module '{}' is loaded.", module_path.string());
       return SLANG_OK;
     }
 

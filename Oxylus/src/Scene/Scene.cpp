@@ -36,7 +36,7 @@
 #include "Utils/Timestep.hpp"
 
 namespace ox {
-auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
+auto Scene::entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
   ZoneScoped;
 
   writer.begin_obj();
@@ -67,6 +67,7 @@ auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
       std::visit(ox::match{
                      [](const auto&) {},
                      [&](bool* v) { member_json = *v; },
+                     [&](u16* v) { member_json = *v; },
                      [&](f32* v) { member_json = *v; },
                      [&](i32* v) { member_json = *v; },
                      [&](u32* v) { member_json = *v; },
@@ -93,10 +94,10 @@ auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
   writer.end_obj();
 }
 
-auto json_to_entity(Scene& self, //
-                    flecs::entity root,
-                    simdjson::ondemand::value& json,
-                    std::vector<UUID>& requested_assets) -> bool {
+auto Scene::json_to_entity(Scene& self,
+                           flecs::entity root,
+                           simdjson::ondemand::value& json,
+                           std::vector<UUID>& requested_assets) -> std::pair<flecs::entity, bool> {
   ZoneScoped;
   memory::ScopedStack stack;
 
@@ -105,7 +106,7 @@ auto json_to_entity(Scene& self, //
   auto entity_name_json = json["name"];
   if (entity_name_json.error()) {
     OX_LOG_ERROR("Entities must have names!");
-    return false;
+    return {{}, false};
   }
 
   auto e = self.create_entity(std::string(entity_name_json.get_string().value_unsafe()));
@@ -123,14 +124,14 @@ auto json_to_entity(Scene& self, //
     auto component_name_json = component_json["name"];
     if (component_name_json.error()) {
       OX_LOG_ERROR("Entity '{}' has corrupt components JSON array.", e.name().c_str());
-      return false;
+      return {{}, false};
     }
 
     const auto* component_name = stack.null_terminate_cstr(component_name_json.get_string().value_unsafe());
     auto component_id = world.lookup(component_name);
     if (!component_id) {
       OX_LOG_ERROR("Entity '{}' has invalid component named '{}'!", e.name().c_str(), component_name);
-      return false;
+      return {{}, false};
     }
 
     OX_CHECK_EQ(self.component_db.is_component_known(component_id), true);
@@ -146,6 +147,7 @@ auto json_to_entity(Scene& self, //
       std::visit(ox::match{
                      [](const auto&) {},
                      [&](bool* v) { *v = static_cast<bool>(member_json.get_bool().value_unsafe()); },
+                     [&](u16* v) { *v = static_cast<u16>(member_json.get_uint64().value_unsafe()); },
                      [&](f32* v) { *v = static_cast<f32>(member_json.get_double().value_unsafe()); },
                      [&](i32* v) { *v = static_cast<i32>(member_json.get_int64().value_unsafe()); },
                      [&](u32* v) { *v = static_cast<u32>(member_json.get_uint64().value_unsafe()); },
@@ -174,12 +176,12 @@ auto json_to_entity(Scene& self, //
       continue;
     }
 
-    if (!json_to_entity(self, e, children.value_unsafe(), requested_assets)) {
-      return false;
+    if (!json_to_entity(self, e, children.value_unsafe(), requested_assets).second) {
+      return {{}, false};
     }
   }
 
-  return true;
+  return {e, true};
 }
 
 auto ComponentDB::import_module(this ComponentDB& self, flecs::entity module) -> void {
@@ -197,7 +199,9 @@ auto ComponentDB::is_component_known(this ComponentDB& self, flecs::id component
 
 auto ComponentDB::get_components(this ComponentDB& self) -> std::span<flecs::id> { return self.components; }
 
-Scene::Scene(const std::shared_ptr<RenderPipeline>& render_pipeline) { this->init("Untitled", render_pipeline); }
+Scene::Scene(const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline) {
+  this->init(name, render_pipeline);
+}
 
 Scene::Scene(const std::string& name) { init(name); }
 
@@ -273,7 +277,6 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
   self.world.observer<TransformComponent, SpriteComponent>()
       .event(flecs::OnSet)
       .event(flecs::OnAdd)
-      .event(flecs::OnRemove)
       .each([&self](flecs::iter& it, usize i, TransformComponent&, SpriteComponent& sprite) {
         auto entity = it.entity(i);
         // Set sprite rect
@@ -285,6 +288,77 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         }
       });
 
+  self.world.observer<SpriteComponent>()
+      .event(flecs::OnRemove) //
+      .each([](flecs::iter& it, usize i, SpriteComponent& c) {
+        auto* asset_man = App::get_asset_manager();
+        if (auto* material_asset = asset_man->get_asset(c.material)) {
+          asset_man->unload_asset(material_asset->uuid);
+        }
+      });
+
+  self.world.observer<AudioListenerComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .each([](flecs::iter& it, usize i, AudioListenerComponent& c) {
+        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
+        audio_engine->set_listener_cone(c.listener_index, c.cone_inner_angle, c.cone_outer_angle, c.cone_outer_gain);
+      });
+
+  self.world.observer<AudioSourceComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .event(flecs::OnRemove)
+      .each([](flecs::iter& it, usize i, AudioSourceComponent& c) {
+        auto* asset_man = App::get_asset_manager();
+        auto* audio_asset = asset_man->get_audio(c.audio_source);
+        if (!audio_asset)
+          return;
+
+        if (it.event() == flecs::OnRemove) {
+          asset_man->unload_asset(c.audio_source);
+          return;
+        }
+
+        auto* audio_engine = App::get_system<AudioEngine>(EngineSystems::AudioEngine);
+        audio_engine->set_source_volume(audio_asset->get_source(), c.volume);
+        audio_engine->set_source_pitch(audio_asset->get_source(), c.pitch);
+        audio_engine->set_source_looping(audio_asset->get_source(), c.looping);
+        audio_engine->set_source_attenuation_model(audio_asset->get_source(),
+                                                   static_cast<AudioEngine::AttenuationModelType>(c.attenuation_model));
+        audio_engine->set_source_roll_off(audio_asset->get_source(), c.roll_off);
+        audio_engine->set_source_min_gain(audio_asset->get_source(), c.min_gain);
+        audio_engine->set_source_max_gain(audio_asset->get_source(), c.max_gain);
+        audio_engine->set_source_min_distance(audio_asset->get_source(), c.min_distance);
+        audio_engine->set_source_max_distance(audio_asset->get_source(), c.max_distance);
+        audio_engine->set_source_cone(
+            audio_asset->get_source(), c.cone_inner_angle, c.cone_outer_angle, c.cone_outer_gain);
+      });
+
+  self.world.observer<SpriteAnimationComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .each([](flecs::iter& it, usize i, SpriteAnimationComponent& c) { c.reset(); });
+
+  self.world.observer<LuaScriptComponent>()
+      .event(flecs::OnSet)
+      .event(flecs::OnAdd)
+      .event(flecs::OnRemove)
+      .each([scene = &self](flecs::iter& it, usize i, LuaScriptComponent& c) {
+        if (it.event() == flecs::OnAdd || it.event() == flecs::OnSet) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* script_asset = asset_man->get_script(c.script_uuid)) {
+            script_asset->bind_globals(scene, it.entity(i), it.delta_time());
+            script_asset->on_add(scene, it.entity(i));
+          }
+        } else if (it.event() == flecs::OnRemove) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* script_asset = asset_man->get_script(c.script_uuid)) {
+            script_asset->on_remove(scene, it.entity(i));
+          }
+        }
+      });
+
   // Systems run order:
   // -- PreUpdate  -> Main Systems
   // -- OnUpdate   -> Physics Systems
@@ -292,17 +366,16 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   // --- Main Systems ---
 
-  self.world.system<const LuaScriptComponent>("LuaScriptsUpdate")
+  self.world.system<const LuaScriptComponent>("lua_update")
       .kind(flecs::PreUpdate)
-      .each([&self](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
+      .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
-          script->bind_globals(&self, it.entity(i), it.delta_time());
-          script->on_update(it.delta_time());
+          script->on_scene_update(it.delta_time());
         }
       });
 
-  self.world.system<const TransformComponent, AudioListenerComponent>("AudioListenerUpdate")
+  self.world.system<const TransformComponent, AudioListenerComponent>("audio_listener_update")
       .kind(flecs::PreUpdate)
       .each([&self](const flecs::entity& e, const TransformComponent& tc, AudioListenerComponent& ac) {
         if (ac.active) {
@@ -316,7 +389,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         }
       });
 
-  self.world.system<const TransformComponent, AudioSourceComponent>("AudioSourceUpdate")
+  self.world.system<const TransformComponent, AudioSourceComponent>("audio_source_update")
       .kind(flecs::PreUpdate)
       .each([](const flecs::entity& e, const TransformComponent& tc, const AudioSourceComponent& ac) {
         auto* asset_man = App::get_asset_manager();
@@ -341,20 +414,34 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   // --- Physics Systems ---
 
-  // TODO: Interpolation for rigibodies.
+  // TODOs(hatrickek):
+  // Interpolation for rigibodies.
 
-  self.world.system<const LuaScriptComponent>()
+  const auto physics_tick_source = self.world.timer().interval(self.physics_interval);
+
+  self.world
+      .system("physics_step") //
       .kind(flecs::OnUpdate)
+      .tick_source(physics_tick_source)
+      .run([](flecs::iter& it) {
+        auto* physics = App::get_system<Physics>(EngineSystems::Physics);
+        physics->step(it.delta_time());
+      });
+
+  self.world.system<const LuaScriptComponent>("lua_fixed_update")
+      .kind(flecs::OnUpdate)
+      .tick_source(physics_tick_source)
       .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
-          script->on_fixed_update(it.delta_time());
+          script->on_scene_fixed_update(it.delta_time());
         }
       });
 
-  self.world.system<TransformComponent, RigidbodyComponent>()
+  self.world.system<TransformComponent, RigidbodyComponent>("rigidbody_update")
       .kind(flecs::OnUpdate)
-      .each([](TransformComponent& tc, RigidbodyComponent& rb) {
+      .tick_source(physics_tick_source)
+      .each([](flecs::entity e, TransformComponent& tc, RigidbodyComponent& rb) {
         if (!rb.runtime_body)
           return;
 
@@ -376,8 +463,9 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         tc.rotation = glm::eulerAngles(rb.rotation);
       });
 
-  self.world.system<TransformComponent, CharacterControllerComponent>()
+  self.world.system<TransformComponent, CharacterControllerComponent>("character_controller_update")
       .kind(flecs::OnUpdate)
+      .tick_source(physics_tick_source)
       .each([](TransformComponent& tc, CharacterControllerComponent& ch) {
         auto* character = reinterpret_cast<JPH::Character*>(ch.character);
         character->PostSimulation(ch.collision_tolerance);
@@ -394,7 +482,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
 
   // -- Renderer Systems ---
 
-  self.world.system<const TransformComponent, CameraComponent>("CameraUpdate")
+  self.world.system<const TransformComponent, CameraComponent>("camera_update")
       .kind(flecs::PostUpdate)
       .each([](const TransformComponent& tc, CameraComponent& cc) {
         const auto screen_extent = App::get()->get_swapchain_extent();
@@ -404,11 +492,11 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         Camera::update(cc, screen_extent);
       });
 
-  self.world.system<const TransformComponent, MeshComponent>("MeshesUpdate")
+  self.world.system<const TransformComponent, MeshComponent>("meshes_update")
       .kind(flecs::PostUpdate)
       .each([](const TransformComponent& tc, MeshComponent& mc) {});
 
-  self.world.system<SpriteComponent>("SpritesUpdate")
+  self.world.system<SpriteComponent>("sprite_update")
       .kind(flecs::PostUpdate)
       .each([](const flecs::entity entity, SpriteComponent& sprite) {
         if (RendererCVar::cvar_draw_bounding_boxes.get()) {
@@ -416,7 +504,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
         }
       });
 
-  self.world.system<SpriteComponent, SpriteAnimationComponent>("SpriteAnimationsUpdate")
+  self.world.system<SpriteComponent, SpriteAnimationComponent>("sprite_animation_update")
       .kind(flecs::PostUpdate)
       .each([](flecs::iter& it, size_t, SpriteComponent& sprite, SpriteAnimationComponent& sprite_animation) {
         const auto asset_manager = App::get_system<AssetManager>(EngineSystems::AssetManager);
@@ -464,32 +552,32 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
       });
 }
 
-auto Scene::runtime_start() -> void {
+auto Scene::runtime_start(this Scene& self) -> void {
   ZoneScoped;
 
-  running = true;
+  self.running = true;
 
   // Physics
   {
     ZoneNamedN(z, "Physics Start", true);
-    body_activation_listener_3d = new Physics3DBodyActivationListener();
-    contact_listener_3d = new Physics3DContactListener(this);
+    self.body_activation_listener_3d = new Physics3DBodyActivationListener();
+    self.contact_listener_3d = new Physics3DContactListener(&self);
     const auto physics_system = App::get_system<Physics>(EngineSystems::Physics)->get_physics_system();
-    physics_system->SetBodyActivationListener(body_activation_listener_3d);
-    physics_system->SetContactListener(contact_listener_3d);
+    physics_system->SetBodyActivationListener(self.body_activation_listener_3d);
+    physics_system->SetContactListener(self.contact_listener_3d);
 
     // Rigidbodies
-    world.query_builder<const TransformComponent, RigidbodyComponent>().build().each(
-        [this](flecs::entity e, const TransformComponent& tc, RigidbodyComponent& rb) {
+    self.world.query_builder<const TransformComponent, RigidbodyComponent>().build().each(
+        [&self](flecs::entity e, const TransformComponent& tc, RigidbodyComponent& rb) {
           rb.previous_translation = rb.translation = tc.position;
           rb.previous_rotation = rb.rotation = tc.rotation;
-          create_rigidbody(e, tc, rb);
+          self.create_rigidbody(e, tc, rb);
         });
 
     // Characters
-    world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
-        [this](const TransformComponent& tc, CharacterControllerComponent& ch) {
-          create_character_controller(tc, ch);
+    self.world.query_builder<const TransformComponent, CharacterControllerComponent>().build().each(
+        [&self](const TransformComponent& tc, CharacterControllerComponent& ch) {
+          self.create_character_controller(tc, ch);
         });
 
     physics_system->OptimizeBroadPhase();
@@ -497,28 +585,27 @@ auto Scene::runtime_start() -> void {
 
   // Scripting
   {
-    ZoneNamedN(z, "LuaScripting/on_init", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& c) {
+    ZoneNamedN(z, "LuaScripting/on_scene_start", true);
+    self.world.query_builder<const LuaScriptComponent>().build().each(
+        [&self](const flecs::entity& e, const LuaScriptComponent& c) {
           auto* asset_man = App::get_asset_manager();
           if (auto* script = asset_man->get_script(c.script_uuid)) {
-            script->reload();
-            script->on_init(this, e);
+            script->on_scene_start(&self, e);
           }
         });
   }
 }
 
-auto Scene::runtime_stop() -> void {
+auto Scene::runtime_stop(this Scene& self) -> void {
   ZoneScoped;
 
-  running = false;
+  self.running = false;
 
   // Physics
   {
-    ZoneNamedN(z, "Physics Stop", true);
+    ZoneNamedN(z, "physics_stop", true);
     const auto physics = App::get_system<Physics>(EngineSystems::Physics);
-    world.query_builder<RigidbodyComponent>().build().each(
+    self.world.query_builder<RigidbodyComponent>().build().each(
         [physics](const flecs::entity& e, const RigidbodyComponent& rb) {
           if (rb.runtime_body) {
             JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
@@ -527,7 +614,7 @@ auto Scene::runtime_stop() -> void {
             body_interface.DestroyBody(body->GetID());
           }
         });
-    world.query_builder<CharacterControllerComponent>().build().each(
+    self.world.query_builder<CharacterControllerComponent>().build().each(
         [physics](const flecs::entity& e, CharacterControllerComponent& ch) {
           if (ch.character) {
             JPH::BodyInterface& body_interface = physics->get_physics_system()->GetBodyInterface();
@@ -537,33 +624,33 @@ auto Scene::runtime_stop() -> void {
           }
         });
 
-    delete body_activation_listener_3d;
-    delete contact_listener_3d;
-    body_activation_listener_3d = nullptr;
-    contact_listener_3d = nullptr;
+    delete self.body_activation_listener_3d;
+    delete self.contact_listener_3d;
+    self.body_activation_listener_3d = nullptr;
+    self.contact_listener_3d = nullptr;
   }
 
   // Scripting
   {
-    ZoneNamedN(z, "LuaScripting/on_release", true);
-    world.query_builder<const LuaScriptComponent>().build().each(
-        [this](const flecs::entity& e, const LuaScriptComponent& c) {
+    ZoneNamedN(z, "LuaScripting/on_scene_deinit", true);
+    self.world.query_builder<const LuaScriptComponent>().build().each(
+        [&self](const flecs::entity& e, const LuaScriptComponent& c) {
           auto* asset_man = App::get_asset_manager();
           if (auto* script = asset_man->get_script(c.script_uuid)) {
-            script->on_release(this, e);
+            script->on_scene_stop(&self, e);
           }
         });
   }
 }
 
-auto Scene::runtime_update(const Timestep& delta_time) -> void {
+auto Scene::runtime_update(this Scene& self, const Timestep& delta_time) -> void {
   ZoneScoped;
 
   // TODO: Pass our delta_time?
-  world.progress();
+  self.world.progress();
 
-  _render_pipeline->on_update(this);
-  this->dirty_transforms.clear();
+  self._render_pipeline->on_update(&self);
+  self.dirty_transforms.clear();
 
   if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
     auto physics = App::get_system<Physics>(EngineSystems::Physics);
@@ -594,7 +681,7 @@ void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
     world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
       auto* asset_man = App::get_asset_manager();
       if (auto* script = asset_man->get_script(c.script_uuid)) {
-        script->on_render(extent, format);
+        script->on_scene_render(extent, format);
       }
     });
   }
@@ -661,7 +748,7 @@ auto Scene::create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flec
 
       if (cur_node.mesh_index.has_value()) {
         node_entity.set<MeshComponent>(
-            {.mesh_uuid = asset_uuid, .mesh_index = static_cast<u32>(cur_node.mesh_index.value())});
+            {.mesh_index = static_cast<u32>(cur_node.mesh_index.value()), .mesh_uuid = asset_uuid});
       }
 
       node_entity.child_of(root);
@@ -679,11 +766,9 @@ auto Scene::create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flec
 auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Scene> {
   ZoneScoped;
 
-  // Copies the world but not the renderer. Imports component db from start.
+  // Copies the world but not the renderer.
 
-  std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->_render_pipeline);
-
-  new_scene->component_db.import_module(new_scene->world.import <Core>());
+  std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->scene_name, src_scene->_render_pipeline);
 
   JsonWriter writer{};
   writer.begin_obj();
@@ -707,7 +792,7 @@ auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Sce
 
   std::vector<UUID> requested_assets = {};
   for (auto entity_json : entities_array.get_array()) {
-    if (!json_to_entity(*new_scene, flecs::entity::null(), entity_json.value_unsafe(), requested_assets)) {
+    if (!json_to_entity(*new_scene, flecs::entity::null(), entity_json.value_unsafe(), requested_assets).second) {
       return nullptr;
     }
   }
@@ -718,17 +803,17 @@ auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Sce
 }
 
 auto Scene::get_world_transform(const flecs::entity entity) const -> glm::mat4 {
-  const auto* tc = entity.get<TransformComponent>();
+  const auto& tc = entity.get<TransformComponent>();
   const auto parent = entity.parent();
   const glm::mat4 parent_transform = parent != flecs::entity::null() ? get_world_transform(parent) : glm::mat4(1.0f);
-  return parent_transform * glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) *
-         glm::scale(glm::mat4(1.0f), tc->scale);
+  return parent_transform * glm::translate(glm::mat4(1.0f), tc.position) * glm::toMat4(glm::quat(tc.rotation)) *
+         glm::scale(glm::mat4(1.0f), tc.scale);
 }
 
 auto Scene::get_local_transform(flecs::entity entity) const -> glm::mat4 {
-  const auto* tc = entity.get<TransformComponent>();
-  return glm::translate(glm::mat4(1.0f), tc->position) * glm::toMat4(glm::quat(tc->rotation)) *
-         glm::scale(glm::mat4(1.0f), tc->scale);
+  const auto& tc = entity.get<TransformComponent>();
+  return glm::translate(glm::mat4(1.0f), tc.position) * glm::toMat4(glm::quat(tc.rotation)) *
+         glm::scale(glm::mat4(1.0f), tc.scale);
 }
 
 auto Scene::set_dirty(this Scene& self, flecs::entity entity) -> void {
@@ -911,7 +996,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
 
   const auto entity_name = std::string(entity.name());
 
-  if (const auto* bc = entity.get<BoxColliderComponent>()) {
+  if (const auto* bc = entity.try_get<BoxColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), bc->friction, bc->restitution);
 
     glm::vec3 scale = bc->size;
@@ -922,7 +1007,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {bc->offset.x, bc->offset.y, bc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* sc = entity.get<SphereColliderComponent>()) {
+  if (const auto* sc = entity.try_get<SphereColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), sc->friction, sc->restitution);
 
     float radius = 2.0f * sc->radius * max_scale_component;
@@ -933,7 +1018,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {sc->offset.x, sc->offset.y, sc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* cc = entity.get<CapsuleColliderComponent>()) {
+  if (const auto* cc = entity.try_get<CapsuleColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc->friction, cc->restitution);
 
     float radius = 2.0f * cc->radius * max_scale_component;
@@ -944,7 +1029,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {cc->offset.x, cc->offset.y, cc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* tcc = entity.get<TaperedCapsuleColliderComponent>()) {
+  if (const auto* tcc = entity.try_get<TaperedCapsuleColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), tcc->friction, tcc->restitution);
 
     float top_radius = 2.0f * tcc->top_radius * max_scale_component;
@@ -957,7 +1042,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
         {tcc->offset.x, tcc->offset.y, tcc->offset.z}, JPH::Quat::sIdentity(), shape_settings.Create().Get());
   }
 
-  if (const auto* cc = entity.get<CylinderColliderComponent>()) {
+  if (const auto* cc = entity.try_get<CylinderColliderComponent>()) {
     const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), cc->friction, cc->restitution);
 
     float radius = 2.0f * cc->radius * max_scale_component;
@@ -969,7 +1054,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
   }
 
 #if TODO
-  (const auto* mc = entity.get<MeshColliderComponent>()) {
+  (const auto* mc = entity.try_get<MeshColliderComponent>()) {
     if (const auto* mesh_component = entity.get<MeshComponent>()) {
       const auto* mat = new PhysicsMaterial3D(entity_name, JPH::ColorArg(255, 0, 0), mc->friction, mc->restitution);
 
@@ -1020,7 +1105,7 @@ auto Scene::create_rigidbody(flecs::entity entity, const TransformComponent& tra
   auto rotation = glm::quat(transform.rotation);
 
   u8 layer_index = 1; // Default Layer
-  if (auto layer_component = entity.get<LayerComponent>()) {
+  if (const auto* layer_component = entity.try_get<LayerComponent>()) {
     const auto collision_mask_it = physics->layer_collision_mask.find(layer_component->layer);
     if (collision_mask_it != physics->layer_collision_mask.end())
       layer_index = collision_mask_it->second.index;
@@ -1150,7 +1235,7 @@ auto Scene::load_from_file(this Scene& self, const std::string& path) -> bool {
 
   std::vector<UUID> requested_assets = {};
   for (auto entity_json : entities_array.get_array()) {
-    if (!json_to_entity(self, flecs::entity::null(), entity_json.value_unsafe(), requested_assets)) {
+    if (!json_to_entity(self, flecs::entity::null(), entity_json.value_unsafe(), requested_assets).second) {
       return false;
     }
   }

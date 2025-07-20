@@ -7,6 +7,7 @@ namespace ox {
 namespace RendererCVar {
 // clang-format off
 inline AutoCVar_Int cvar_vsync("rr.vsync", "toggle vsync", 1);
+inline AutoCVar_Int cvar_frame_limit("rr.frame_limit", "Limits the framerate with a sleep. 0: Disable, > 0: Enable", 0);
 
 inline AutoCVar_Int cvar_draw_grid("rr.draw_grid", "draw editor scene grid", 1);
 inline AutoCVar_Float cvar_draw_grid_distance("rr.grid_distance", "max grid distance", 20.f);

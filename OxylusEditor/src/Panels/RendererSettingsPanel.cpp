@@ -8,7 +8,7 @@
 #include "Render/Vulkan/VkContext.hpp"
 
 namespace ox {
-RendererSettingsPanel::RendererSettingsPanel() : EditorPanel("Renderer Settings", ICON_MDI_GPU, true) {}
+RendererSettingsPanel::RendererSettingsPanel() : EditorPanel("Renderer Settings", ICON_MDI_EXPANSION_CARD, true) {}
 
 void RendererSettingsPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   if (on_begin()) {

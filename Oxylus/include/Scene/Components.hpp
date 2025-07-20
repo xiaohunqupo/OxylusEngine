@@ -29,10 +29,6 @@
 namespace ox {
 #endif
 
-ECS_COMPONENT_BEGIN(LayerComponent)
-  ECS_COMPONENT_MEMBER(layer, u16, 1)
-ECS_COMPONENT_END();
-
 ECS_COMPONENT_BEGIN(TransformComponent)
   ECS_COMPONENT_MEMBER(position, glm::vec3, {})
   ECS_COMPONENT_MEMBER(rotation, glm::vec3, {})
@@ -60,11 +56,15 @@ ECS_COMPONENT_BEGIN(TransformComponent)
 
 ECS_COMPONENT_END();
 
+ECS_COMPONENT_BEGIN(LayerComponent)
+  ECS_COMPONENT_MEMBER(layer, u16, 1)
+ECS_COMPONENT_END();
+
 // Rendering
 ECS_COMPONENT_BEGIN(MeshComponent)
-  ECS_COMPONENT_MEMBER(mesh_uuid, UUID, {})
   ECS_COMPONENT_MEMBER(mesh_index, u32, {})
   ECS_COMPONENT_MEMBER(cast_shadows, bool, true)
+  ECS_COMPONENT_MEMBER(mesh_uuid, UUID, {})
 
 #ifndef ECS_REFLECT_TYPES
   AABB aabb = {};
@@ -72,10 +72,10 @@ ECS_COMPONENT_BEGIN(MeshComponent)
 ECS_COMPONENT_END();
 
 ECS_COMPONENT_BEGIN(SpriteComponent)
-  ECS_COMPONENT_MEMBER(material, ox::UUID, {})
   ECS_COMPONENT_MEMBER(layer, u32, 0)
   ECS_COMPONENT_MEMBER(sort_y, bool, true)
   ECS_COMPONENT_MEMBER(flip_x, bool, false)
+  ECS_COMPONENT_MEMBER(material, ox::UUID, {})
 
 #ifndef ECS_REFLECT_TYPES
   AABB rect = {};
@@ -188,8 +188,6 @@ ECS_COMPONENT_BEGIN(LightComponent)
   enum LightType : u32 { Directional = 0, Point, Spot };
 #endif
   ECS_COMPONENT_MEMBER(type, u32, LightType::Point)
-  ECS_COMPONENT_MEMBER(color_temperature_mode, bool, false)
-  ECS_COMPONENT_MEMBER(temperature, u32, 6570)
   ECS_COMPONENT_MEMBER(color, glm::vec3, {1.0f, 1.0f, 1.0f})
   ECS_COMPONENT_MEMBER(intensity, f32, 1.0f)
   ECS_COMPONENT_MEMBER(range, f32, 1.0f)
@@ -363,6 +361,8 @@ struct CharacterControllerComponent {
 
 // Audio
 ECS_COMPONENT_BEGIN(AudioSourceComponent)
+  ECS_COMPONENT_MEMBER(audio_source, UUID, {})
+
   ECS_COMPONENT_MEMBER(attenuation_model, u32, AudioEngine::AttenuationModelType::Inverse)
   ECS_COMPONENT_MEMBER(volume, f32, 1.0f)
   ECS_COMPONENT_MEMBER(pitch, f32, 1.0f)
@@ -381,8 +381,6 @@ ECS_COMPONENT_BEGIN(AudioSourceComponent)
   ECS_COMPONENT_MEMBER(cone_outer_gain, f32, 0.0f)
 
   ECS_COMPONENT_MEMBER(doppler_factor, f32, 1.0f)
-
-  ECS_COMPONENT_MEMBER(audio_source, UUID, {})
 ECS_COMPONENT_END();
 
 ECS_COMPONENT_BEGIN(AudioListenerComponent)

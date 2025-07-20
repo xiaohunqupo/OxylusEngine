@@ -32,15 +32,15 @@ public:
 
   static void tooltip_hover(const char* text);
 
-  static ImVec2 get_icon_button_size(const char8_t* icon, const char* label);
-
-  static void center_next_window();
+  static void center_next_window(ImGuiCond_ condition = ImGuiCond_Always);
 
   static void spacing(const uint32_t count);
 
   static void align_right(float item_width);
 
   static void text(std::string_view label, std::string_view value, const char* tooltip = nullptr);
+
+  static void help_marker(const char* desc);
 
   // --- Properties ---
 
@@ -132,7 +132,8 @@ public:
       else
         modified = ImGui::ColorEdit3(id_buffer, glm::value_ptr(value));
     } else {
-      modified = ImGui::DragScalarN(id_buffer, ImGuiDataType_Float, glm::value_ptr(value), component_count, delta, &min, &max);
+      modified = ImGui::DragScalarN(
+          id_buffer, ImGuiDataType_Float, glm::value_ptr(value), component_count, delta, &min, &max);
     }
     end_property_grid();
     return modified;
@@ -189,7 +190,7 @@ public:
                            const ImVec4& tint_col = ImVec4(1, 1, 1, 1),
                            const ImVec4& bg_col = ImVec4(0, 0, 0, 0));
 
-  static bool icon_button(const char8_t* icon, const char* label, ImVec4 icon_color = {0.537f, 0.753f, 0.286f, 1.0f});
+  static bool icon_button(const char* icon, const char* label, ImVec4 icon_color = {0.537f, 0.753f, 0.286f, 1.0f});
 
   static void clipped_text(const ImVec2& pos_min,
                            const ImVec2& pos_max,

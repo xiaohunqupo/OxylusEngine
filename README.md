@@ -10,11 +10,12 @@ Be aware that Oxylus is still in it's early stages of development. Some importan
 ## Design Goals
 - **Powerful**: Full support for both 2D and 3D development
 - **Intuitive**: Beginner-friendly yet endlessly adaptable for power users
-- **Data-Driven**: Built on an Entity Component System (ECS) for efficient data handling
-- **Modular**: Modular design—use only the parts you need, swap out the rest
+- **Data-Driven**: Built on a "true" Entity Component System (ECS) for efficient data handling
+- **Modular**: Use only the parts you need, swap out the rest
 - **Fast**: Optimized for speed with parallel processing where possible
+- **Code-First**: The editor is optional, build entire games programmatically or use the editor as a productivity aid
 
-## Feature Highlights: 
+## Feature Highlights 
 - Modular Vulkan renderer built using [vuk](https://github.com/martty/vuk) with modern rendering features:
 	- Meshlet Rendering
 	- GI with [Brixelizer](https://gpuopen.com/fidelityfx-brixelizer/)
@@ -44,6 +45,7 @@ Be aware that Oxylus is still in it's early stages of development. Some importan
 Windows, Linux and Mac (with MoltenVK) is supported.
 
 ### Requirements
+- [Xmake](https://xmake.io)
 - [Vulkan SDK](https://vulkan.lunarg.com/sdk/home).
 - A compiler that supports C++23.   
 ### Steps
@@ -51,8 +53,13 @@ Windows, Linux and Mac (with MoltenVK) is supported.
   - `xmake f --toolchain=clang --runtimes=c++_static -m debug`
 	- Change `--toolchain=` for the toolchain you want to use. 
 	- Pick a mode `-m debug, release, dist`
+	- Optionals:
+      - `--lua_bindings` Compile lua bindings (`true` by default)
+      - `--profile` Enable tracy profiler (`false` by default)
 - To build the project run:
 	- `xmake build`
-- Before running the built executable make sure to copy required binaries in `/build/lib` to executable directory created by this command:
+- To run the editor with xmake run:
+  - `xmake r OxylusEditor`
+- Or to manually run it make sure to copy required binaries in `/build/bin` to executable directory created by this command:
 	- `xmake install -o ./build`
 

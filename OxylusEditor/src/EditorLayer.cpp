@@ -4,16 +4,12 @@
 #include <imgui_internal.h>
 // #include <imspinner.h>
 #include <flecs.h>
-#include <ranges>
 
-#include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
-#include "Core/Base.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
-#include "Core/Project.hpp"
-#include "EditorTheme.hpp"
 #include "EditorUI.hpp"
+#include "Panels/AssetManagerPanel.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/EditorSettingsPanel.hpp"
 #include "Panels/InspectorPanel.hpp"
@@ -22,8 +18,8 @@
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/StatisticsPanel.hpp"
 #include "Render/Window.hpp"
-#include "UI/ImGuiLayer.hpp"
 #include "Utils/CVars.hpp"
+#include "Utils/Command.hpp"
 #include "Utils/EditorConfig.hpp"
 #include "Utils/EmbeddedBanner.hpp"
 #include "Utils/ImGuiScoped.hpp"
@@ -32,12 +28,12 @@
 namespace ox {
 EditorLayer* EditorLayer::instance = nullptr;
 
-static ViewportPanel* fullscreen_viewport_panel = nullptr;
-
 EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
 void EditorLayer::on_attach() {
   ZoneScoped;
+
+  undo_redo_system = std::make_unique<UndoRedoSystem>();
 
   editor_theme.init();
 
@@ -61,6 +57,7 @@ void EditorLayer::on_attach() {
   add_panel<RendererSettingsPanel>();
   add_panel<ProjectPanel>();
   add_panel<StatisticsPanel>();
+  add_panel<AssetManagerPanel>();
 
   const auto& viewport = viewport_panels.emplace_back(std::make_unique<ViewportPanel>());
   viewport->set_context(editor_scene, *get_panel<SceneHierarchyPanel>());
@@ -85,14 +82,6 @@ void EditorLayer::on_detach() {
 
 void EditorLayer::on_update(const Timestep& delta_time) {
   active_project->check_module();
-
-  for (const auto& panel : viewport_panels) {
-    if (panel->fullscreen_viewport) {
-      fullscreen_viewport_panel = panel.get();
-      break;
-    }
-    fullscreen_viewport_panel = nullptr;
-  }
 
   for (const auto& panel : editor_panels | std::views::values) {
     if (!panel->visible)
@@ -193,6 +182,16 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
           ImGui::EndMenu();
         }
         if (ImGui::BeginMenu("Edit")) {
+          ImGui::BeginDisabled(undo_redo_system->get_undo_count() < 1);
+          if (ImGui::MenuItem("Undo", "Ctrl + Z")) {
+            undo();
+          }
+          ImGui::EndDisabled();
+          ImGui::BeginDisabled(undo_redo_system->get_redo_count() < 1);
+          if (ImGui::MenuItem("Redo", "Ctrl + Y")) {
+            redo();
+          }
+          ImGui::EndDisabled();
           if (ImGui::MenuItem("Settings")) {
             get_panel<EditorSettingsPanel>()->visible = true;
           }
@@ -225,6 +224,7 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
 
         if (ImGui::BeginMenu("Assets")) {
           if (ImGui::MenuItem("Asset Manager")) {
+            get_panel<AssetManagerPanel>()->visible = true;
           }
           UI::tooltip_hover("WIP");
           ImGui::EndMenu();
@@ -253,12 +253,25 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
     }
     ImGui::PopStyleVar();
 
-    for (const auto& panel : viewport_panels)
-      panel->on_render(extent, format);
+    ViewportPanel* fullscreen_viewport_panel = nullptr;
+    for (const auto& panel : viewport_panels) {
+      if (panel->fullscreen_viewport) {
+        fullscreen_viewport_panel = panel.get();
+        break;
+      }
+      fullscreen_viewport_panel = nullptr;
+    }
 
-    for (const auto& panel : editor_panels | std::views::values) {
-      if (panel->visible)
+    if (fullscreen_viewport_panel != nullptr) {
+      fullscreen_viewport_panel->on_render(extent, format);
+    } else {
+      for (const auto& panel : viewport_panels)
         panel->on_render(extent, format);
+
+      for (const auto& panel : editor_panels | std::views::values) {
+        if (panel->visible)
+          panel->on_render(extent, format);
+      }
     }
 
     runtime_console.on_imgui_render();
@@ -275,6 +288,12 @@ void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format
 
 void EditorLayer::editor_shortcuts() {
   if (Input::get_key_held(KeyCode::LeftControl)) {
+    if (Input::get_key_pressed(KeyCode::Z)) {
+      undo();
+    }
+    if (Input::get_key_pressed(KeyCode::Y)) {
+      redo();
+    }
     if (Input::get_key_pressed(KeyCode::N)) {
       new_scene();
     }
@@ -291,7 +310,8 @@ void EditorLayer::editor_shortcuts() {
 }
 
 void EditorLayer::new_scene() {
-  const std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(editor_scene->get_render_pipeline());
+  const std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(editor_scene->scene_name,
+                                                                   editor_scene->get_render_pipeline());
   editor_scene = new_scene;
   set_editor_context(new_scene);
   last_save_scene_path.clear();
@@ -333,7 +353,7 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
       OX_LOG_WARN("Could not load {0} - not a scene file", path.filename().string());
     return false;
   }
-  const auto new_scene = std::make_shared<Scene>();
+  const auto new_scene = std::make_shared<Scene>(editor_scene->scene_name, editor_scene->get_render_pipeline());
   if (new_scene->load_from_file(path.string())) {
     editor_scene = new_scene;
     set_editor_context(new_scene);
@@ -344,9 +364,9 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
 
 void EditorLayer::load_default_scene(const std::shared_ptr<Scene>& scene) {
   ZoneScoped;
-  const auto sun = scene->create_entity("Sun");
-  sun.get_mut<TransformComponent>()->rotation.x = glm::radians(90.f);
-  sun.get_mut<TransformComponent>()->rotation.y = glm::radians(45.f);
+  const auto sun = scene->create_entity("sun");
+  sun.get_mut<TransformComponent>().rotation.x = glm::radians(90.f);
+  sun.get_mut<TransformComponent>().rotation.y = glm::radians(45.f);
   sun.set<LightComponent>({.type = LightComponent::LightType::Directional, .intensity = 10.f});
   sun.add<AtmosphereComponent>();
 }
@@ -467,16 +487,13 @@ void EditorLayer::set_docking_layout(EditorLayout layout) {
   ImGui::DockBuilderFinish(dockspace_id);
 }
 
-Archive& EditorLayer::advance_history() {
-  historyPos++;
+void EditorLayer::undo() {
+  ZoneScoped;
+  undo_redo_system->undo();
+}
 
-  while (static_cast<int>(history.size()) > historyPos) {
-    history.pop_back();
-  }
-
-  history.emplace_back();
-  history.back().set_read_mode_and_reset_pos(false);
-
-  return history.back();
+void EditorLayer::redo() {
+  ZoneScoped;
+  undo_redo_system->redo();
 }
 } // namespace ox

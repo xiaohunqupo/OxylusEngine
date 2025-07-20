@@ -70,7 +70,7 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
         ImGui::SetNextItemWidth(ImGui::GetContentRegionAvail().x * 0.8f);
         ImGui::InputText("##Directory", &new_project_dir, flags);
         ImGui::SameLine();
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FOLDER), {ImGui::GetContentRegionAvail().x, 0})) {
+        if (ImGui::Button(ICON_MDI_FOLDER, {ImGui::GetContentRegionAvail().x, 0})) {
           FileDialogFilter dialog_filters[] = {{.name = "Project dir", .pattern = "oxproj"}};
           window.show_dialog({
               .kind = DialogKind::OpenFolder,
@@ -122,11 +122,11 @@ void ProjectPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
         }
 
         ImGui::Separator();
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_FILE_DOCUMENT " New Project"), {x, y})) {
+        if (ImGui::Button(ICON_MDI_FILE_DOCUMENT " New Project", {x, y})) {
           draw_new_project_panel = true;
         }
         ImGui::SetNextItemWidth(x);
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_UPLOAD " Load Project"), {x, y})) {
+        if (ImGui::Button(ICON_MDI_UPLOAD " Load Project", {x, y})) {
           FileDialogFilter dialog_filters[] = {{.name = "Oxylus Project", .pattern = "oxproj"}};
           window.show_dialog({
               .kind = DialogKind::OpenFile,

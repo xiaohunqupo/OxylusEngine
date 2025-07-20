@@ -9,7 +9,7 @@ class EditorPanel {
 public:
   bool visible;
 
-  EditorPanel(const char* name = "Unnamed Panel", const char8_t* icon = u8"", bool default_show = false);
+  EditorPanel(const char* name = "Unnamed Panel", const char* icon = "", bool default_show = false);
   virtual ~EditorPanel() = default;
 
   EditorPanel(const EditorPanel& other) = delete;
@@ -23,14 +23,14 @@ public:
 
   const char* get_name() const { return _name.c_str(); }
   const char* get_id() const { return _id.c_str(); }
-  const char8_t* get_icon() const { return _icon; }
+  const char* get_icon() const { return _icon; }
 
 protected:
   bool on_begin(int32_t window_flags = 0);
   void on_end() const;
 
   std::string _name;
-  const char8_t* _icon;
+  const char* _icon;
   std::string _id;
 
 private:

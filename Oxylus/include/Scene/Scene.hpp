@@ -5,6 +5,7 @@
 #include <Jolt/Core/Core.h>
 #include <Jolt/Physics/Body/Body.h>
 #include <Jolt/Physics/Collision/ContactListener.h>
+#include <simdjson.h>
 
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
@@ -31,6 +32,7 @@ struct ankerl::unordered_dense::hash<flecs::entity> {
 };
 
 namespace ox {
+struct JsonWriter;
 class Physics3DContactListener;
 class Physics3DBodyActivationListener;
 
@@ -51,6 +53,7 @@ public:
   flecs::world world;
   ComponentDB component_db = {};
 
+  f32 physics_interval = 1.f / 60.f; // used only on initalization
   flecs::entity physics_events = {};
 
   bool meshes_dirty = false;
@@ -59,8 +62,8 @@ public:
   ankerl::unordered_dense::map<flecs::entity, GPU::TransformID> entity_transforms_map = {};
   ankerl::unordered_dense::map<std::pair<UUID, usize>, std::vector<GPU::TransformID>> rendering_meshes_map = {};
 
-  explicit Scene(const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr);
-  explicit Scene(const std::string& name);
+  explicit Scene(const std::string& name = "Untitled");
+  explicit Scene(const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline);
 
   ~Scene();
 
@@ -68,9 +71,9 @@ public:
             const std::string& name,
             const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
 
-  auto runtime_start() -> void;
-  auto runtime_stop() -> void;
-  auto runtime_update(const Timestep& delta_time) -> void;
+  auto runtime_start(this Scene& self) -> void;
+  auto runtime_stop(this Scene& self) -> void;
+  auto runtime_update(this Scene& self, const Timestep& delta_time) -> void;
 
   auto disable_phases(const std::vector<flecs::entity_t>& phases) -> void;
   auto enable_all_phases() -> void;
@@ -115,6 +118,12 @@ public:
       -> void;
 
   auto get_render_pipeline() -> std::shared_ptr<RenderPipeline> { return _render_pipeline; }
+
+  static auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void;
+  static auto json_to_entity(Scene& self, //
+                             flecs::entity root,
+                             simdjson::ondemand::value& json,
+                             std::vector<UUID>& requested_assets) -> std::pair<flecs::entity, bool>;
 
   auto save_to_file(this const Scene& self, std::string path) -> bool;
   auto load_from_file(this Scene& self, const std::string& path) -> bool;

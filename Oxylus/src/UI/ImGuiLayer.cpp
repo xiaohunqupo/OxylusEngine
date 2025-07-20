@@ -2,8 +2,6 @@
 
 #include <ImGuizmo.h>
 #include <SDL3/SDL_mouse.h>
-#include <icons/IconsMaterialDesignIcons.h>
-#include <icons/MaterialDesign.inl>
 #include <imgui.h>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Types.hpp>
@@ -35,17 +33,6 @@ ImFont* ImGuiLayer::load_font(const std::string& path, f32 font_size, option<ImF
     return io.Fonts->AddFontFromFileTTF(path.c_str(), font_size, &*font_config);
 
   return io.Fonts->AddFontFromFileTTF(path.c_str(), font_size);
-}
-
-ImFont* ImGuiLayer::add_icon_font(float font_size, ImFontConfig font_config, bool mono) {
-  ZoneScoped;
-  const ImGuiIO& io = ImGui::GetIO();
-
-  if (mono)
-    font_config.GlyphMinAdvanceX = font_size;
-
-  return io.Fonts->AddFontFromMemoryCompressedTTF(
-      MaterialDesign_compressed_data, MaterialDesign_compressed_size, font_size, &font_config);
 }
 
 void ImGuiLayer::build_fonts() {

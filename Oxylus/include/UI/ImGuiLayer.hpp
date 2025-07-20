@@ -29,7 +29,6 @@ public:
 
   ImFont* load_default_font();
   ImFont* load_font(const std::string& path, f32 font_size = 0.f, option<ImFontConfig> font_config = nullopt);
-  ImFont* add_icon_font(float font_size, ImFontConfig font_config, bool mono = true);
   void build_fonts(); // Legacy API
 
   void on_mouse_pos(glm::vec2 pos);

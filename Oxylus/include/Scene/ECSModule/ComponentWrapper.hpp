@@ -8,6 +8,8 @@ namespace ox::ECS {
 struct ComponentWrapper {
   using Member = std::variant<std::monostate,
                               bool*,
+                              u8*,
+                              u16*,
                               f32*,
                               i32*,
                               u32*,
@@ -28,8 +30,7 @@ struct ComponentWrapper {
   ecs_member_t* members = nullptr;
   u8* members_data = nullptr;
 
-  inline ComponentWrapper(flecs::entity& holder_,
-                          flecs::id& comp_id_) {
+  inline ComponentWrapper(flecs::entity& holder_, flecs::id& comp_id_) {
     component_entity = comp_id_.entity();
     path = component_entity.path();
     name = {component_entity.name(), component_entity.name().length()};
@@ -38,7 +39,7 @@ struct ComponentWrapper {
       return;
     }
 
-    struct_data = component_entity.get<flecs::Struct>();
+    struct_data = component_entity.try_get<flecs::Struct>();
     member_count = ecs_vec_count(&struct_data->members);
     members = static_cast<ecs_member_t*>(ecs_vec_first(&struct_data->members));
     members_data = static_cast<u8*>(holder_.get_mut(comp_id_));
@@ -46,8 +47,7 @@ struct ComponentWrapper {
 
   inline bool is_component() { return component_entity.has<flecs::Struct>(); }
   template <typename FuncT>
-  inline void for_each(this ComponentWrapper& self,
-                       const FuncT& fn) {
+  inline void for_each(this ComponentWrapper& self, const FuncT& fn) {
     ZoneScoped;
 
     auto world = self.component_entity.world();
@@ -59,6 +59,10 @@ struct ComponentWrapper {
 
       if (member_type == flecs::Bool) {
         data = reinterpret_cast<bool*>(self.members_data + member.offset);
+      } else if (member_type == flecs::U8) {
+        data = reinterpret_cast<u8*>(self.members_data + member.offset);
+      } else if (member_type == flecs::U16) {
+        data = reinterpret_cast<u16*>(self.members_data + member.offset);
       } else if (member_type == flecs::F32) {
         data = reinterpret_cast<f32*>(self.members_data + member.offset);
       } else if (member_type == flecs::I32) {

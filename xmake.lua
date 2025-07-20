@@ -1,4 +1,4 @@
-add_repositories("exdal https://github.com/exdal/xmake-repo.git")
+add_repositories("oxylus https://github.com/oxylusengine/xmake-repo.git")
 set_policy("package.precompiled", false)
 add_rules("mode.debug", "mode.release", "mode.dist")
 add_rules("plugin.compile_commands.autoupdate", { outputdir = ".", lsp = "clangd" })

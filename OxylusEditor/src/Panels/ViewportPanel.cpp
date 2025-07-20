@@ -18,12 +18,10 @@
 #include "Utils/EditorConfig.hpp"
 #include "Utils/OxMath.hpp"
 #include "Utils/PayloadData.hpp"
-#include "Utils/StringUtils.hpp"
-#include "Utils/Timestep.hpp"
 
 namespace ox {
 template <typename T>
-void show_component_gizmo(const char8_t* icon,
+void show_component_gizmo(const char* icon,
                           const std::string& name,
                           const float width,
                           const float height,
@@ -45,14 +43,14 @@ void show_component_gizmo(const char8_t* icon,
         ImGui::PushStyleColor(ImGuiCol_ButtonHovered, ImVec4(0.1f, 0.1f, 0.1f, 0.1f));
 
         constexpr auto icon_size = 48.f;
-        ImGui::PushFontSize(icon_size);
-        if (ImGui::Button(StringUtils::from_char8_t(icon), {50.f, 50.f})) {
+        ImGui::PushFont(nullptr, icon_size);
+        if (ImGui::Button(icon, {50.f, 50.f})) {
           auto& editor_context = EditorLayer::get()->get_context();
           editor_context.reset();
           editor_context.entity = entity;
           editor_context.type = EditorContext::Type::Entity;
         }
-        ImGui::PopFontSize();
+        ImGui::PopFont();
 
         ImGui::PopStyleColor(2);
 
@@ -66,27 +64,25 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
   draw_performance_overlay();
 
   constexpr ImGuiWindowFlags flags = ImGuiWindowFlags_NoCollapse | ImGuiWindowFlags_MenuBar;
-  ImGui::PushStyleVar(ImGuiStyleVar_WindowPadding, ImVec2{0, 0});
 
   if (on_begin(flags)) {
     bool viewport_settings_popup = false;
     ImVec2 start_cursor_pos = ImGui::GetCursorPos();
 
+    auto& style = ImGui::GetStyle();
+
     auto* editor_layer = EditorLayer::get();
 
     auto& editor_theme = editor_layer->editor_theme;
-    const auto popup_item_spacing = editor_theme.popup_item_spacing;
-    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, popup_item_spacing);
-    if (ImGui::BeginPopupContextItem("RightClick")) {
-      if (ImGui::MenuItem("Fullscreen"))
-        fullscreen_viewport = !fullscreen_viewport;
-      ImGui::EndPopup();
-    }
-    ImGui::PopStyleVar();
 
     if (ImGui::BeginMenuBar()) {
-      if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_COGS))) {
+      if (ImGui::MenuItem(ICON_MDI_COG)) {
         viewport_settings_popup = true;
+      }
+      auto button_width = ImGui::CalcTextSize(ICON_MDI_ARROW_EXPAND_ALL, nullptr, true);
+      ImGui::SetCursorPosX(_viewport_panel_size.x - button_width.x - (style.ItemInnerSpacing.x * 2.f));
+      if (ImGui::MenuItem(ICON_MDI_ARROW_EXPAND_ALL)) {
+        fullscreen_viewport = !fullscreen_viewport;
       }
       ImGui::EndMenuBar();
     }
@@ -94,7 +90,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
     if (viewport_settings_popup)
       ImGui::OpenPopup("ViewportSettings");
 
-    ImGui::SetNextWindowSize({300.f, 0.f});
     if (ImGui::BeginPopup("ViewportSettings")) {
       UI::begin_properties();
       UI::property("VSync", (bool*)RendererCVar::cvar_vsync.get_ptr());
@@ -169,7 +164,7 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
       if (editor_layer->scene_state == EditorLayer::SceneState::Edit)
         editor_camera.enable();
 
-      const auto& cam = *editor_camera.get<CameraComponent>();
+      const auto& cam = editor_camera.get<CameraComponent>();
       auto projection = cam.get_projection_matrix();
       projection[1][1] *= -1;
       glm::mat4 view_proj = projection * cam.get_view_matrix();
@@ -242,8 +237,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
 
         const ImVec2 dragger_cursor_pos = ImGui::GetCursorPos();
         ImGui::SetCursorPosX(dragger_cursor_pos.x + frame_padding.x);
-        ImGui::TextUnformatted(StringUtils::from_char8_t(ICON_MDI_DOTS_HORIZONTAL));
-        ImVec2 dragger_size = ImGui::CalcTextSize(StringUtils::from_char8_t(ICON_MDI_DOTS_HORIZONTAL));
+        ImGui::TextUnformatted(ICON_MDI_DOTS_HORIZONTAL);
+        ImVec2 dragger_size = ImGui::CalcTextSize(ICON_MDI_DOTS_HORIZONTAL);
         dragger_size.x *= 2.0f;
         ImGui::SetCursorPos(dragger_cursor_pos);
         ImGui::InvisibleButton("GizmoDragger", dragger_size);
@@ -256,61 +251,36 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         last_mouse_position = mouse_pos;
 
         constexpr float alpha = 0.6f;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_AXIS_ARROW),
-                              _gizmo_type == ImGuizmo::TRANSLATE,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_AXIS_ARROW, _gizmo_type == ImGuizmo::TRANSLATE, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::TRANSLATE;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ROTATE_3D),
-                              _gizmo_type == ImGuizmo::ROTATE,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_ROTATE_3D, _gizmo_type == ImGuizmo::ROTATE, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::ROTATE;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND),
-                              _gizmo_type == ImGuizmo::SCALE,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_ARROW_EXPAND, _gizmo_type == ImGuizmo::SCALE, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::SCALE;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_VECTOR_SQUARE),
-                              _gizmo_type == ImGuizmo::BOUNDS,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_VECTOR_SQUARE, _gizmo_type == ImGuizmo::BOUNDS, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::BOUNDS;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_ARROW_EXPAND_ALL),
-                              _gizmo_type == ImGuizmo::UNIVERSAL,
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_ARROW_EXPAND_ALL, _gizmo_type == ImGuizmo::UNIVERSAL, button_size, alpha, alpha))
           _gizmo_type = ImGuizmo::UNIVERSAL;
-        if (UI::toggle_button(_gizmo_mode == ImGuizmo::WORLD ? StringUtils::from_char8_t(ICON_MDI_EARTH)
-                                                             : StringUtils::from_char8_t(ICON_MDI_EARTH_OFF),
+        if (UI::toggle_button(_gizmo_mode == ImGuizmo::WORLD ? ICON_MDI_EARTH : ICON_MDI_EARTH_OFF,
                               _gizmo_mode == ImGuizmo::WORLD,
                               button_size,
                               alpha,
                               alpha))
           _gizmo_mode = _gizmo_mode == ImGuizmo::LOCAL ? ImGuizmo::WORLD : ImGuizmo::LOCAL;
-        if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_GRID),
-                              RendererCVar::cvar_draw_grid.get(),
-                              button_size,
-                              alpha,
-                              alpha))
+        if (UI::toggle_button(ICON_MDI_GRID, RendererCVar::cvar_draw_grid.get(), button_size, alpha, alpha))
           RendererCVar::cvar_draw_grid.toggle();
 
         if (editor_camera.has<CameraComponent>()) {
-          auto* cam = editor_camera.get_mut<CameraComponent>();
+          auto& cam = editor_camera.get_mut<CameraComponent>();
           UI::push_id();
-          if (UI::toggle_button(StringUtils::from_char8_t(ICON_MDI_CAMERA),
-                                cam->projection == CameraComponent::Projection::Orthographic,
+          if (UI::toggle_button(ICON_MDI_CAMERA,
+                                cam.projection == CameraComponent::Projection::Orthographic,
                                 button_size,
                                 alpha,
                                 alpha))
-            cam->projection = cam->projection == CameraComponent::Projection::Orthographic
-                                  ? CameraComponent::Projection::Perspective
-                                  : CameraComponent::Projection::Orthographic;
+            cam.projection = cam.projection == CameraComponent::Projection::Orthographic
+                                 ? CameraComponent::Projection::Perspective
+                                 : CameraComponent::Projection::Orthographic;
         }
         UI::pop_id();
 
@@ -333,9 +303,8 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         ImGui::PushStyleVar(ImGuiStyleVar_FrameRounding, 1.0f);
 
         const bool highlight = editor_layer->scene_state == EditorLayer::SceneState::Play;
-        const char8_t* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY
-                                                                                         : ICON_MDI_STOP;
-        if (UI::toggle_button(StringUtils::from_char8_t(icon), highlight, button_size)) {
+        const char* icon = editor_layer->scene_state == EditorLayer::SceneState::Edit ? ICON_MDI_PLAY : ICON_MDI_STOP;
+        if (UI::toggle_button(icon, highlight, button_size)) {
           if (editor_layer->scene_state == EditorLayer::SceneState::Edit) {
             editor_layer->on_scene_play();
             editor_camera.disable();
@@ -345,12 +314,12 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
         }
         ImGui::SameLine();
         ImGui::PushStyleColor(ImGuiCol_Button, ImVec4(0.2f, 0.2f, 0.2f, 0.4f));
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_PAUSE), button_size)) {
+        if (ImGui::Button(ICON_MDI_PAUSE, button_size)) {
           if (editor_layer->scene_state == EditorLayer::SceneState::Play)
             editor_layer->on_scene_stop();
         }
         ImGui::SameLine();
-        if (ImGui::Button(StringUtils::from_char8_t(ICON_MDI_STEP_FORWARD), button_size)) {
+        if (ImGui::Button(ICON_MDI_STEP_FORWARD, button_size)) {
           editor_layer->on_scene_simulate();
         }
         ImGui::PopStyleColor();
@@ -360,7 +329,6 @@ void ViewportPanel::on_render(const vuk::Extent3D extent, vuk::Format format) {
       ImGui::EndGroup();
     }
 
-    ImGui::PopStyleVar();
     on_end();
   }
 }
@@ -382,14 +350,14 @@ void ViewportPanel::on_update() {
     return;
   }
 
-  auto* cam = editor_camera.get_mut<CameraComponent>();
-  auto* tc = editor_camera.get_mut<TransformComponent>();
-  const glm::vec3& position = cam->position;
-  const glm::vec2 yaw_pitch = glm::vec2(cam->yaw, cam->pitch);
+  auto& cam = editor_camera.get_mut<CameraComponent>();
+  auto& tc = editor_camera.get_mut<TransformComponent>();
+  const glm::vec3& position = cam.position;
+  const glm::vec2 yaw_pitch = glm::vec2(cam.yaw, cam.pitch);
   glm::vec3 final_position = position;
   glm::vec2 final_yaw_pitch = yaw_pitch;
 
-  const auto is_ortho = cam->projection == CameraComponent::Projection::Orthographic;
+  const auto is_ortho = cam.projection == CameraComponent::Projection::Orthographic;
   if (is_ortho) {
     final_position = {0.0f, 0.0f, 0.0f};
     final_yaw_pitch = {glm::radians(-90.f), 0.f};
@@ -401,9 +369,9 @@ void ViewportPanel::on_update() {
     auto& editor_context = EditorLayer::get()->get_context();
     editor_context.entity.and_then([&cam](flecs::entity& e) {
       const auto entity_tc = e.get<TransformComponent>();
-      auto final_pos = entity_tc->position + cam->forward;
-      final_pos += -5.0f * cam->forward * glm::vec3(1.0f);
-      cam->position = final_pos;
+      auto final_pos = entity_tc.position + cam.forward;
+      final_pos += -5.0f * cam.forward * glm::vec3(1.0f);
+      cam.position = final_pos;
       return std::optional<std::monostate>{};
     });
   }
@@ -421,13 +389,13 @@ void ViewportPanel::on_update() {
     const float max_move_speed = EditorCVar::cvar_camera_speed.get() *
                                  (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
     if (Input::get_key_held(KeyCode::W))
-      final_position += cam->forward * max_move_speed;
+      final_position += cam.forward * max_move_speed;
     else if (Input::get_key_held(KeyCode::S))
-      final_position -= cam->forward * max_move_speed;
+      final_position -= cam.forward * max_move_speed;
     if (Input::get_key_held(KeyCode::D))
-      final_position += cam->right * max_move_speed;
+      final_position += cam.right * max_move_speed;
     else if (Input::get_key_held(KeyCode::A))
-      final_position -= cam->right * max_move_speed;
+      final_position -= cam.right * max_move_speed;
 
     if (Input::get_key_held(KeyCode::Q)) {
       final_position.y -= max_move_speed;
@@ -445,8 +413,8 @@ void ViewportPanel::on_update() {
     if (Input::get_mouse_moved()) {
       const float max_move_speed = EditorCVar::cvar_camera_speed.get() *
                                    (ImGui::IsKeyDown(ImGuiKey_LeftShift) ? 3.0f : 1.0f);
-      final_position += cam->forward * change.y * max_move_speed;
-      final_position += cam->right * change.x * max_move_speed;
+      final_position += cam.forward * change.y * max_move_speed;
+      final_position += cam.right * change.x * max_move_speed;
     }
   } else {
     window.set_cursor(WindowCursor::Arrow);
@@ -465,11 +433,11 @@ void ViewportPanel::on_update() {
                                                        1000.0f,
                                                        static_cast<float>(App::get_timestep().get_seconds()));
 
-  tc->position = EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position;
-  tc->rotation.x = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y;
-  tc->rotation.y = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x;
+  tc.position = EditorCVar::cvar_camera_smooth.get() ? damped_position : final_position;
+  tc.rotation.x = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.y : final_yaw_pitch.y;
+  tc.rotation.y = EditorCVar::cvar_camera_smooth.get() ? damped_yaw_pitch.x : final_yaw_pitch.x;
 
-  cam->zoom = static_cast<float>(EditorCVar::cvar_camera_zoom.get());
+  cam.zoom = static_cast<float>(EditorCVar::cvar_camera_zoom.get());
 }
 
 void ViewportPanel::draw_performance_overlay() {
@@ -482,7 +450,10 @@ void ViewportPanel::draw_performance_overlay() {
 }
 
 void ViewportPanel::draw_gizmos() {
-  auto& editor_context = EditorLayer::get()->get_context();
+  auto* editor_layer = EditorLayer::get();
+  auto& editor_context = editor_layer->get_context();
+  auto& undo_redo_system = editor_layer->undo_redo_system;
+
   const flecs::entity selected_entity = editor_context.entity.value_or(flecs::entity::null());
 
   if (Input::get_key_held(KeyCode::LeftControl)) {
@@ -507,7 +478,7 @@ void ViewportPanel::draw_gizmos() {
   if (selected_entity == flecs::entity::null() || !editor_camera.has<CameraComponent>() || _gizmo_type == -1)
     return;
 
-  if (auto* tc = selected_entity.get_mut<TransformComponent>()) {
+  if (auto* tc = selected_entity.try_get_mut<TransformComponent>()) {
     ImGuizmo::SetOrthographic(false);
     ImGuizmo::SetDrawlist();
     ImGuizmo::SetRect(_viewport_bounds[0].x,
@@ -515,7 +486,7 @@ void ViewportPanel::draw_gizmos() {
                       _viewport_bounds[1].x - _viewport_bounds[0].x,
                       _viewport_bounds[1].y - _viewport_bounds[0].y);
 
-    const auto& cam = *editor_camera.get<CameraComponent>();
+    const auto& cam = editor_camera.get<CameraComponent>();
 
     auto camera_projection = cam.get_projection_matrix();
     camera_projection[1][1] *= -1;
@@ -556,6 +527,10 @@ void ViewportPanel::draw_gizmos() {
         const glm::vec3 delta_rotation = rotation - tc->rotation;
         tc->rotation += delta_rotation;
         tc->scale = scale;
+
+        auto old_tc = *tc;
+        undo_redo_system->execute_command<PropertyChangeCommand<TransformComponent>>(
+            tc, old_tc, *tc, "gizmo transform");
 
         selected_entity.modified<TransformComponent>();
       }

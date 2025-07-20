@@ -4,11 +4,8 @@ target("Oxylus")
     add_rpathdirs("@executable_path")
 
     add_includedirs("./include", { public = true })
-    -- add_includedirs("./src", { public = true })
-    add_includedirs("./vendor", { public = true })
     add_files("./src/**.cpp")
     add_forceincludes("Tracy.hpp")
-    -- set_pcheader("./src/pch.hpp", { public = true, force = true })
 
     add_options("profile")
     if not has_config("lua_bindings") then
@@ -24,6 +21,7 @@ target("Oxylus")
         add_defines("VC_EXTRALEAN", { force = true, public = true  })
         add_defines("NOMINMAX", { force = true, public = true  })
         add_defines("_WIN32", { force = true, public = true  })
+        add_defines("_CRT_SECURE_NO_WARNINGS", { force = true, public = true  })
 
         remove_files("./src/OS/Linux*")
 
@@ -73,9 +71,9 @@ target("Oxylus")
         "stb",
         "miniaudio",
         "imgui",
-        "imguizmo-lr",
+        "imguizmo",
         "glm",
-        "flecs",
+        "flecs-ox",
         "fastgltf",
         "meshoptimizer",
         "fmt",

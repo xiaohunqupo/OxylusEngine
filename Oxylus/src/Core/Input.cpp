@@ -37,6 +37,30 @@ glm::vec2 Input::get_mouse_position() { return _instance->input_data.mouse_pos; 
 
 glm::vec2 Input::get_mouse_position_rel() { return _instance->input_data.mouse_pos_rel; }
 
+void Input::set_mouse_position_global(const float x, const float y) {
+  ZoneScoped;
+
+  SDL_WarpMouseGlobal(x, y);
+}
+
+bool Input::get_relative_mouse_mode_window(const Window& window) {
+  ZoneScoped;
+
+  return SDL_GetWindowRelativeMouseMode(static_cast<SDL_Window*>(window.get_handle()));
+}
+
+void Input::set_relative_mouse_mode_window(const Window& window, bool enabled) {
+  ZoneScoped;
+
+  SDL_SetWindowRelativeMouseMode(static_cast<SDL_Window*>(window.get_handle()), enabled);
+}
+
+void Input::set_mouse_position_window(const Window& window, glm::vec2 position) {
+  ZoneScoped;
+
+  SDL_WarpMouseInWindow(static_cast<SDL_Window*>(window.get_handle()), position.x, position.y);
+}
+
 float Input::get_mouse_offset_x() { return _instance->input_data.mouse_offset_x; }
 
 float Input::get_mouse_offset_y() { return _instance->input_data.mouse_offset_y; }
@@ -44,8 +68,6 @@ float Input::get_mouse_offset_y() { return _instance->input_data.mouse_offset_y;
 float Input::get_mouse_scroll_offset_y() { return _instance->input_data.scroll_offset_y; }
 
 bool Input::get_mouse_moved() { return _instance->input_data.mouse_moved; }
-
-void Input::set_mouse_position(const float x, const float y) { SDL_WarpMouseGlobal(x, y); }
 
 KeyCode Input::to_keycode(SDL_Keycode keycode, SDL_Scancode scancode) {
   switch (scancode) {

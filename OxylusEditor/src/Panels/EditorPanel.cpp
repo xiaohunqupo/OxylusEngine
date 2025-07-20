@@ -8,11 +8,11 @@
 namespace ox {
 uint32_t EditorPanel::_count = 0;
 
-EditorPanel::EditorPanel(const char* name, const char8_t* icon, bool default_show)
+EditorPanel::EditorPanel(const char* name, const char* icon, bool default_show)
     : visible(default_show),
       _name(name),
       _icon(icon) {
-  _id = fmt::format(" {} {}\t\t###{}{}", StringUtils::from_char8_t(icon), name, _count, name);
+  _id = fmt::format(" {} {}\t\t###{}{}", icon, name, _count, name);
   _count++;
 }
 

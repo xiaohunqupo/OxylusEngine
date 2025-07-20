@@ -1,6 +1,5 @@
 ﻿#include "UI/RuntimeConsole.hpp"
 
-#include <icons/IconsMaterialDesignIcons.h>
 #include <misc/cpp/imgui_stdlib.h>
 
 #include "Core/App.hpp"
@@ -18,15 +17,15 @@ static ImVec4 get_color(const loguru::Verbosity verb) {
   }
 }
 
-static const char8_t* get_level_icon(const loguru::Verbosity level) {
+static const char* get_level_icon(const loguru::Verbosity level) {
   switch (level) {
-    case loguru::Verbosity_INFO   : return ICON_MDI_INFORMATION;
-    case loguru::Verbosity_WARNING: return ICON_MDI_ALERT;
-    case loguru::Verbosity_ERROR  : return ICON_MDI_CLOSE_OCTAGON;
+    case loguru::Verbosity_INFO   : return "[I]";
+    case loguru::Verbosity_WARNING: return "[W]";
+    case loguru::Verbosity_ERROR  : return "[E]";
     default                       :;
   }
 
-  return u8"Unknown name";
+  return "?";
 }
 
 RuntimeConsole::RuntimeConsole() {
@@ -100,22 +99,20 @@ void RuntimeConsole::on_imgui_render() {
     ImGui::PushStyleColor(ImGuiCol_WindowBg, ImVec4(0.000f, 0.000f, 0.000f, 0.784f));
     // ImGui::PushStyleColor(ImGuiCol_MenuBarBg, ImVec4(0.100f, 0.100f, 0.100f, 1.000f));
 
-    id = fmt::format(" {} {}\t\t###", StringUtils::from_char8_t(ICON_MDI_CONSOLE), panel_name);
+    id = fmt::format(" {} \t\t###", panel_name);
     if (ImGui::Begin(id.c_str(), nullptr, windowFlags)) {
       if (ImGui::BeginMenuBar()) {
-        if (ImGui::MenuItem(StringUtils::from_char8_t(ICON_MDI_TRASH_CAN))) {
+        if (ImGui::MenuItem("Clear")) {
           clear_log();
         }
-        if (ImGui::MenuItem(
-                StringUtils::from_char8_t(ICON_MDI_INFORMATION), nullptr, text_filter == loguru::Verbosity_INFO)) {
+        if (ImGui::MenuItem(get_level_icon(loguru::Verbosity_INFO), nullptr, text_filter == loguru::Verbosity_INFO)) {
           text_filter = text_filter == loguru::Verbosity_INFO ? loguru::Verbosity_OFF : loguru::Verbosity_INFO;
         }
         if (ImGui::MenuItem(
-                StringUtils::from_char8_t(ICON_MDI_ALERT), nullptr, text_filter == loguru::Verbosity_WARNING)) {
+                get_level_icon(loguru::Verbosity_WARNING), nullptr, text_filter == loguru::Verbosity_WARNING)) {
           text_filter = text_filter == loguru::Verbosity_WARNING ? loguru::Verbosity_OFF : loguru::Verbosity_WARNING;
         }
-        if (ImGui::MenuItem(
-                StringUtils::from_char8_t(ICON_MDI_CLOSE_OCTAGON), nullptr, text_filter == loguru::Verbosity_ERROR)) {
+        if (ImGui::MenuItem(get_level_icon(loguru::Verbosity_ERROR), nullptr, text_filter == loguru::Verbosity_ERROR)) {
           text_filter = text_filter == loguru::Verbosity_ERROR ? loguru::Verbosity_OFF : loguru::Verbosity_ERROR;
         }
 
@@ -182,7 +179,7 @@ void RuntimeConsole::on_imgui_render() {
 void RuntimeConsole::render_console_text(const std::string& text_, const int32_t id_, loguru::Verbosity verb_) {
   ImGui::PushStyleColor(ImGuiCol_Text, get_color(verb_));
   const auto level_icon = get_level_icon(verb_);
-  ImGui::TextWrapped("%s %s", StringUtils::from_char8_t(level_icon), text_.c_str());
+  ImGui::TextWrapped("%s %s", level_icon, text_.c_str());
   ImGui::PopStyleColor();
 
   const auto sid = fmt::format("{}", id_);

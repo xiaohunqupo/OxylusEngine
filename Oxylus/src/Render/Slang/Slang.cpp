@@ -55,6 +55,8 @@ void Slang::create_pipeline(this Slang& self,
 
   self.add_shader(pipeline_ci, compile_info);
 
+  OX_LOG_INFO("Loaded shader:{}:{}", fs::get_name_with_extension(compile_info.path), name.c_str());
+
   TRY(runtime.create_named_pipeline(name, pipeline_ci))
 }
 
