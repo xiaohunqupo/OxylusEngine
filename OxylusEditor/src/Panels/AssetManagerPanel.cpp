@@ -50,12 +50,12 @@ static void draw_asset_table_columns(const Asset& asset) {
     if (!asset.is_loaded())
       ImGui::Text("Invalid ID");
     else
-      ImGui::Text("%lu", static_cast<u64>(asset.texture_id));
+      ImGui::Text("%llu", static_cast<u64>(asset.texture_id));
   }
 
   {
     ImGui::TableSetColumnIndex(4);
-    ImGui::Text("%lu", static_cast<u64>(asset.ref_count));
+    ImGui::Text("%llu", static_cast<u64>(asset.ref_count));
   }
 }
 

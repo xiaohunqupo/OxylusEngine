@@ -1,12 +1,13 @@
 ﻿#pragma once
 
-#include "Oxylus.hpp"
-
 #include <vuk/ImageAttachment.hpp>
 #include <vuk/RenderGraph.hpp>
 #include <vuk/Value.hpp>
 #include <vuk/runtime/vk/PipelineInstance.hpp>
 #include <vuk/runtime/vk/Query.hpp>
+
+#include "Core/Option.hpp"
+#include "Core/Types.hpp"
 
 using Preset = vuk::ImageAttachment::Preset;
 

@@ -2,6 +2,8 @@
 
 #include <imgui.h>
 #include <vuk/Value.hpp>
+#include <ankerl/unordered_dense.h>
+#include <glm/vec2.hpp>
 
 #include "Asset/Texture.hpp"
 #include "Core/Layer.hpp"

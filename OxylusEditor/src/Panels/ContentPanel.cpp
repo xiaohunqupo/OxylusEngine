@@ -552,6 +552,7 @@ void ContentPanel::render_body(bool grid) {
           if (thumbnail_cache_textures.contains(file.file_path)) {
             texture_name = file.file_path;
           } else {
+#if 0
             // make sure this runs only if it's not already queued
             if (ThreadManager::get()->asset_thread.get_queue_size() == 0) {
               ThreadManager::get()->asset_thread.queue_job([this, file_path = file.file_path] {
@@ -565,7 +566,8 @@ void ContentPanel::render_body(bool grid) {
                 auto write_lock = std::unique_lock(thumbnail_mutex);
                 thumbnail_cache_textures.emplace(file_path, thumbnail_texture);
               });
-            }
+          }
+#endif
             texture_name = file.file_path;
           }
         } else if (file.type == FileType::Mesh) {
