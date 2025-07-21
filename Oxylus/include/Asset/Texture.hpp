@@ -24,14 +24,14 @@ enum class TextureID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class Texture {
 public:
   Texture() = default;
-  Texture(const std::string& name) : _name(name) {}
+  Texture(const std::string& name) : name_(name) {}
 
   Texture& operator=(Texture&& other) noexcept {
     if (this != &other) {
-      _image = std::move(other._image);
-      _view = std::move(other._view);
-      _attachment = std::move(other._attachment);
-      _name = std::move(other._name);
+      image_ = std::move(other.image_);
+      view_ = std::move(other.view_);
+      attachment_ = std::move(other.attachment_);
+      name_ = std::move(other.name_);
     }
     return *this;
   }
@@ -48,24 +48,24 @@ public:
 
   static auto from_attachment(vuk::Allocator& allocator, vuk::ImageAttachment& ia) -> std::unique_ptr<Texture>;
 
-  auto attachment() const -> vuk::ImageAttachment { return _attachment; }
+  auto attachment() const -> vuk::ImageAttachment { return attachment_; }
   auto acquire(vuk::Name name = {}, vuk::Access last_access = vuk::Access::eFragmentSampled) const
       -> vuk::Value<vuk::ImageAttachment>;
   auto discard(vuk::Name name = {}) const -> vuk::Value<vuk::ImageAttachment>;
 
-  auto get_image() const -> const vuk::Unique<vuk::Image>& { return _image; }
-  auto get_view() const -> const vuk::Unique<vuk::ImageView>& { return _view; }
-  auto get_extent() const -> const vuk::Extent3D& { return _attachment.extent; }
-  auto get_format() const -> vuk::Format { return _attachment.format; }
+  auto get_image() const -> const vuk::Unique<vuk::Image>& { return image_; }
+  auto get_view() const -> const vuk::Unique<vuk::ImageView>& { return view_; }
+  auto get_extent() const -> const vuk::Extent3D& { return attachment_.extent; }
+  auto get_format() const -> vuk::Format { return attachment_.format; }
 
   auto reset_view(vuk::Allocator& allocator) -> void;
 
-  auto get_name() -> const std::string& { return _name; }
+  auto get_name() -> const std::string& { return name_; }
   auto set_name(std::string_view name, const std::source_location& loc = std::source_location::current()) -> void;
 
-  auto get_view_id() const -> u64 { return _view->id; }
+  auto get_view_id() const -> u64 { return view_->id; }
 
-  operator bool() const { return static_cast<bool>(_image); }
+  operator bool() const { return static_cast<bool>(image_); }
 
   static auto load_stb_image(const std::string& filename,
                              uint32_t* width = nullptr,
@@ -92,9 +92,9 @@ public:
   }
 
 private:
-  vuk::ImageAttachment _attachment = {};
-  vuk::Unique<vuk::Image> _image;
-  vuk::Unique<vuk::ImageView> _view;
-  std::string _name = {};
+  vuk::ImageAttachment attachment_ = {};
+  vuk::Unique<vuk::Image> image_;
+  vuk::Unique<vuk::ImageView> view_;
+  std::string name_ = {};
 };
 } // namespace ox

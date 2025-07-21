@@ -649,7 +649,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
   asset = nullptr;
 
   // Load embedded textures
-  ankerl::unordered_dense::map<UUID, TextureLoadInfo> texture_uuids = {};
+  ankerl::unordered_dense::map<UUID, TextureLoadInfo> texture_info_map = {};
 
   auto embedded_textures = std::vector<UUID>();
   auto embedded_texture_uuids_json = meta_json->doc["embedded_textures"].get_array();
@@ -665,7 +665,7 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     embedded_textures.push_back(embedded_texture_uuid.value());
     this->register_asset(embedded_texture_uuid.value(), AssetType::Texture, {});
 
-    texture_uuids.emplace(embedded_texture_uuid.value(), TextureLoadInfo{});
+    texture_info_map.emplace(embedded_texture_uuid.value(), TextureLoadInfo{});
   }
 
   // Load registered UUIDs.
@@ -743,22 +743,26 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     info->vertex_texcoords[offset] = texcoord;
   };
 
-  auto on_materials_load = [mesh, materials, &texture_uuids](std::vector<GLTFMaterialInfo>& gltf_materials,
-                                                             std::vector<GLTFTextureInfo>& textures,
-                                                             std::vector<GLTFImageInfo>& images) {
+  auto on_materials_load = [mesh, materials, &texture_info_map](std::vector<GLTFMaterialInfo>& gltf_materials,
+                                                                std::vector<GLTFTextureInfo>& textures,
+                                                                std::vector<GLTFImageInfo>& images) {
     auto load_texture_bytes = [&textures, &images](u32 texture_index, TextureLoadInfo& inf) {
       if (auto& image_index = textures[texture_index].image_index; image_index.has_value()) {
         auto& image = images[image_index.value()];
-        std::visit(ox::match{
-                       [&](const ::fs::path& p) {}, // noop
-                       [&](const std::vector<u8>& data) {
-                         inf.bytes = data;
 
-                         switch (image.file_type) {
-                           case AssetFileType::KTX2: inf.mime = TextureLoadInfo::MimeType::KTX; break;
-                           default                 : inf.mime = TextureLoadInfo::MimeType::Generic; break;
-                         }
-                       },
+        switch (image.file_type) {
+          case AssetFileType::KTX2: inf.mime = TextureLoadInfo::MimeType::KTX; break;
+          default                 : inf.mime = TextureLoadInfo::MimeType::Generic; break;
+        }
+
+        std::visit(ox::match{
+                       [&](const ::fs::path& p) {
+                        auto extension = p.extension();
+                        if (extension == ".ktx" || extension == ".ktx2") {
+                          inf.mime = TextureLoadInfo::MimeType::KTX;
+                        }
+                       }, // noop
+                       [&](const std::vector<u8>& data) { inf.bytes = data; },
                    },
                    image.image_data);
       }
@@ -770,31 +774,31 @@ auto AssetManager::load_mesh(const UUID& uuid) -> bool {
     for (const auto& [material_uuid, material, gltf_material] :
          std::views::zip(mesh->materials, materials, gltf_materials)) {
       if (auto texture_index = gltf_material.albedo_texture_index; texture_index.has_value()) {
-        auto& info = texture_uuids[material.albedo_texture];
+        auto& info = texture_info_map[material.albedo_texture];
         load_texture_bytes(texture_index.value(), info);
       }
 
       if (auto texture_index = gltf_material.normal_texture_index; texture_index.has_value()) {
-        auto& info = texture_uuids[material.normal_texture];
+        auto& info = texture_info_map[material.normal_texture];
         load_texture_bytes(texture_index.value(), info);
       }
 
       if (auto texture_index = gltf_material.emissive_texture_index; texture_index.has_value()) {
-        auto& info = texture_uuids[material.emissive_texture];
+        auto& info = texture_info_map[material.emissive_texture];
         load_texture_bytes(texture_index.value(), info);
       }
 
       if (auto texture_index = gltf_material.metallic_roughness_texture_index; texture_index.has_value()) {
-        auto& info = texture_uuids[material.metallic_roughness_texture];
+        auto& info = texture_info_map[material.metallic_roughness_texture];
         load_texture_bytes(texture_index.value(), info);
       }
 
       if (auto texture_index = gltf_material.occlusion_texture_index; texture_index.has_value()) {
-        auto& info = texture_uuids[material.occlusion_texture];
+        auto& info = texture_info_map[material.occlusion_texture];
         load_texture_bytes(texture_index.value(), info);
       }
 
-      asset_man->load_material(material_uuid, material, texture_uuids);
+      asset_man->load_material(material_uuid, material, texture_info_map);
     }
   };
 
@@ -1059,6 +1063,7 @@ auto AssetManager::load_material(const UUID& uuid,
       auto& map = texture_info_map.value();
       if (map.contains(texture)) {
         info.bytes = map[texture].bytes;
+        info.mime = map[texture].mime;
       }
     }
     return info;

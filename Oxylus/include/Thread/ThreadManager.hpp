@@ -10,7 +10,7 @@ public:
 
   ThreadManager();
 
-  ~ThreadManager() = default;
+  ~ThreadManager();
 
   void wait_all_threads();
 

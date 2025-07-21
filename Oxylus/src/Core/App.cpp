@@ -260,7 +260,7 @@ void App::run() {
 
   DebugRenderer::release();
 
-  ThreadManager::get()->wait_all_threads();
+  thread_manager.reset();
   window.destroy();
 }
 

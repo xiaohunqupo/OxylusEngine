@@ -548,6 +548,7 @@ void ContentPanel::render_body(bool grid) {
       std::string texture_name = {};
       if (!is_dir && EditorCVar::cvar_file_thumbnails.get()) {
         if (file.type == FileType::Texture) {
+          auto read_lock = std::shared_lock(thumbnail_mutex);
           if (thumbnail_cache_textures.contains(file.file_path)) {
             texture_name = file.file_path;
           } else {
@@ -555,7 +556,13 @@ void ContentPanel::render_body(bool grid) {
             if (ThreadManager::get()->asset_thread.get_queue_size() == 0) {
               ThreadManager::get()->asset_thread.queue_job([this, file_path = file.file_path] {
                 auto thumbnail_texture = std::make_shared<Texture>();
-                thumbnail_texture->create(file_path, {.preset = Preset::eRTT2DUnmipped});
+                auto file_extension = fs::get_file_extension(file_path);
+                TextureLoadInfo::MimeType mime_type = TextureLoadInfo::MimeType::Generic;
+                if (file_extension == "ktx" || file_extension == "ktx2") {
+                  mime_type = TextureLoadInfo::MimeType::KTX;
+                }
+                thumbnail_texture->create(file_path, {.preset = Preset::eRTT2DUnmipped, .mime = mime_type});
+                auto write_lock = std::unique_lock(thumbnail_mutex);
                 thumbnail_cache_textures.emplace(file_path, thumbnail_texture);
               });
             }
@@ -661,7 +668,11 @@ void ContentPanel::render_body(bool grid) {
         // Thumbnail Image
         ImGui::SetCursorPos({cursor_pos.x + thumbnail_padding * 0.75f, cursor_pos.y + thumbnail_padding});
         ImGui::SetItemAllowOverlap();
-        if (thumbnail_cache_textures.contains(texture_name)) {
+
+        auto read_lock = std::shared_lock(thumbnail_mutex);
+        auto thumbnail_exists = thumbnail_cache_textures.contains(texture_name);
+
+        if (thumbnail_exists) {
           UI::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
         } else if (thumbnail_cache_meshes.contains(texture_name)) {
           auto texture = Texture::from_attachment(*vk_context.frame_allocator, thumbnail_cache_meshes[texture_name]);
@@ -726,7 +737,11 @@ void ContentPanel::render_body(bool grid) {
 
         ImGui::SameLine();
         ImGui::SetCursorPosX(ImGui::GetCursorPosX() - line_height);
-        if (thumbnail_cache_textures.contains(texture_name)) {
+
+        auto read_lock = std::shared_lock(thumbnail_mutex);
+        auto thumbnail_exists = thumbnail_cache_textures.contains(texture_name);
+
+        if (thumbnail_exists) {
           UI::image(*thumbnail_cache_textures[texture_name], {thumb_image_size, thumb_image_size});
         } else {
           auto file_type = FileType::Unknown;
