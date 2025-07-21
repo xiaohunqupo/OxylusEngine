@@ -92,6 +92,58 @@ Core::Core(flecs::world& world) {
   // --- entity_t ---
   auto id_type = flecs_table.new_usertype<flecs::entity_t>("entity_t");
 
+  // ecs_iter_t
+  auto iter_type = flecs_table.new_usertype<ecs_iter_t>(
+      "iter",
+
+      "count",
+      [](ecs_iter_t* it) -> int32_t { return it->count; },
+
+      "field",
+      [state](ecs_iter_t* it, i32 index, sol::table component_table) {
+        auto component = component_table.get<ecs_entity_t>("component_id");
+        sol::table result = state->create_table();
+        result["component_id"] = component;
+
+        result.set_function(sol::meta_function::index, [it, state](const sol::table& self, i32 i) {
+          ecs_entity_t component = self["component_id"];
+
+          sol::table result = state->create_table();
+
+          auto entity = it->entities[i];
+
+          auto f_id = flecs::id(component);
+          auto e = flecs::entity{it->real_world, entity};
+          ECS::ComponentWrapper component_wrapped(e, f_id);
+
+          component_wrapped.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+            std::visit(ox::match{
+                           [](const auto&) {},
+                           [&](bool* v) { result[member_name] = *v; },
+                           [&](u8* v) { result[member_name] = *v; },
+                           [&](u16* v) { result[member_name] = *v; },
+                           [&](u32* v) { result[member_name] = *v; },
+                           [&](u64* v) { result[member_name] = *v; },
+                           [&](i8* v) { result[member_name] = *v; },
+                           [&](i16* v) { result[member_name] = *v; },
+                           [&](i32* v) { result[member_name] = *v; },
+                           [&](i64* v) { result[member_name] = *v; },
+                           [&](f32* v) { result[member_name] = *v; },
+                           [&](f64* v) { result[member_name] = *v; },
+                           [&](std::string* v) { result[member_name] = *v; },
+                           [&](glm::vec2* v) { result[member_name] = *v; },
+                           [&](glm::vec3* v) { result[member_name] = *v; },
+                           [&](glm::vec4* v) { result[member_name] = *v; },
+                           [&](glm::mat4* v) { result[member_name] = *v; },
+                           [&](UUID* v) { result[member_name] = *v; },
+                       },
+                       member);
+          });
+        });
+
+        return result;
+      });
+
   // --- world ---
   auto world_type = flecs_table.new_usertype<flecs::world>(
       "world",
@@ -100,11 +152,11 @@ Core::Core(flecs::world& world) {
       [](flecs::world* w, const std::string& name) -> flecs::entity { return w->entity(name.c_str()); },
 
       "system",
-      [](flecs::world* world,
+      [state](flecs::world* world,
          const std::string& name,
          sol::table components,
          sol::table dependencies,
-         sol::function callback) -> ecs_entity_t {
+         sol::function callback) -> sol::table {
         std::vector<ecs_entity_t> component_ids = {};
         components.for_each([&](sol::object key, sol::object value) {
           sol::table component_table = value.as<sol::table>();
@@ -133,6 +185,7 @@ Core::Core(flecs::world& world) {
           auto lua_callback = reinterpret_cast<std::shared_ptr<sol::function>*>(it->callback_ctx);
 
           OX_CHECK_NULL(lua_callback);
+          OX_CHECK_EQ((*lua_callback)->valid(), true);
 
           auto result = (**lua_callback)(it);
           if (!result.valid()) {
@@ -145,9 +198,10 @@ Core::Core(flecs::world& world) {
           system_desc.query.terms[i].id = component_ids[i];
         }
 
-        auto sys = ecs_system_init(world->world_, &system_desc);
+        auto system_table = state->create_table();
+        system_table["system"] = ecs_system_init(world->world_, &system_desc);
 
-        return sys;
+        return system_table;
       });
 
   // --- entity ---
