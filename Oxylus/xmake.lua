@@ -86,7 +86,6 @@ target("Oxylus")
         "joltphysics-ox",
         "tracy",
         "sol2",
-        "enkits",
         "unordered_dense",
         "dylib",
         "ktx",

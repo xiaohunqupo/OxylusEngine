@@ -72,7 +72,6 @@ enum class EngineSystems {
   AssetManager,
   VFS,
   Random,
-  TaskScheduler,
   AudioEngine,
   LuaManager,
   ModuleRegistry,

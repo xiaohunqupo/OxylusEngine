@@ -13,32 +13,11 @@
 #include "Render/Vulkan/VkContext.hpp"
 #include "Scene/SceneGPU.hpp"
 #include "Scripting/LuaSystem.hpp"
-#include "Thread/TaskScheduler.hpp"
 #include "Utils/JsonHelpers.hpp"
 #include "Utils/Log.hpp"
 #include "Utils/Profiler.hpp"
-#include "Utils/Timer.hpp"
 
 namespace ox {
-struct TextureLoadTask : ITaskSet {
-  const std::vector<UUID>& uuids;
-  const std::vector<TextureLoadInfo>& load_infos;
-  AssetManager& asset_manager;
-
-  TextureLoadTask(const std::vector<UUID>& uuid, const std::vector<TextureLoadInfo>& load_info, AssetManager& asset_man)
-      : uuids(uuid),
-        load_infos(load_info),
-        asset_manager(asset_man) {
-    this->m_SetSize = static_cast<u32>(uuids.size()); // One task per texture
-  }
-
-  void ExecuteRange(const enki::TaskSetPartition range, u32 threadNum) override {
-    for (u32 i = range.start; i < range.end; ++i) {
-      asset_manager.load_texture(uuids[i], load_infos[i]);
-    }
-  }
-};
-
 auto begin_asset_meta(JsonWriter& writer, const UUID& uuid, AssetType type) -> void {
   ZoneScoped;
 
