@@ -35,4 +35,24 @@ auto os::mem_decommit(void* data, u64 size) -> void {
   madvise(data, size, MADV_DONTNEED);
   mprotect(data, size, PROT_NONE);
 }
+
+auto os::thread_id() -> i64 {
+  ZoneScoped;
+
+  return syscall(__NR_gettid);
+}
+
+auto os::set_thread_name(std::string_view name) -> void {
+  ZoneScoped;
+  memory::ScopedStack stack;
+
+  pthread_setname_np(pthread_self(), stack.null_terminate_cstr(name));
+}
+
+auto os::set_thread_name(std::thread::native_handle_type thread, std::string_view name) -> void {
+  ZoneScoped;
+  memory::ScopedStack stack;
+
+  pthread_setname_np(thread, stack.null_terminate_cstr(name));
+}
 } // namespace ox
