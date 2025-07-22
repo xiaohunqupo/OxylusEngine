@@ -382,10 +382,10 @@ VkContext::alloc_transient_buffer_raw(vuk::MemoryUsage usage, usize size, usize 
     -> vuk::Buffer {
   ZoneScoped;
 
-  std::unique_lock _(mutex);
+  std::shared_lock _(mutex);
 
   auto buffer = *vuk::allocate_buffer(
-      frame_allocator.value(), {.mem_usage = usage, .size = size, .alignment = alignment}, LOC);
+      superframe_allocator.value(), {.mem_usage = usage, .size = size, .alignment = alignment}, LOC);
   return *buffer;
 }
 

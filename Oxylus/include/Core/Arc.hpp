@@ -213,7 +213,7 @@ constexpr auto Arc<T>::release() -> T* {
     return nullptr;
   }
 
-  LS_EXPECT(ptr->release_ref() && "Releasing Arc pointer still has references.");
+  OX_CHECK_EQ(ptr->release_ref(), true, "Releasing Arc pointer still has references.");
   return std::exchange(ptr, nullptr);
 }
 

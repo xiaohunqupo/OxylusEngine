@@ -49,18 +49,33 @@ auto Job::signal(this Job& self, Arc<Barrier> barrier) -> Arc<Job> {
   return &self;
 }
 
-JobManager::JobManager(u32 threads) {
+auto JobManager::init() -> std::expected<void, std::string> {
   ZoneScoped;
 
-  for (u32 i = 0; i < threads; i++) {
-    this->workers.emplace_back([this, i]() { worker(i); });
-  }
+  return {};
 }
 
-JobManager::~JobManager() {
+auto JobManager::deinit() -> std::expected<void, std::string> {
   ZoneScoped;
 
   this->shutdown();
+
+  return {};
+}
+
+JobManager::JobManager(u32 threads) {
+  ZoneScoped;
+
+  if (threads == auto_thread_count) {
+    unsigned int num_threads_available = std::thread::hardware_concurrency() - 1; // leave one for the OS
+    num_threads = num_threads_available;
+  } else {
+    num_threads = threads;
+  }
+
+  for (u32 i = 0; i < num_threads; i++) {
+    this->workers.emplace_back([this, i]() { worker(i); });
+  }
 }
 
 auto JobManager::shutdown(this JobManager& self) -> void {
@@ -132,4 +147,4 @@ auto JobManager::wait(this JobManager& self) -> void {
   while (self.job_count.load(std::memory_order_relaxed) != 0)
     ;
 }
-} // namespace lr
+} // namespace ox

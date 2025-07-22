@@ -11,9 +11,9 @@ int main(int argc, char** argv);
 
 namespace ox {
 class AssetManager;
+class JobManager;
 class Layer;
 class ImGuiLayer;
-class ThreadManager;
 class VkContext;
 
 struct AppCommandLineArgs {
@@ -68,7 +68,8 @@ struct AppSpec {
 };
 
 enum class EngineSystems {
-  AssetManager = 0,
+  JobManager = 0,
+  AssetManager,
   VFS,
   Random,
   TaskScheduler,
@@ -112,6 +113,7 @@ public:
 
   static AssetManager* get_asset_manager();
   static VFS* get_vfs();
+  static JobManager* get_job_manager();
 
   template <typename T, typename... Args>
   void register_system(const EngineSystems type, Args&&... args) {
@@ -153,7 +155,6 @@ private:
 
   SystemRegistry system_registry = {};
 
-  std::shared_ptr<ThreadManager> thread_manager = nullptr;
   Timestep timestep = {};
 
   bool is_running = true;

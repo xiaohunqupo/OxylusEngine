@@ -12,7 +12,6 @@
 #include "EditorContext.hpp"
 #include "EditorLayer.hpp"
 #include "EditorUI.hpp"
-#include "Thread/ThreadManager.hpp"
 #include "Utils/FileWatch.hpp"
 #include "Utils/PayloadData.hpp"
 #include "Utils/Profiler.hpp"
@@ -271,7 +270,7 @@ void ContentPanel::init() {
   [[maybe_unused]]
   static filewatch::FileWatch<std::string> watch(_assets_directory.string(),
                                                  [this](const auto&, const filewatch::Event) {
-                                                   ThreadManager::get()->asset_thread.queue_job([this] { refresh(); });
+                                                   refresh();
                                                  });
 }
 
@@ -794,7 +793,7 @@ void ContentPanel::render_body(bool grid) {
     if (ImGui::Button("OK", ImVec2(120, 0))) {
       std::filesystem::remove_all(_directory_to_delete);
       _directory_to_delete.clear();
-      ThreadManager::get()->asset_thread.queue_job([this] { refresh(); });
+      refresh();
       ImGui::CloseCurrentPopup();
     }
     ImGui::SetItemDefaultFocus();
