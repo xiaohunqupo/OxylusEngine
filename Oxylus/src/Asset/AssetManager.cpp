@@ -1081,6 +1081,7 @@ auto AssetManager::load_material(const UUID& uuid,
     load_infos.emplace_back(LoadInfo{material->occlusion_texture, asset->material_id, info});
   }
 
+  job_man->push_job_name(fmt::format("Material job: {}", asset->uuid.str()));
   job_man->for_each_async(
       load_infos,
       [](LoadInfo& info, usize index) {
@@ -1091,6 +1092,7 @@ auto AssetManager::load_material(const UUID& uuid,
         auto* asset_man = App::get_asset_manager();
         asset_man->set_material_dirty(material_id);
       });
+  job_man->pop_job_name();
 
   asset->acquire_ref();
   return true;

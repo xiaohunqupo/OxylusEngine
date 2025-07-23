@@ -4,6 +4,7 @@
 #include <deque>
 #include <functional>
 #include <shared_mutex>
+#include <stack>
 #include <thread>
 
 #include "Core/Arc.hpp"
@@ -29,13 +30,84 @@ struct Job : ManagedObj {
   std::vector<Arc<Barrier>> barriers = {};
   JobFn task = {};
 
-  static auto create_explicit(JobFn task) -> Arc<Job>;
+  std::string name = {}; // managed with push/pop
+  std::atomic<bool> is_done{false};
+
   template <typename Fn>
-  static auto create(Fn task) -> Arc<Job> {
-    return create_explicit(std::forward<Fn>(task));
+  static auto create(Fn&& task) -> Arc<Job> {
+    auto job = Arc<Job>::create();
+    job->task = [task_fn = std::forward<Fn>(task), done_flag = &job->is_done]() {
+      task_fn();
+      done_flag->store(true, std::memory_order_release);
+    };
+    return job;
   }
 
   auto signal(this Job& self, Arc<Barrier> barrier) -> Arc<Job>;
+};
+
+class JobTracker {
+public:
+  auto start_tracking() -> void { tracking_enabled.store(true); }
+  auto stop_tracking() -> void { tracking_enabled.store(false); }
+  auto clear_tracked() -> void {
+    std::unique_lock lock(mutex);
+    jobs.clear();
+  }
+
+  auto register_job(Arc<Job> job) -> void {
+    if (!tracking_enabled.load())
+      return;
+
+    std::unique_lock lock(mutex);
+    jobs[job.get()] = {job->name, false, {}};
+  }
+
+  auto mark_completed(const Job* job) -> void {
+    if (!tracking_enabled.load())
+      return;
+
+    std::unique_lock lock(mutex);
+    if (auto it = jobs.find(job); it != jobs.end()) {
+      it->second.is_completed = true;
+      it->second.completion_time = std::chrono::steady_clock::now();
+    }
+  }
+
+  auto get_status() const -> std::vector<std::pair<std::string, bool>> {
+    std::shared_lock lock(mutex);
+    std::vector<std::pair<std::string, bool>> result;
+
+    for (const auto& [_, record] : jobs) {
+      result.emplace_back(record.name, !record.is_completed);
+    }
+
+    return result;
+  }
+
+  auto cleanup_old(std::chrono::seconds max_age = std::chrono::seconds(2)) -> void {
+    if (!tracking_enabled.load())
+      return;
+
+    std::unique_lock lock(mutex);
+    const auto now = std::chrono::steady_clock::now();
+
+    std::erase_if(jobs, [&](const auto& item) {
+      const auto& record = item.second;
+      return record.is_completed && (now - record.completion_time) > max_age;
+    });
+  }
+
+private:
+  struct JobRecord {
+    std::string name;
+    bool is_completed;
+    std::chrono::steady_clock::time_point completion_time;
+  };
+
+  mutable std::shared_mutex mutex;
+  std::unordered_map<const Job*, JobRecord> jobs;
+  std::atomic<bool> tracking_enabled{false};
 };
 
 struct ThreadWorker {
@@ -57,6 +129,11 @@ public:
   auto worker(this JobManager& self, u32 id) -> void;
   auto submit(this JobManager& self, Arc<Job> job, bool prioritize = false) -> void;
   auto wait(this JobManager& self) -> void;
+
+  auto push_job_name(this JobManager& self, const std::string& name) { self.job_name_stack.push(name); }
+  auto pop_job_name(this JobManager& self) { self.job_name_stack.pop(); }
+
+  auto get_tracker(this JobManager& self) -> JobTracker& { return self.tracker; }
 
   template <std::input_iterator Iterator, typename Func>
   auto for_each(this JobManager& self, Iterator begin, Iterator end, Func&& func) -> void {
@@ -91,12 +168,12 @@ public:
   }
 
   template <typename T>
-  struct AsyncVectorHolder : ManagedObj {
+  struct AsyncDataHolder : ManagedObj {
     T data;
     std::atomic<u32> active_jobs{0};
 
-    explicit AsyncVectorHolder(const T& src) : data(src) {}
-    explicit AsyncVectorHolder(T&& src) : data(std::move(src)) {}
+    explicit AsyncDataHolder(const T& src) : data(src) {}
+    explicit AsyncDataHolder(T&& src) : data(std::move(src)) {}
   };
 
   struct AsyncCompletionToken : ManagedObj {
@@ -110,7 +187,7 @@ public:
   void for_each_async(this JobManager& self, T& vec, Func&& func, std::function<void()>&& completion_callback = {}) {
     auto token = AsyncCompletionToken::create();
     token->callback = completion_callback;
-    auto holder = Arc<AsyncVectorHolder<T>>::create(vec);
+    auto holder = Arc<AsyncDataHolder<T>>::create(vec);
 
     const size_t chunk_size = std::max<size_t>(1, vec.size() / (self.num_threads * 4));
 
@@ -128,8 +205,11 @@ public:
 
         if (holder->active_jobs.fetch_sub(1, std::memory_order_release) == 1) {
           holder->release_ref();
-          if (token->callback)
+          if (token->callback) {
+            self.push_job_name("Completion callback");
             self.submit(Job::create([t = std::move(token)]() { t->callback(); }));
+            self.pop_job_name();
+          }
         }
       }));
     }
@@ -138,6 +218,10 @@ public:
   }
 
 private:
+  JobTracker tracker = {};
+
+  std::stack<std::string> job_name_stack = {};
+
   u32 num_threads = 0;
   std::vector<std::jthread> workers = {};
   std::deque<Arc<Job>> jobs = {};

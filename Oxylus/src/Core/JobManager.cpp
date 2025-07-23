@@ -27,15 +27,6 @@ auto Barrier::add(this Barrier& self, Arc<Job> job) -> Arc<Barrier> {
   return &self;
 }
 
-auto Job::create_explicit(JobFn task) -> Arc<Job> {
-  ZoneScoped;
-
-  auto job = Arc<Job>::create();
-  job->task = std::move(task);
-
-  return job;
-}
-
 auto Job::signal(this Job& self, Arc<Barrier> barrier) -> Arc<Job> {
   ZoneScoped;
 
@@ -127,6 +118,16 @@ auto JobManager::worker(this JobManager& self, u32 id) -> void {
 
 auto JobManager::submit(this JobManager& self, Arc<Job> job, bool prioritize) -> void {
   ZoneScoped;
+
+  if (!self.job_name_stack.empty())
+    job->name = self.job_name_stack.top();
+
+  self.tracker.register_job(job);
+
+  job->task = [original_task = std::move(job->task), job_ptr = job.get(), &tracker = self.tracker]() {
+    original_task();
+    tracker.mark_completed(job_ptr);
+  };
 
   {
     std::unique_lock _(self.mutex);
