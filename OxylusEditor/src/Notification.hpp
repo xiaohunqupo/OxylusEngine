@@ -12,9 +12,9 @@ struct Notification {
   bool completed = false;
   std::chrono::steady_clock::time_point created_at;
 
-  explicit Notification(std::string_view title, bool completed)
-      : title(title),
-        completed(completed),
+  explicit Notification(std::string_view title_, bool completed_)
+      : title(title_),
+        completed(completed_),
         created_at(std::chrono::steady_clock::now()) {}
 };
 
