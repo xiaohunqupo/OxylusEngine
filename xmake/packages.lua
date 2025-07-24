@@ -28,7 +28,7 @@ add_requires("fastgltf v0.8.0", { system = false, debug = is_mode("debug") })
 add_requires("meshoptimizer v0.22")
 
 add_requires("fmt 11.1.4", { configs = {
-    header_only = true
+    header_only = false
 }, system = false })
 
 add_requires("loguru v2.1.0", { configs = {
