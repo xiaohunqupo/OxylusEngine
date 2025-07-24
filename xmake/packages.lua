@@ -84,3 +84,8 @@ add_requires("zstd v1.5.7", { system = false })
 add_requires("ktx v4.4.0", { system = false, debug = true })
 
 add_requires("simdutf v6.2.0")
+
+if has_config("tests") then
+    add_requires("gtest")
+end
+
