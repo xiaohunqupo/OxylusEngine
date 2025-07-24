@@ -6,6 +6,7 @@
 #include <sys/sysinfo.h>
 #include <unistd.h>
 
+#include "Memory/Stack.hpp"
 #include "OS/OS.hpp"
 
 namespace ox {
