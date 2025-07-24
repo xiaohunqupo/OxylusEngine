@@ -27,13 +27,19 @@ add_requires("fastgltf v0.8.0", { system = false, debug = is_mode("debug") })
 
 add_requires("meshoptimizer v0.22")
 
-add_requires("fmt 11.1.4", { configs = {
-    header_only = false
-}, system = false })
+local fmt_version = "11.2.0"
+local fmt_configs = { header_only = false, shared = false }
+add_requires("fmt " .. fmt_version, { configs = fmt_configs, system = false })
 
 add_requires("loguru v2.1.0", { configs = {
     fmt = true,
 }, system = false })
+add_requireconfs("loguru", "fmtlog.loguru", {
+    override = true,
+    version = fmt_version,
+    configs = fmt_configs,
+    system = false
+})
 
 add_requires("vk-bootstrap v1.4.307", { system = false, debug = is_mode("debug") })
 
@@ -86,6 +92,8 @@ add_requires("ktx v4.4.0", { system = false, debug = true })
 add_requires("simdutf v6.2.0")
 
 if has_config("tests") then
-    add_requires("gtest")
+    add_requires("gtest", { configs = {
+        main = true,
+    } })
 end
 
