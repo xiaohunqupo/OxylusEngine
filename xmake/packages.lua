@@ -74,8 +74,6 @@ add_requires("tracy v0.11.1", { configs = {
 
 add_requires("sol2 c1f95a773c6f8f4fde8ca3efe872e7286afe4444")
 
-add_requires("enkits v1.11")
-
 add_requires("unordered_dense v4.5.0")
 
 add_requires("plf_colony v7.41")
