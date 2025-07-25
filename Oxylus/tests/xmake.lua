@@ -8,7 +8,7 @@ for _, file in ipairs(os.files("./**/Test*.cpp")) do
         add_deps("Oxylus")
         add_forceincludes("Tracy.hpp")
 
-        add_files(name .. ".cpp")
+        add_files(file)
 
         add_tests("default", { runargs = { "--gmock_verbose=info", "--gtest_stack_trace_depth=10" } })
 
