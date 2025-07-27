@@ -53,4 +53,3 @@ rule("ox.install_resources")
         batchcmds:set_depcache(target:dependfile(abs_output))
     end)
 
-    

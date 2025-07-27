@@ -4,6 +4,7 @@
 #include "Core/Project.hpp"
 #include "EditorContext.hpp"
 #include "EditorTheme.hpp"
+#include "Notification.hpp"
 #include "Panels/ContentPanel.hpp"
 #include "Panels/SceneHierarchyPanel.hpp"
 #include "Panels/ViewportPanel.hpp"
@@ -48,6 +49,8 @@ public:
   EditorLayout current_layout = EditorLayout::Classic;
 
   std::unique_ptr<UndoRedoSystem> undo_redo_system = nullptr;
+
+  NotificationSystem notification_system = {};
 
   EditorLayer();
   ~EditorLayer() override = default;

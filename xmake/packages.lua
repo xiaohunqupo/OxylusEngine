@@ -2,14 +2,18 @@ add_requires("stb 2024.06.01")
 
 add_requires("miniaudio 0.11.22")
 
-add_requires("imgui 44aa9a4b3a6f27d09a4eb5770d095cbd376dfc4b", { configs = {
-    wchar32 = true,
-    debug = is_mode("debug")
-} })
+local imgui_version = "v1.92.0-docking"
+local imgui_configs = { wchar32 = true }
+add_requires("imgui " .. imgui_version, { configs = imgui_configs })
+
+add_requires("implot 3da8bd34299965d3b0ab124df743fe3e076fa222")
+add_requireconfs("imgui", "implot.imgui", {
+    override = true, version = imgui_version, configs = imgui_configs
+})
 
 add_requires("imguizmo 1.91.3+wip")
 add_requireconfs("imgui", "imguizmo.imgui", {
-    override = true, version = "v1.92.1-docking",
+    override = true, version = imgui_version, configs = imgui_configs
 })
 
 add_requires("glm 1.0.1", { configs = {
@@ -37,12 +41,10 @@ add_requires("vuk 2025.06.15", { configs = {
     debug_allocations = false,
 }, debug = is_mode("debug") })
 
-add_requires("shader-slang v2025.10.4", { system = false })
+add_requires("shader-slang v2025.12.1", { system = false })
 
-add_requires("libsdl3", { configs = {
-    wayland = false,
-    x11 = true,
-} })
+-- handled by system package (also nix)
+add_requires("libsdl3")
 
 add_requires("toml++ v3.4.0")
 
@@ -72,14 +74,13 @@ add_requires("tracy v0.11.1", { configs = {
 
 add_requires("sol2 c1f95a773c6f8f4fde8ca3efe872e7286afe4444")
 
-add_requires("enkits v1.11")
-
 add_requires("unordered_dense v4.5.0")
 
 add_requires("plf_colony v7.41")
 
 add_requires("dylib v2.2.1")
 
-add_requires("ktx-software v4.4.0")
+add_requires("zstd v1.5.7", { system = false })
+add_requires("ktx v4.4.0", { system = false, debug = true })
 
 add_requires("simdutf v6.2.0")

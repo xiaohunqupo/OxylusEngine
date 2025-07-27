@@ -7,6 +7,7 @@
 #include "Audio/AudioEngine.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
+#include "Core/JobManager.hpp"
 #include "Core/Layer.hpp"
 #include "Core/VFS.hpp"
 #include "Modules/ModuleRegistry.hpp"
@@ -15,8 +16,6 @@
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
 #include "Scripting/LuaManager.hpp"
-#include "Thread/TaskScheduler.hpp"
-#include "Thread/ThreadManager.hpp"
 #include "UI/ImGuiLayer.hpp"
 #include "Utils/Profiler.hpp"
 #include "Utils/Random.hpp"
@@ -25,10 +24,10 @@
 namespace ox {
 auto engine_system_to_sv(EngineSystems type) -> std::string_view {
   switch (type) {
+    case EngineSystems::JobManager    : return "JobManager";
     case EngineSystems::AssetManager  : return "AssetManager";
     case EngineSystems::VFS           : return "VFS";
     case EngineSystems::Random        : return "Random";
-    case EngineSystems::TaskScheduler : return "TaskScheduler";
     case EngineSystems::AudioEngine   : return "AudioEngine";
     case EngineSystems::LuaManager    : return "LuaManager";
     case EngineSystems::ModuleRegistry: return "ModuleRegistry";
@@ -51,17 +50,15 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   _instance = this;
 
-  thread_manager = std::make_shared<ThreadManager>();
-
   if (app_spec.working_directory.empty())
     app_spec.working_directory = std::filesystem::current_path().string();
   else
     std::filesystem::current_path(app_spec.working_directory);
 
+  register_system<JobManager>(EngineSystems::JobManager);
   register_system<AssetManager>(EngineSystems::AssetManager);
   register_system<VFS>(EngineSystems::VFS);
   register_system<Random>(EngineSystems::Random);
-  register_system<TaskScheduler>(EngineSystems::TaskScheduler);
   register_system<AudioEngine>(EngineSystems::AudioEngine);
   register_system<LuaManager>(EngineSystems::LuaManager);
   register_system<ModuleRegistry>(EngineSystems::ModuleRegistry);
@@ -97,6 +94,9 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   auto imgui = std::make_unique<ImGuiLayer>();
   imgui_layer = imgui.get();
   push_layer(std::move(imgui));
+
+  auto* job_man = get_system<JobManager>(EngineSystems::JobManager);
+  job_man->wait();
 }
 
 App::~App() { close(); }
@@ -260,7 +260,6 @@ void App::run() {
 
   DebugRenderer::release();
 
-  ThreadManager::get()->wait_all_threads();
   window.destroy();
 }
 
@@ -273,4 +272,6 @@ bool App::asset_directory_exists() const { return std::filesystem::exists(app_sp
 AssetManager* App::get_asset_manager() { return _instance->get_system<AssetManager>(EngineSystems::AssetManager); }
 
 VFS* App::get_vfs() { return _instance->get_system<VFS>(EngineSystems::VFS); }
+
+JobManager* App::get_job_manager() { return _instance->get_system<JobManager>(EngineSystems::JobManager); }
 } // namespace ox

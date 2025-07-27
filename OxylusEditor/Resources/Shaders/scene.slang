@@ -24,6 +24,7 @@ public enum DebugView : i32 {
   Metallic,
   Roughness,
   Occlusion,
+  HiZ,
 };
 
 [[Flags]]
@@ -31,6 +32,8 @@ public enum CullFlags : u32 {
     MeshletFrustum,
     TriangleBackFace,
     MicroTriangles,
+    OcclusionCulling,
+    TriangleCulling,
 };
 
 public enum MaterialFlag : u32 {
@@ -190,23 +193,23 @@ public struct Transform {
   public mat3 normal = {};
 
   public func to_world_position(in f32x3 position) -> f32x4 {
-      return mul(this.world, f32x4(position, 1.0));
+    return mul(this.world, f32x4(position, 1.0));
   }
 
   public func to_world_normal(in f32x3 normal) -> f32x3 {
-      return mul(this.normal, normal);
+    return mul(this.normal, normal);
   }
 
   public func to_world_positions(in f32x3x3 positions) -> f32x4x3 {
-      return {
-          mul(this.world, f32x4(positions[0], 1.0)),
-          mul(this.world, f32x4(positions[1], 1.0)),
-          mul(this.world, f32x4(positions[2], 1.0)),
-      };
+    return {
+      mul(this.world, f32x4(positions[0], 1.0)),
+      mul(this.world, f32x4(positions[1], 1.0)),
+      mul(this.world, f32x4(positions[2], 1.0)),
+    };
   }
 
   public func to_world_normals(in f32x3x3 normals) -> f32x3x3 {
-      return { mul(this.normal, normals[0]), mul(this.normal, normals[1]), mul(this.normal, normals[2]) };
+    return { mul(this.normal, normals[0]), mul(this.normal, normals[1]), mul(this.normal, normals[2]) };
   }
 };
 

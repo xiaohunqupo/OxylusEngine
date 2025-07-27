@@ -1,13 +1,13 @@
 #include "EditorLayer.hpp"
 
 #include <filesystem>
-#include <imgui_internal.h>
-// #include <imspinner.h>
 #include <flecs.h>
+#include <imgui_internal.h>
 
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
 #include "Core/Input.hpp"
+#include "Core/JobManager.hpp"
 #include "EditorUI.hpp"
 #include "Panels/AssetManagerPanel.hpp"
 #include "Panels/ContentPanel.hpp"
@@ -32,6 +32,9 @@ EditorLayer::EditorLayer() : Layer("Editor Layer") { instance = this; }
 
 void EditorLayer::on_attach() {
   ZoneScoped;
+
+  auto* job_man = App::get_job_manager();
+  job_man->get_tracker().start_tracking();
 
   undo_redo_system = std::make_unique<UndoRedoSystem>();
 
@@ -78,6 +81,9 @@ void EditorLayer::on_attach() {
 void EditorLayer::on_detach() {
   editor_config.save_config();
   active_project->unload_module();
+
+  auto* job_man = App::get_job_manager();
+  job_man->get_tracker().stop_tracking();
 }
 
 void EditorLayer::on_update(const Timestep& delta_time) {
@@ -115,6 +121,20 @@ void EditorLayer::on_update(const Timestep& delta_time) {
 void EditorLayer::on_render(const vuk::Extent3D extent, const vuk::Format format) {
   if (const auto scene = get_active_scene(); active_scene)
     scene->on_render(extent, format);
+
+  auto* job_man = App::get_job_manager();
+
+  auto status = job_man->get_tracker().get_status();
+  for (const auto& [name, is_working] : status) {
+    if (name == "Completion callback")
+      continue;
+
+    Notification notification(name, !is_working);
+    notification_system.add(std::move(notification));
+  }
+
+  job_man->get_tracker().cleanup_old();
+  notification_system.draw();
 
   if (EditorCVar::cvar_show_style_editor.get())
     ImGui::ShowStyleEditor();
