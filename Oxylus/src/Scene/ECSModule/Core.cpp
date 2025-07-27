@@ -73,7 +73,6 @@ Core::Core(flecs::world& world) {
   const auto state = lua_manager->get_state();
 
   auto core_table = state->create_named_table("Core");
-  auto& entity_type = lua_manager->get_binding<FlecsBinding>("Flecs")->entity_type;
 #endif
 
   // clang-format off

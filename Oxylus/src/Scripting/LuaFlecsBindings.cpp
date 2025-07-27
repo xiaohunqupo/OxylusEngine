@@ -142,7 +142,7 @@ auto FlecsBinding::bind(sol::state* state) -> void {
       });
 
   // --- entity ---
-  this->entity_type = state->new_usertype<flecs::entity>(
+  auto entity_type = state->new_usertype<flecs::entity>(
       "entity",
 
       "id",

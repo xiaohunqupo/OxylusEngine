@@ -23,19 +23,20 @@ auto LuaManager::init() -> std::expected<void, std::string> {
   _state->open_libraries(
       sol::lib::base, sol::lib::package, sol::lib::math, sol::lib::table, sol::lib::os, sol::lib::string);
 
+#define BIND(type) bind<type>(#type, _state.get());
+
 #ifdef OX_LUA_BINDINGS
   bind_log();
-  bind<FlecsBinding>("Flecs", _state.get());
-  LuaBindings::bind_application(_state.get());
-  LuaBindings::bind_math(_state.get());
-  LuaBindings::bind_scene(_state.get());
-  LuaBindings::bind_asset_manager(_state.get());
-  LuaBindings::bind_debug_renderer(_state.get());
-  LuaBindings::bind_renderer(_state.get());
-  LuaBindings::bind_input(_state.get());
-  LuaBindings::bind_audio(_state.get());
-  LuaBindings::bind_physics(_state.get());
-  LuaBindings::bind_ui(_state.get());
+  BIND(AppBinding);
+  BIND(AssetManagerBinding);
+  BIND(AudioBinding);
+  BIND(DebugBinding);
+  BIND(FlecsBinding);
+  BIND(MathBinding);
+  BIND(PhysicsBinding);
+  BIND(RendererBinding);
+  BIND(SceneBinding);
+  BIND(UIBinding);
 #endif
 
   return {};

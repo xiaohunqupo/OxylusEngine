@@ -1,9 +1,10 @@
 ﻿#pragma once
 
-namespace sol {
-class state;
-}
+#include "Scripting/LuaBinding.hpp"
 
-namespace ox::LuaBindings {
-void bind_debug_renderer(sol::state* state);
-}
+namespace ox {
+class DebugBinding : public LuaBinding {
+public:
+  auto bind(sol::state* state) -> void override;
+};
+} // namespace ox
