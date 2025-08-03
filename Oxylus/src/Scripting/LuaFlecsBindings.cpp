@@ -42,40 +42,48 @@ auto FlecsBinding::bind(sol::state* state) -> void {
         sol::table result = state->create_table();
         result["component_id"] = component;
 
-        result.set_function(sol::meta_function::index, [it, state](const sol::table& self, i32 i) {
+        result.set_function("at", [it, state](const sol::table& self, int i) -> sol::table {
           ecs_entity_t component = self["component_id"];
 
           sol::table result = state->create_table();
 
+          OX_CHECK_LT(i, it->count);
           auto entity = it->entities[i];
 
-          auto f_id = flecs::id(component);
+          auto f_id = flecs::id(flecs::entity{it->real_world, component});
           auto e = flecs::entity{it->real_world, entity};
           ECS::ComponentWrapper component_wrapped(e, f_id);
+
+#define MEMBER_PTR(type, value) \
+  result[member_name] = *value;  \
+  result.set_function(           \
+      fmt::format("set_{}", member_name), [value](const sol::table& self, type new_value) { *value = new_value; });
 
           component_wrapped.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
             std::visit(ox::match{
                            [](const auto&) {},
-                           [&](bool* v) { result[member_name] = *v; },
-                           [&](u8* v) { result[member_name] = *v; },
-                           [&](u16* v) { result[member_name] = *v; },
-                           [&](u32* v) { result[member_name] = *v; },
-                           [&](u64* v) { result[member_name] = *v; },
-                           [&](i8* v) { result[member_name] = *v; },
-                           [&](i16* v) { result[member_name] = *v; },
-                           [&](i32* v) { result[member_name] = *v; },
-                           [&](i64* v) { result[member_name] = *v; },
-                           [&](f32* v) { result[member_name] = *v; },
-                           [&](f64* v) { result[member_name] = *v; },
-                           [&](std::string* v) { result[member_name] = *v; },
-                           [&](glm::vec2* v) { result[member_name] = *v; },
-                           [&](glm::vec3* v) { result[member_name] = *v; },
-                           [&](glm::vec4* v) { result[member_name] = *v; },
-                           [&](glm::mat4* v) { result[member_name] = *v; },
-                           [&](UUID* v) { result[member_name] = *v; },
+                           [&](bool* v) { MEMBER_PTR(bool, v); },
+                           [&](u8* v) { MEMBER_PTR(u8, v); },
+                           [&](u16* v) { MEMBER_PTR(u16, v); },
+                           [&](u32* v) { MEMBER_PTR(u32, v); },
+                           [&](u64* v) { MEMBER_PTR(u64, v); },
+                           [&](i8* v) { MEMBER_PTR(i8, v); },
+                           [&](i16* v) { MEMBER_PTR(i16, v); },
+                           [&](i32* v) { MEMBER_PTR(i32, v); },
+                           [&](i64* v) { MEMBER_PTR(i64, v); },
+                           [&](f32* v) { MEMBER_PTR(f32, v); },
+                           [&](f64* v) { MEMBER_PTR(f64, v); },
+                           [&](std::string* v) { MEMBER_PTR(std::string, v); },
+                           [&](glm::vec2* v) { MEMBER_PTR(glm::vec2, v); },
+                           [&](glm::vec3* v) { MEMBER_PTR(glm::vec3, v); },
+                           [&](glm::vec4* v) { MEMBER_PTR(glm::vec4, v); },
+                           [&](glm::mat4* v) { MEMBER_PTR(glm::mat4, v); },
+                           [&](UUID* v) { MEMBER_PTR(UUID, v); },
                        },
                        member);
           });
+
+          return result;
         });
 
         return result;
@@ -95,12 +103,14 @@ auto FlecsBinding::bind(sol::state* state) -> void {
               sol::table dependencies,
               sol::function callback) -> sol::table {
         std::vector<ecs_entity_t> component_ids = {};
+        component_ids.reserve(components.size());
         components.for_each([&](sol::object key, sol::object value) {
           sol::table component_table = value.as<sol::table>();
           component_ids.emplace_back(component_table["component_id"].get<ecs_entity_t>());
         });
 
         std::vector<ecs_id_t> dependency_ids = {};
+        dependency_ids.reserve(dependencies.size());
         dependencies.for_each([&](sol::object key, sol::object value) {
           ecs_entity_t dep = value.as<ecs_entity_t>();
           dependency_ids.emplace_back(ecs_dependson(dep));
