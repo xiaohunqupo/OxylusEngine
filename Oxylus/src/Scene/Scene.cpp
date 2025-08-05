@@ -229,7 +229,7 @@ auto Scene::init(this Scene& self, const std::string& name, const std::shared_pt
   // Renderer
   self._render_pipeline = render_pipeline;
 
-  if (!self._render_pipeline) {
+  if (self._render_pipeline != Scene::no_renderer() && !self._render_pipeline) {
     self._render_pipeline = std::make_shared<EasyRenderPipeline>();
     self._render_pipeline->init(App::get_vkcontext());
   }

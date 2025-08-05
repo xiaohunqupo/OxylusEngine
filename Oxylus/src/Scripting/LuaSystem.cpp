@@ -25,15 +25,12 @@ auto LuaSystem::check_result(const sol::protected_function_result& result, const
   }
 }
 
-auto LuaSystem::init_script(this LuaSystem& self, const std::string& path) -> void {
+auto LuaSystem::init_script(this LuaSystem& self, const std::string& path, const ox::option<std::string> script)
+    -> void {
   ZoneScoped;
 
   self.file_path = path;
-
-  if (!std::filesystem::exists(path)) {
-    OX_LOG_ERROR("Couldn't find the script file! {}", self.file_path);
-    return;
-  }
+  self.script = script;
 
   const auto state = App::get_system<LuaManager>(EngineSystems::LuaManager)->get_state();
 
@@ -41,7 +38,9 @@ auto LuaSystem::init_script(this LuaSystem& self, const std::string& path) -> vo
     self.environment.reset();
   self.environment = std::make_unique<sol::environment>(*state, sol::create, state->globals());
 
-  const auto load_file_result = state->script_file(self.file_path, *self.environment, sol::script_pass_on_error);
+  const auto load_file_result = script.has_value()
+                                    ? state->script(self.script.value(), *self.environment, sol::script_pass_on_error)
+                                    : state->script_file(self.file_path, *self.environment, sol::script_pass_on_error);
 
   if (!load_file_result.valid()) {
     const sol::error err = load_file_result;
@@ -95,10 +94,10 @@ auto LuaSystem::init_script(this LuaSystem& self, const std::string& path) -> vo
   state->collect_gc();
 }
 
-auto LuaSystem::load(this LuaSystem& self, const std::string& path) -> void {
+auto LuaSystem::load(this LuaSystem& self, const std::string& path, const ox::option<std::string> script) -> void {
   ZoneScoped;
 
-  self.init_script(path);
+  self.init_script(path, script);
 }
 
 auto LuaSystem::reload(this LuaSystem& self) -> void {

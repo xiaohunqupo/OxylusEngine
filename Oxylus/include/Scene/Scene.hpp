@@ -48,6 +48,22 @@ struct ComponentDB {
 enum class SceneID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class Scene {
 public:
+  class NoRenderer : public RenderPipeline {
+    auto init(VkContext& vk_context) -> void override {}
+    auto deinit() -> void override {}
+
+    auto on_render(VkContext& vk_context, const RenderInfo& render_info) -> vuk::Value<vuk::ImageAttachment> override {
+      return {};
+    }
+
+    auto on_update(Scene* scene) -> void override {}
+  };
+
+  static std::shared_ptr<NoRenderer> no_renderer() {
+    static auto instance = std::make_shared<NoRenderer>();
+    return instance;
+  }
+
   std::string scene_name = "Untitled";
 
   flecs::world world;

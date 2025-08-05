@@ -91,6 +91,7 @@ public:
   static App* get() { return _instance; }
   static void set_instance(App* instance);
 
+  void run();
   void close();
 
   App& push_layer(std::unique_ptr<Layer>&& layer);
@@ -158,8 +159,6 @@ private:
 
   bool is_running = true;
   float last_frame_time = 0.0f;
-
-  void run();
 
   friend int ::main(int argc, char** argv);
 };

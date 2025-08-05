@@ -98,7 +98,7 @@ add_requires("ktx v4.4.0", { system = false, debug = true })
 add_requires("simdutf v6.2.0")
 
 if has_config("tests") then
-    add_requires("gtest", { configs = {
+    add_requires("gtest", { debug = is_mode("debug"), configs = {
         main = true,
         gmock = true,
     } })
