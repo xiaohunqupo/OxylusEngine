@@ -8,6 +8,48 @@
 #include "Scene/Scene.hpp"
 
 namespace ox {
+static auto get_component_table(sol::state* state, flecs::entity* entity, const ecs_entity_t component, bool is_mutable)
+    -> sol::table {
+  ZoneScoped;
+
+  sol::table result = state->create_table();
+
+  auto f_id = flecs::id(entity->world(), component);
+  ECS::ComponentWrapper component_wrapped(*entity, f_id);
+
+#define MEMBER_PTR(type, value)                             \
+  result[member_name] = *value;                             \
+  if (is_mutable)                                           \
+    result.set_function(fmt::format("set_{}", member_name), \
+                        [value](const sol::table& self, type new_value) { *value = new_value; });
+
+  component_wrapped.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
+    std::visit(ox::match{
+                   [](const auto&) {},
+                   [&](bool* v) { MEMBER_PTR(bool, v); },
+                   [&](u8* v) { MEMBER_PTR(u8, v); },
+                   [&](u16* v) { MEMBER_PTR(u16, v); },
+                   [&](u32* v) { MEMBER_PTR(u32, v); },
+                   [&](u64* v) { MEMBER_PTR(u64, v); },
+                   [&](i8* v) { MEMBER_PTR(i8, v); },
+                   [&](i16* v) { MEMBER_PTR(i16, v); },
+                   [&](i32* v) { MEMBER_PTR(i32, v); },
+                   [&](i64* v) { MEMBER_PTR(i64, v); },
+                   [&](f32* v) { MEMBER_PTR(f32, v); },
+                   [&](f64* v) { MEMBER_PTR(f64, v); },
+                   [&](std::string* v) { MEMBER_PTR(std::string, v); },
+                   [&](glm::vec2* v) { MEMBER_PTR(glm::vec2, v); },
+                   [&](glm::vec3* v) { MEMBER_PTR(glm::vec3, v); },
+                   [&](glm::vec4* v) { MEMBER_PTR(glm::vec4, v); },
+                   [&](glm::mat4* v) { MEMBER_PTR(glm::mat4, v); },
+                   [&](UUID* v) { MEMBER_PTR(UUID, v); },
+               },
+               member);
+  });
+
+  return result;
+}
+
 auto FlecsBinding::bind(sol::state* state) -> void {
   ZoneScoped;
 
@@ -45,45 +87,11 @@ auto FlecsBinding::bind(sol::state* state) -> void {
         result.set_function("at", [it, state](const sol::table& self, int i) -> sol::table {
           ecs_entity_t component = self["component_id"];
 
-          sol::table result = state->create_table();
-
           OX_CHECK_LT(i, it->count);
           auto entity = it->entities[i];
 
-          auto f_id = flecs::id(flecs::entity{it->real_world, component});
           auto e = flecs::entity{it->real_world, entity};
-          ECS::ComponentWrapper component_wrapped(e, f_id);
-
-#define MEMBER_PTR(type, value) \
-  result[member_name] = *value;  \
-  result.set_function(           \
-      fmt::format("set_{}", member_name), [value](const sol::table& self, type new_value) { *value = new_value; });
-
-          component_wrapped.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
-            std::visit(ox::match{
-                           [](const auto&) {},
-                           [&](bool* v) { MEMBER_PTR(bool, v); },
-                           [&](u8* v) { MEMBER_PTR(u8, v); },
-                           [&](u16* v) { MEMBER_PTR(u16, v); },
-                           [&](u32* v) { MEMBER_PTR(u32, v); },
-                           [&](u64* v) { MEMBER_PTR(u64, v); },
-                           [&](i8* v) { MEMBER_PTR(i8, v); },
-                           [&](i16* v) { MEMBER_PTR(i16, v); },
-                           [&](i32* v) { MEMBER_PTR(i32, v); },
-                           [&](i64* v) { MEMBER_PTR(i64, v); },
-                           [&](f32* v) { MEMBER_PTR(f32, v); },
-                           [&](f64* v) { MEMBER_PTR(f64, v); },
-                           [&](std::string* v) { MEMBER_PTR(std::string, v); },
-                           [&](glm::vec2* v) { MEMBER_PTR(glm::vec2, v); },
-                           [&](glm::vec3* v) { MEMBER_PTR(glm::vec3, v); },
-                           [&](glm::vec4* v) { MEMBER_PTR(glm::vec4, v); },
-                           [&](glm::mat4* v) { MEMBER_PTR(glm::mat4, v); },
-                           [&](UUID* v) { MEMBER_PTR(UUID, v); },
-                       },
-                       member);
-          });
-
-          return result;
+          return get_component_table(state, &e, component, true);
         });
 
         return result;
@@ -217,45 +225,28 @@ auto FlecsBinding::bind(sol::state* state) -> void {
         if (!e->has(comp))
           return sol::nullopt;
 
-        void* ptr = e->try_get_mut(comp);
-        if (!ptr)
+        return get_component_table(state, e, comp, false);
+      },
+
+      "get_mut",
+      [state](flecs::entity* e, sol::table component_table) -> sol::optional<sol::table> {
+        auto comp = component_table.get<ecs_entity_t>("component_id");
+        if (!e->has(comp))
           return sol::nullopt;
 
-        sol::table result = state->create_table();
-
-        auto f_id = flecs::id(e->world(), comp);
-        ECS::ComponentWrapper component_wrapped(*e, f_id);
-
-        component_wrapped.for_each([&](usize&, std::string_view member_name, ECS::ComponentWrapper::Member& member) {
-          std::visit(ox::match{
-                         [](const auto&) {},
-                         [&](bool* v) { result[member_name] = *v; },
-                         [&](u8* v) { result[member_name] = *v; },
-                         [&](u16* v) { result[member_name] = *v; },
-                         [&](u32* v) { result[member_name] = *v; },
-                         [&](u64* v) { result[member_name] = *v; },
-                         [&](i8* v) { result[member_name] = *v; },
-                         [&](i16* v) { result[member_name] = *v; },
-                         [&](i32* v) { result[member_name] = *v; },
-                         [&](i64* v) { result[member_name] = *v; },
-                         [&](f32* v) { result[member_name] = *v; },
-                         [&](f64* v) { result[member_name] = *v; },
-                         [&](std::string* v) { result[member_name] = *v; },
-                         [&](glm::vec2* v) { result[member_name] = *v; },
-                         [&](glm::vec3* v) { result[member_name] = *v; },
-                         [&](glm::vec4* v) { result[member_name] = *v; },
-                         [&](glm::mat4* v) { result[member_name] = *v; },
-                         [&](UUID* v) { result[member_name] = *v; },
-                     },
-                     member);
-        });
-
-        return result;
+        return get_component_table(state, e, comp, true);
       },
 
       // TODO:
       "set",
-      [](flecs::entity* e, sol::table component_data) { return e; });
+      [](flecs::entity* e, sol::table component_data) { return e; },
+
+      "modified",
+      [](flecs::entity* e, sol::table component_table) -> void {
+        auto comp = component_table.get<ecs_entity_t>("component_id");
+
+        e->modified(comp);
+      });
 
   // --- Components ---
   auto components_table = state->create_named_table("Component");
