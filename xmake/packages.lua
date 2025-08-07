@@ -45,7 +45,7 @@ add_requires("vk-bootstrap v1.4.307", { system = false, debug = is_mode("debug")
 
 add_requires("vuk 2025.07.09", { configs = {
     debug_allocations = false,
-}, debug = is_mode("debug") })
+}, debug = is_mode("debug"), private = false})
 add_requireconfs("fmt", "vuk.fmt", {
     override = true,
     version = fmt_version,

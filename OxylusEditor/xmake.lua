@@ -13,5 +13,8 @@ target("OxylusEditor")
         root_dir = os.scriptdir() .. "/Resources",
         output_dir = "Resources",
     })
+    add_rules("ox.add_default_render_pipeline", {
+        output_dir = "Resources",
+    })
 
 target_end()
