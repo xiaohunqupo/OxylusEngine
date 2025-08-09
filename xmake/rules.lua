@@ -30,9 +30,7 @@ rule("mode.dist")
     end)
 
 rule("ox.install_resources")
-    set_extensions(
-        ".png", ".ttf", ".slang", ".lua", ".txt", ".glb",
-        ".hlsl", ".hlsli", ".frag", ".vert", ".comp", ".h")
+    set_extensions(".png", ".ttf", ".lua", ".txt", ".glb")
     before_buildcmd_file(function (target, batchcmds, sourcefile, opt)
         local output_dir = target:extraconf("rules", "ox.install_resources", "output_dir") or ""
         local root_dir = target:extraconf("rules", "ox.install_resources", "root_dir") or os.scriptdir()
@@ -53,11 +51,11 @@ rule("ox.install_resources")
         batchcmds:set_depcache(target:dependfile(abs_output))
     end)
 
-rule("ox.add_default_render_pipeline")
+rule("ox.install_shaders")
     set_extensions(".slang", ".hlsl", ".hlsli", ".frag", ".vert", ".comp", ".h")
     before_buildcmd_file(function (target, batchcmds, sourcefile, opt)
-        local output_dir = target:extraconf("rules", "ox.add_default_render_pipeline", "output_dir") or ""
-        local root_dir = path.join(target:scriptdir(), "src/Render/Shaders")
+        local output_dir = target:extraconf("rules", "ox.install_shaders", "output_dir") or ""
+        local root_dir = target:extraconf("rules", "ox.install_shaders", "root_dir") or os.scriptdir()
 
         local abs_source = path.absolute(sourcefile)
         local rel_output = path.join(target:targetdir(), output_dir)
@@ -67,7 +65,7 @@ rule("ox.add_default_render_pipeline")
         end
 
         local abs_output = path.absolute(rel_output) .. "/" .. path.filename(sourcefile)
-        batchcmds:show_progress(opt.progress, "${color.build.object}copying shader file %s", sourcefile)
+        batchcmds:show_progress(opt.progress, "${color.build.object}copying resource file %s", sourcefile)
         batchcmds:cp(abs_source, abs_output)
 
         batchcmds:add_depfiles(sourcefile)
