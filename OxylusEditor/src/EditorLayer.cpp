@@ -330,8 +330,7 @@ void EditorLayer::editor_shortcuts() {
 }
 
 void EditorLayer::new_scene() {
-  const std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(editor_scene->scene_name,
-                                                                   editor_scene->get_render_pipeline());
+  const std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(editor_scene->scene_name);
   editor_scene = new_scene;
   set_editor_context(new_scene);
   last_save_scene_path.clear();
@@ -373,7 +372,7 @@ bool EditorLayer::open_scene(const std::filesystem::path& path) {
       OX_LOG_WARN("Could not load {0} - not a scene file", path.filename().string());
     return false;
   }
-  const auto new_scene = std::make_shared<Scene>(editor_scene->scene_name, editor_scene->get_render_pipeline());
+  const auto new_scene = std::make_shared<Scene>(editor_scene->scene_name);
   if (new_scene->load_from_file(path.string())) {
     editor_scene = new_scene;
     set_editor_context(new_scene);

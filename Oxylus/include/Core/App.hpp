@@ -78,6 +78,7 @@ enum class EngineSystems {
   RendererConfig,
   Physics,
   Input,
+  Renderer,
 
   Count,
 };

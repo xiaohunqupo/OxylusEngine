@@ -30,7 +30,8 @@ rule("mode.dist")
     end)
 
 rule("ox.install_resources")
-    set_extensions(".png", ".ttf", ".lua", ".txt", ".glb")
+    set_extensions(".png", ".ktx", ".ktx2", ".dds", ".jpg", ".mp3", ".wav", ".ogg",
+    ".otf", ".ttf", ".lua", ".txt", ".glb", ".gltf")
     before_buildcmd_file(function (target, batchcmds, sourcefile, opt)
         local output_dir = target:extraconf("rules", "ox.install_resources", "output_dir") or ""
         local root_dir = target:extraconf("rules", "ox.install_resources", "root_dir") or os.scriptdir()
@@ -65,7 +66,7 @@ rule("ox.install_shaders")
         end
 
         local abs_output = path.absolute(rel_output) .. "/" .. path.filename(sourcefile)
-        batchcmds:show_progress(opt.progress, "${color.build.object}copying resource file %s", sourcefile)
+        batchcmds:show_progress(opt.progress, "${color.build.object}copying shader file %s", sourcefile)
         batchcmds:cp(abs_source, abs_output)
 
         batchcmds:add_depfiles(sourcefile)

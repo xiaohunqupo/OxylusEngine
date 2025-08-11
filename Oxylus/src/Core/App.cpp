@@ -12,6 +12,7 @@
 #include "Core/VFS.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "Physics/Physics.hpp"
+#include "Render/Renderer.hpp"
 #include "Render/RendererConfig.hpp"
 #include "Render/Vulkan/VkContext.hpp"
 #include "Render/Window.hpp"
@@ -55,6 +56,16 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   else
     std::filesystem::current_path(app_spec.working_directory);
 
+  if (!app_spec.headless) {
+    window = Window::create(app_spec.window_info);
+    vk_context = std::make_unique<VkContext>();
+
+    const bool enable_validation = app_spec.command_line_args.contains("--vulkan-validation");
+    vk_context->create_context(window, enable_validation);
+
+    DebugRenderer::init();
+  }
+
   register_system<JobManager>(EngineSystems::JobManager);
   register_system<AssetManager>(EngineSystems::AssetManager);
   register_system<VFS>(EngineSystems::VFS);
@@ -66,8 +77,11 @@ App::App(const AppSpec& spec) : app_spec(spec) {
   register_system<Physics>(EngineSystems::Physics);
   register_system<Input>(EngineSystems::Input);
 
+  auto* vfs = get_system<VFS>(EngineSystems::VFS);
+  vfs->mount_dir(VFS::APP_DIR, fs::absolute(app_spec.assets_path));
+
   if (!app_spec.headless) {
-    window = Window::create(app_spec.window_info);
+    register_system<Renderer>(EngineSystems::Renderer, vk_context.get());
   }
 
   for (const auto& [type, system] : system_registry) {
@@ -82,18 +96,6 @@ App::App(const AppSpec& spec) : app_spec(spec) {
 
   // Shortcut for commonly used Systems
   Input::set_instance();
-
-  if (!app_spec.headless) {
-    vk_context = std::make_unique<VkContext>();
-
-    const bool enable_validation = app_spec.command_line_args.contains("--vulkan-validation");
-    vk_context->create_context(window, enable_validation);
-
-    DebugRenderer::init();
-  }
-
-  auto* vfs = get_system<VFS>(EngineSystems::VFS);
-  vfs->mount_dir(VFS::APP_DIR, fs::absolute(app_spec.assets_path));
 
   if (!app_spec.headless) {
     auto imgui = std::make_unique<ImGuiLayer>();

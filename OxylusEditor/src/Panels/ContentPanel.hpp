@@ -11,7 +11,7 @@
 
 #include "Core/Base.hpp"
 #include "EditorPanel.hpp"
-#include "ThumbnailRenderPipeline.hpp"
+#include "ThumbnailRenderer.hpp"
 
 namespace ox {
 class Texture;
@@ -76,7 +76,7 @@ private:
   bool mesh_thumbnails_enabled = false;
   ankerl::unordered_dense::map<std::string, std::shared_ptr<Texture>> thumbnail_cache_textures;
   ankerl::unordered_dense::map<std::string, vuk::ImageAttachment> thumbnail_cache_meshes;
-  ankerl::unordered_dense::map<std::string, std::unique_ptr<ThumbnailRenderPipeline>> thumbnail_render_pipeline_cache;
+  ankerl::unordered_dense::map<std::string, std::unique_ptr<ThumbnailRenderer>> thumbnail_render_pipeline_cache;
 
   std::shared_ptr<Texture> _white_texture;
   std::filesystem::path _directory_to_delete;

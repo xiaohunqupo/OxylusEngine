@@ -9,7 +9,7 @@
 
 #include "Core/UUID.hpp"
 #include "Memory/SlotMap.hpp"
-#include "Render/RenderPipeline.hpp"
+#include "Render/RendererInstance.hpp"
 #include "Scene/ECSModule/Core.hpp"
 #include "Scene/SceneGPU.hpp"
 #include "Utils/Timestep.hpp"
@@ -48,22 +48,6 @@ struct ComponentDB {
 enum class SceneID : u64 { Invalid = std::numeric_limits<u64>::max() };
 class Scene {
 public:
-  class NoRenderer : public RenderPipeline {
-    auto init(VkContext& vk_context) -> void override {}
-    auto deinit() -> void override {}
-
-    auto on_render(VkContext& vk_context, const RenderInfo& render_info) -> vuk::Value<vuk::ImageAttachment> override {
-      return {};
-    }
-
-    auto on_update(Scene* scene) -> void override {}
-  };
-
-  static std::shared_ptr<NoRenderer> no_renderer() {
-    static auto instance = std::make_shared<NoRenderer>();
-    return instance;
-  }
-
   std::string scene_name = "Untitled";
 
   flecs::world world;
@@ -79,13 +63,10 @@ public:
   ankerl::unordered_dense::map<std::pair<UUID, usize>, std::vector<GPU::TransformID>> rendering_meshes_map = {};
 
   explicit Scene(const std::string& name = "Untitled");
-  explicit Scene(const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline);
 
   ~Scene();
 
-  auto init(this Scene& self, //
-            const std::string& name,
-            const std::shared_ptr<RenderPipeline>& render_pipeline = nullptr) -> void;
+  auto init(this Scene& self, const std::string& name) -> void;
 
   auto runtime_start(this Scene& self) -> void;
   auto runtime_stop(this Scene& self) -> void;
@@ -135,7 +116,7 @@ public:
   auto create_character_controller(const TransformComponent& transform, CharacterControllerComponent& component) const
       -> void;
 
-  auto get_render_pipeline() -> std::shared_ptr<RenderPipeline> { return _render_pipeline; }
+  auto get_renderer_instance() -> RendererInstance* { return renderer_instance.get(); }
 
   static auto entity_to_json(JsonWriter& writer, flecs::entity e) -> void;
   static auto json_to_entity(Scene& self, //
@@ -156,7 +137,7 @@ private:
   auto run_deferred_functions(this Scene& self) -> void;
 
   // Renderer
-  std::shared_ptr<RenderPipeline> _render_pipeline = nullptr;
+  std::unique_ptr<RendererInstance> renderer_instance = nullptr;
 
   // Physics
   Physics3DContactListener* contact_listener_3d;

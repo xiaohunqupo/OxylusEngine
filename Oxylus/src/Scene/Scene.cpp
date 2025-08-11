@@ -24,8 +24,6 @@
 #include "Physics/PhysicsInterfaces.hpp"
 #include "Physics/PhysicsMaterial.hpp"
 #include "Render/Camera.hpp"
-#include "Render/EasyRenderPipeline.hpp"
-#include "Render/RenderPipeline.hpp"
 #include "Render/RendererConfig.hpp"
 #include "Scene/ECSModule/ComponentWrapper.hpp"
 #include "Scene/ECSModule/Core.hpp"
@@ -203,10 +201,6 @@ auto ComponentDB::is_component_known(this ComponentDB& self, flecs::id component
 
 auto ComponentDB::get_components(this ComponentDB& self) -> std::span<flecs::id> { return self.components; }
 
-Scene::Scene(const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline) {
-  this->init(name, render_pipeline);
-}
-
 Scene::Scene(const std::string& name) { init(name); }
 
 Scene::~Scene() {
@@ -215,24 +209,16 @@ Scene::~Scene() {
 
   if (running)
     runtime_stop();
-
-  _render_pipeline->deinit();
 }
 
-auto Scene::init(this Scene& self, const std::string& name, const std::shared_ptr<RenderPipeline>& render_pipeline)
-    -> void {
+auto Scene::init(this Scene& self, const std::string& name) -> void {
   ZoneScoped;
   self.scene_name = name;
 
   self.component_db.import_module(self.world.import <Core>());
 
-  // Renderer
-  self._render_pipeline = render_pipeline;
-
-  if (self._render_pipeline != Scene::no_renderer() && !self._render_pipeline) {
-    self._render_pipeline = std::make_shared<EasyRenderPipeline>();
-    self._render_pipeline->init(App::get_vkcontext());
-  }
+  auto* renderer = App::get_system<Renderer>(EngineSystems::Renderer);
+  self.renderer_instance = renderer->new_instance(&self);
 
   self.physics_events = self.world.entity("ox_physics_events");
 
@@ -656,7 +642,7 @@ auto Scene::runtime_update(this Scene& self, const Timestep& delta_time) -> void
   // TODO: Pass our delta_time?
   self.world.progress();
 
-  self._render_pipeline->on_update(&self);
+  self.renderer_instance->update();
   self.dirty_transforms.clear();
 
   if (RendererCVar::cvar_enable_physics_debug_renderer.get()) {
@@ -790,9 +776,9 @@ auto Scene::create_mesh_entity(this Scene& self, const UUID& asset_uuid) -> flec
 auto Scene::copy(const std::shared_ptr<Scene>& src_scene) -> std::shared_ptr<Scene> {
   ZoneScoped;
 
-  // Copies the world but not the renderer.
+  // Copies the world but not the renderer instance.
 
-  std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->scene_name, src_scene->_render_pipeline);
+  std::shared_ptr<Scene> new_scene = std::make_shared<Scene>(src_scene->scene_name);
 
   JsonWriter writer{};
   writer.begin_obj();
