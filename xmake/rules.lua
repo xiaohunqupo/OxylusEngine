@@ -44,7 +44,7 @@ rule("ox.install_resources")
         end
 
         local abs_output = path.absolute(rel_output) .. "/" .. path.filename(sourcefile)
-        batchcmds:show_progress(opt.progress, "${color.build.object}copying resource file %s %s", abs_source, abs_output)
+        batchcmds:show_progress(opt.progress, "${color.build.object}copying resource file %s", sourcefile)
         batchcmds:cp(abs_source, abs_output)
 
         batchcmds:add_depfiles(sourcefile)
@@ -74,7 +74,7 @@ rule("ox.install_shaders")
         end
 
         local abs_output = path.join(rel_output, path.filename(sourcefile))
-        batchcmds:show_progress(opt.progress, "${color.build.object}copying shader file %s", abs_source)
+        batchcmds:show_progress(opt.progress, "${color.build.object}copying shader file %s", sourcefile)
         batchcmds:mkdir(path.directory(abs_output))
         batchcmds:cp(abs_source, abs_output)
 

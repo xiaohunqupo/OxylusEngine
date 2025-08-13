@@ -106,6 +106,57 @@ private:
   std::string id_;
 };
 
+// Difference between this and PropertyChangeCommand is, this calls modified on given entity with the given component
+template <typename T>
+class ComponentChangeCommand : public Command {
+public:
+  ComponentChangeCommand(flecs::entity e, T* target, T old_val, T new_val, std::string id)
+      : entity_(e),
+        target_(target),
+        old_value_(old_val),
+        new_value_(new_val),
+        id_(id) {}
+
+  auto execute() -> void override {
+    *target_ = new_value_;
+    if (entity_.is_valid()) {
+      entity_.modified<T>();
+    }
+  }
+  auto undo() -> void override {
+    *target_ = old_value_;
+    if (entity_.is_valid()) {
+      entity_.modified<T>();
+    }
+  }
+
+  auto get_id() const -> std::string_view override { return id_; }
+
+  auto can_merge(const Command& other) const -> bool override {
+    if (auto* other_cmd = dynamic_cast<const ComponentChangeCommand<T>*>(&other)) {
+      return target_ == other_cmd->target_ && get_id() == other_cmd->get_id();
+    }
+    return false;
+  }
+
+  auto merge(std::unique_ptr<Command> other) -> std::unique_ptr<Command> override {
+    if (auto other_cmd = dynamic_cast<ComponentChangeCommand<T>*>(other.get())) {
+      auto merged = std::make_unique<ComponentChangeCommand<T>>(
+          entity_, target_, old_value_, other_cmd->new_value_, id_);
+      other.release();
+      return merged;
+    }
+    return nullptr;
+  }
+
+private:
+  flecs::entity entity_;
+  T* target_;
+  T old_value_;
+  T new_value_;
+  std::string id_;
+};
+
 class EntityDeleteCommand : public Command {
 public:
   EntityDeleteCommand(Scene* scene, flecs::entity entity, std::string entity_name, std::string id)

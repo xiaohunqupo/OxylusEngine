@@ -541,8 +541,8 @@ void ViewportPanel::draw_settings_panel() {
     ImGui::TreePop();
   }
 
-    if (open_action != -1)
-      ImGui::SetNextItemOpen(open_action != 0);
+  if (open_action != -1)
+    ImGui::SetNextItemOpen(open_action != 0);
   if (ImGui::TreeNodeEx("Viewport", TREE_FLAGS, "%s", "Viewport")) {
     if (UI::begin_properties(UI::default_properties_flags, true, 0.3f)) {
       UI::property("Draw grid", (bool*)RendererCVar::cvar_draw_grid.get_ptr());
@@ -648,8 +648,8 @@ void ViewportPanel::draw_gizmos() {
         tc->scale = scale;
 
         auto old_tc = *tc;
-        undo_redo_system->execute_command<PropertyChangeCommand<TransformComponent>>(
-            tc, old_tc, *tc, "gizmo transform");
+        undo_redo_system->execute_command<ComponentChangeCommand<TransformComponent>>(
+            selected_entity, tc, old_tc, *tc, "gizmo transform");
 
         selected_entity.modified<TransformComponent>();
       }
