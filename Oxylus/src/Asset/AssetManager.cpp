@@ -146,7 +146,14 @@ auto AssetManager::deinit() -> std::expected<void, std::string> {
   ZoneScoped;
 
   for (auto& [uuid, asset] : asset_registry) {
-    delete_asset(uuid);
+    // leak check
+    if (asset.is_loaded() && asset.ref_count != 0) {
+      OX_LOG_WARN("A {} asset ({}, {}) with refcount of {} is still alive!",
+                  to_asset_type_sv(asset.type),
+                  uuid.str(),
+                  asset.path,
+                  asset.ref_count);
+    }
   }
 
   return {};
