@@ -15,7 +15,6 @@ target("OxylusEditor")
     })
     add_files("../Oxylus/src/Render/Shaders/**")
     add_rules("ox.install_shaders", {
-        root_dir = "Oxylus/src/Render/Shaders",
         output_dir = "Resources/Shaders",
     })
 

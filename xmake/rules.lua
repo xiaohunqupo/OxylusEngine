@@ -44,7 +44,7 @@ rule("ox.install_resources")
         end
 
         local abs_output = path.absolute(rel_output) .. "/" .. path.filename(sourcefile)
-        batchcmds:show_progress(opt.progress, "${color.build.object}copying resource file %s", sourcefile)
+        batchcmds:show_progress(opt.progress, "${color.build.object}copying resource file %s %s", abs_source, abs_output)
         batchcmds:cp(abs_source, abs_output)
 
         batchcmds:add_depfiles(sourcefile)
@@ -56,21 +56,31 @@ rule("ox.install_shaders")
     set_extensions(".slang", ".hlsl", ".hlsli", ".frag", ".vert", ".comp", ".h")
     before_buildcmd_file(function (target, batchcmds, sourcefile, opt)
         local output_dir = target:extraconf("rules", "ox.install_shaders", "output_dir") or ""
-        local root_dir = target:extraconf("rules", "ox.install_shaders", "root_dir") or os.scriptdir()
-
         local abs_source = path.absolute(sourcefile)
+        local source_dir = path.directory(abs_source)
+
+        -- Find the "Shaders" directory in the path and extract everything after it
+        local shaders_pattern = "[/\\]Shaders[/\\]"
+        local shaders_start, shaders_end = source_dir:find(shaders_pattern)
+
         local rel_output = path.join(target:targetdir(), output_dir)
-        if (root_dir ~= "" or root_dir ~= nil) then
-            local rel_root = path.relative(path.directory(abs_source), root_dir)
-            rel_output = path.join(rel_output, rel_root)
+
+        if shaders_start then
+            -- Get the part after "/Shaders/"
+            local subpath = source_dir:sub(shaders_end + 1)
+            if subpath and subpath ~= "" then
+                rel_output = path.join(rel_output, subpath)
+            end
         end
 
-        local abs_output = path.absolute(rel_output) .. "/" .. path.filename(sourcefile)
-        batchcmds:show_progress(opt.progress, "${color.build.object}copying shader file %s", sourcefile)
+        local abs_output = path.join(rel_output, path.filename(sourcefile))
+        batchcmds:show_progress(opt.progress, "${color.build.object}copying shader file %s", abs_source)
+        batchcmds:mkdir(path.directory(abs_output))
         batchcmds:cp(abs_source, abs_output)
 
         batchcmds:add_depfiles(sourcefile)
         batchcmds:set_depmtime(os.mtime(abs_output))
         batchcmds:set_depcache(target:dependfile(abs_output))
     end)
+
 
