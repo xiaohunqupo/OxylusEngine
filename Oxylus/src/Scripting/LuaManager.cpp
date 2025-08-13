@@ -32,6 +32,7 @@ auto LuaManager::init() -> std::expected<void, std::string> {
   BIND(AudioBinding);
   BIND(DebugBinding);
   BIND(FlecsBinding);
+  BIND(InputBinding);
   BIND(MathBinding);
   BIND(PhysicsBinding);
   BIND(RendererBinding);
