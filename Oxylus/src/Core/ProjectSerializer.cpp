@@ -38,6 +38,7 @@ bool ProjectSerializer::deserialize(const std::string& file_path) const {
     module_name = project_node["module_name"].as_string()->get();
   } catch (const std::exception& exc) {
     OX_LOG_ERROR("{}", exc.what());
+    return false;
   }
 
   return true;

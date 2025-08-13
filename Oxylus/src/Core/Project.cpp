@@ -3,11 +3,11 @@
 #include "Asset/AssetManager.hpp"
 #include "Core/App.hpp"
 #include "Core/FileSystem.hpp"
+#include "Core/ProjectSerializer.hpp"
 #include "Core/UUID.hpp"
+#include "Core/VFS.hpp"
 #include "Modules/ModuleRegistry.hpp"
 #include "Modules/ModuleUtil.hpp"
-#include "Core/ProjectSerializer.hpp"
-#include "Core/VFS.hpp"
 
 namespace ox {
 struct AssetDirectoryCallbacks {
@@ -159,8 +159,13 @@ auto Project::load(this Project& self, const std::string& path) -> bool {
 
     const auto asset_dir_path = fs::append_paths(fs::get_directory(self.project_file_path),
                                                  self.project_config.asset_directory);
-    App::get_system<VFS>(EngineSystems::VFS)->mount_dir(VFS::PROJECT_DIR, asset_dir_path);
 
+    auto* vfs = App::get_vfs();
+    if (vfs->is_mounted_dir(VFS::PROJECT_DIR))
+      vfs->unmount_dir(VFS::PROJECT_DIR);
+    vfs->mount_dir(VFS::PROJECT_DIR, asset_dir_path);
+
+    self.asset_directory.reset();
     self.register_assets(asset_dir_path);
 
     self.load_module();
