@@ -461,7 +461,7 @@ std::shared_ptr<Scene> EditorLayer::get_active_scene() { return active_scene; }
 void EditorLayer::set_editor_context(const std::shared_ptr<Scene>& scene) {
   scene->meshes_dirty = true;
   auto* shpanel = get_panel<SceneHierarchyPanel>();
-  shpanel->set_scene(scene);
+  shpanel->set_scene(scene.get());
   for (const auto& panel : viewport_panels) {
     panel->set_context(scene, *shpanel);
   }

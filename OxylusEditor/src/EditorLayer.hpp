@@ -78,7 +78,7 @@ public:
   bool open_scene(const std::filesystem::path& path);
   static void load_default_scene(const std::shared_ptr<Scene>& scene);
 
-  std::shared_ptr<Scene> get_selected_scene() { return get_panel<SceneHierarchyPanel>()->get_scene(); }
+  Scene* get_selected_scene() { return get_panel<SceneHierarchyPanel>()->get_scene(); }
 
   void set_scene_state(SceneState state);
   void set_docking_layout(EditorLayout layout);

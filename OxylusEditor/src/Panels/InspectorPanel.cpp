@@ -37,7 +37,7 @@ InspectorPanel::InspectorPanel() : EditorPanel("Inspector", ICON_MDI_INFORMATION
 void InspectorPanel::on_render(vuk::Extent3D extent, vuk::Format format) {
   auto* editor_layer = EditorLayer::get();
   auto& editor_context = editor_layer->get_context();
-  _scene = editor_layer->get_selected_scene().get();
+  _scene = editor_layer->get_selected_scene();
 
   on_begin();
 
