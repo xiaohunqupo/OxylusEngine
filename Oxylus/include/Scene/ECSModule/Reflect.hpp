@@ -49,8 +49,9 @@
   component.member<type, _CurrentComponentT>(#name, &_CurrentComponentT::name); \
   ECS_BIND_MEMBER(name, _CurrentComponentT);
 
-#define ECS_COMPONENT_TAG(name, ...) \
+#define ECS_COMPONENT_TAG(name, ...) { \
   auto component = world.component<name>(#name); \
-  ECS_BIND_TYPE(state, name);
+  ECS_BIND_TYPE(state, name); \
+  }
 #endif
 // clang-format on

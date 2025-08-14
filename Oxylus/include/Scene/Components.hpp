@@ -398,6 +398,8 @@ ECS_COMPONENT_END();
 
 ECS_COMPONENT_TAG(Hidden);
 
+ECS_COMPONENT_TAG(AssetOwner);
+
 #ifndef ECS_REFLECT_TYPES
 } // namespace ox
 #endif

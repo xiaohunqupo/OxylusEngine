@@ -97,6 +97,8 @@ public:
 
   auto set_dirty(this Scene& self, flecs::entity entity) -> void;
 
+  static auto safe_entity_name(const flecs::world& world, std::string prefix) -> std::string;
+
   // Physics interfaces
   auto on_contact_added(const JPH::Body& body1,
                         const JPH::Body& body2,

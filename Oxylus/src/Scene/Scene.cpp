@@ -34,6 +34,16 @@
 #include "Utils/Timestep.hpp"
 
 namespace ox {
+auto Scene::safe_entity_name(const flecs::world& world, std::string prefix) -> std::string {
+  u32 index = 0;
+  std::string new_entity_name = prefix;
+  while (world.lookup(new_entity_name.data())) {
+    index += 1;
+    new_entity_name = fmt::format("{}_{}", prefix, index);
+  }
+  return new_entity_name;
+}
+
 auto Scene::entity_to_json(JsonWriter& writer, flecs::entity e) -> void {
   ZoneScoped;
 
@@ -346,6 +356,33 @@ auto Scene::init(this Scene& self, const std::string& name) -> void {
             script_asset->on_remove(scene, it.entity(i));
           }
         }
+      });
+
+  self.world.observer<MeshComponent>()
+      .with<AssetOwner>()
+      .event(flecs::OnRemove)
+      .each([](flecs::iter& it, usize i, MeshComponent& c) {
+        ZoneScopedN("MeshComponent AssetOwner handling");
+        auto* asset_man = App::get_asset_manager();
+        asset_man->unload_asset(c.mesh_uuid);
+      });
+
+  self.world.observer<AudioSourceComponent>()
+      .with<AssetOwner>()
+      .event(flecs::OnRemove)
+      .each([](flecs::iter& it, usize i, AudioSourceComponent& c) {
+        ZoneScopedN("AudioSourceComponent AssetOwner handling");
+        auto* asset_man = App::get_asset_manager();
+        asset_man->unload_asset(c.audio_source);
+      });
+
+  self.world.observer<LuaScriptComponent>()
+      .with<AssetOwner>()
+      .event(flecs::OnRemove)
+      .each([](flecs::iter& it, usize i, LuaScriptComponent& c) {
+        ZoneScopedN("LuaScriptComponent AssetOwner handling");
+        auto* asset_man = App::get_asset_manager();
+        asset_man->unload_asset(c.script_uuid);
       });
 
   // Systems run order:
@@ -706,7 +743,7 @@ auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   flecs::entity e = world.entity();
   if (name.empty()) {
     memory::ScopedStack stack;
-    e.set_name(stack.format_char("Entity {}", e.id()));
+    e.set_name(Scene::safe_entity_name(world, "entity").c_str());
   } else {
     e.set_name(name.c_str());
   }

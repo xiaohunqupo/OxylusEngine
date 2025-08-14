@@ -248,40 +248,30 @@ void SceneHierarchyPanel::draw_context_menu() {
   ImGuiScoped::StyleVar styleVar1(ImGuiStyleVar_ItemInnerSpacing, {0, 5});
   ImGuiScoped::StyleVar styleVar2(ImGuiStyleVar_ItemSpacing, {1, 5});
   if (ImGui::BeginMenu("Create")) {
-    const auto get_name = [&s = _scene](std::string prefix) -> std::string {
-      u32 index = 0;
-      std::string new_entity_name = prefix;
-      while (s->world.lookup(new_entity_name.data())) {
-        index += 1;
-        new_entity_name = fmt::format("{}_{}", prefix, index);
-      }
-      return new_entity_name;
-    };
-
     if (ImGui::MenuItem("New Entity")) {
-      to_select = _scene->create_entity(get_name("entity"));
+      to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "entity"));
     }
 
     auto* asset_man = App::get_asset_manager();
 
     if (ImGui::MenuItem("Sprite")) {
-      to_select = _scene->create_entity(get_name("sprite")).add<SpriteComponent>();
+      to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "sprite")).add<SpriteComponent>();
       to_select.get_mut<SpriteComponent>().material = asset_man->create_asset(AssetType::Material, {});
       asset_man->load_material(to_select.get_mut<SpriteComponent>().material, Material{});
     }
 
     if (ImGui::MenuItem("Camera")) {
-      to_select = _scene->create_entity(get_name("camera"));
+      to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "camera"));
       to_select.add<CameraComponent>().get_mut<TransformComponent>().rotation.y = glm::radians(-90.f);
     }
 
     if (ImGui::MenuItem("Lua Script")) {
-      to_select = _scene->create_entity(get_name("lua_script")).add<LuaScriptComponent>();
+      to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "lua_script")).add<LuaScriptComponent>();
     }
 
     if (ImGui::BeginMenu("Light")) {
       if (ImGui::MenuItem("Light")) {
-        to_select = _scene->create_entity(get_name("light")).add<LightComponent>();
+        to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "light")).add<LightComponent>();
       }
       if (ImGui::MenuItem("Sun")) {
         to_select = _scene->create_entity("sun")
@@ -293,11 +283,13 @@ void SceneHierarchyPanel::draw_context_menu() {
 
     if (ImGui::BeginMenu("Audio")) {
       if (ImGui::MenuItem("Audio Source")) {
-        to_select = _scene->create_entity(get_name("audio_source")).add<AudioSourceComponent>();
+        to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "audio_source"))
+                        .add<AudioSourceComponent>();
         ImGui::CloseCurrentPopup();
       }
       if (ImGui::MenuItem("Audio Listener")) {
-        to_select = _scene->create_entity(get_name("audio_listener")).add<AudioListenerComponent>();
+        to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "audio_listener"))
+                        .add<AudioListenerComponent>();
         ImGui::CloseCurrentPopup();
       }
       ImGui::EndMenu();
@@ -305,7 +297,8 @@ void SceneHierarchyPanel::draw_context_menu() {
 
     if (ImGui::BeginMenu("Effects")) {
       if (ImGui::MenuItem("Particle System")) {
-        to_select = _scene->create_entity(get_name("particle_system")).add<ParticleSystemComponent>();
+        to_select = _scene->create_entity(Scene::safe_entity_name(_scene->world, "particle_system"))
+                        .add<ParticleSystemComponent>();
       }
       ImGui::EndMenu();
     }
