@@ -236,7 +236,6 @@ auto Scene::init(this Scene& self, const std::string& name) -> void {
       .event(flecs::OnSet)
       .event(flecs::OnAdd)
       .event(flecs::OnRemove)
-      .without<MeshComponent>()
       .each([&self](flecs::iter& it, usize i, TransformComponent&) {
         auto entity = it.entity(i);
         if (it.event() == flecs::OnSet) {
