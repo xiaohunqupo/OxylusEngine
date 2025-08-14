@@ -393,10 +393,10 @@ auto Scene::init(this Scene& self, const std::string& name) -> void {
 
   self.world.system<const LuaScriptComponent>("lua_update")
       .kind(flecs::PreUpdate)
-      .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
+      .each([s = &self](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
-          script->on_scene_update(it.delta_time());
+          script->on_scene_update(s, it.entity(i), it.delta_time());
         }
       });
 
@@ -456,10 +456,10 @@ auto Scene::init(this Scene& self, const std::string& name) -> void {
   self.world.system<const LuaScriptComponent>("lua_fixed_update")
       .kind(flecs::OnUpdate)
       .tick_source(physics_tick_source)
-      .each([](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
+      .each([s = &self](flecs::iter& it, size_t i, const LuaScriptComponent& c) {
         auto* asset_man = App::get_asset_manager();
         if (auto* script = asset_man->get_script(c.script_uuid)) {
-          script->on_scene_fixed_update(it.delta_time());
+          script->on_scene_fixed_update(s, it.entity(i), it.delta_time());
         }
       });
 
@@ -724,12 +724,13 @@ void Scene::on_render(const vuk::Extent3D extent, const vuk::Format format) {
 
   {
     ZoneNamedN(z, "LuaScripting/on_render", true);
-    world.query_builder<const LuaScriptComponent>().build().each([extent, format](const LuaScriptComponent& c) {
-      auto* asset_man = App::get_asset_manager();
-      if (auto* script = asset_man->get_script(c.script_uuid)) {
-        script->on_scene_render(extent, format);
-      }
-    });
+    world.query_builder<const LuaScriptComponent>().build().each(
+        [this, extent, format](const flecs::entity& e, const LuaScriptComponent& c) {
+          auto* asset_man = App::get_asset_manager();
+          if (auto* script = asset_man->get_script(c.script_uuid)) {
+            script->on_scene_render(this, e, 0, extent, format); // TODO: Pass in delta_time instead of 0
+          }
+        });
   }
 }
 
