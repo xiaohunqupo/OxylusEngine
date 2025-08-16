@@ -337,29 +337,29 @@ auto SceneHierarchyViewer::draw_context_menu() -> void {
   ImGuiScoped::StyleVar styleVar2(ImGuiStyleVar_ItemSpacing, {1, 5});
   if (ImGui::BeginMenu("Create")) {
     if (ImGui::MenuItem("New Entity")) {
-      to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "entity"));
+      to_select = scene_->create_entity(scene_->safe_entity_name("entity"));
     }
 
     auto* asset_man = App::get_asset_manager();
 
     if (ImGui::MenuItem("Sprite")) {
-      to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "sprite")).add<SpriteComponent>();
+      to_select = scene_->create_entity(scene_->safe_entity_name("sprite")).add<SpriteComponent>();
       to_select.get_mut<SpriteComponent>().material = asset_man->create_asset(AssetType::Material, {});
       asset_man->load_material(to_select.get_mut<SpriteComponent>().material, Material{});
     }
 
     if (ImGui::MenuItem("Camera")) {
-      to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "camera"));
+      to_select = scene_->create_entity(scene_->safe_entity_name("camera"));
       to_select.add<CameraComponent>().get_mut<TransformComponent>().rotation.y = glm::radians(-90.f);
     }
 
     if (ImGui::MenuItem("Lua Script")) {
-      to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "lua_script")).add<LuaScriptComponent>();
+      to_select = scene_->create_entity(scene_->safe_entity_name("lua_script")).add<LuaScriptComponent>();
     }
 
     if (ImGui::BeginMenu("Light")) {
       if (ImGui::MenuItem("Light")) {
-        to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "light")).add<LightComponent>();
+        to_select = scene_->create_entity(scene_->safe_entity_name("light")).add<LightComponent>();
       }
       if (ImGui::MenuItem("Sun")) {
         to_select = scene_->create_entity("sun")
@@ -371,12 +371,12 @@ auto SceneHierarchyViewer::draw_context_menu() -> void {
 
     if (ImGui::BeginMenu("Audio")) {
       if (ImGui::MenuItem("Audio Source")) {
-        to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "audio_source"))
+        to_select = scene_->create_entity(scene_->safe_entity_name("audio_source"))
                         .add<AudioSourceComponent>();
         ImGui::CloseCurrentPopup();
       }
       if (ImGui::MenuItem("Audio Listener")) {
-        to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "audio_listener"))
+        to_select = scene_->create_entity(scene_->safe_entity_name("audio_listener"))
                         .add<AudioListenerComponent>();
         ImGui::CloseCurrentPopup();
       }
@@ -385,7 +385,7 @@ auto SceneHierarchyViewer::draw_context_menu() -> void {
 
     if (ImGui::BeginMenu("Effects")) {
       if (ImGui::MenuItem("Particle System")) {
-        to_select = scene_->create_entity(Scene::safe_entity_name(scene_->world, "particle_system"))
+        to_select = scene_->create_entity(scene_->safe_entity_name("particle_system"))
                         .add<ParticleSystemComponent>();
       }
       ImGui::EndMenu();

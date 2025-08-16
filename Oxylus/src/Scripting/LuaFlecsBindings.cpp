@@ -213,6 +213,13 @@ auto FlecsBinding::bind(sol::state* state) -> void {
         return e;
       },
 
+      "remove",
+      [](flecs::entity* e, sol::table component_table) {
+        auto component = component_table.get<ecs_entity_t>("component_id");
+        e->remove(component);
+        return e;
+      },
+
       "has",
       [](flecs::entity* e, sol::table component_table) -> bool {
         auto component = component_table.get<ecs_entity_t>("component_id");
@@ -221,32 +228,51 @@ auto FlecsBinding::bind(sol::state* state) -> void {
 
       "get",
       [state](flecs::entity* e, sol::table component_table) -> sol::optional<sol::table> {
-        auto comp = component_table.get<ecs_entity_t>("component_id");
-        if (!e->has(comp))
+        auto component = component_table.get<ecs_entity_t>("component_id");
+        if (!e->has(component))
           return sol::nullopt;
 
-        return get_component_table(state, e, comp, false);
+        return get_component_table(state, e, component, false);
       },
 
       "get_mut",
       [state](flecs::entity* e, sol::table component_table) -> sol::optional<sol::table> {
-        auto comp = component_table.get<ecs_entity_t>("component_id");
-        if (!e->has(comp))
+        auto component = component_table.get<ecs_entity_t>("component_id");
+        if (!e->has(component))
           return sol::nullopt;
 
-        return get_component_table(state, e, comp, true);
+        return get_component_table(state, e, component, true);
       },
 
-      // TODO:
+      "ensure",
+      [state](flecs::entity* e, sol::table component_table) -> sol::optional<sol::table> {
+        auto component = component_table.get<ecs_entity_t>("component_id");
+        e->ensure(component);
+
+        return get_component_table(state, e, component, true);
+      },
+
+      // only available with default values
       "set",
-      [](flecs::entity* e, sol::table component_data) { return e; },
+      [](flecs::entity* e, sol::table component_table) {
+        auto component = component_table.get<ecs_entity_t>("component_id");
+        e->set(component);
+        // ecs_set_id(e->world().world_, (ecs_entity_t)e->id(), component, 0, nullptr);
+        return e;
+      },
 
       "modified",
       [](flecs::entity* e, sol::table component_table) -> void {
         auto comp = component_table.get<ecs_entity_t>("component_id");
 
         e->modified(comp);
-      });
+      },
+
+      "child_of",
+      [](flecs::entity* e, flecs::entity e2) { e->child_of(e2); },
+
+      "set_name",
+      [](flecs::entity* e, const std::string& name) { e->set_name(name.c_str()); });
 
   // --- Components ---
   auto components_table = state->create_named_table("Component");

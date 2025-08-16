@@ -1,6 +1,7 @@
 ﻿#include "Scripting/LuaManager.hpp"
 
 #include <sol/sol.hpp>
+#include "Scripting/LuaVFSBindings.hpp"
 
 #ifdef OX_LUA_BINDINGS
   #include "Scripting/LuaApplicationBindings.hpp"
@@ -38,6 +39,7 @@ auto LuaManager::init() -> std::expected<void, std::string> {
   BIND(RendererBinding);
   BIND(SceneBinding);
   BIND(UIBinding);
+  BIND(VFSBinding);
 #endif
 
   return {};

@@ -34,10 +34,10 @@
 #include "Utils/Timestep.hpp"
 
 namespace ox {
-auto Scene::safe_entity_name(const flecs::world& world, std::string prefix) -> std::string {
+auto Scene::safe_entity_name(this const Scene& self, std::string prefix) -> std::string {
   u32 index = 0;
   std::string new_entity_name = prefix;
-  while (world.lookup(new_entity_name.data())) {
+  while (self.world.lookup(new_entity_name.data())) {
     index += 1;
     new_entity_name = fmt::format("{}_{}", prefix, index);
   }
@@ -743,7 +743,7 @@ auto Scene::create_entity(const std::string& name) const -> flecs::entity {
   flecs::entity e = world.entity();
   if (name.empty()) {
     memory::ScopedStack stack;
-    e.set_name(Scene::safe_entity_name(world, "entity").c_str());
+    e.set_name(safe_entity_name("entity").c_str());
   } else {
     e.set_name(name.c_str());
   }

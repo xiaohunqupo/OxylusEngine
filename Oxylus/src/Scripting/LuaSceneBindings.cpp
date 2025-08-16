@@ -18,5 +18,6 @@ auto SceneBinding::bind(sol::state* state) -> void {
   SET_TYPE_FUNCTION(scene_type, Scene, create_mesh_entity);
   SET_TYPE_FUNCTION(scene_type, Scene, save_to_file);
   SET_TYPE_FUNCTION(scene_type, Scene, load_from_file);
+  SET_TYPE_FUNCTION(scene_type, Scene, safe_entity_name);
 }
 } // namespace ox
